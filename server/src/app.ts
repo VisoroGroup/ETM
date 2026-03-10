@@ -37,6 +37,15 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve frontend build in production
+if (process.env.NODE_ENV === 'production') {
+    const clientBuildPath = path.join(__dirname, '../../client/dist');
+    app.use(express.static(clientBuildPath));
+    app.get('*', (_req, res) => {
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
+    });
+}
+
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 Visoro Task Manager API running on port ${PORT}`);
