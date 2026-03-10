@@ -1,0 +1,93 @@
+import axios from 'axios';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment } from '../types';
+
+const api = axios.create({
+    baseURL: '/api',
+    headers: { 'Content-Type': 'application/json' },
+});
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('visoro_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+// Auth
+export const authApi = {
+    login: (data: any) => api.post('/auth/login', data).then(r => r.data),
+    me: () => api.get<{ user: User }>('/auth/me').then(r => r.data),
+    users: () => api.get<User[]>('/auth/users').then(r => r.data),
+};
+
+// Tasks
+export const tasksApi = {
+    list: (filters?: TaskFilters) => api.get('/tasks', { params: filters }).then(r => r.data),
+    get: (id: string) => api.get<TaskDetail>(`/tasks/${id}`).then(r => r.data),
+    create: (data: Partial<Task>) => api.post<Task>('/tasks', data).then(r => r.data),
+    update: (id: string, data: Partial<Task>) => api.put<Task>(`/tasks/${id}`, data).then(r => r.data),
+    changeStatus: (id: string, status: string, reason?: string) =>
+        api.put(`/tasks/${id}/status`, { status, reason }).then(r => r.data),
+    changeDueDate: (id: string, due_date: string, reason: string) =>
+        api.put(`/tasks/${id}/due-date`, { due_date, reason }).then(r => r.data),
+    delete: (id: string) => api.delete(`/tasks/${id}`).then(r => r.data),
+};
+
+// Subtasks
+export const subtasksApi = {
+    create: (taskId: string, data: { title: string; assigned_to?: string }) =>
+        api.post<Subtask>(`/tasks/${taskId}/subtasks`, data).then(r => r.data),
+    update: (taskId: string, subtaskId: string, data: Partial<Subtask>) =>
+        api.put<Subtask>(`/tasks/${taskId}/subtasks/${subtaskId}`, data).then(r => r.data),
+    reorder: (taskId: string, order: { id: string; order_index: number }[]) =>
+        api.put(`/tasks/${taskId}/subtasks-reorder`, { order }).then(r => r.data),
+    delete: (taskId: string, subtaskId: string) =>
+        api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`).then(r => r.data),
+};
+
+// Comments
+export const commentsApi = {
+    list: (taskId: string) => api.get<TaskComment[]>(`/tasks/${taskId}/comments`).then(r => r.data),
+    create: (taskId: string, content: string, mentions: string[]) =>
+        api.post<TaskComment>(`/tasks/${taskId}/comments`, { content, mentions }).then(r => r.data),
+    update: (taskId: string, commentId: string, content: string) =>
+        api.put<TaskComment>(`/tasks/${taskId}/comments/${commentId}`, { content }).then(r => r.data),
+    delete: (taskId: string, commentId: string) =>
+        api.delete(`/tasks/${taskId}/comments/${commentId}`).then(r => r.data),
+};
+
+// Attachments
+export const attachmentsApi = {
+    upload: (taskId: string, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post<TaskAttachment>(`/upload/${taskId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(r => r.data);
+    },
+    delete: (taskId: string, attachmentId: string) =>
+        api.delete(`/tasks/${taskId}/attachments/${attachmentId}`).then(r => r.data),
+};
+
+// Dashboard
+export const dashboardApi = {
+    stats: () => api.get<DashboardStats>('/dashboard/stats').then(r => r.data),
+    charts: () => api.get<DashboardCharts>('/dashboard/charts').then(r => r.data),
+};
+
+// Recurring
+export const recurringApi = {
+    set: (taskId: string, frequency: string) =>
+        api.post(`/tasks/${taskId}/recurring`, { frequency }).then(r => r.data),
+    remove: (taskId: string) =>
+        api.delete(`/tasks/${taskId}/recurring`).then(r => r.data),
+};
+
+// Activity
+export const activityApi = {
+    list: (taskId: string) => api.get(`/tasks/${taskId}/activity`).then(r => r.data),
+};
+
+export default api;

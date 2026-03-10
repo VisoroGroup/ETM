@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: visoro-taskmanager-db
+    environment:
+      POSTGRES_DB: visoro_tasks
+      POSTGRES_USER: visoro
+      POSTGRES_PASSWORD: visoro_dev_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
