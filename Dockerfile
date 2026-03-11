@@ -21,20 +21,21 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copy server build and deps
+# Copy server build and ALL source (needed for tsx migrations)
 COPY --from=builder /app/server/dist ./server/dist
+COPY --from=builder /app/server/src ./server/src
 COPY --from=builder /app/server/package.json ./server/package.json
 COPY --from=builder /app/server/package-lock.json ./server/package-lock.json
-COPY --from=builder /app/server/src/database ./server/src/database
 
 # Copy client build
 COPY --from=builder /app/client/dist ./client/dist
 
-# Install production deps only
+# Copy root .env if exists
+COPY --from=builder /app/.env* ./
+
+# Install production deps + tsx for migrations
 WORKDIR /app/server
 RUN npm ci --omit=dev
-
-# tsx needed for migrations
 RUN npm install tsx
 
 EXPOSE 8080
