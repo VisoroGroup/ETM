@@ -25,7 +25,9 @@ export type ActionType =
     | 'subtask_assigned'
     | 'attachment_added'
     | 'label_changed'
-    | 'recurring_created';
+    | 'recurring_created'
+    | 'alert_added'
+    | 'alert_resolved';
 
 export interface User {
     id: string;
@@ -137,6 +139,21 @@ export interface TaskDueDateChange {
     reason: string;
     changed_by: string;
     created_at: Date;
+}
+
+export interface TaskAlert {
+    id: string;
+    task_id: string;
+    created_by: string;
+    creator_name?: string;
+    creator_avatar?: string | null;
+    content: string;
+    is_resolved: boolean;
+    resolved_by: string | null;
+    resolved_by_name?: string | null;
+    resolved_at: Date | null;
+    created_at: Date;
+    updated_at: Date;
 }
 
 export interface EmailLog {

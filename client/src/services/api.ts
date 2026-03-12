@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment } from '../types';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert } from '../types';
 
 const api = axios.create({
     baseURL: '/api',
@@ -88,6 +88,17 @@ export const recurringApi = {
 // Activity
 export const activityApi = {
     list: (taskId: string) => api.get(`/tasks/${taskId}/activity`).then(r => r.data),
+};
+
+// Alerts (În Atenție)
+export const alertsApi = {
+    list: (taskId: string) => api.get<TaskAlert[]>(`/tasks/${taskId}/alerts`).then(r => r.data),
+    create: (taskId: string, content: string) =>
+        api.post<TaskAlert>(`/tasks/${taskId}/alerts`, { content }).then(r => r.data),
+    resolve: (taskId: string, alertId: string) =>
+        api.put<TaskAlert>(`/tasks/${taskId}/alerts/${alertId}/resolve`, {}).then(r => r.data),
+    delete: (taskId: string, alertId: string) =>
+        api.delete(`/tasks/${taskId}/alerts/${alertId}`).then(r => r.data),
 };
 
 export default api;

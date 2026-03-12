@@ -2,7 +2,8 @@ export type UserRole = 'admin' | 'manager' | 'user';
 export type Department = 'departament_1' | 'departament_2' | 'departament_3' | 'departament_4' | 'departament_5' | 'departament_6' | 'departament_7';
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created';
+export type AlertStatus = 'active' | 'resolved';
+export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved';
 
 export interface User {
     id: string;
@@ -34,11 +35,27 @@ export interface Task {
     blocked_reason?: string | null;
 }
 
+export interface TaskAlert {
+    id: string;
+    task_id: string;
+    created_by: string;
+    creator_name?: string;
+    creator_avatar?: string | null;
+    content: string;
+    is_resolved: boolean;
+    resolved_by: string | null;
+    resolved_by_name?: string | null;
+    resolved_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface TaskDetail extends Task {
     subtasks: Subtask[];
     comments: TaskComment[];
     attachments: TaskAttachment[];
     activity: ActivityLogEntry[];
+    alerts: TaskAlert[];
 }
 
 export interface Subtask {
