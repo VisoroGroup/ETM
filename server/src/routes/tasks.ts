@@ -94,6 +94,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             values.push(assigned_to);
         }
 
+        // CSAPATLAPÚ NÉZET: regular 'user' role sees only  tasks they created or are assigned to via subtasks
+        if (req.user?.role === 'user') {
+            conditions.push(`(
+                t.created_by = $${paramIndex} OR
+                EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = t.id AND st.assigned_to = $${paramIndex})
+            )`);
+            values.push(req.user.id);
+            paramIndex++;
+        }
+
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
@@ -602,6 +612,21 @@ router.post('/:id/subtasks', authMiddleware, async (req: AuthRequest, res: Respo
                     assigned_to_name: userRows[0]?.display_name
                 })]
             );
+
+            // NOTIFICATION: notify the assigned user (if different from assigner)
+            if (assigned_to !== req.user!.id) {
+                try {
+                    await pool.query(
+                        `INSERT INTO notifications (user_id, task_id, type, message, created_by)
+                         VALUES ($1, $2, 'subtask_assigned', $3, $4)`,
+                        [assigned_to, taskId,
+                            `${req.user!.display_name} ți-a atribuit o sub-sarcină: "${title}"`,
+                            req.user!.id]
+                    );
+                } catch (notifErr) {
+                    console.error('Notification error (non-critical):', notifErr);
+                }
+            }
         }
 
         res.status(201).json(rows[0]);
@@ -813,6 +838,40 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
                 mentions
             })]
         );
+
+        // NOTIFICATIONS: notify mentioned users + task creator
+        try {
+            const notifyUsers = new Set<string>();
+
+            // Notify mentioned users
+            if (mentions && mentions.length > 0) {
+                for (const mentionedId of mentions) {
+                    if (mentionedId !== req.user!.id) notifyUsers.add(mentionedId);
+                }
+            }
+
+            // Notify task creator if they didn't write the comment
+            const { rows: taskRows } = await pool.query('SELECT created_by FROM tasks WHERE id = $1', [taskId]);
+            if (taskRows.length > 0 && taskRows[0].created_by !== req.user!.id) {
+                notifyUsers.add(taskRows[0].created_by);
+            }
+
+            for (const userId of notifyUsers) {
+                const isMention = mentions && mentions.includes(userId);
+                await pool.query(
+                    `INSERT INTO notifications (user_id, task_id, type, message, created_by)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [userId, taskId,
+                        isMention ? 'mention' : 'comment',
+                        isMention
+                            ? `${req.user!.display_name} te-a menționat într-un comentariu`
+                            : `${req.user!.display_name} a adăugat un comentariu la o sarcină a ta`,
+                        req.user!.id]
+                );
+            }
+        } catch (notifErr) {
+            console.error('Notification error (non-critical):', notifErr);
+        }
 
         // Get author info
         rows[0].author_name = req.user!.display_name;
