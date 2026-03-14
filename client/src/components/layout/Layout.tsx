@@ -3,17 +3,21 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, Settings, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Menu
+    ChevronLeft, ChevronRight, Bell, Shield, User
 } from 'lucide-react';
+import NotificationBell from '../notifications/NotificationBell';
+import ProfileModal from '../profile/ProfileModal';
 
 export default function Layout() {
     const { user, logout } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [darkMode, setDarkMode] = useState(true);
+    const [showProfile, setShowProfile] = useState(false);
 
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
+        ...(user?.role === 'admin' ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
     ];
 
     return (
@@ -59,7 +63,10 @@ export default function Layout() {
                 </nav>
 
                 {/* Bottom section */}
-                <div className={`p-3 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-200'}`}>
+                <div className={`p-3 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-200'} space-y-1`}>
+                    {/* Notification bell */}
+                    <NotificationBell collapsed={collapsed} darkMode={darkMode} />
+
                     {/* Dark mode toggle */}
                     <button
                         onClick={() => setDarkMode(!darkMode)}
@@ -81,9 +88,16 @@ export default function Layout() {
                     {/* User info */}
                     {user && (
                         <div className={`mt-2 flex items-center gap-2.5 px-3 py-2.5 rounded-lg ${darkMode ? 'bg-navy-800/50' : 'bg-gray-50'}`}>
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                {user.display_name.charAt(0).toUpperCase()}
-                            </div>
+                            <button
+                                onClick={() => setShowProfile(true)}
+                                className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
+                                title="Editează profil"
+                            >
+                                {user.avatar_url
+                                    ? <img src={user.avatar_url} alt={user.display_name} className="w-8 h-8 rounded-full object-cover" />
+                                    : user.display_name.charAt(0).toUpperCase()
+                                }
+                            </button>
                             {!collapsed && (
                                 <div className="flex-1 overflow-hidden">
                                     <p className="text-xs font-medium truncate">{user.display_name}</p>
@@ -104,6 +118,9 @@ export default function Layout() {
             <main className={`flex-1 ${collapsed ? 'ml-16' : 'ml-64'} transition-all duration-300`}>
                 <Outlet />
             </main>
+
+            {/* Profile Modal */}
+            {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}
         </div>
     );
 }

@@ -8,6 +8,7 @@ interface AuthContextType {
     loading: boolean;
     login: () => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     login: async () => { },
     logout: () => { },
+    refreshUser: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -66,8 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUsers([]);
     }
 
+    async function refreshUser() {
+        try {
+            const { user } = await authApi.me();
+            setUser(user);
+        } catch {}
+    }
+
     return (
-        <AuthContext.Provider value={{ user, users, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, users, loading, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

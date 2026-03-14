@@ -101,4 +101,29 @@ export const alertsApi = {
         api.delete(`/tasks/${taskId}/alerts/${alertId}`).then(r => r.data),
 };
 
+// Admin
+export const adminApi = {
+    users: () => api.get('/admin/users').then(r => r.data),
+    updateUser: (id: string, data: { role?: string; department?: string }) =>
+        api.patch(`/admin/users/${id}`, data).then(r => r.data),
+    deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),
+    stats: () => api.get('/admin/stats').then(r => r.data),
+};
+
+// Profile
+export const profileApi = {
+    get: () => api.get('/profile').then(r => r.data),
+    update: (data: { display_name?: string; avatar_url?: string | null }) =>
+        api.patch('/profile', data).then(r => r.data),
+};
+
+// Notifications
+export const notificationsApi = {
+    list: () => api.get('/notifications').then(r => r.data),
+    unreadCount: () => api.get('/notifications/unread-count').then(r => r.data),
+    markRead: (id: string) => api.patch(`/notifications/${id}/read`, {}).then(r => r.data),
+    markAllRead: () => api.patch('/notifications/read-all', {}).then(r => r.data),
+};
+
+export { api };
 export default api;

@@ -10,6 +10,9 @@ import authRoutes from './routes/auth';
 import taskRoutes from './routes/tasks';
 import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
+import adminRoutes from './routes/admin';
+import profileRoutes from './routes/profile';
+import notificationRoutes from './routes/notifications';
 import { startEmailScheduler } from './cron/emailScheduler';
 
 const app = express();
@@ -31,6 +34,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
