@@ -1,10 +1,79 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import jwt from 'jsonwebtoken';
+import { ConfidentialClientApplication } from '@azure/msal-node';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware, generateToken } from '../middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
+
+// MSAL config for server-side OAuth
+const msalApp = new ConfidentialClientApplication({
+    auth: {
+        clientId: process.env.AZURE_CLIENT_ID!,
+        authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
+        clientSecret: process.env.AZURE_CLIENT_SECRET!,
+    }
+});
+
+// GET /api/auth/microsoft — redirect to Microsoft OAuth
+router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const redirectUri = `${process.env.SERVER_URL || `https://${req.headers.host}`}/api/auth/microsoft/callback`;
+        const authUrl = await msalApp.getAuthCodeUrl({
+            scopes: ['User.Read'],
+            redirectUri,
+        });
+        res.redirect(authUrl);
+    } catch (err) {
+        console.error('Microsoft OAuth init error:', err);
+        res.redirect('/?error=oauth_init_failed');
+    }
+});
+
+// GET /api/auth/microsoft/callback — exchange code for token
+router.get('/microsoft/callback', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { code } = req.query;
+        if (!code || typeof code !== 'string') {
+            res.redirect('/?error=no_code');
+            return;
+        }
+
+        const redirectUri = `${process.env.SERVER_URL || `https://${req.headers.host}`}/api/auth/microsoft/callback`;
+        const tokenResponse = await msalApp.acquireTokenByCode({
+            code,
+            scopes: ['User.Read'],
+            redirectUri,
+        });
+
+        // Get user info from Graph
+        const graphResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
+            headers: { Authorization: `Bearer ${tokenResponse.accessToken}` }
+        });
+        const msUser = await graphResponse.json() as any;
+
+        // Upsert user
+        const { rows } = await pool.query(
+            `INSERT INTO users (id, microsoft_id, email, display_name)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (microsoft_id) DO UPDATE SET
+               email = EXCLUDED.email,
+               display_name = EXCLUDED.display_name,
+               updated_at = NOW()
+             RETURNING *`,
+            [uuidv4(), msUser.id, msUser.mail || msUser.userPrincipalName, msUser.displayName]
+        );
+        const user = rows[0];
+
+        const token = generateToken(user);
+        // Redirect to frontend with token
+        res.redirect(`/?token=${token}`);
+    } catch (err) {
+        console.error('Microsoft OAuth callback error:', err);
+        res.redirect('/?error=oauth_failed');
+    }
+});
 
 // POST /api/auth/login — validate Microsoft token or dev login
 router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {

@@ -41,7 +41,11 @@ app.get('/api/health', (_req, res) => {
 if (process.env.NODE_ENV === 'production') {
     const clientBuildPath = path.join(__dirname, '../../client/dist');
     app.use(express.static(clientBuildPath));
-    app.get('*', (_req, res) => {
+    app.get('*', (req, res) => {
+        if (req.path.startsWith('/api')) {
+            res.status(404).json({ error: 'API endpoint not found' });
+            return;
+        }
         res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 }

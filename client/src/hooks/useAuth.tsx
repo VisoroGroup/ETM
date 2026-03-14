@@ -24,6 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Handle token from Microsoft OAuth callback
+        const params = new URLSearchParams(window.location.search);
+        const oauthToken = params.get('token');
+        const oauthError = params.get('error');
+
+        if (oauthToken) {
+            localStorage.setItem('visoro_token', oauthToken);
+            window.history.replaceState({}, '', '/');
+        } else if (oauthError) {
+            console.error('OAuth error:', oauthError);
+            window.history.replaceState({}, '', '/');
+        }
+
         checkAuth();
     }, []);
 
@@ -44,19 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function login() {
-        try {
-            setLoading(true);
-            // Dev mode: auto-login
-            const result = await authApi.login({ email: 'admin@visoro.ro' });
-            localStorage.setItem('visoro_token', result.token);
-            setUser(result.user);
-            const allUsers = await authApi.users();
-            setUsers(allUsers);
-        } catch (err) {
-            console.error('Login failed:', err);
-        } finally {
-            setLoading(false);
-        }
+        window.location.href = '/api/auth/microsoft';
     }
 
     function logout() {
