@@ -7,9 +7,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
+import KanbanView from './KanbanView';
 import {
-    Search, Filter, Plus, ChevronDown, X, Loader2,
-    AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo
+    Search, Filter, Plus, X, Loader2,
+    AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
+    LayoutList, LayoutGrid
 } from 'lucide-react';
 
 export default function TaskListPage() {
@@ -21,6 +23,7 @@ export default function TaskListPage() {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+    const [showKanban, setShowKanban] = useState(false);
     const { showToast } = useToast();
     const location = useLocation();
 
@@ -104,13 +107,34 @@ export default function TaskListPage() {
                     <h1 className="text-2xl font-bold">Sarcini</h1>
                     <p className="text-navy-400 text-sm mt-1">{total} task-uri</p>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
-                >
-                    <Plus className="w-4 h-4" />
-                    Task nou
-                </button>
+                <div className="flex items-center gap-2">
+                    {/* Kanban / Lista toggle */}
+                    <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-1">
+                        <button
+                            onClick={() => setShowKanban(false)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                !showKanban ? 'bg-blue-500 text-white shadow' : 'text-navy-400 hover:text-navy-200'
+                            }`}
+                        >
+                            <LayoutList className="w-3.5 h-3.5" /> Listă
+                        </button>
+                        <button
+                            onClick={() => setShowKanban(true)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                showKanban ? 'bg-blue-500 text-white shadow' : 'text-navy-400 hover:text-navy-200'
+                            }`}
+                        >
+                            <LayoutGrid className="w-3.5 h-3.5" /> Kanban
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Task nou
+                    </button>
+                </div>
             </div>
 
             {/* Search & Filters */}
@@ -227,11 +251,17 @@ export default function TaskListPage() {
                 )}
             </div>
 
-            {/* Task List Table */}
+            {/* Task List / Kanban */}
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                 </div>
+            ) : showKanban ? (
+                <KanbanView
+                    tasks={tasks}
+                    onTaskClick={(id) => setSelectedTaskId(id)}
+                    onUpdate={loadTasks}
+                />
             ) : tasks.length === 0 ? (
                 <div className="text-center py-20">
                     <ListTodo className="w-16 h-16 text-navy-700 mx-auto mb-4" />
