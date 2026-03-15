@@ -870,10 +870,12 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
             }
 
             // Notify task creator if they didn't write the comment
-            const { rows: taskRows } = await pool.query('SELECT created_by FROM tasks WHERE id = $1', [taskId]);
+            const { rows: taskRows } = await pool.query('SELECT created_by, title FROM tasks WHERE id = $1', [taskId]);
             if (taskRows.length > 0 && taskRows[0].created_by !== req.user!.id) {
                 notifyUsers.add(taskRows[0].created_by);
             }
+
+            const taskTitle = taskRows[0]?.title || 'Sarcină';
 
             for (const userId of notifyUsers) {
                 const isMention = mentions && mentions.includes(userId);
@@ -887,6 +889,58 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
                             : `${req.user!.display_name} a adăugat un comentariu la o sarcină a ta`,
                         req.user!.id]
                 );
+            }
+
+            // Send EMAIL to mentioned users
+            if (mentions && mentions.length > 0) {
+                const mentionedIds = mentions.filter((mid: string) => mid !== req.user!.id);
+                if (mentionedIds.length > 0) {
+                    const { rows: mentionedUsers } = await pool.query(
+                        'SELECT id, email, display_name FROM users WHERE id = ANY($1)',
+                        [mentionedIds]
+                    );
+
+                    const { sendEmail } = await import('../services/emailService');
+                    const appUrl = process.env.CLIENT_URL || 'https://etm-production-62a7.up.railway.app';
+
+                    for (const mu of mentionedUsers) {
+                        try {
+                            await sendEmail({
+                                to: mu.email,
+                                subject: `[ETM] ${req.user!.display_name} te-a menționat — ${taskTitle}`,
+                                htmlBody: `
+                                    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
+                                        <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                                            <h1 style="margin: 0; font-size: 20px;">Visoro Task Manager</h1>
+                                            <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">Mențiune nouă</p>
+                                        </div>
+                                        <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
+                                            <p style="font-size: 16px; color: #333;">Bună, <strong>${mu.display_name}</strong>!</p>
+                                            <p style="color: #555; font-size: 14px;">
+                                                <strong>${req.user!.display_name}</strong> te-a menționat într-un comentariu la sarcina:
+                                            </p>
+                                            <div style="background: #f0f4f8; border-left: 4px solid #2563EB; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+                                                <p style="margin: 0 0 4px; font-weight: bold; color: #1E3A5F;">${taskTitle}</p>
+                                                <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"</p>
+                                            </div>
+                                            <a href="${appUrl}/tasks" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: 8px;">
+                                                Deschide sarcina
+                                            </a>
+                                            <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
+                                            <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
+                                                Această notificare a fost generată automat de Visoro Task Manager.
+                                            </p>
+                                        </div>
+                                    </div>
+                                `,
+                                displayName: mu.display_name,
+                            });
+                            console.log(`📧 Mention email sent to ${mu.email} for task ${taskId}`);
+                        } catch (emailErr) {
+                            console.error(`Failed to send mention email to ${mu.email}:`, emailErr);
+                        }
+                    }
+                }
             }
         } catch (notifErr) {
             console.error('Notification error (non-critical):', notifErr);
