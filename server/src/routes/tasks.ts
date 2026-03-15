@@ -308,7 +308,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, department_label } = req.body;
+        const { title, description, department_label, assigned_to } = req.body;
 
         const updates: string[] = [];
         const values: any[] = [];
@@ -341,6 +341,10 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
             }
             updates.push(`department_label = $${paramIndex++}`);
             values.push(department_label);
+        }
+        if (assigned_to !== undefined) {
+            updates.push(`assigned_to = $${paramIndex++}`);
+            values.push(assigned_to || null);
         }
 
         if (updates.length === 0) {
