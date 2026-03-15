@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue } from '../../utils/helpers';
-import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle } from 'lucide-react';
-import { tasksApi } from '../../services/api';
+import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle, X } from 'lucide-react';
+import { tasksApi, commentsApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 
 const COLUMNS: { key: TaskStatus; label: string; color: string; bg: string; border: string }[] = [
     { key: 'de_rezolvat', label: 'De rezolvat', color: '#64748B', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.25)' },
-    { key: 'in_realizare', label: 'În realizare', color: '#2563EB', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.25)' },
+    { key: 'in_realizare', label: 'În realizare', color: '#2563EB', bg: 'rgba(37,99,235,0.08)',  border: 'rgba(37,99,235,0.25)' },
     { key: 'blocat',       label: 'Blocat',       color: '#DC2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)' },
     { key: 'terminat',     label: 'Terminat',     color: '#16A34A', bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)' },
 ];
@@ -22,6 +22,11 @@ const COLUMNS: { key: TaskStatus; label: string; color: string; bg: string; bord
 export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
     const { showToast } = useToast();
     const [draggingId, setDraggingId] = useState<string | null>(null);
+
+    // Blocat modal state
+    const [blocatModal, setBlocatModal] = useState<{ taskId: string; taskTitle: string } | null>(null);
+    const [blocatReason, setBlocatReason] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const grouped: Record<TaskStatus, Task[]> = {
         de_rezolvat: [],
@@ -41,14 +46,15 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         const task = tasks.find(t => t.id === taskId);
         if (!task || task.status === newStatus) return;
 
-        // If dropping into 'blocat' — we skip the reason modal for Kanban simplicity
-        // and set a default reason
+        if (newStatus === 'blocat') {
+            // Show modal for mandatory reason
+            setBlocatReason('');
+            setBlocatModal({ taskId, taskTitle: task.title });
+            return;
+        }
+
         try {
-            if (newStatus === 'blocat') {
-                await tasksApi.changeStatus(taskId, newStatus, 'Mutat în Blocat via Kanban');
-            } else {
-                await tasksApi.changeStatus(taskId, newStatus);
-            }
+            await tasksApi.changeStatus(taskId, newStatus);
             showToast(`„${task.title}" → ${STATUSES[newStatus].label}`);
             onUpdate();
         } catch (err: any) {
@@ -56,66 +62,136 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         }
     }
 
+    async function confirmBlocat() {
+        if (!blocatModal || !blocatReason.trim()) return;
+        setSaving(true);
+        try {
+            // Change status with reason
+            await tasksApi.changeStatus(blocatModal.taskId, 'blocat', blocatReason.trim());
+            // Also save reason as a comment
+            await commentsApi.create(
+                blocatModal.taskId,
+                `🔴 Blocat — Motiv: ${blocatReason.trim()}`,
+                []
+            );
+            showToast(`„${blocatModal.taskTitle}" → Blocat`);
+            setBlocatModal(null);
+            setBlocatReason('');
+            onUpdate();
+        } catch (err: any) {
+            showToast(err.response?.data?.error || 'Eroare', 'error');
+        } finally {
+            setSaving(false);
+        }
+    }
+
     return (
-        <DragDropContext onDragStart={(e) => setDraggingId(e.draggableId)} onDragEnd={onDragEnd}>
-            <div className="flex gap-4 h-full overflow-x-auto pb-4">
-                {COLUMNS.map(col => {
-                    const colTasks = grouped[col.key];
-                    return (
-                        <div
-                            key={col.key}
-                            className="flex-shrink-0 w-72 flex flex-col rounded-xl border"
-                            style={{ background: col.bg, borderColor: col.border }}
-                        >
-                            {/* Column header */}
-                            <div className="flex items-center justify-between px-3 py-2.5 border-b" style={{ borderColor: col.border }}>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.color }} />
-                                    <span className="text-sm font-semibold" style={{ color: col.color }}>
-                                        {col.label}
+        <>
+            <DragDropContext onDragStart={(e) => setDraggingId(e.draggableId)} onDragEnd={onDragEnd}>
+                <div className="flex gap-4 h-full overflow-x-auto pb-4">
+                    {COLUMNS.map(col => {
+                        const colTasks = grouped[col.key];
+                        return (
+                            <div
+                                key={col.key}
+                                className="flex-shrink-0 w-72 flex flex-col rounded-xl border"
+                                style={{ background: col.bg, borderColor: col.border }}
+                            >
+                                {/* Column header */}
+                                <div className="flex items-center justify-between px-3 py-2.5 border-b" style={{ borderColor: col.border }}>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.color }} />
+                                        <span className="text-sm font-semibold" style={{ color: col.color }}>
+                                            {col.label}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: col.color }}>
+                                        {colTasks.length}
                                     </span>
                                 </div>
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: col.color }}>
-                                    {colTasks.length}
-                                </span>
-                            </div>
 
-                            {/* Drop zone */}
-                            <Droppable droppableId={col.key}>
-                                {(provided, snapshot) => (
-                                    <div
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                        className="flex-1 p-2 space-y-2 min-h-[120px] transition-colors rounded-b-xl"
-                                        style={{
-                                            background: snapshot.isDraggingOver
-                                                ? `rgba(${col.key === 'de_rezolvat' ? '100,116,139' : col.key === 'in_realizare' ? '37,99,235' : col.key === 'blocat' ? '220,38,38' : '22,163,74'},0.15)`
-                                                : undefined,
-                                        }}
-                                    >
-                                        {colTasks.map((task, index) => (
-                                            <KanbanCard
-                                                key={task.id}
-                                                task={task}
-                                                index={index}
-                                                isDragging={draggingId === task.id}
-                                                onClick={() => onTaskClick(task.id)}
-                                            />
-                                        ))}
-                                        {provided.placeholder}
-                                        {colTasks.length === 0 && !snapshot.isDraggingOver && (
-                                            <div className="flex items-center justify-center py-8 text-xs opacity-40" style={{ color: col.color }}>
-                                                Nicio sarcină
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </Droppable>
+                                {/* Drop zone */}
+                                <Droppable droppableId={col.key}>
+                                    {(provided, snapshot) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.droppableProps}
+                                            className="flex-1 p-2 space-y-2 min-h-[120px] transition-colors rounded-b-xl"
+                                            style={{
+                                                background: snapshot.isDraggingOver
+                                                    ? `rgba(${col.key === 'de_rezolvat' ? '100,116,139' : col.key === 'in_realizare' ? '37,99,235' : col.key === 'blocat' ? '220,38,38' : '22,163,74'},0.15)`
+                                                    : undefined,
+                                            }}
+                                        >
+                                            {colTasks.map((task, index) => (
+                                                <KanbanCard
+                                                    key={task.id}
+                                                    task={task}
+                                                    index={index}
+                                                    isDragging={draggingId === task.id}
+                                                    onClick={() => onTaskClick(task.id)}
+                                                />
+                                            ))}
+                                            {provided.placeholder}
+                                            {colTasks.length === 0 && !snapshot.isDraggingOver && (
+                                                <div className="flex items-center justify-center py-8 text-xs opacity-40" style={{ color: col.color }}>
+                                                    Nicio sarcină
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </Droppable>
+                            </div>
+                        );
+                    })}
+                </div>
+            </DragDropContext>
+
+            {/* Blocat reason modal */}
+            {blocatModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="w-full max-w-md bg-navy-900 border border-red-500/30 rounded-2xl shadow-2xl animate-slide-up">
+                        <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
+                            <div className="flex items-center gap-2">
+                                <Ban className="w-5 h-5 text-red-400" />
+                                <h2 className="text-base font-bold">Motiv blocare</h2>
+                            </div>
+                            <button onClick={() => setBlocatModal(null)} className="text-navy-400 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                    );
-                })}
-            </div>
-        </DragDropContext>
+                        <div className="p-5 space-y-4">
+                            <p className="text-sm text-navy-300">
+                                <span className="font-medium text-white">„{blocatModal.taskTitle}"</span> — explică de ce e blocat:
+                            </p>
+                            <textarea
+                                value={blocatReason}
+                                onChange={e => setBlocatReason(e.target.value)}
+                                autoFocus
+                                rows={3}
+                                placeholder="Ex: Lipsă informații de la client, așteptăm approval..."
+                                className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-red-500/30 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-red-400/60 resize-none"
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => setBlocatModal(null)}
+                                    className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors"
+                                >
+                                    Anulează
+                                </button>
+                                <button
+                                    onClick={confirmBlocat}
+                                    disabled={!blocatReason.trim() || saving}
+                                    className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium disabled:opacity-40 transition-all"
+                                >
+                                    {saving ? 'Se salvează...' : 'Confirmă blocare'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
 
@@ -157,8 +233,8 @@ function KanbanCard({ task, index, isDragging, onClick }: {
                     {/* Title */}
                     <p className="text-sm font-medium leading-snug mb-2 line-clamp-2">{task.title}</p>
 
-                    {/* Overdue/blocked reason */}
-                    {task.blocked_reason && (
+                    {/* Blocked reason — ONLY when status is blocat */}
+                    {task.status === 'blocat' && task.blocked_reason && (
                         <p className="text-[11px] text-red-400 line-clamp-1 mb-2 flex items-center gap-1">
                             <Ban className="w-3 h-3 flex-shrink-0" />{task.blocked_reason}
                         </p>
@@ -166,7 +242,6 @@ function KanbanCard({ task, index, isDragging, onClick }: {
 
                     {/* Footer */}
                     <div className="flex items-center justify-between mt-2">
-                        {/* Due date */}
                         <span className={`flex items-center gap-1 text-[11px] font-medium ${
                             dueStat === 'overdue' ? 'text-red-400' :
                             dueStat === 'today' ? 'text-yellow-400' :
@@ -183,13 +258,11 @@ function KanbanCard({ task, index, isDragging, onClick }: {
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                            {/* Subtask progress */}
                             {(task.subtask_total ?? 0) > 0 && (
                                 <span className="text-[10px] text-navy-500">
                                     {task.subtask_completed}/{task.subtask_total}
                                 </span>
                             )}
-                            {/* Assignee */}
                             {task.assignee_name ? (
                                 <div
                                     className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold"
