@@ -15,6 +15,7 @@ import profileRoutes from './routes/profile';
 import notificationRoutes from './routes/notifications';
 import emailRoutes from './routes/emails';
 import templatesRoutes from './routes/templates';
+import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { startEmailScheduler } from './cron/emailScheduler';
 
 const app = express();
@@ -28,10 +29,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global rate limit
+app.use('/api', globalLimiter);
+
 // Static file serving for uploads
 app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
 
-// Routes
+// Routes (auth + upload get stricter limits)
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);

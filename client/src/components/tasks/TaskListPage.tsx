@@ -8,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import KanbanView from './KanbanView';
+import { SkeletonTaskList } from '../ui/Skeleton';
 import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
@@ -306,9 +307,7 @@ export default function TaskListPage() {
 
             {/* Task List / Kanban */}
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-                </div>
+                <SkeletonTaskList rows={6} />
             ) : showKanban ? (
                 <KanbanView
                     tasks={tasks}

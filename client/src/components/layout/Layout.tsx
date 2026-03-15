@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -10,9 +10,23 @@ import ProfileModal from '../profile/ProfileModal';
 
 export default function Layout() {
     const { user, logout } = useAuth();
-    const [collapsed, setCollapsed] = useState(false);
-    const [darkMode, setDarkMode] = useState(true);
+    const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+    const [darkMode, setDarkMode] = useState(() => {
+        const saved = localStorage.getItem('dark-mode');
+        return saved === null ? true : saved === 'true'; // default: dark
+    });
     const [showProfile, setShowProfile] = useState(false);
+
+    // Persist dark mode
+    useEffect(() => {
+        localStorage.setItem('dark-mode', String(darkMode));
+        document.documentElement.classList.toggle('dark', darkMode);
+    }, [darkMode]);
+
+    // Persist sidebar collapsed
+    useEffect(() => {
+        localStorage.setItem('sidebar-collapsed', String(collapsed));
+    }, [collapsed]);
 
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },

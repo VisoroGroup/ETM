@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import LoginPage from './components/auth/LoginPage';
@@ -8,7 +9,18 @@ import TaskListPage from './components/tasks/TaskListPage';
 import AdminPage from './components/admin/AdminPage';
 import EmailLogsPage from './components/emails/EmailLogsPage';
 import TemplatesPage from './pages/TemplatesPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000, // 30s
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -33,11 +45,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/tasks" element={<TaskListPage />} />
-        <Route path="/templates" element={<TemplatesPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/emails" element={<EmailLogsPage />} />
+        <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+        <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
+        <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
+        <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+        <Route path="/emails" element={<ErrorBoundary><EmailLogsPage /></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -46,12 +58,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <AppRoutes />
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
