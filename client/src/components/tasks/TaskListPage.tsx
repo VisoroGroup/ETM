@@ -34,6 +34,16 @@ export default function TaskListPage() {
             setSelectedTaskId(state.openTaskId);
             window.history.replaceState({}, document.title);
         }
+        if (state?.filter === 'overdue') {
+            setFilters({ period: 'overdue' });
+            setShowFilters(true);
+            window.history.replaceState({}, document.title);
+        }
+        if (state?.filter === 'blocat') {
+            setFilters({ status: 'blocat' });
+            setShowFilters(true);
+            window.history.replaceState({}, document.title);
+        }
     }, [location]);
 
     const loadTasks = useCallback(async () => {
