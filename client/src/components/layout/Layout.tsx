@@ -40,7 +40,7 @@ export default function Layout() {
     return (
         <div className={`min-h-screen flex ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
             {/* Sidebar — hidden on mobile, visible md+ */}
-            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r flex-col transition-all duration-300 fixed h-full z-40 hidden md:flex`}>
+            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
                 {/* Logo */}
                 <div className={`h-16 flex items-center ${collapsed ? 'justify-center px-2' : 'px-5'} border-b ${darkMode ? 'border-navy-700/50' : 'border-gray-200'}`}>
                     <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
@@ -132,7 +132,7 @@ export default function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 md:${collapsed ? 'ml-16' : 'ml-64'} ml-0 transition-all duration-300 pb-16 md:pb-0`}>
+            <main className={`flex-1 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0`}>
                 <Outlet />
             </main>
 
