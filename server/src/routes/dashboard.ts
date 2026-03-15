@@ -118,4 +118,25 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
     }
 });
 
+// GET /api/dashboard/active-alerts — all unresolved alerts across tasks
+router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT a.id, a.task_id, a.content, a.created_at,
+                    t.title AS task_title, t.status AS task_status, t.department_label,
+                    u.display_name AS creator_name, u.avatar_url AS creator_avatar
+             FROM task_alerts a
+             JOIN tasks t ON a.task_id = t.id
+             JOIN users u ON a.created_by = u.id
+             WHERE a.is_resolved = false
+             ORDER BY a.created_at DESC
+             LIMIT 20`
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Active alerts error:', err);
+        res.status(500).json({ error: 'Eroare la încărcarea alertelor active.' });
+    }
+});
+
 export default router;

@@ -75,6 +75,7 @@ export const attachmentsApi = {
 export const dashboardApi = {
     stats: () => api.get<DashboardStats>('/dashboard/stats').then(r => r.data),
     charts: () => api.get<DashboardCharts>('/dashboard/charts').then(r => r.data),
+    activeAlerts: () => api.get<any[]>('/dashboard/active-alerts').then(r => r.data),
 };
 
 // Recurring

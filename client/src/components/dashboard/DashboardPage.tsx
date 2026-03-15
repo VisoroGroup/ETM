@@ -10,8 +10,9 @@ import {
 } from 'recharts';
 import {
     TrendingUp, AlertTriangle, Ban, CheckCircle2, Activity,
-    Clock, ChevronRight, Loader2, CalendarDays, List, User
+    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell
 } from 'lucide-react';
+import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
 
 export default function DashboardPage() {
@@ -21,6 +22,7 @@ export default function DashboardPage() {
     const [showCalendar, setShowCalendar] = useState(false);
     const [myTasksOnly, setMyTasksOnly] = useState(false);
     const [allTasks, setAllTasks] = useState<Task[]>([]);
+    const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -30,14 +32,16 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
         try {
-            const [s, c, tasks] = await Promise.all([
+            const [s, c, tasks, alerts] = await Promise.all([
                 dashboardApi.stats(),
                 dashboardApi.charts(),
-                tasksApi.list()
+                tasksApi.list(),
+                dashboardApi.activeAlerts().catch(() => [])
             ]);
             setStats(s);
             setCharts(c);
             setAllTasks(tasks.tasks || tasks);
+            setActiveAlerts(alerts);
         } catch (err) {
             console.error('Dashboard load error:', err);
         } finally {
@@ -147,6 +151,50 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* "În Atenție" — Active alerts panel */}
+            {activeAlerts.length > 0 && (
+                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-5 shadow-lg shadow-red-500/5 animate-slide-up">
+                    {/* Pulsating glow */}
+                    <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
+                    <div className="relative">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold flex items-center gap-2 text-red-400">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                                </span>
+                                <Bell className="w-4 h-4" />
+                                În Atenție — {activeAlerts.length} {activeAlerts.length === 1 ? 'alertă activă' : 'alerte active'}
+                            </h3>
+                        </div>
+                        <div className="space-y-2">
+                            {activeAlerts.map((alert) => (
+                                <div
+                                    key={alert.id}
+                                    onClick={() => navigate('/tasks', { state: { openTaskId: alert.task_id } })}
+                                    className="flex items-start gap-3 px-4 py-3 rounded-lg bg-navy-900/60 border border-red-500/20 cursor-pointer transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
+                                >
+                                    <AlertTriangle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold truncate group-hover:text-white transition-colors">
+                                            {alert.task_title}
+                                        </p>
+                                        <p className="text-xs text-navy-300 mt-0.5 line-clamp-2">{alert.content}</p>
+                                        <div className="flex items-center gap-3 mt-1.5">
+                                            <span className="text-xs px-2 py-0.5 rounded-full text-white" style={{ background: DEPARTMENTS[alert.department_label as keyof typeof DEPARTMENTS]?.color || '#666' }}>
+                                                {DEPARTMENTS[alert.department_label as keyof typeof DEPARTMENTS]?.label || alert.department_label}
+                                            </span>
+                                            <span className="text-[10px] text-navy-500">de {alert.creator_name} · {timeAgo(alert.created_at)}</span>
+                                        </div>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-navy-600 group-hover:text-navy-400 transition-colors mt-0.5 flex-shrink-0" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Stat Cards — clicabil pentru overdue și blocat */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
