@@ -125,5 +125,12 @@ export const notificationsApi = {
     markAllRead: () => api.patch('/notifications/read-all', {}).then(r => r.data),
 };
 
+// Emails / Email Logs
+export const emailApi = {
+    logs: () => api.get('/emails/logs').then(r => r.data),
+    myLogs: () => api.get('/emails/logs/my').then(r => r.data),
+    sendTest: (to?: string) => api.post('/emails/test', { to }).then(r => r.data),
+};
+
 export { api };
 export default api;

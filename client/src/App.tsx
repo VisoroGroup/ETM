@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import DashboardPage from './components/dashboard/DashboardPage';
 import TaskListPage from './components/tasks/TaskListPage';
 import AdminPage from './components/admin/AdminPage';
+import EmailLogsPage from './components/emails/EmailLogsPage';
 import './index.css';
 
 function AppRoutes() {
@@ -34,6 +35,7 @@ function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/tasks" element={<TaskListPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/emails" element={<EmailLogsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

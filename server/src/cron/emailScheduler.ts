@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import pool from '../config/database';
 import { shouldSendReminder, daysDiff, formatDateRo, isWorkingDay } from '../utils/dateUtils';
 import { DEPARTMENTS } from '../types';
+import { sendEmail } from '../services/emailService';
 
 interface TaskForEmail {
     id: string;
@@ -248,12 +249,18 @@ async function runDailyEmailJob() {
                 const emailHtml = buildEmailHtml(userData);
                 const subject = `[Visoro Task Manager] Sumar zilnic — ${formatDateRo(today)}`;
 
-                // Try to send via Microsoft Graph API
-                if (process.env.GRAPH_CLIENT_ID && process.env.GRAPH_CLIENT_SECRET) {
-                    // TODO: Implement Microsoft Graph email sending
-                    console.log(`📧 Would send email to ${userData.email}: ${subject} (${totalTasks} tasks)`);
+                // Send via Microsoft Graph API
+                if (process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET && process.env.AZURE_TENANT_ID) {
+                    await sendEmail({
+                        to: userData.email,
+                        subject,
+                        htmlBody: emailHtml,
+                        displayName: userData.display_name,
+                    });
+                    console.log(`📧 Email sent to ${userData.email} (${totalTasks} tasks)`);
                 } else {
-                    console.log(`📧 Email (mock) to ${userData.email}: ${subject} (${totalTasks} tasks)`);
+                    // No Graph credentials — log only
+                    console.log(`📧 Email (mock — no Azure credentials) to ${userData.email}: ${subject} (${totalTasks} tasks)`);
                 }
 
                 // Log success

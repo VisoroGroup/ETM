@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-    LayoutDashboard, ListTodo, Settings, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, User
+    LayoutDashboard, ListTodo, LogOut, Moon, Sun,
+    ChevronLeft, ChevronRight, Bell, Shield, Mail
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -18,6 +18,7 @@ export default function Layout() {
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
         ...(user?.role === 'admin' ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
+        ...((user?.role === 'admin' || user?.role === 'manager') ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
     ];
 
     return (
