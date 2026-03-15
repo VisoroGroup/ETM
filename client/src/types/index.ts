@@ -135,13 +135,13 @@ export interface TaskFilters {
 
 // Constants
 export const DEPARTMENTS: Record<Department, { label: string; color: string }> = {
-    departament_1: { label: 'Departament 1', color: '#3B82F6' },
-    departament_2: { label: 'Departament 2', color: '#10B981' },
-    departament_3: { label: 'Departament 3', color: '#F59E0B' },
-    departament_4: { label: 'Departament 4', color: '#EF4444' },
-    departament_5: { label: 'Departament 5', color: '#8B5CF6' },
-    departament_6: { label: 'Departament 6', color: '#EC4899' },
-    departament_7: { label: 'Departament 7', color: '#06B6D4' },
+    departament_1: { label: 'Departament - Comunicare si HR', color: '#3B82F6' },
+    departament_2: { label: 'Departament - Vanzari', color: '#10B981' },
+    departament_3: { label: 'Departament - Financiar', color: '#F59E0B' },
+    departament_4: { label: 'Departament - Productie', color: '#EF4444' },
+    departament_5: { label: 'Departament - Calitate', color: '#8B5CF6' },
+    departament_6: { label: 'Departament - Extindere', color: '#EC4899' },
+    departament_7: { label: 'Departament - Administrativ', color: '#06B6D4' },
 };
 
 export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: string }> = {
