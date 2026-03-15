@@ -450,13 +450,6 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 {dueStat === 'overdue' && <span className="text-[10px]">(depășit {getDaysOverdue(task.due_date)}z)</span>}
                             </button>
 
-                            {/* Department */}
-                            <div className="relative group">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer" style={{ background: DEPARTMENTS[task.department_label].color }}>
-                                    <Tag className="w-3 h-3" />
-                                    {DEPARTMENTS[task.department_label].label}
-                                </span>
-                            </div>
 
                             {/* Recurring */}
                             <button
