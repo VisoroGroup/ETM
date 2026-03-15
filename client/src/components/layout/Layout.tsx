@@ -39,8 +39,8 @@ export default function Layout() {
 
     return (
         <div className={`min-h-screen flex ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
-            {/* Sidebar */}
-            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r flex flex-col transition-all duration-300 fixed h-full z-40`}>
+            {/* Sidebar — hidden on mobile, visible md+ */}
+            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r flex-col transition-all duration-300 fixed h-full z-40 hidden md:flex`}>
                 {/* Logo */}
                 <div className={`h-16 flex items-center ${collapsed ? 'justify-center px-2' : 'px-5'} border-b ${darkMode ? 'border-navy-700/50' : 'border-gray-200'}`}>
                     <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
@@ -132,9 +132,49 @@ export default function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 ${collapsed ? 'ml-16' : 'ml-64'} transition-all duration-300`}>
+            <main className={`flex-1 md:${collapsed ? 'ml-16' : 'ml-64'} ml-0 transition-all duration-300 pb-16 md:pb-0`}>
                 <Outlet />
             </main>
+
+            {/* Bottom Navigation — mobile only */}
+            <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 ${
+                darkMode ? 'bg-navy-900/95 border-navy-700/60 backdrop-blur-md' : 'bg-white/95 border-gray-200 backdrop-blur-md'
+            }`}>
+                {navItems.slice(0, 4).map(({ to, icon: Icon, label }) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        end={to === '/'}
+                        className={({ isActive }) =>
+                            `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-medium transition-all ${
+                                isActive
+                                    ? darkMode ? 'text-blue-400' : 'text-blue-600'
+                                    : darkMode ? 'text-navy-400' : 'text-gray-500'
+                            }`
+                        }
+                    >
+                        <Icon className="w-5 h-5" />
+                        <span>{label}</span>
+                    </NavLink>
+                ))}
+                {/* User avatar on mobile bottom nav */}
+                {user && (
+                    <button
+                        onClick={() => setShowProfile(true)}
+                        className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-medium transition-all ${
+                            darkMode ? 'text-navy-400' : 'text-gray-500'
+                        }`}
+                    >
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[9px] font-bold">
+                            {user.avatar_url
+                                ? <img src={user.avatar_url} alt={user.display_name} className="w-5 h-5 rounded-full object-cover" />
+                                : user.display_name.charAt(0).toUpperCase()
+                            }
+                        </div>
+                        <span>Profil</span>
+                    </button>
+                )}
+            </nav>
 
             {/* Profile Modal */}
             {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}

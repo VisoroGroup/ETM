@@ -354,7 +354,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     if (loading || !task) {
         return (
             <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                <div className="w-full max-w-2xl h-full bg-navy-900 shadow-2xl animate-slide-in flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                <div className="w-full md:max-w-2xl h-full bg-navy-900 shadow-2xl animate-slide-in flex items-center justify-center" onClick={e => e.stopPropagation()}>
                     <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                 </div>
             </div>
@@ -390,7 +390,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                <div className="w-full max-w-2xl h-full bg-navy-900 border-l border-navy-700/50 shadow-2xl animate-slide-in flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                {/* Mobile: full-screen bottom sheet. Desktop: right side panel */}
+                <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in flex flex-col overflow-hidden rounded-t-2xl md:rounded-none" onClick={e => e.stopPropagation()}>
                     {/* Header */}
                     <div className="flex-shrink-0 p-5 border-b border-navy-700/50">
                         <div className="flex items-start justify-between">
