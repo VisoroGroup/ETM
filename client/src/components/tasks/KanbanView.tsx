@@ -218,14 +218,8 @@ function KanbanCard({ task, index, isDragging, onClick }: {
                             : 'border-navy-700/50 hover:border-navy-600/70 hover:bg-navy-800/90'
                     }`}
                 >
-                    {/* Department badge */}
-                    <div className="flex items-center justify-between mb-2">
-                        <span
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
-                            style={{ background: dept?.color || '#3b82f6' }}
-                        >
-                            {dept?.label || task.department_label}
-                        </span>
+                    {/* Status icons */}
+                    <div className="flex items-center justify-end mb-1.5">
                         {task.status === 'blocat' && <Ban className="w-3.5 h-3.5 text-red-400" />}
                         {task.status === 'terminat' && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
                     </div>

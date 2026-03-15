@@ -329,7 +329,7 @@ export default function TaskListPage() {
             ) : (
                 <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
                     {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
                         {/* Select all checkbox */}
                         <div className="flex items-center" onClick={toggleAll}>
                             {allSelected
@@ -341,7 +341,6 @@ export default function TaskListPage() {
                         <span>Titlu</span>
                         <span>Status</span>
                         <span>Data limită</span>
-                        <span>Departament</span>
                         <span>Subtask</span>
                         <span>Creat de</span>
                         <span>Activitate</span>
@@ -355,7 +354,7 @@ export default function TaskListPage() {
                             <div
                                 key={task.id}
                                 onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
+                                className={`grid grid-cols-[32px_1fr_120px_130px_80px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
                                     isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
                                     dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
                                     dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
@@ -416,16 +415,6 @@ export default function TaskListPage() {
                                             Depășit cu {getDaysOverdue(task.due_date)} zile
                                         </p>
                                     )}
-                                </div>
-
-                                {/* Department */}
-                                <div>
-                                    <span
-                                        className="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium text-white"
-                                        style={{ background: DEPARTMENTS[task.department_label]?.color }}
-                                    >
-                                        {DEPARTMENTS[task.department_label]?.label}
-                                    </span>
                                 </div>
 
                                 {/* Subtask progress */}
