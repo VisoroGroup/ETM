@@ -53,6 +53,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     // Alert
     const [newAlertText, setNewAlertText] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         loadTask();
@@ -268,7 +269,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     // Delete task
     async function handleDeleteTask() {
-        if (!window.confirm('Ești sigur că vrei să ștergi acest task?')) return;
+        setShowDeleteConfirm(false);
         try {
             await tasksApi.delete(taskId);
             showToast('Task șters');
@@ -901,7 +902,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                     {/* Footer actions */}
                     <div className="flex-shrink-0 p-4 border-t border-navy-700/50 flex justify-between">
-                        <button onClick={handleDeleteTask} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
+                        <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" /> Șterge task
                         </button>
                         <button onClick={onClose} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">
@@ -910,6 +911,40 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     </div>
                 </div>
             </div>
+
+            {/* DELETE CONFIRM MODAL */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowDeleteConfirm(false)}>
+                    <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                                <Trash2 className="w-5 h-5 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-white">Șterge task</h3>
+                                <p className="text-xs text-navy-400">Acțiunea este ireversibilă</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-navy-300 mb-6">
+                            Ești sigur că vrei să ștergi <strong className="text-white">"{task.title}"</strong>?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-navy-700 hover:bg-navy-600 text-navy-300 transition-colors"
+                            >
+                                Anulează
+                            </button>
+                            <button
+                                onClick={handleDeleteTask}
+                                className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                            >
+                                Șterge definitiv
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* BLOCKED REASON MODAL */}
             {showBlockedModal && (
