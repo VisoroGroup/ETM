@@ -342,7 +342,7 @@ export default function DashboardPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{task.title}</p>
                                                 <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color }}>
+                                                    <span className="text-xs px-2 py-0.5 rounded-full border" style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}>
                                                         {STATUSES[task.status]?.label}
                                                     </span>
                                                 </div>

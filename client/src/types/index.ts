@@ -144,11 +144,11 @@ export const DEPARTMENTS: Record<Department, { label: string; color: string }> =
     departament_7: { label: 'Administrativ', color: '#06B6D4' },
 };
 
-export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: string }> = {
-    de_rezolvat: { label: 'De rezolvat', color: '#2563EB', bg: '#DBEAFE' },
-    in_realizare: { label: 'În realizare', color: '#D97706', bg: '#FEF3C7' },
-    terminat: { label: 'Terminat', color: '#16A34A', bg: '#DCFCE7' },
-    blocat: { label: 'Blocat', color: '#DC2626', bg: '#FEE2E2' },
+export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: string; border: string }> = {
+    de_rezolvat: { label: 'De rezolvat', color: '#60A5FA', bg: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.4)' },
+    in_realizare: { label: 'În realizare', color: '#FBBF24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.4)' },
+    terminat: { label: 'Terminat', color: '#34D399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.4)' },
+    blocat: { label: 'Blocat', color: '#F87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.4)' },
 };
 
 export const FREQUENCIES: Record<RecurringFrequency, string> = {

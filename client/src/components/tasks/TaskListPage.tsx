@@ -390,8 +390,8 @@ export default function TaskListPage() {
                                 {/* Status */}
                                 <div>
                                     <span
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium"
-                                        style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color }}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                        style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
                                     >
                                         {task.status === 'blocat' && <Ban className="w-3 h-3" />}
                                         {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}

@@ -412,8 +412,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             <div className="relative">
                                 <button
                                     onClick={() => setStatusMenuOpen(!statusMenuOpen)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                                    style={{ background: STATUSES[task.status].bg, color: STATUSES[task.status].color }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border"
+                                    style={{ background: STATUSES[task.status].bg, color: STATUSES[task.status].color, borderColor: STATUSES[task.status].border }}
                                 >
                                     {task.status === 'blocat' && <Ban className="w-3 h-3" />}
                                     {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}
