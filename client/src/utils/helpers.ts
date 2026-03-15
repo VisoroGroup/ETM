@@ -13,8 +13,10 @@ export function formatDateFull(date: string | Date): string {
     return format(new Date(date), 'd MMMM yyyy', { locale: ro });
 }
 
-export function getDueDateStatus(dueDate: string): 'overdue' | 'today' | 'tomorrow' | 'soon' | 'normal' {
-    const d = new Date(dueDate + 'T00:00:00');
+export function getDueDateStatus(dueDate: string | Date): 'overdue' | 'today' | 'tomorrow' | 'soon' | 'normal' {
+    if (!dueDate) return 'normal';
+    const d = new Date(dueDate);
+    d.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -27,19 +29,24 @@ export function getDueDateStatus(dueDate: string): 'overdue' | 'today' | 'tomorr
     return 'normal';
 }
 
-export function getDaysOverdue(dueDate: string): number {
-    const d = new Date(dueDate + 'T00:00:00');
+export function getDaysOverdue(dueDate: string | Date): number {
+    if (!dueDate) return 0;
+    const d = new Date(dueDate);
+    d.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return Math.max(0, differenceInDays(today, d));
 }
 
-export function getDaysUntil(dueDate: string): number {
-    const d = new Date(dueDate + 'T00:00:00');
+export function getDaysUntil(dueDate: string | Date): number {
+    if (!dueDate) return 0;
+    const d = new Date(dueDate);
+    d.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return Math.max(0, differenceInDays(d, today));
 }
+
 export function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
