@@ -658,7 +658,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                         className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
                                     />
                                     {showMentionDropdown && filteredMentionUsers.length > 0 && (
-                                        <div className="absolute bottom-full left-0 w-64 mb-1 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto animate-fade-in">
+                                        <div className="absolute top-full left-0 w-64 mt-1 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto animate-fade-in">
                                             {filteredMentionUsers.slice(0, 5).map(u => (
                                                 <button
                                                     key={u.id}
