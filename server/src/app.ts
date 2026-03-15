@@ -6,6 +6,10 @@ import dotenv from 'dotenv';
 // Load env before anything else
 dotenv.config({ path: path.join(__dirname, '../..', '.env') });
 
+// Init Sentry ASAP (before other imports so it can instrument them)
+import { initSentry, sentryErrorHandler } from './config/sentry';
+initSentry();
+
 import authRoutes from './routes/auth';
 import taskRoutes from './routes/tasks';
 import dashboardRoutes from './routes/dashboard';
@@ -62,6 +66,11 @@ if (process.env.NODE_ENV === 'production') {
         }
         res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
+}
+
+// Sentry error handler — must be AFTER all routes
+if (process.env.SENTRY_DSN) {
+    app.use(sentryErrorHandler());
 }
 
 // Start server
