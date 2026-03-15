@@ -20,7 +20,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             limit = '50'
         } = req.query;
 
-        const conditions: string[] = [];
+        const conditions: string[] = ['t.deleted_at IS NULL'];
         const values: any[] = [];
         let paramIndex = 1;
 
@@ -127,7 +127,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       LEFT JOIN users au ON t.assigned_to = au.id
       LEFT JOIN (
         SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
-        FROM subtasks GROUP BY task_id
+        FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
       ) sub ON sub.task_id = t.id
       LEFT JOIN (
         SELECT task_id, MAX(created_at) AS last_activity
@@ -217,7 +217,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
        JOIN users u ON t.created_by = u.id
        LEFT JOIN users au ON t.assigned_to = au.id
        LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
-       WHERE t.id = $1`,
+       WHERE t.id = $1 AND t.deleted_at IS NULL`,
             [id]
         );
 
@@ -231,7 +231,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
             `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
        FROM subtasks s
        LEFT JOIN users u ON s.assigned_to = u.id
-       WHERE s.task_id = $1
+       WHERE s.task_id = $1 AND s.deleted_at IS NULL
        ORDER BY s.order_index`,
             [id]
         );
@@ -556,8 +556,9 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
             return;
         }
 
-        await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
-        res.json({ message: 'Task-ul a fost șters.' });
+        // Soft delete — set deleted_at instead of hard DELETE
+        await pool.query('UPDATE tasks SET deleted_at = NOW() WHERE id = $1', [id]);
+        res.status(204).send();
     } catch (err) {
         console.error('Error deleting task:', err);
         res.status(500).json({ error: 'Eroare la ștergerea task-ului.' });
@@ -782,7 +783,7 @@ router.delete('/:id/subtasks/:subtaskId', authMiddleware, async (req: AuthReques
     try {
         const { id: taskId, subtaskId } = req.params;
         const { rows } = await pool.query(
-            'DELETE FROM subtasks WHERE id = $1 AND task_id = $2 RETURNING *',
+            'UPDATE subtasks SET deleted_at = NOW() WHERE id = $1 AND task_id = $2 AND deleted_at IS NULL RETURNING *',
             [subtaskId, taskId]
         );
 
@@ -791,7 +792,7 @@ router.delete('/:id/subtasks/:subtaskId', authMiddleware, async (req: AuthReques
             return;
         }
 
-        res.json({ message: 'Subtask-ul a fost șters.' });
+        res.status(204).send();
     } catch (err) {
         res.status(500).json({ error: 'Eroare la ștergerea subtask-ului.' });
     }

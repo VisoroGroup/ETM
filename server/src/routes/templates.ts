@@ -15,6 +15,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             FROM task_templates t
             LEFT JOIN users u ON t.created_by = u.id
             LEFT JOIN users au ON t.assigned_to = au.id
+            WHERE t.deleted_at IS NULL
             ORDER BY t.created_at DESC
         `);
         res.json(result.rows);
@@ -50,7 +51,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // DELETE /api/templates/:id — delete template
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        await pool.query('DELETE FROM task_templates WHERE id = $1', [req.params.id]);
+        await pool.query('UPDATE task_templates SET deleted_at = NOW() WHERE id = $1', [req.params.id]);
         res.status(204).send();
     } catch (err: any) {
         res.status(500).json({ error: err.message });
