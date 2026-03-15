@@ -38,15 +38,24 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             values.push(depts);
         }
 
-        // Search in title, description, comments
+        // Full-text search — tsvector (GIN index) + ILIKE prefix fallback for short queries
         if (search) {
-            conditions.push(`(
-        t.title ILIKE $${paramIndex} OR
-        t.description ILIKE $${paramIndex} OR
-        EXISTS (SELECT 1 FROM task_comments tc WHERE tc.task_id = t.id AND tc.content ILIKE $${paramIndex})
-      )`);
-            values.push(`%${search}%`);
-            paramIndex++;
+            const q = (search as string).trim();
+            if (q.length === 1) {
+                // Single character — use ILIKE prefix (tsvector minimum is 2 chars)
+                conditions.push(`(t.title ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`);
+                values.push(`${q}%`);
+                paramIndex++;
+            } else {
+                // Full-text search: match on tsvector + also search comments via ILIKE
+                conditions.push(`(
+                    t.search_vector @@ plainto_tsquery('simple', $${paramIndex})
+                    OR t.title ILIKE $${paramIndex + 1}
+                    OR EXISTS (SELECT 1 FROM task_comments tc WHERE tc.task_id = t.id AND tc.content ILIKE $${paramIndex + 1})
+                )`);
+                values.push(q, `%${q}%`);
+                paramIndex += 2;
+            }
         }
 
         // Period filter
