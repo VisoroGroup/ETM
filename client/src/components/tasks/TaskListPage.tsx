@@ -11,8 +11,9 @@ import KanbanView from './KanbanView';
 import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
-    LayoutList, LayoutGrid
+    LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle
 } from 'lucide-react';
+import { authApi } from '../../services/api';
 
 export default function TaskListPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -24,8 +25,15 @@ export default function TaskListPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [showKanban, setShowKanban] = useState(false);
+    // Bulk selection
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+    const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
     const { showToast } = useToast();
     const location = useLocation();
+
+    useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, []);
 
     useEffect(() => {
         loadTasks();
@@ -98,6 +106,51 @@ export default function TaskListPage() {
     }
 
     const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+    // Bulk helpers
+    const allSelected = tasks.length > 0 && selectedIds.size === tasks.length;
+    const someSelected = selectedIds.size > 0 && !allSelected;
+    function toggleAll() {
+        if (allSelected) setSelectedIds(new Set());
+        else setSelectedIds(new Set(tasks.map(t => t.id)));
+    }
+    function toggleId(id: string) {
+        setSelectedIds(prev => {
+            const n = new Set(prev);
+            n.has(id) ? n.delete(id) : n.add(id);
+            return n;
+        });
+    }
+    async function bulkChangeStatus(status: TaskStatus) {
+        setBulkStatusOpen(false);
+        let ok = 0;
+        for (const id of selectedIds) {
+            try { await tasksApi.changeStatus(id, status); ok++; } catch {}
+        }
+        showToast(`${ok} task → ${STATUSES[status].label}`);
+        setSelectedIds(new Set());
+        loadTasks();
+    }
+    async function bulkDelete() {
+        if (!confirm(`Ștergi ${selectedIds.size} task-uri? Acțiunea e ireversibilă.`)) return;
+        let ok = 0;
+        for (const id of selectedIds) {
+            try { await tasksApi.delete(id); ok++; } catch {}
+        }
+        showToast(`${ok} task-uri șterse`);
+        setSelectedIds(new Set());
+        loadTasks();
+    }
+    async function bulkAssign(userId: string | null) {
+        setBulkAssignOpen(false);
+        let ok = 0;
+        for (const id of selectedIds) {
+            try { await tasksApi.update(id, { assigned_to: userId } as any); ok++; } catch {}
+        }
+        showToast(userId ? `${ok} task asignat` : `${ok} task neasignat`);
+        setSelectedIds(new Set());
+        loadTasks();
+    }
 
     return (
         <div className="p-6 animate-fade-in">
@@ -277,7 +330,15 @@ export default function TaskListPage() {
             ) : (
                 <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
                     {/* Table header */}
-                    <div className="grid grid-cols-[1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                    <div className="grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                        {/* Select all checkbox */}
+                        <div className="flex items-center" onClick={toggleAll}>
+                            {allSelected
+                                ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
+                                : someSelected
+                                    ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
+                                    : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
+                        </div>
                         <span>Titlu</span>
                         <span>Status</span>
                         <span>Data limită</span>
@@ -290,16 +351,27 @@ export default function TaskListPage() {
                     {/* Task rows */}
                     {tasks.map((task, index) => {
                         const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                        const isChecked = selectedIds.has(task.id);
                         return (
                             <div
                                 key={task.id}
                                 onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
-                                        dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' :
-                                            ''
-                                    }`}
+                                className={`grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
+                                    isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
+                                    dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
+                                    dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
+                                }`}
                                 style={{ animationDelay: `${index * 30}ms` }}
                             >
+                                {/* Row checkbox */}
+                                <div
+                                    className="flex items-center"
+                                    onClick={e => { e.stopPropagation(); toggleId(task.id); }}
+                                >
+                                    {isChecked
+                                        ? <CheckSquare className="w-4 h-4 text-blue-400" />
+                                        : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400" />}
+                                </div>
                                 {/* Title */}
                                 <div className="min-w-0">
                                     <p className="text-sm font-medium truncate">{task.title}</p>
@@ -391,6 +463,73 @@ export default function TaskListPage() {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-3 bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-500/10 animate-slide-up">
+                    <span className="text-sm font-semibold text-blue-400 mr-2">{selectedIds.size} selectat{selectedIds.size > 1 ? 'e' : ''}</span>
+
+                    {/* Status change */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setBulkStatusOpen(o => !o); setBulkAssignOpen(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
+                        >
+                            <CheckSquare className="w-3.5 h-3.5" /> Status <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {bulkStatusOpen && (
+                            <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[160px] animate-slide-up">
+                                {(Object.keys(STATUSES) as TaskStatus[]).map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => bulkChangeStatus(s)}
+                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-navy-700 transition-colors"
+                                        style={{ color: STATUSES[s].color }}
+                                    >
+                                        {STATUSES[s].label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Assign */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setBulkAssignOpen(o => !o); setBulkStatusOpen(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
+                        >
+                            <UserCircle className="w-3.5 h-3.5" /> Asignează <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {bulkAssignOpen && (
+                            <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[180px] animate-slide-up">
+                                <button onClick={() => bulkAssign(null)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-navy-400 hover:bg-navy-700">— Neasignat —</button>
+                                {users.map(u => (
+                                    <button key={u.id} onClick={() => bulkAssign(u.id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-white hover:bg-navy-700">
+                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-[9px] font-bold">
+                                            {(u.display_name || u.email).charAt(0)}
+                                        </div>
+                                        {u.display_name || u.email}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Delete */}
+                    <button
+                        onClick={bulkDelete}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/40 rounded-lg text-xs font-medium text-red-400 transition-colors"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" /> Șterge
+                    </button>
+
+                    {/* Clear */}
+                    <button onClick={() => setSelectedIds(new Set())} className="ml-1 text-navy-500 hover:text-white transition-colors">
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
             )}
 
