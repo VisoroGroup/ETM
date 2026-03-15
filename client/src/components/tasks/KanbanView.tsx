@@ -13,8 +13,8 @@ interface Props {
 }
 
 const COLUMNS: { key: TaskStatus; label: string; color: string; bg: string; border: string }[] = [
-    { key: 'de_rezolvat', label: 'De rezolvat', color: '#64748B', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.25)' },
-    { key: 'in_realizare', label: 'În realizare', color: '#2563EB', bg: 'rgba(37,99,235,0.08)',  border: 'rgba(37,99,235,0.25)' },
+    { key: 'de_rezolvat', label: 'De rezolvat', color: '#2563EB', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.25)' },
+    { key: 'in_realizare', label: 'În realizare', color: '#D97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)' },
     { key: 'blocat',       label: 'Blocat',       color: '#DC2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)' },
     { key: 'terminat',     label: 'Terminat',     color: '#16A34A', bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)' },
 ];

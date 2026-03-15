@@ -179,8 +179,8 @@ export const DEPARTMENTS: Record<Department, { label: string; color: string }> =
 
 // Status config
 export const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
-    de_rezolvat: { label: 'De rezolvat', color: '#94A3B8' },
-    in_realizare: { label: 'În realizare', color: '#3B82F6' },
+    de_rezolvat: { label: 'De rezolvat', color: '#2563EB' },
+    in_realizare: { label: 'În realizare', color: '#D97706' },
     terminat: { label: 'Terminat', color: '#10B981' },
     blocat: { label: 'Blocat', color: '#EF4444' },
 };

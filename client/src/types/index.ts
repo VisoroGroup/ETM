@@ -145,8 +145,8 @@ export const DEPARTMENTS: Record<Department, { label: string; color: string }> =
 };
 
 export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: string }> = {
-    de_rezolvat: { label: 'De rezolvat', color: '#64748B', bg: '#F1F5F9' },
-    in_realizare: { label: 'În realizare', color: '#2563EB', bg: '#DBEAFE' },
+    de_rezolvat: { label: 'De rezolvat', color: '#2563EB', bg: '#DBEAFE' },
+    in_realizare: { label: 'În realizare', color: '#D97706', bg: '#FEF3C7' },
     terminat: { label: 'Terminat', color: '#16A34A', bg: '#DCFCE7' },
     blocat: { label: 'Blocat', color: '#DC2626', bg: '#FEE2E2' },
 };
