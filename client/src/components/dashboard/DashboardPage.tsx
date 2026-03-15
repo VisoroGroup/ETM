@@ -67,7 +67,7 @@ export default function DashboardPage() {
 
     const trendData = charts?.completion_trend || [];
 
-    // Filter tasks for "saját task-jaim"
+    // Filter tasks for "sarcinile mele"
     const filteredTasks = myTasksOnly
         ? allTasks.filter(t => t.created_by === user?.id)
         : allTasks;
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                     <p className="text-navy-400 text-sm mt-1">Bine ai venit! Iată o privire de ansamblu.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Saját task-jaim filter */}
+                    {/* Sarcinile mele filter */}
                     <button
                         onClick={() => setMyTasksOnly(v => !v)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
@@ -121,10 +121,10 @@ export default function DashboardPage() {
                         }`}
                     >
                         <User className="w-3.5 h-3.5" />
-                        Saját task-jaim
+                        Sarcinile mele
                     </button>
 
-                    {/* Naptár / Lista toggle */}
+                    {/* Calendar / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">
                         <button
                             onClick={() => setShowCalendar(false)}
@@ -142,13 +142,13 @@ export default function DashboardPage() {
                             }`}
                         >
                             <CalendarDays className="w-3.5 h-3.5" />
-                            Naptár
+                            Calendar
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Stat Cards — kattintható az overdue és blocat */}
+            {/* Stat Cards — clicabil pentru overdue și blocat */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map((card, i) => (
                     <div
@@ -158,7 +158,7 @@ export default function DashboardPage() {
                             card.onClick ? 'cursor-pointer hover:border-navy-500/70 hover:bg-navy-800/50 hover:scale-[1.01]' : ''
                         }`}
                         style={{ animationDelay: `${i * 100}ms` }}
-                        title={card.onClick ? 'Kattints a szűrt listához' : undefined}
+                        title={card.onClick ? 'Apasă pentru lista filtrată' : undefined}
                     >
                         <div className="flex items-center justify-between mb-3">
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
@@ -177,8 +177,8 @@ export default function DashboardPage() {
                 <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                     <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-blue-400" />
-                        Naptár nézet — due date-ek
-                        {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Saját</span>}
+                        Vedere calendar — termene limită
+                        {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                     </h3>
                     <CalendarView tasks={filteredTasks.filter(t => t.due_date && t.status !== 'terminat')} />
                 </div>
@@ -270,7 +270,7 @@ export default function DashboardPage() {
                             <h3 className="text-sm font-semibold flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-orange-400" />
                                 Task-uri urgente
-                                {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Saját</span>}
+                                {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                             </h3>
                             <button
                                 onClick={() => navigate('/tasks')}

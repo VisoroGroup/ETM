@@ -162,7 +162,7 @@ export default function TaskListPage() {
                     <p className="text-navy-400 text-sm mt-1">{total} task-uri</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Kanban / Lista toggle */}
+                    {/* Kanban / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-1">
                         <button
                             onClick={() => setShowKanban(false)}
