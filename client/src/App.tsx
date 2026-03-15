@@ -7,6 +7,7 @@ import DashboardPage from './components/dashboard/DashboardPage';
 import TaskListPage from './components/tasks/TaskListPage';
 import AdminPage from './components/admin/AdminPage';
 import EmailLogsPage from './components/emails/EmailLogsPage';
+import TemplatesPage from './pages/TemplatesPage';
 import './index.css';
 
 function AppRoutes() {
@@ -34,6 +35,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/tasks" element={<TaskListPage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/emails" element={<EmailLogsPage />} />
       </Route>

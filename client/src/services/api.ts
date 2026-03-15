@@ -132,5 +132,14 @@ export const emailApi = {
     sendTest: (to?: string) => api.post('/emails/test', { to }).then(r => r.data),
 };
 
+// Templates
+export const templatesApi = {
+    list: () => api.get('/templates').then(r => r.data),
+    create: (data: { title: string; description?: string; department_label: string; assigned_to?: string | null; subtasks?: { title: string }[] }) =>
+        api.post('/templates', data).then(r => r.data),
+    delete: (id: string) => api.delete(`/templates/${id}`).then(r => r.data),
+    use: (id: string, due_date: string) => api.post(`/templates/${id}/use`, { due_date }).then(r => r.data),
+};
+
 export { api };
 export default api;

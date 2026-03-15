@@ -14,6 +14,7 @@ import adminRoutes from './routes/admin';
 import profileRoutes from './routes/profile';
 import notificationRoutes from './routes/notifications';
 import emailRoutes from './routes/emails';
+import templatesRoutes from './routes/templates';
 import { startEmailScheduler } from './cron/emailScheduler';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/emails', emailRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
