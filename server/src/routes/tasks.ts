@@ -113,6 +113,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         t.*,
         u.display_name AS creator_name,
         u.avatar_url AS creator_avatar,
+        au.display_name AS assignee_name,
+        au.avatar_url AS assignee_avatar,
         COALESCE(sub.total, 0) AS subtask_total,
         COALESCE(sub.completed, 0) AS subtask_completed,
         al.last_activity,
@@ -122,6 +124,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
       FROM tasks t
       JOIN users u ON t.created_by = u.id
+      LEFT JOIN users au ON t.assigned_to = au.id
       LEFT JOIN (
         SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
         FROM subtasks GROUP BY task_id
@@ -163,7 +166,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // POST /api/tasks — create task
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, due_date, department_label } = req.body;
+        const { title, description, due_date, department_label, assigned_to } = req.body;
 
         if (!title || !due_date || !department_label) {
             res.status(400).json({ error: 'Titlul, data limită și departamentul sunt obligatorii.' });
@@ -177,10 +180,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
         const taskId = uuidv4();
         const { rows } = await pool.query(
-            `INSERT INTO tasks (id, title, description, due_date, created_by, department_label)
-       VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO tasks (id, title, description, due_date, created_by, department_label, assigned_to)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-            [taskId, title, description || null, due_date, req.user!.id, department_label]
+            [taskId, title, description || null, due_date, req.user!.id, department_label, assigned_to || null]
         );
 
         // Activity log
@@ -204,6 +207,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 
         const { rows: taskRows } = await pool.query(
             `SELECT t.*, u.display_name AS creator_name, u.avatar_url AS creator_avatar,
+        au.display_name AS assignee_name, au.avatar_url AS assignee_avatar, au.email AS assignee_email,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         rt.frequency AS recurring_frequency,
         (SELECT tsc.reason FROM task_status_changes tsc
@@ -211,6 +215,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
        FROM tasks t
        JOIN users u ON t.created_by = u.id
+       LEFT JOIN users au ON t.assigned_to = au.id
        LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
        WHERE t.id = $1`,
             [id]

@@ -499,6 +499,40 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             </div>
                             Creat de {task.creator_name} · {timeAgo(task.created_at)}
                         </div>
+
+                        {/* Assignee */}
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs text-navy-500">Responsabil:</span>
+                            <select
+                                value={task.assigned_to || ''}
+                                onChange={async (e) => {
+                                    const val = e.target.value || null;
+                                    try {
+                                        await tasksApi.update(taskId, { assigned_to: val } as any);
+                                        showToast(val ? 'Responsabil setat' : 'Responsabil eliminat');
+                                        loadTask();
+                                        onUpdate();
+                                    } catch {
+                                        showToast('Eroare', 'error');
+                                    }
+                                }}
+                                className="flex-1 max-w-[200px] px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50"
+                            >
+                                <option value="">— Neasignat —</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                                ))}
+                            </select>
+                            {task.assigned_to && task.assignee_name && (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold">
+                                        {task.assignee_name.charAt(0)}
+                                    </div>
+                                    <span className="text-xs text-navy-300">{task.assignee_name}</span>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
 
                     {/* Tabs */}

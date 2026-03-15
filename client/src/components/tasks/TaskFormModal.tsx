@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { tasksApi } from '../../services/api';
-import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES } from '../../types';
-import { X, Calendar, Tag, FileText, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { tasksApi, authApi } from '../../services/api';
+import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User } from '../../types';
+import { X, Calendar, Tag, FileText, RefreshCw, UserCircle } from 'lucide-react';
 
 interface Props {
     onClose: () => void;
@@ -13,10 +13,16 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [department, setDepartment] = useState<Department>('departament_1');
+    const [assignedTo, setAssignedTo] = useState<string>('');
     const [isRecurring, setIsRecurring] = useState(false);
     const [frequency, setFrequency] = useState<RecurringFrequency>('weekly');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [users, setUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        authApi.users().then(setUsers).catch(() => {});
+    }, []);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -32,7 +38,8 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 description: description.trim() || null,
                 due_date: dueDate,
                 department_label: department,
-            });
+                assigned_to: assignedTo || null,
+            } as any);
 
             // Set recurring if needed
             if (isRecurring && task.id) {
@@ -116,6 +123,23 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 ))}
                             </select>
                         </div>
+                    </div>
+
+                    {/* Assignee */}
+                    <div>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                            <UserCircle className="w-3.5 h-3.5 inline mr-1" /> Responsabil
+                        </label>
+                        <select
+                            value={assignedTo}
+                            onChange={e => setAssignedTo(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                        >
+                            <option value="">— Neasignat —</option>
+                            {users.map(u => (
+                                <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Recurring */}

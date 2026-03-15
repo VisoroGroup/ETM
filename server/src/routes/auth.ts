@@ -52,19 +52,39 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
             headers: { Authorization: `Bearer ${tokenResponse.accessToken}` }
         });
         const msUser = await graphResponse.json() as any;
+        const email = msUser.mail || msUser.userPrincipalName;
 
-        // Upsert user
-        const { rows } = await pool.query(
-            `INSERT INTO users (id, microsoft_id, email, display_name)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (microsoft_id) DO UPDATE SET
-               email = EXCLUDED.email,
-               display_name = EXCLUDED.display_name,
-               updated_at = NOW()
-             RETURNING *`,
-            [uuidv4(), msUser.id, msUser.mail || msUser.userPrincipalName, msUser.displayName]
-        );
-        const user = rows[0];
+        // First try to find pre-seeded user by email (for Mia, Alisa, Emo etc.)
+        // If found, link their microsoft_id. Otherwise upsert by microsoft_id.
+        const existing = await pool.query('SELECT * FROM users WHERE email ILIKE $1', [email]);
+
+        let user;
+        if (existing.rows.length > 0 && existing.rows[0].microsoft_id?.startsWith('pending-')) {
+            // Pre-seeded user — link their Microsoft account
+            const { rows } = await pool.query(
+                `UPDATE users SET
+                    microsoft_id = $1,
+                    display_name = COALESCE(NULLIF(display_name, ''), $2),
+                    updated_at = NOW()
+                 WHERE id = $3
+                 RETURNING *`,
+                [msUser.id, msUser.displayName, existing.rows[0].id]
+            );
+            user = rows[0];
+        } else {
+            // Normal upsert by microsoft_id
+            const { rows } = await pool.query(
+                `INSERT INTO users (id, microsoft_id, email, display_name)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT (microsoft_id) DO UPDATE SET
+                   email = EXCLUDED.email,
+                   display_name = EXCLUDED.display_name,
+                   updated_at = NOW()
+                 RETURNING *`,
+                [uuidv4(), msUser.id, email, msUser.displayName]
+            );
+            user = rows[0];
+        }
 
         const token = generateToken(user);
         // Redirect to frontend with token

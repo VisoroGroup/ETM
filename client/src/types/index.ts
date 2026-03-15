@@ -22,11 +22,15 @@ export interface Task {
     status: TaskStatus;
     due_date: string;
     created_by: string;
+    assigned_to: string | null;
     department_label: Department;
     created_at: string;
     updated_at: string;
     creator_name?: string;
     creator_avatar?: string | null;
+    assignee_name?: string | null;
+    assignee_avatar?: string | null;
+    assignee_email?: string | null;
     subtask_total?: number;
     subtask_completed?: number;
     last_activity?: string | null;
