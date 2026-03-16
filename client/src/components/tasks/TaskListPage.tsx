@@ -460,20 +460,19 @@ export default function TaskListPage() {
                                 <div className="relative w-full" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                        className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-navy-700 hover:border-navy-600 hover:bg-navy-800 transition-all text-navy-200"
+                                        className="flex items-center justify-between w-full px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all hover:opacity-80"
+                                        style={task.department_label && DEPARTMENTS[task.department_label]
+                                            ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
+                                            : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
+                                        }
                                     >
-                                        {task.department_label && DEPARTMENTS[task.department_label] ? (
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <div 
-                                                    className="w-1.5 h-1.5 flex-shrink-0 rounded-full" 
-                                                    style={{ background: DEPARTMENTS[task.department_label].color, boxShadow: `0 0 4px ${DEPARTMENTS[task.department_label].color}` }} 
-                                                />
-                                                <span className="truncate">{DEPARTMENTS[task.department_label].label}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="truncate">—</span>
-                                        )}
-                                        <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-40" />
+                                        <span className="truncate">
+                                            {task.department_label && DEPARTMENTS[task.department_label]
+                                                ? DEPARTMENTS[task.department_label].label
+                                                : '—'
+                                            }
+                                        </span>
+                                        <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-60" />
                                     </button>
                                     {deptDropdownId === task.id && (
                                         <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
