@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Outer gold ring -->
+  <circle cx="50" cy="50" r="49" fill="#C9A227" />
+  <!-- Inner navy circle -->
+  <circle cx="50" cy="50" r="44" fill="#1E3A5F" />
+  <!-- White ring -->
+  <circle cx="50" cy="50" r="40" fill="white" />
+  <!-- Inner navy background -->
+  <circle cx="50" cy="50" r="36" fill="#1E3A5F" />
+  <!-- Gold inner ring -->
+  <circle cx="50" cy="50" r="36" fill="none" stroke="#C9A227" stroke-width="2" />
+  <!-- V letter centered -->
+  <text x="50" y="62" font-family="Georgia, serif" font-size="36" font-weight="bold" fill="#C9A227" text-anchor="middle">V</text>
+</svg>

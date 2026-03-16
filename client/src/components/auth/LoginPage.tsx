@@ -22,8 +22,12 @@ export default function LoginPage() {
                 {/* Logo card */}
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <span className="text-2xl font-bold text-white">V</span>
+                        <div className="w-24 h-24 mx-auto mb-4 drop-shadow-2xl">
+                            <img
+                                src="/visoro-logo.png"
+                                alt="Visoro Group"
+                                className="w-full h-full object-contain rounded-full"
+                            />
                         </div>
                         <h1 className="text-2xl font-bold text-white mb-1">Visoro Task Manager</h1>
                         <p className="text-navy-300 text-sm">Visoro Global SRL</p>
