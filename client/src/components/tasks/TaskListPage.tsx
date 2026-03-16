@@ -342,7 +342,7 @@ export default function TaskListPage() {
             ) : (
                 <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl">
                     {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
+                    <div className="grid grid-cols-[32px_1fr_110px_120px_80px_120px_150px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
                         {/* Select all checkbox */}
                         <div className="flex items-center" onClick={toggleAll}>
                             {allSelected
@@ -368,7 +368,7 @@ export default function TaskListPage() {
                             <div
                                 key={task.id}
                                 onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
+                                className={`grid grid-cols-[32px_1fr_110px_120px_80px_120px_150px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
                                     isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
                                     dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
                                     dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
@@ -457,23 +457,23 @@ export default function TaskListPage() {
                                 </div>
 
                                 {/* Department — inline editable */}
-                                <div className="relative" onClick={e => e.stopPropagation()}>
+                                <div className="relative w-full" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-navy-700 hover:border-navy-600 hover:bg-navy-800 transition-all text-navy-200"
+                                        className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-navy-700 hover:border-navy-600 hover:bg-navy-800 transition-all text-navy-200"
                                     >
                                         {task.department_label && DEPARTMENTS[task.department_label] ? (
-                                            <>
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 <div 
-                                                    className="w-1.5 h-1.5 rounded-full" 
+                                                    className="w-1.5 h-1.5 flex-shrink-0 rounded-full" 
                                                     style={{ background: DEPARTMENTS[task.department_label].color, boxShadow: `0 0 4px ${DEPARTMENTS[task.department_label].color}` }} 
                                                 />
-                                                {DEPARTMENTS[task.department_label].label}
-                                            </>
+                                                <span className="truncate">{DEPARTMENTS[task.department_label].label}</span>
+                                            </div>
                                         ) : (
-                                            '—'
+                                            <span className="truncate">—</span>
                                         )}
-                                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-40" />
+                                        <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-40" />
                                     </button>
                                     {deptDropdownId === task.id && (
                                         <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
