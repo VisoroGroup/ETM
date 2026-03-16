@@ -19,7 +19,8 @@ const msalApp = new ConfidentialClientApplication({
 // GET /api/auth/microsoft — redirect to Microsoft OAuth
 router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
     try {
-        const redirectUri = `${process.env.SERVER_URL || `https://${req.headers.host}`}/api/auth/microsoft/callback`;
+        const serverUrl = process.env.SERVER_URL || `https://${req.headers.host}`;
+        const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
         const authUrl = await msalApp.getAuthCodeUrl({
             scopes: ['User.Read'],
             redirectUri,
@@ -27,7 +28,8 @@ router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
         res.redirect(authUrl);
     } catch (err) {
         console.error('Microsoft OAuth init error:', err);
-        res.redirect('/?error=oauth_init_failed');
+        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+        res.redirect(`${clientUrl}/?error=oauth_init_failed`);
     }
 });
 
@@ -35,12 +37,15 @@ router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
 router.get('/microsoft/callback', async (req: Request, res: Response): Promise<void> => {
     try {
         const { code } = req.query;
+        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+        const serverUrl = process.env.SERVER_URL || `https://${req.headers.host}`;
+
         if (!code || typeof code !== 'string') {
-            res.redirect('/?error=no_code');
+            res.redirect(`${clientUrl}/?error=no_code`);
             return;
         }
 
-        const redirectUri = `${process.env.SERVER_URL || `https://${req.headers.host}`}/api/auth/microsoft/callback`;
+        const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
         const tokenResponse = await msalApp.acquireTokenByCode({
             code,
             scopes: ['User.Read'],
@@ -87,11 +92,12 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         }
 
         const token = generateToken(user);
-        // Redirect to frontend with token
-        res.redirect(`/?token=${token}`);
+        // Redirect to frontend with token — use CLIENT_URL so user stays on correct domain
+        res.redirect(`${clientUrl}/?token=${token}`);
     } catch (err) {
         console.error('Microsoft OAuth callback error:', err);
-        res.redirect('/?error=oauth_failed');
+        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+        res.redirect(`${clientUrl}/?error=oauth_failed`);
     }
 });
 
