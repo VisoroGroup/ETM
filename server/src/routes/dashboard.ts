@@ -10,16 +10,16 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
         const today = new Date().toISOString().split('T')[0];
 
         const { rows: active } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE status IN ('de_rezolvat', 'in_realizare')`
+            `SELECT COUNT(*) FROM tasks WHERE status IN ('de_rezolvat', 'in_realizare') AND deleted_at IS NULL`
         );
 
         const { rows: overdue } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE due_date < $1 AND status NOT IN ('terminat')`,
+            `SELECT COUNT(*) FROM tasks WHERE due_date < $1 AND status NOT IN ('terminat') AND deleted_at IS NULL`,
             [today]
         );
 
         const { rows: blocked } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE status = 'blocat'`
+            `SELECT COUNT(*) FROM tasks WHERE status = 'blocat' AND deleted_at IS NULL`
         );
 
         // Completed this month
@@ -28,12 +28,12 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
         startOfMonth.setHours(0, 0, 0, 0);
         const { rows: completed } = await pool.query(
             `SELECT COUNT(*) FROM tasks WHERE status = 'terminat'
-       AND updated_at >= $1`,
+       AND updated_at >= $1 AND deleted_at IS NULL`,
             [startOfMonth.toISOString()]
         );
 
         // Total tasks
-        const { rows: total } = await pool.query(`SELECT COUNT(*) FROM tasks`);
+        const { rows: total } = await pool.query(`SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL`);
 
         res.json({
             active: parseInt(active[0].count),
@@ -53,13 +53,13 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
     try {
         // Status distribution
         const { rows: statusDist } = await pool.query(
-            `SELECT status, COUNT(*) AS count FROM tasks GROUP BY status ORDER BY status`
+            `SELECT status, COUNT(*) AS count FROM tasks WHERE deleted_at IS NULL GROUP BY status ORDER BY status`
         );
 
         // Department distribution
         const { rows: deptDist } = await pool.query(
             `SELECT department_label, COUNT(*) AS count FROM tasks
-       WHERE status != 'terminat'
+       WHERE status != 'terminat' AND deleted_at IS NULL
        GROUP BY department_label ORDER BY department_label`
         );
 
@@ -77,7 +77,8 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
             const { rows } = await pool.query(
                 `SELECT COUNT(*) FROM tasks
          WHERE status = 'terminat'
-         AND updated_at BETWEEN $1 AND $2`,
+         AND updated_at BETWEEN $1 AND $2
+         AND deleted_at IS NULL`,
                 [weekStart.toISOString(), weekEnd.toISOString()]
             );
 
@@ -101,7 +102,7 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
          SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
          FROM subtasks GROUP BY task_id
        ) sub ON sub.task_id = t.id
-       WHERE t.status != 'terminat'
+       WHERE t.status != 'terminat' AND t.deleted_at IS NULL
        ORDER BY t.due_date ASC
        LIMIT 10`
         );
@@ -128,7 +129,7 @@ router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Respo
              FROM task_alerts a
              JOIN tasks t ON a.task_id = t.id
              JOIN users u ON a.created_by = u.id
-             WHERE a.is_resolved = false
+             WHERE a.is_resolved = false AND t.deleted_at IS NULL
              ORDER BY a.created_at DESC
              LIMIT 20`
         );
