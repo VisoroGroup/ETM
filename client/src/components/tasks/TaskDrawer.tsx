@@ -55,6 +55,10 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [newAlertText, setNewAlertText] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Title edit
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editTitleValue, setEditTitleValue] = useState('');
+
     useEffect(() => {
         loadTask();
     }, [taskId]);
@@ -64,6 +68,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             setLoading(true);
             const data = await tasksApi.get(taskId);
             setTask(data);
+            setEditTitleValue(data.title);
         } catch {
             showToast('Eroare la încărcarea task-ului', 'error');
         } finally {
@@ -123,6 +128,24 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             onUpdate();
         } catch (err: any) {
             showToast(err.response?.data?.error || 'Eroare', 'error');
+        }
+    }
+
+    // Title update
+    async function handleTitleSave() {
+        if (!task || !editTitleValue.trim() || editTitleValue.trim() === task.title) {
+            setIsEditingTitle(false);
+            setEditTitleValue(task?.title || '');
+            return;
+        }
+        try {
+            await tasksApi.update(taskId, { title: editTitleValue.trim() } as any);
+            setIsEditingTitle(false);
+            showToast('Titlu actualizat!');
+            loadTask();
+            onUpdate();
+        } catch {
+            showToast('Eroare la actualizarea titlului', 'error');
         }
     }
 
@@ -397,7 +420,34 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     <div className="flex-shrink-0 p-5 border-b border-navy-700/50">
                         <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0 mr-4">
-                                <h2 className="text-lg font-bold leading-snug">{task.title}</h2>
+                                {isEditingTitle ? (
+                                    <input
+                                        type="text"
+                                        value={editTitleValue}
+                                        onChange={e => setEditTitleValue(e.target.value)}
+                                        onBlur={handleTitleSave}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') handleTitleSave();
+                                            if (e.key === 'Escape') {
+                                                setIsEditingTitle(false);
+                                                setEditTitleValue(task.title);
+                                            }
+                                        }}
+                                        autoFocus
+                                        className="w-full bg-navy-800 border border-blue-500/50 rounded px-2 py-1 text-lg font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                ) : (
+                                    <h2 
+                                        onClick={() => {
+                                            setEditTitleValue(task.title);
+                                            setIsEditingTitle(true);
+                                        }}
+                                        className="text-lg font-bold leading-snug cursor-text hover:bg-navy-800/50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-navy-600/50"
+                                        title="Click pentru a edita titlul"
+                                    >
+                                        {task.title}
+                                    </h2>
+                                )}
                                 {task.description && (
                                     <p className="text-sm text-navy-400 mt-1 line-clamp-2">{task.description}</p>
                                 )}
