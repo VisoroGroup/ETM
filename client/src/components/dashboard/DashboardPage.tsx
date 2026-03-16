@@ -277,7 +277,7 @@ export default function DashboardPage() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#334e68" />
                                         <XAxis dataKey="name" tick={{ fill: '#829ab1', fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
                                         <YAxis tick={{ fill: '#829ab1', fontSize: 11 }} />
-                                        <Tooltip contentStyle={{ background: '#1E3A5F', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#1E3A5F', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px' }} />
                                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                             {deptChartData.map((d, i) => (
                                                 <Cell key={i} fill={d.color} />

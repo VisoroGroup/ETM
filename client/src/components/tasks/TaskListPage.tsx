@@ -460,17 +460,20 @@ export default function TaskListPage() {
                                 <div className="relative" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all hover:opacity-80"
-                                        style={task.department_label && DEPARTMENTS[task.department_label]
-                                            ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
-                                            : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
-                                        }
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-navy-700 hover:border-navy-600 hover:bg-navy-800 transition-all text-navy-200"
                                     >
-                                        {task.department_label && DEPARTMENTS[task.department_label]
-                                            ? DEPARTMENTS[task.department_label].label
-                                            : '—'
-                                        }
-                                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                                        {task.department_label && DEPARTMENTS[task.department_label] ? (
+                                            <>
+                                                <div 
+                                                    className="w-1.5 h-1.5 rounded-full" 
+                                                    style={{ background: DEPARTMENTS[task.department_label].color, boxShadow: `0 0 4px ${DEPARTMENTS[task.department_label].color}` }} 
+                                                />
+                                                {DEPARTMENTS[task.department_label].label}
+                                            </>
+                                        ) : (
+                                            '—'
+                                        )}
+                                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-40" />
                                     </button>
                                     {deptDropdownId === task.id && (
                                         <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
