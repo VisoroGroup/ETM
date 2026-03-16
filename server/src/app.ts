@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
+import pool from './config/database';
 
 // Load env before anything else
 dotenv.config({ path: path.join(__dirname, '../..', '.env') });
@@ -53,9 +54,26 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/templates', templatesRoutes);
 
-// Health check
-app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check (enhanced)
+app.get('/api/health', async (_req, res) => {
+    let dbOk = false;
+    try {
+        await pool.query('SELECT 1');
+        dbOk = true;
+    } catch {}
+    const mem = process.memoryUsage();
+    const status = dbOk ? 'ok' : 'degraded';
+    res.status(dbOk ? 200 : 503).json({
+        status,
+        timestamp: new Date().toISOString(),
+        uptime: Math.floor(process.uptime()),
+        database: dbOk ? 'connected' : 'disconnected',
+        memory: {
+            rss: Math.round(mem.rss / 1024 / 1024) + ' MB',
+            heap: Math.round(mem.heapUsed / 1024 / 1024) + ' MB'
+        },
+        version: '1.0.0'
+    });
 });
 
 // Serve frontend build in production
