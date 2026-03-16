@@ -19,21 +19,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
 
       - name: Install & Build Client
         working-directory: client
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Install & Build Server
         working-directory: server
         run: |
-          npm ci
+          npm install
           npm run build
 
   deploy:
@@ -48,4 +44,4 @@ jobs:
           curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}" \
             --fail --silent --show-error \
             --max-time 10
-          echo "✅ Railway deploy triggered successfully"
+          echo "Deploy triggered"
