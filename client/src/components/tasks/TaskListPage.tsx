@@ -340,9 +340,9 @@ export default function TaskListPage() {
                     </button>
                 </div>
             ) : (
-                <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
+                <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl">
                     {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
                         {/* Select all checkbox */}
                         <div className="flex items-center" onClick={toggleAll}>
                             {allSelected

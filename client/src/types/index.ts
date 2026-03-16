@@ -136,13 +136,13 @@ export interface TaskFilters {
 
 // Constants
 export const DEPARTMENTS: Record<Department, { label: string; color: string; bg: string; border: string }> = {
-    departament_1: { label: 'Comunicare si HR', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.4)' },
-    departament_2: { label: 'Vanzari', color: '#10B981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)' },
-    departament_3: { label: 'Financiar', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)' },
-    departament_4: { label: 'Productie', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)' },
-    departament_5: { label: 'Calitate', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.4)' },
-    departament_6: { label: 'Extindere', color: '#EC4899', bg: 'rgba(236,72,153,0.12)', border: 'rgba(236,72,153,0.4)' },
-    departament_7: { label: 'Administrativ', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.4)' },
+    departament_1: { label: 'Comunicare si HR', color: '#EAB308', bg: 'rgba(234,179,8,0.12)', border: 'rgba(234,179,8,0.4)' },
+    departament_2: { label: 'Vanzari', color: '#A855F7', bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.4)' },
+    departament_3: { label: 'Financiar', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)' },
+    departament_4: { label: 'Productie', color: '#10B981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)' },
+    departament_5: { label: 'Calitate', color: '#6B7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.4)' },
+    departament_6: { label: 'Extindere', color: '#F97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.4)' },
+    departament_7: { label: 'Administrativ', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.4)' },
 };
 
 export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: string; border: string }> = {
