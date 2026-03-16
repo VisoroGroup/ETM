@@ -342,7 +342,7 @@ export default function TaskListPage() {
             ) : (
                 <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl">
                     {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_110px_120px_80px_120px_150px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
+                    <div className="grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
                         {/* Select all checkbox */}
                         <div className="flex items-center" onClick={toggleAll}>
                             {allSelected
@@ -368,7 +368,7 @@ export default function TaskListPage() {
                             <div
                                 key={task.id}
                                 onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[32px_1fr_110px_120px_80px_120px_150px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
+                                className={`grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
                                     isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
                                     dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
                                     dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
