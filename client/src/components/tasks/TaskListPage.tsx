@@ -32,6 +32,7 @@ export default function TaskListPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deptDropdownId, setDeptDropdownId] = useState<string | null>(null);
     const { showToast } = useToast();
     const location = useLocation();
 
@@ -152,6 +153,17 @@ export default function TaskListPage() {
         showToast(userId ? `${ok} task asignat` : `${ok} task neasignat`);
         setSelectedIds(new Set());
         loadTasks();
+    }
+
+    async function changeDepartment(taskId: string, dept: Department) {
+        setDeptDropdownId(null);
+        try {
+            await tasksApi.update(taskId, { department_label: dept } as any);
+            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, department_label: dept } : t));
+            showToast(`Departament actualizat`);
+        } catch {
+            showToast('Eroare la actualizare', 'error');
+        }
     }
 
     return (
@@ -330,7 +342,7 @@ export default function TaskListPage() {
             ) : (
                 <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
                     {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                    <div className="grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
                         {/* Select all checkbox */}
                         <div className="flex items-center" onClick={toggleAll}>
                             {allSelected
@@ -344,6 +356,7 @@ export default function TaskListPage() {
                         <span>Data limită</span>
                         <span>Subtask</span>
                         <span>Creat de</span>
+                        <span>Departament</span>
                         <span>Activitate</span>
                     </div>
 
@@ -355,7 +368,7 @@ export default function TaskListPage() {
                             <div
                                 key={task.id}
                                 onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[32px_1fr_120px_130px_80px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
+                                className={`grid grid-cols-[32px_1fr_120px_130px_80px_130px_130px_100px] gap-2 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 ${
                                     isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
                                     dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
                                     dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
@@ -441,6 +454,42 @@ export default function TaskListPage() {
                                         {task.creator_name?.charAt(0) || '?'}
                                     </div>
                                     <span className="text-xs text-navy-300 truncate">{task.creator_name}</span>
+                                </div>
+
+                                {/* Department — inline editable */}
+                                <div className="relative" onClick={e => e.stopPropagation()}>
+                                    <button
+                                        onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all hover:opacity-80"
+                                        style={task.department_label && DEPARTMENTS[task.department_label]
+                                            ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
+                                            : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
+                                        }
+                                    >
+                                        {task.department_label && DEPARTMENTS[task.department_label]
+                                            ? DEPARTMENTS[task.department_label].label
+                                            : '—'
+                                        }
+                                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                                    </button>
+                                    {deptDropdownId === task.id && (
+                                        <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
+                                            {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
+                                                <button
+                                                    key={dept}
+                                                    onClick={() => changeDepartment(task.id, dept)}
+                                                    className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700"
+                                                    style={{ color: DEPARTMENTS[dept].color }}
+                                                >
+                                                    <span
+                                                        className="w-2 h-2 rounded-full flex-shrink-0"
+                                                        style={{ background: DEPARTMENTS[dept].color }}
+                                                    />
+                                                    {DEPARTMENTS[dept].label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Last activity */}
