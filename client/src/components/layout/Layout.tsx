@@ -43,8 +43,8 @@ export default function Layout() {
             <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
                 {/* Logo */}
                 <div className={`h-16 flex items-center ${collapsed ? 'justify-center px-2' : 'px-5'} border-b ${darkMode ? 'border-navy-700/50' : 'border-gray-200'}`}>
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-                        <span className="text-lg font-bold text-white">V</span>
+                    <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 shadow-lg">
+                        <img src="/visoro-logo.png" alt="Visoro" className="w-full h-full object-cover" />
                     </div>
                     {!collapsed && (
                         <div className="ml-3 overflow-hidden">
