@@ -32,16 +32,3 @@ jobs:
           npm install
           npx tsc || echo "⚠️ Server TS has non-critical type warnings (pre-existing)"
 
-  deploy:
-    name: Deploy to Railway
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Trigger Railway Deploy
-        run: |
-          curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}" \
-            --fail --silent --show-error \
-            --max-time 10
-          echo "Deploy triggered"
