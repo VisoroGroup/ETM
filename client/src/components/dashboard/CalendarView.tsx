@@ -46,9 +46,20 @@ export default function CalendarView({ tasks }: Props) {
         const task: Task = event.resource;
         const dept = DEPARTMENTS[task.department_label];
         const isOverdue = new Date(task.due_date!) < new Date() && task.status !== 'terminat';
+        const bgColor = isOverdue ? '#ef4444' : (dept?.color || '#3b82f6');
+        
+        if (view === 'agenda') {
+            return {
+                style: {
+                    backgroundColor: 'transparent',
+                    color: '#e2e8f0',
+                }
+            };
+        }
+
         return {
             style: {
-                backgroundColor: isOverdue ? '#ef4444' : (dept?.color || '#3b82f6'),
+                backgroundColor: bgColor,
                 border: 'none',
                 borderRadius: '4px',
                 color: 'white',
@@ -57,6 +68,21 @@ export default function CalendarView({ tasks }: Props) {
                 opacity: task.status === 'terminat' ? 0.5 : 1,
             }
         };
+    };
+
+    const CustomAgendaEvent = ({ event }: any) => {
+        const task: Task = event.resource;
+        const dept = DEPARTMENTS[task.department_label];
+        const isOverdue = new Date(task.due_date!) < new Date() && task.status !== 'terminat';
+        const dotColor = isOverdue ? '#ef4444' : (dept?.color || '#3b82f6');
+        return (
+            <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
+                <span className={task.status === 'terminat' ? 'opacity-50 line-through' : ''}>
+                    {event.title}
+                </span>
+            </div>
+        );
     };
 
     return (
@@ -94,6 +120,11 @@ export default function CalendarView({ tasks }: Props) {
                 culture="ro"
                 messages={messages}
                 eventPropGetter={eventStyleGetter}
+                components={{
+                    agenda: {
+                        event: CustomAgendaEvent
+                    }
+                }}
                 onSelectEvent={(event: any) => {
                     navigate('/tasks', { state: { openTaskId: event.id } });
                 }}

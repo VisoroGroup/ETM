@@ -546,6 +546,27 @@ router.put('/:id/due-date', authMiddleware, async (req: AuthRequest, res: Respon
             })]
         );
 
+        // Auto-comment: make the date change reason visible in the Comments tab
+        const oldDateStr = new Date(oldDate).toLocaleDateString('ro-RO');
+        const newDateStr = new Date(due_date).toLocaleDateString('ro-RO');
+        const commentContent = `📅 Data limită schimbată: ${oldDateStr} → ${newDateStr}\n📝 Motiv: ${reason}`;
+        await pool.query(
+            `INSERT INTO task_comments (task_id, author_id, content, mentions)
+       VALUES ($1, $2, $3, $4)`,
+            [id, req.user!.id, commentContent, []]
+        );
+
+        // Activity log for the auto-comment
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details)
+       VALUES ($1, $2, 'comment_added', $3)`,
+            [id, req.user!.id, JSON.stringify({
+                comment_preview: commentContent.substring(0, 100),
+                mentions: [],
+                auto_generated: true
+            })]
+        );
+
         res.json(rows[0]);
     } catch (err) {
         console.error('Error changing due date:', err);
