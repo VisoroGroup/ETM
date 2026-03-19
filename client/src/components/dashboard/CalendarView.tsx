@@ -5,6 +5,7 @@ import { ro } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { Task, STATUSES, DEPARTMENTS } from '../../types';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 
 const locales = { 'ro': ro };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -76,9 +77,16 @@ export default function CalendarView({ tasks }: Props) {
         const isOverdue = new Date(task.due_date!) < new Date() && task.status !== 'terminat';
         const dotColor = isOverdue ? '#ef4444' : (dept?.color || '#3b82f6');
         return (
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
-                <span className={task.status === 'terminat' ? 'opacity-50 line-through' : ''}>
+            <div className="flex items-center gap-2.5">
+                {isOverdue ? (
+                    <div className="relative flex items-center justify-center flex-shrink-0">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-40 animate-ping"></span>
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 relative z-10" />
+                    </div>
+                ) : (
+                    <div className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: dotColor }} />
+                )}
+                <span className={`${task.status === 'terminat' ? 'opacity-50 line-through' : ''} ${isOverdue ? 'text-red-400 font-semibold' : ''}`}>
                     {event.title}
                 </span>
             </div>
@@ -103,8 +111,13 @@ export default function CalendarView({ tasks }: Props) {
                 .rbc-toolbar button.rbc-active { background: #3b82f6; border-color: #3b82f6; color: white; }
                 .rbc-toolbar-label { color: white; font-weight: 600; font-size: 14px; }
                 .rbc-show-more { color: #3b82f6; font-size: 11px; background: transparent; }
-                .rbc-agenda-table { color: #e2e8f0; }
-                .rbc-agenda-date-cell, .rbc-agenda-time-cell { color: #829ab1; white-space: nowrap; }
+                
+                /* Agenda View Table Customization */
+                .rbc-agenda-view table.rbc-agenda-table { border-collapse: collapse !important; border: 1px solid #1e293b !important; }
+                .rbc-agenda-table th, .rbc-agenda-table td { border: 1px solid #1e293b !important; padding: 12px 16px !important; font-size: 13px; }
+                .rbc-agenda-table thead > tr > th { border-bottom: 2px solid #1e293b !important; background-color: #0d1a29; color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+                .rbc-agenda-date-cell, .rbc-agenda-time-cell { color: #94a3b8; white-space: nowrap; font-weight: 500; }
+                .rbc-agenda-event-cell { padding-left: 12px !important; color: #e2e8f0; }
                 .rbc-row-segment { padding: 1px 2px; }
             `}</style>
             <Calendar
