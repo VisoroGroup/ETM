@@ -12,7 +12,7 @@ router.use(requireRole('admin'));
 router.get('/users', async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
-            SELECT id, microsoft_id, email, display_name, avatar_url, department, role, created_at, updated_at
+            SELECT id, microsoft_id, email, display_name, avatar_url, departments, role, created_at, updated_at
             FROM users
             ORDER BY display_name ASC
         `);
@@ -23,10 +23,10 @@ router.get('/users', async (_req: AuthRequest, res: Response) => {
     }
 });
 
-// PATCH /api/admin/users/:id — update user role and/or department
+// PATCH /api/admin/users/:id — update user role and/or departments
 router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { role, department } = req.body;
+    const { role, departments } = req.body;
 
     const allowed_roles = ['admin', 'manager', 'user'];
     const allowed_departments = ['departament_1', 'departament_2', 'departament_3', 'departament_4', 'departament_5', 'departament_6', 'departament_7'];
@@ -36,9 +36,17 @@ router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
         return;
     }
 
-    if (department && !allowed_departments.includes(department)) {
-        res.status(400).json({ error: 'Departament invalid.' });
-        return;
+    if (departments) {
+        if (!Array.isArray(departments)) {
+            res.status(400).json({ error: 'Departamentele trebuie să fie un array.' });
+            return;
+        }
+        for (const d of departments) {
+            if (!allowed_departments.includes(d)) {
+                res.status(400).json({ error: `Departament invalid: ${d}` });
+                return;
+            }
+        }
     }
 
     try {
@@ -47,7 +55,7 @@ router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
         let idx = 1;
 
         if (role) { setParts.push(`role = $${idx++}`); values.push(role); }
-        if (department) { setParts.push(`department = $${idx++}`); values.push(department); }
+        if (departments) { setParts.push(`departments = $${idx++}`); values.push(departments); }
 
         if (setParts.length === 0) {
             res.status(400).json({ error: 'Nimic de actualizat.' });

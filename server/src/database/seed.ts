@@ -18,7 +18,7 @@ async function seed() {
                 microsoft_id: 'dev-user-001',
                 email: 'admin@visoro.ro',
                 display_name: 'Admin Visoro',
-                department: 'departament_1',
+                departments: ['departament_1'],
                 role: 'admin'
             },
             {
@@ -26,7 +26,7 @@ async function seed() {
                 microsoft_id: 'dev-user-002',
                 email: 'maria.popescu@visoro.ro',
                 display_name: 'Maria Popescu',
-                department: 'departament_2',
+                departments: ['departament_2'],
                 role: 'manager'
             },
             {
@@ -34,7 +34,7 @@ async function seed() {
                 microsoft_id: 'dev-user-003',
                 email: 'ion.ionescu@visoro.ro',
                 display_name: 'Ion Ionescu',
-                department: 'departament_3',
+                departments: ['departament_3'],
                 role: 'user'
             },
             {
@@ -42,7 +42,7 @@ async function seed() {
                 microsoft_id: 'dev-user-004',
                 email: 'ana.dumitrescu@visoro.ro',
                 display_name: 'Ana Dumitrescu',
-                department: 'departament_1',
+                departments: ['departament_1'],
                 role: 'user'
             },
             {
@@ -50,17 +50,17 @@ async function seed() {
                 microsoft_id: 'dev-user-005',
                 email: 'alex.stan@visoro.ro',
                 display_name: 'Alexandru Stan',
-                department: 'departament_5',
+                departments: ['departament_5'],
                 role: 'user'
             }
         ];
 
         for (const user of users) {
             await client.query(
-                `INSERT INTO users (id, microsoft_id, email, display_name, department, role)
+                `INSERT INTO users (id, microsoft_id, email, display_name, departments, role)
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (microsoft_id) DO NOTHING`,
-                [user.id, user.microsoft_id, user.email, user.display_name, user.department, user.role]
+                [user.id, user.microsoft_id, user.email, user.display_name, user.departments, user.role]
             );
         }
         console.log(`✅ Created ${users.length} users`);

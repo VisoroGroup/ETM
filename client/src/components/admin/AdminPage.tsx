@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../services/api';
-import { User, DEPARTMENTS } from '../../types';
+import { User, DEPARTMENTS, Department } from '../../types';
 
 const ROLES = ['admin', 'manager', 'user'] as const;
-const DEPT_KEYS = Object.keys(DEPARTMENTS) as (keyof typeof DEPARTMENTS)[];
+const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
 
 export default function AdminPage() {
     const { user: currentUser } = useAuth();
@@ -13,7 +13,7 @@ export default function AdminPage() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editData, setEditData] = useState<{ role?: string; department?: string }>({});
+    const [editData, setEditData] = useState<{ role?: string; departments?: string[] }>({});
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -34,7 +34,18 @@ export default function AdminPage() {
 
     const startEdit = (u: User) => {
         setEditingId(u.id);
-        setEditData({ role: u.role, department: u.department });
+        setEditData({ role: u.role, departments: u.departments || [] });
+    };
+
+    const toggleDept = (dept: string) => {
+        setEditData(d => {
+            const current = d.departments || [];
+            const has = current.includes(dept);
+            return {
+                ...d,
+                departments: has ? current.filter(x => x !== dept) : [...current, dept],
+            };
+        });
     };
 
     const saveEdit = async (id: string) => {
@@ -123,7 +134,7 @@ export default function AdminPage() {
                             <tr className="border-b border-navy-700/50">
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Rol</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Departament</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Departamente</th>
                                 <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">Acțiuni</th>
                             </tr>
                         </thead>
@@ -160,15 +171,29 @@ export default function AdminPage() {
                                     </td>
                                     <td className="px-4 py-3">
                                         {editingId === u.id ? (
-                                            <select
-                                                value={editData.department}
-                                                onChange={e => setEditData(d => ({ ...d, department: e.target.value }))}
-                                                className="bg-navy-700 border border-navy-600 rounded px-2 py-1 text-xs text-white outline-none"
-                                            >
-                                                {DEPT_KEYS.map(d => <option key={d} value={d}>{DEPARTMENTS[d].label}</option>)}
-                                            </select>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {DEPT_KEYS.map(d => {
+                                                    const selected = editData.departments?.includes(d);
+                                                    return (
+                                                        <button
+                                                            key={d}
+                                                            type="button"
+                                                            onClick={() => toggleDept(d)}
+                                                            className={`text-[10px] px-2 py-1 rounded-full border transition-all ${
+                                                                selected
+                                                                    ? 'border-blue-500/50 bg-blue-500/20 text-blue-300'
+                                                                    : 'border-navy-600 bg-navy-700/30 text-navy-400 hover:border-navy-500'
+                                                            }`}
+                                                        >
+                                                            {DEPARTMENTS[d].label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         ) : (
-                                            <span className="text-xs text-navy-300">{DEPARTMENTS[u.department]?.label || u.department}</span>
+                                            <span className="text-xs text-navy-300">
+                                                {(u.departments || []).map(d => DEPARTMENTS[d]?.label || d).join(', ') || '—'}
+                                            </span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right">

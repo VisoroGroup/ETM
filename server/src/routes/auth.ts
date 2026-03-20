@@ -126,15 +126,15 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
                     email: email || 'dev@visoro.ro',
                     display_name: req.body.display_name || 'Dev User',
                     avatar_url: null,
-                    department: req.body.department || 'departament_1',
+                    departments: req.body.departments || ['departament_1'],
                     role: req.body.role || 'user'
                 };
 
                 const { rows } = await pool.query(
-                    `INSERT INTO users (id, microsoft_id, email, display_name, avatar_url, department, role)
+                    `INSERT INTO users (id, microsoft_id, email, display_name, avatar_url, departments, role)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
                     [devUser.id, devUser.microsoft_id, devUser.email, devUser.display_name,
-                    devUser.avatar_url, devUser.department, devUser.role]
+                    devUser.avatar_url, devUser.departments, devUser.role]
                 );
                 user = rows[0];
             }
@@ -213,7 +213,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
-            'SELECT id, email, display_name, avatar_url, department, role FROM users ORDER BY display_name'
+            'SELECT id, email, display_name, avatar_url, departments, role FROM users ORDER BY display_name'
         );
         res.json(rows);
     } catch (err) {
@@ -221,11 +221,11 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => 
     }
 });
 
-// PUT /api/users/:id — update user (admin only for role/department)
+// PUT /api/users/:id — update user (admin only for role/departments)
 router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { department, role } = req.body;
+        const { departments, role } = req.body;
 
         // Only admin can change roles/departments
         if (req.user!.role !== 'admin' && req.user!.id !== id) {
@@ -237,9 +237,9 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         const values: any[] = [];
         let paramIndex = 1;
 
-        if (department) {
-            updates.push(`department = $${paramIndex++}`);
-            values.push(department);
+        if (departments) {
+            updates.push(`departments = $${paramIndex++}`);
+            values.push(departments);
         }
         if (role && req.user!.role === 'admin') {
             updates.push(`role = $${paramIndex++}`);

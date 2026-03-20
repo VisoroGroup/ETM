@@ -68,7 +68,7 @@ export default function ProfileModal({ onClose, darkMode }: Props) {
                             <p className="text-sm font-medium">{user?.display_name}</p>
                             <p className={`text-xs ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{user?.email}</p>
                             <p className={`text-xs mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'} capitalize`}>
-                                {user?.role} • {user?.department?.replace('_', ' ')}
+                                {user?.role} • {(user?.departments || []).join(', ').replace(/_/g, ' ') || '—'}
                             </p>
                         </div>
                     </div>
