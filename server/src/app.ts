@@ -20,8 +20,10 @@ import profileRoutes from './routes/profile';
 import notificationRoutes from './routes/notifications';
 import emailRoutes from './routes/emails';
 import templatesRoutes from './routes/templates';
+import paymentsRoutes from './routes/payments';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { startEmailScheduler } from './cron/emailScheduler';
+import { startPaymentEmailScheduler } from './cron/paymentScheduler';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,6 +55,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/templates', templatesRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {
@@ -102,6 +105,7 @@ app.listen(PORT, () => {
 
     // Start email scheduler
     startEmailScheduler();
+    startPaymentEmailScheduler();
 });
 
 export default app;

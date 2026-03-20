@@ -71,7 +71,7 @@ ETM/
 
 ---
 
-## Adatbázis táblák (11 migráció)
+## Adatbázis táblák (11+ migrációk)
 
 | Tábla | Leírás |
 |-------|--------|
@@ -86,6 +86,10 @@ ETM/
 | `recurring_tasks` | template_task_id, frequency, next_run_date, is_active |
 | `email_logs` | user_id, task_ids[], email_type, status, error_message |
 | `task_alerts` | task_id, created_by, content, is_resolved, resolved_by, resolved_at |
+| `payments` | title, amount, currency, category, beneficiary_name, due_date, status, ... |
+| `payment_comments` | payment_id, author_id, content |
+| `payment_activity_log` | payment_id, user_id, action_type, details |
+| `payment_reminders` | payment_id, reminder_type (30_days, 14_days etc) |
 
 **ENUMok:** `user_role` (admin/manager/user) · `department_type` (departament_1..7) · `task_status` (de_rezolvat/in_realizare/terminat/blocat) · `recurring_frequency` (daily/weekly/biweekly/monthly)
 
@@ -117,6 +121,16 @@ ETM/
 ### Dashboard (`/api/dashboard`)
 - `GET /stats` — Aktív, Lejárt, Blocat, Havi befejezett, Összesen
 - `GET /charts` — Status/dept distribution, completion trend (4 hét), urgent top 10
+
+### Financiar (`/api/payments`) - **Admin Only**
+- `GET /` — Lista plăți szűrőkkel (status, period, category, recurring)
+- `GET /summary` — Dashboard metrics (total, restant, achitat)
+- `GET /chart` — Grafic ultimele 6 luni
+- `POST /` — Creare plată nouă
+- `GET /:id` — Részletek plată
+- `PUT /:id/mark-paid` — Marcare achitat + recurență automată
+- `GET/POST /:id/comments` — Comentarii la plată
+- `GET /:id/activity` — Istoric complet
 
 ---
 
@@ -228,6 +242,14 @@ Az "În Atenție" fül csak task megnyitásakor látható (a TaskDrawer-ben).
 - ✅ Frontend: `TaskAlert` type, `alertsApi`, TaskDrawer 5. fül
 - ✅ Git push: commit `a8e127f`
 
+### 2026-03-19 — Modul Financiar (Plăți) - Dashboard Administrator
+**Conversation:** `efeb07a3-4067-4238-813e-d4c7872c6fc5`
+- ✅ Migration 018: 4 tábla mơu pentru `payments`
+- ✅ Backend `/api/payments` + Middleware restrictiv Admin.
+- ✅ Cron job scheduler (`Eu/Bucharest`) pentru remindere 30/21/14/7/0 zile și restanțe, auto-weekend shift.
+- ✅ Frontend: Dashboard Financiar (`/financiar`), Cards, Recharts 6 luni, Filtre, Visual Countdown Badges.
+- ✅ Frontend: Side-Drawer + Form modal pentru comentarii și activity logs specifice banilor.
+
 ---
 
-*Utolsó frissítés: 2026-03-13*
+*Utolsó frissítés: 2026-03-19*

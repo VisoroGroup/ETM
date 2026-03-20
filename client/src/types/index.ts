@@ -1,7 +1,7 @@
 export type UserRole = 'admin' | 'manager' | 'user';
 export type Department = 'departament_1' | 'departament_2' | 'departament_3' | 'departament_4' | 'departament_5' | 'departament_6' | 'departament_7';
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
-export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 export type AlertStatus = 'active' | 'resolved';
 export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved';
 
@@ -157,4 +157,6 @@ export const FREQUENCIES: Record<RecurringFrequency, string> = {
     weekly: 'Săptămânal',
     biweekly: 'Bisăptămânal',
     monthly: 'Lunar',
+    quarterly: 'Trimestrial',
+    yearly: 'Anual',
 };

@@ -13,7 +13,7 @@ export type Department =
 
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
 
-export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export type ActionType =
     | 'created'
@@ -183,4 +183,94 @@ export const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
     in_realizare: { label: 'În realizare', color: '#D97706' },
     terminat: { label: 'Terminat', color: '#10B981' },
     blocat: { label: 'Blocat', color: '#EF4444' },
+};
+
+// --- PAYMENT MODULE TYPES ---
+
+export type PaymentCategory = 
+    | 'stat' 
+    | 'partener_furnizor' 
+    | 'furnizor_servicii' 
+    | 'furnizor_echipamente' 
+    | 'marketing' 
+    | 'salarii';
+
+export type PaymentStatus = 'de_platit' | 'platit';
+
+export type PaymentReminderType = 'day_30' | 'day_21' | 'day_14' | 'day_7' | 'day_0' | 'overdue';
+
+export type PaymentActionType = 
+    | 'created' 
+    | 'marked_paid' 
+    | 'date_changed' 
+    | 'comment_added' 
+    | 'recurring_created' 
+    | 'category_changed';
+
+export interface Payment {
+    id: string;
+    title: string;
+    amount: string | number;
+    currency: string;
+    category: PaymentCategory;
+    beneficiary_name: string | null;
+    due_date: string;
+    status: PaymentStatus;
+    paid_at: Date | null;
+    paid_by: string | null;
+    is_recurring: boolean;
+    recurring_frequency: RecurringFrequency | null;
+    recurring_next_date: string | null;
+    created_by: string;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface PaymentWithDetails extends Payment {
+    creator_name?: string;
+    creator_avatar?: string | null;
+    payer_name?: string | null;
+    payer_avatar?: string | null;
+}
+
+export interface PaymentComment {
+    id: string;
+    payment_id: string;
+    author_id: string;
+    author_name?: string;
+    author_avatar?: string | null;
+    content: string;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface PaymentActivityLogEntry {
+    id: string;
+    payment_id: string;
+    user_id: string;
+    user_name?: string;
+    user_avatar?: string | null;
+    action_type: PaymentActionType;
+    details: Record<string, any>;
+    created_at: Date;
+}
+
+export interface PaymentReminder {
+    id: string;
+    payment_id: string;
+    reminder_type: PaymentReminderType;
+    scheduled_date: string;
+    actual_sent_date: string;
+    sent: boolean;
+    sent_at: Date | null;
+    created_at: Date;
+}
+
+export const PAYMENT_CATEGORIES: Record<PaymentCategory, { label: string; color: string }> = {
+    stat: { label: 'Stat (ANAF, taxe, impozite)', color: '#DC2626' },
+    partener_furnizor: { label: 'Partener / Furnizor', color: '#2563EB' },
+    furnizor_servicii: { label: 'Furnizor de servicii', color: '#7C3AED' },
+    furnizor_echipamente: { label: 'Furnizor de echipamente', color: '#0891B2' },
+    marketing: { label: 'Marketing / Publicitate', color: '#EA580C' },
+    salarii: { label: 'Salarii / Personal', color: '#16A34A' },
 };

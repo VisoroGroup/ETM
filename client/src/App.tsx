@@ -9,6 +9,7 @@ import TaskListPage from './components/tasks/TaskListPage';
 import AdminPage from './components/admin/AdminPage';
 import EmailLogsPage from './components/emails/EmailLogsPage';
 import TemplatesPage from './pages/TemplatesPage';
+import PaymentsPage from './components/payments/PaymentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
         <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+        <Route path="/financiar" element={<ErrorBoundary><PaymentsPage /></ErrorBoundary>} />
         <Route path="/emails" element={<ErrorBoundary><EmailLogsPage /></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
