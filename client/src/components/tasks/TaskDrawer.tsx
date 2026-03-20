@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SkeletonDrawer } from '../ui/Skeleton';
-import { tasksApi, recurringApi } from '../../services/api';
+import { useTaskDetail } from '../../hooks/useTaskDetail';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,8 +30,9 @@ interface Props {
 type Tab = 'subtasks' | 'comments' | 'files' | 'activity' | 'alerts';
 
 export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
-    const [task, setTask] = useState<TaskDetail | null>(null);
-    const [loading, setLoading] = useState(true);
+    const td = useTaskDetail(taskId);
+    const task = td.task;
+    const loading = td.loading;
     const [activeTab, setActiveTab] = useState<Tab>('subtasks');
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
     const { user, users } = useAuth();
@@ -57,22 +58,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [editDescValue, setEditDescValue] = useState('');
 
     useEffect(() => {
-        loadTask();
-    }, [taskId]);
-
-    async function loadTask() {
-        try {
-            setLoading(true);
-            const data = await tasksApi.get(taskId);
-            setTask(data);
-            setEditTitleValue(data.title);
-            setEditDescValue(data.description || '');
-        } catch {
-            showToast('Eroare la încărcarea task-ului', 'error');
-        } finally {
-            setLoading(false);
+        if (task) {
+            setEditTitleValue(task.title);
+            setEditDescValue(task.description || '');
         }
-    }
+    }, [task?.id, task?.title, task?.description]);
 
     // Status change
     async function handleStatusChange(newStatus: TaskStatus) {
@@ -84,27 +74,18 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             return;
         }
 
-        try {
-            await tasksApi.changeStatus(taskId, newStatus);
-            showToast(`Status schimbat în "${STATUSES[newStatus].label}"`);
-            loadTask();
-            onUpdate();
-        } catch (err: any) {
-            showToast(err.response?.data?.error || 'Eroare', 'error');
-        }
+        td.changeStatus.mutate({ status: newStatus }, {
+            onSuccess: () => { showToast(`Status schimbat în "${STATUSES[newStatus].label}"`); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+        });
     }
 
     async function confirmBlockedStatus() {
         if (!blockedReason.trim()) return;
-        try {
-            await tasksApi.changeStatus(taskId, 'blocat', blockedReason.trim());
-            showToast('Task marcat ca Blocat');
-            setShowBlockedModal(false);
-            loadTask();
-            onUpdate();
-        } catch (err: any) {
-            showToast(err.response?.data?.error || 'Eroare', 'error');
-        }
+        td.changeStatus.mutate({ status: 'blocat', reason: blockedReason.trim() }, {
+            onSuccess: () => { showToast('Task marcat ca Blocat'); setShowBlockedModal(false); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+        });
     }
 
     // Due date change
@@ -118,15 +99,10 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     async function confirmDueDateChange() {
         if (!dueDateReason.trim() || !newDueDate) return;
-        try {
-            await tasksApi.changeDueDate(taskId, newDueDate, dueDateReason.trim());
-            showToast('Data limită schimbată');
-            setShowDueDateModal(false);
-            loadTask();
-            onUpdate();
-        } catch (err: any) {
-            showToast(err.response?.data?.error || 'Eroare', 'error');
-        }
+        td.changeDueDate.mutate({ date: newDueDate, reason: dueDateReason.trim() }, {
+            onSuccess: () => { showToast('Data limită schimbată'); setShowDueDateModal(false); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+        });
     }
 
     // Title update
@@ -136,15 +112,10 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             setEditTitleValue(task?.title || '');
             return;
         }
-        try {
-            await tasksApi.update(taskId, { title: editTitleValue.trim() } as any);
-            setIsEditingTitle(false);
-            showToast('Titlu actualizat!');
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare la actualizarea titlului', 'error');
-        }
+        td.updateTask.mutate({ title: editTitleValue.trim() }, {
+            onSuccess: () => { setIsEditingTitle(false); showToast('Titlu actualizat!'); onUpdate(); },
+            onError: () => showToast('Eroare la actualizarea titlului', 'error'),
+        });
     }
 
     // Description update
@@ -155,57 +126,36 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             setIsEditingDesc(false);
             return;
         }
-        try {
-            await tasksApi.update(taskId, { description: newDesc } as any);
-            setIsEditingDesc(false);
-            showToast('Descriere actualizată!');
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare la actualizarea descrierii', 'error');
-        }
+        td.updateTask.mutate({ description: newDesc }, {
+            onSuccess: () => { setIsEditingDesc(false); showToast('Descriere actualizată!'); onUpdate(); },
+            onError: () => showToast('Eroare la actualizarea descrierii', 'error'),
+        });
     }
 
     // Department change
     async function handleDeptChange(dept: Department) {
-        try {
-            await tasksApi.update(taskId, { department_label: dept });
-            showToast('Departament schimbat');
-            loadTask();
-            onUpdate();
-        } catch (err: any) {
-            showToast('Eroare la schimbarea departamentului', 'error');
-        }
+        td.updateTask.mutate({ department_label: dept }, {
+            onSuccess: () => { showToast('Departament schimbat'); onUpdate(); },
+            onError: () => showToast('Eroare la schimbarea departamentului', 'error'),
+        });
     }
 
     // Delete task
     async function handleDeleteTask() {
         setShowDeleteConfirm(false);
-        try {
-            await tasksApi.delete(taskId);
-            showToast('Task șters');
-            onClose();
-            onUpdate();
-        } catch (err: any) {
-            showToast(err.response?.data?.error || 'Eroare', 'error');
-        }
+        td.deleteTask.mutate(undefined, {
+            onSuccess: () => { showToast('Task șters'); onClose(); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+        });
     }
 
     // Recurring toggle
     async function toggleRecurring() {
         if (!task) return;
-        try {
-            if (task.is_recurring) {
-                await recurringApi.remove(taskId);
-                showToast('Recurență dezactivată');
-            } else {
-                await recurringApi.set(taskId, 'weekly');
-                showToast('Recurență activată (săptămânal)');
-            }
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
+        td.toggleRecurring.mutate(undefined, {
+            onSuccess: () => showToast(task.is_recurring ? 'Recurență dezactivată' : 'Recurență activată (săptămânal)'),
+            onError: () => showToast('Eroare', 'error'),
+        });
     }
 
     if (loading || !task) {
@@ -404,16 +354,12 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             <span className="text-xs text-navy-500">Responsabil:</span>
                             <select
                                 value={task.assigned_to || ''}
-                                onChange={async (e) => {
+                                onChange={(e) => {
                                     const val = e.target.value || null;
-                                    try {
-                                        await tasksApi.update(taskId, { assigned_to: val } as any);
-                                        showToast(val ? 'Responsabil setat' : 'Responsabil eliminat');
-                                        loadTask();
-                                        onUpdate();
-                                    } catch {
-                                        showToast('Eroare', 'error');
-                                    }
+                                    td.updateTask.mutate({ assigned_to: val } as any, {
+                                        onSuccess: () => { showToast(val ? 'Responsabil setat' : 'Responsabil eliminat'); onUpdate(); },
+                                        onError: () => showToast('Eroare', 'error'),
+                                    });
                                 }}
                                 className="flex-1 max-w-[200px] px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50"
                             >
@@ -465,19 +411,19 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     {/* Tab content */}
                     <div className="flex-1 overflow-y-auto p-5">
                         {activeTab === 'subtasks' && (
-                            <ErrorBoundary><SubtasksTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} /></ErrorBoundary>
+                            <ErrorBoundary><SubtasksTab task={task} taskId={taskId} onReload={td.refetch} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'comments' && (
-                            <ErrorBoundary><CommentsTab task={task} taskId={taskId} onReload={loadTask} /></ErrorBoundary>
+                            <ErrorBoundary><CommentsTab task={task} taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
                         )}
                         {activeTab === 'files' && (
-                            <ErrorBoundary><FilesTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} /></ErrorBoundary>
+                            <ErrorBoundary><FilesTab task={task} taskId={taskId} onReload={td.refetch} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'activity' && (
                             <ErrorBoundary><ActivityTab task={task} /></ErrorBoundary>
                         )}
                         {activeTab === 'alerts' && (
-                            <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={loadTask} /></ErrorBoundary>
+                            <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
                         )}
                     </div>
 

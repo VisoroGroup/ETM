@@ -49,7 +49,7 @@ export const tasksApi = {
 
 // Subtasks
 export const subtasksApi = {
-    create: (taskId: string, data: { title: string; assigned_to?: string }) =>
+    create: (taskId: string, data: { title: string; assigned_to?: string | null }) =>
         api.post<Subtask>(`/tasks/${taskId}/subtasks`, data).then(r => r.data),
     update: (taskId: string, subtaskId: string, data: Partial<Subtask>) =>
         api.put<Subtask>(`/tasks/${taskId}/subtasks/${subtaskId}`, data).then(r => r.data),
