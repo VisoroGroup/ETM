@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SkeletonDrawer } from '../ui/Skeleton';
 import { tasksApi, recurringApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
@@ -9,7 +10,7 @@ import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
     ChevronDown, Ban, Trash2,
     Loader2, RefreshCw,
-    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck
+    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil
 } from 'lucide-react';
 
 // Tab components
@@ -18,6 +19,7 @@ import CommentsTab from './tabs/CommentsTab';
 import FilesTab from './tabs/FilesTab';
 import ActivityTab from './tabs/ActivityTab';
 import AlertsTab from './tabs/AlertsTab';
+import ErrorBoundary from '../ErrorBoundary';
 
 interface Props {
     taskId: string;
@@ -50,6 +52,10 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editTitleValue, setEditTitleValue] = useState('');
 
+    // Description edit
+    const [isEditingDesc, setIsEditingDesc] = useState(false);
+    const [editDescValue, setEditDescValue] = useState('');
+
     useEffect(() => {
         loadTask();
     }, [taskId]);
@@ -60,6 +66,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             const data = await tasksApi.get(taskId);
             setTask(data);
             setEditTitleValue(data.title);
+            setEditDescValue(data.description || '');
         } catch {
             showToast('Eroare la încărcarea task-ului', 'error');
         } finally {
@@ -140,6 +147,25 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         }
     }
 
+    // Description update
+    async function handleDescSave() {
+        if (!task) return;
+        const newDesc = editDescValue.trim();
+        if (newDesc === (task.description || '')) {
+            setIsEditingDesc(false);
+            return;
+        }
+        try {
+            await tasksApi.update(taskId, { description: newDesc } as any);
+            setIsEditingDesc(false);
+            showToast('Descriere actualizată!');
+            loadTask();
+            onUpdate();
+        } catch {
+            showToast('Eroare la actualizarea descrierii', 'error');
+        }
+    }
+
     // Department change
     async function handleDeptChange(dept: Department) {
         try {
@@ -185,8 +211,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     if (loading || !task) {
         return (
             <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                <div className="w-full md:max-w-2xl h-full bg-navy-900 shadow-2xl animate-slide-in flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <div className="w-full md:max-w-2xl h-full bg-navy-900 shadow-2xl animate-slide-in" onClick={e => e.stopPropagation()}>
+                    <SkeletonDrawer />
                 </div>
             </div>
         );
@@ -249,9 +275,36 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                         {task.title}
                                     </h2>
                                 )}
-                                {task.description && (
-                                    <p className="text-sm text-navy-400 mt-1 line-clamp-2">{task.description}</p>
-                                )}
+                                {isEditingDesc ? (
+                                    <textarea
+                                        value={editDescValue}
+                                        onChange={e => setEditDescValue(e.target.value)}
+                                        onBlur={handleDescSave}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && e.ctrlKey) handleDescSave();
+                                            if (e.key === 'Escape') {
+                                                setIsEditingDesc(false);
+                                                setEditDescValue(task.description || '');
+                                            }
+                                        }}
+                                        rows={3}
+                                        autoFocus
+                                        placeholder="Adaugă o descriere..."
+                                        className="w-full mt-1 bg-navy-800 border border-blue-500/50 rounded px-2 py-1.5 text-sm text-navy-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-navy-500"
+                                    />
+                                ) : (
+                                    <p
+                                        onClick={() => {
+                                            setEditDescValue(task.description || '');
+                                            setIsEditingDesc(true);
+                                        }}
+                                        className="text-sm text-navy-400 mt-1 cursor-text hover:bg-navy-800/50 rounded px-1 -ml-1 py-0.5 transition-colors border border-transparent hover:border-navy-600/50 flex items-center gap-1 group"
+                                        title="Click pentru a edita descrierea"
+                                    >
+                                        {task.description || <span className="text-navy-600 italic">Adaugă o descriere...</span>}
+                                        <Pencil className="w-3 h-3 text-navy-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                    </p>
+                                )
                             </div>
                             <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors flex-shrink-0">
                                 <X className="w-5 h-5" />
@@ -412,19 +465,19 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     {/* Tab content */}
                     <div className="flex-1 overflow-y-auto p-5">
                         {activeTab === 'subtasks' && (
-                            <SubtasksTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} />
+                            <ErrorBoundary><SubtasksTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'comments' && (
-                            <CommentsTab task={task} taskId={taskId} onReload={loadTask} />
+                            <ErrorBoundary><CommentsTab task={task} taskId={taskId} onReload={loadTask} /></ErrorBoundary>
                         )}
                         {activeTab === 'files' && (
-                            <FilesTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} />
+                            <ErrorBoundary><FilesTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'activity' && (
-                            <ActivityTab task={task} />
+                            <ErrorBoundary><ActivityTab task={task} /></ErrorBoundary>
                         )}
                         {activeTab === 'alerts' && (
-                            <AlertsTab task={task} taskId={taskId} onReload={loadTask} />
+                            <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={loadTask} /></ErrorBoundary>
                         )}
                     </div>
 

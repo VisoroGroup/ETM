@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, X, Undo2 } from 'lucide-react';
 
 interface Toast {
     id: string;
     message: string;
     type: 'success' | 'error' | 'info';
+    undoAction?: () => void;
 }
 
 interface ToastContextType {
-    showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+    showToast: (message: string, type?: 'success' | 'error' | 'info', undoAction?: () => void) => void;
 }
 
 const ToastContext = createContext<ToastContextType>({ showToast: () => { } });
@@ -16,12 +17,12 @@ const ToastContext = createContext<ToastContextType>({ showToast: () => { } });
 export function ToastProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
 
-    const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', undoAction?: () => void) => {
         const id = Date.now().toString();
-        setToasts(prev => [...prev, { id, message, type }]);
+        setToasts(prev => [...prev, { id, message, type, undoAction }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
-        }, 4000);
+        }, undoAction ? 6000 : 4000); // longer if undo available
     }, []);
 
     const removeToast = (id: string) => {
@@ -51,6 +52,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     >
                         {icons[toast.type]}
                         <span>{toast.message}</span>
+                        {toast.undoAction && (
+                            <button
+                                onClick={() => { toast.undoAction?.(); removeToast(toast.id); }}
+                                className="ml-1 flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs font-medium transition-colors"
+                            >
+                                <Undo2 className="w-3 h-3" /> Anulează
+                            </button>
+                        )}
                         <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70">
                             <X className="w-4 h-4" />
                         </button>

@@ -140,4 +140,71 @@ router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Respo
     }
 });
 
+// GET /api/dashboard/my-stats — user-specific stats
+router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const today = new Date().toISOString().split('T')[0];
+
+        // My assigned tasks (active)
+        const { rows: myActive } = await pool.query(
+            `SELECT COUNT(*) FROM tasks
+             WHERE assigned_to = $1 AND status IN ('de_rezolvat', 'in_realizare') AND deleted_at IS NULL`,
+            [userId]
+        );
+
+        // My overdue tasks
+        const { rows: myOverdue } = await pool.query(
+            `SELECT COUNT(*) FROM tasks
+             WHERE assigned_to = $1 AND due_date < $2 AND status NOT IN ('terminat') AND deleted_at IS NULL`,
+            [userId, today]
+        );
+
+        // My pending subtasks
+        const { rows: mySubtasks } = await pool.query(
+            `SELECT COUNT(*) FROM subtasks s
+             JOIN tasks t ON s.task_id = t.id
+             WHERE s.assigned_to = $1 AND s.is_completed = false
+               AND t.deleted_at IS NULL AND (s.deleted_at IS NULL)`,
+            [userId]
+        );
+
+        // My tasks completed this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const { rows: myCompleted } = await pool.query(
+            `SELECT COUNT(*) FROM tasks
+             WHERE assigned_to = $1 AND status = 'terminat'
+               AND updated_at >= $2 AND deleted_at IS NULL`,
+            [userId, startOfMonth.toISOString()]
+        );
+
+        // My upcoming tasks (next 7 days)
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const { rows: upcoming } = await pool.query(
+            `SELECT t.id, t.title, t.due_date, t.status, t.department_label
+             FROM tasks t
+             WHERE t.assigned_to = $1
+               AND t.due_date BETWEEN $2 AND $3
+               AND t.status NOT IN ('terminat')
+               AND t.deleted_at IS NULL
+             ORDER BY t.due_date ASC LIMIT 5`,
+            [userId, today, nextWeek.toISOString().split('T')[0]]
+        );
+
+        res.json({
+            my_active: parseInt(myActive[0].count),
+            my_overdue: parseInt(myOverdue[0].count),
+            my_pending_subtasks: parseInt(mySubtasks[0].count),
+            my_completed_this_month: parseInt(myCompleted[0].count),
+            upcoming_tasks: upcoming,
+        });
+    } catch (err) {
+        console.error('My stats error:', err);
+        res.status(500).json({ error: 'Eroare la încărcarea statisticilor personale.' });
+    }
+});
+
 export default router;

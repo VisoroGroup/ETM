@@ -72,6 +72,8 @@ export interface Subtask {
     assigned_to_name?: string;
     assigned_to_avatar?: string | null;
     order_index: number;
+    due_date?: string | null;
+    priority?: 'low' | 'medium' | 'high';
     created_at: string;
     updated_at: string;
 }

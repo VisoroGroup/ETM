@@ -80,3 +80,38 @@ export function SkeletonStatCard() {
         </div>
     );
 }
+
+// Task drawer loading skeleton
+export function SkeletonDrawer() {
+    return (
+        <div className="flex flex-col h-full animate-pulse p-5 space-y-6">
+            {/* Header */}
+            <div className="space-y-2">
+                <SkeletonBlock className="h-6 w-3/4" />
+                <SkeletonBlock className="h-4 w-1/2" />
+            </div>
+            {/* Status bar */}
+            <div className="flex gap-3">
+                <SkeletonBlock className="h-8 w-24 rounded-full" />
+                <SkeletonBlock className="h-8 w-28 rounded-full" />
+                <SkeletonBlock className="h-8 w-20 rounded-full" />
+            </div>
+            {/* Tabs */}
+            <div className="flex gap-4 border-b border-navy-700/50 pb-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <SkeletonBlock key={i} className="h-4 w-20" />
+                ))}
+            </div>
+            {/* Content */}
+            <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-navy-800/30">
+                        <SkeletonBlock className="w-5 h-5 rounded" />
+                        <SkeletonBlock className="h-4 flex-1" />
+                        <SkeletonBlock className="h-4 w-20" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

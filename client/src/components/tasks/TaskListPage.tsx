@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { tasksApi } from '../../services/api';
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS } from '../../types';
@@ -12,9 +12,11 @@ import { SkeletonTaskList } from '../ui/Skeleton';
 import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
-    LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle
+    LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag
 } from 'lucide-react';
 import { authApi } from '../../services/api';
+import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
+import { exportToCSV } from '../../utils/exportUtils';
 
 export default function TaskListPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -31,10 +33,23 @@ export default function TaskListPage() {
     const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
     const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+    const [bulkDeptOpen, setBulkDeptOpen] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deptDropdownId, setDeptDropdownId] = useState<string | null>(null);
     const { showToast } = useToast();
     const location = useLocation();
+    const searchRef = useRef<HTMLInputElement>(null);
+
+    // Keyboard shortcuts
+    const shortcuts = useMemo(() => ({
+        '/': () => searchRef.current?.focus(),
+        'Escape': () => {
+            if (selectedTaskId) setSelectedTaskId(null);
+            else if (showCreateModal) setShowCreateModal(false);
+        },
+        'Ctrl+n': () => setShowCreateModal(true),
+    }), [selectedTaskId, showCreateModal]);
+    useKeyboardShortcuts(shortcuts);
 
     useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, []);
 
@@ -166,6 +181,17 @@ export default function TaskListPage() {
         }
     }
 
+    async function bulkChangeDept(dept: Department) {
+        setBulkDeptOpen(false);
+        let ok = 0;
+        for (const id of selectedIds) {
+            try { await tasksApi.update(id, { department_label: dept } as any); ok++; } catch {}
+        }
+        showToast(`${ok} task → ${DEPARTMENTS[dept].label}`);
+        setSelectedIds(new Set());
+        loadTasks();
+    }
+
     return (
         <div className="p-6 animate-fade-in">
             {/* Header */}
@@ -195,6 +221,13 @@ export default function TaskListPage() {
                         </button>
                     </div>
                     <button
+                        onClick={() => exportToCSV(tasks)}
+                        className="flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
+                        title="Exportă lista curentă"
+                    >
+                        CSV
+                    </button>
+                    <button
                         onClick={() => setShowCreateModal(true)}
                         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
                     >
@@ -210,6 +243,7 @@ export default function TaskListPage() {
                     <div className="flex-1 relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
                         <input
+                            ref={searchRef}
                             type="text"
                             value={searchText}
                             onChange={e => setSearchText(e.target.value)}
@@ -552,6 +586,31 @@ export default function TaskListPage() {
                                             {(u.display_name || u.email).charAt(0)}
                                         </div>
                                         {u.display_name || u.email}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Department */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setBulkDeptOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
+                        >
+                            <Tag className="w-3.5 h-3.5" /> Dept <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {bulkDeptOpen && (
+                            <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[180px] animate-slide-up">
+                                {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
+                                    <button
+                                        key={dept}
+                                        onClick={() => bulkChangeDept(dept)}
+                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-navy-700 transition-colors"
+                                        style={{ color: DEPARTMENTS[dept].color }}
+                                    >
+                                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: DEPARTMENTS[dept].color }} />
+                                        {DEPARTMENTS[dept].label}
                                     </button>
                                 ))}
                             </div>

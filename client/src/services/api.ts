@@ -15,6 +15,18 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Auto-logout on expired/invalid token
+api.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
+            localStorage.removeItem('visoro_token');
+            window.location.href = '/';
+        }
+        return Promise.reject(err);
+    }
+);
+
 // Auth
 export const authApi = {
     login: (data: any) => api.post('/auth/login', data).then(r => r.data),
@@ -76,6 +88,7 @@ export const dashboardApi = {
     stats: () => api.get<DashboardStats>('/dashboard/stats').then(r => r.data),
     charts: () => api.get<DashboardCharts>('/dashboard/charts').then(r => r.data),
     activeAlerts: () => api.get<any[]>('/dashboard/active-alerts').then(r => r.data),
+    myStats: () => api.get<any>('/dashboard/my-stats').then(r => r.data),
 };
 
 // Recurring

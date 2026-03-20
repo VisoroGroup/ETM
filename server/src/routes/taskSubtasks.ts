@@ -8,7 +8,7 @@ const router = Router({ mergeParams: true });
 router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
-        const { title, assigned_to } = req.body;
+        const { title, assigned_to, due_date, priority } = req.body;
 
         if (!title) {
             res.status(400).json({ error: 'Titlul subtask-ului este obligatoriu.' });
@@ -23,9 +23,9 @@ router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response)
         const orderIndex = maxRows[0].max_index + 1;
 
         const { rows } = await pool.query(
-            `INSERT INTO subtasks (task_id, title, assigned_to, order_index)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-            [taskId, title, assigned_to || null, orderIndex]
+            `INSERT INTO subtasks (task_id, title, assigned_to, order_index, due_date, priority)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [taskId, title, assigned_to || null, orderIndex, due_date || null, priority || 'medium']
         );
 
         // Activity log
@@ -83,7 +83,7 @@ router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response)
 router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId, subtaskId } = req.params;
-        const { title, is_completed, assigned_to } = req.body;
+        const { title, is_completed, assigned_to, due_date, priority } = req.body;
 
         const updates: string[] = [];
         const values: any[] = [];
@@ -144,6 +144,14 @@ router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res:
                     })]
                 );
             }
+        }
+        if (due_date !== undefined) {
+            updates.push(`due_date = $${paramIndex++}`);
+            values.push(due_date || null);
+        }
+        if (priority !== undefined) {
+            updates.push(`priority = $${paramIndex++}`);
+            values.push(priority);
         }
 
         if (updates.length === 0) {

@@ -23,6 +23,7 @@ export default function DashboardPage() {
     const [myTasksOnly, setMyTasksOnly] = useState(false);
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
+    const [myStats, setMyStats] = useState<any>(null);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -32,16 +33,18 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
         try {
-            const [s, c, tasks, alerts] = await Promise.all([
+            const [s, c, tasks, alerts, ms] = await Promise.all([
                 dashboardApi.stats(),
                 dashboardApi.charts(),
                 tasksApi.list(),
-                dashboardApi.activeAlerts().catch(() => [])
+                dashboardApi.activeAlerts().catch(() => []),
+                dashboardApi.myStats().catch(() => null)
             ]);
             setStats(s);
             setCharts(c);
             setAllTasks(tasks.tasks || tasks);
             setActiveAlerts(alerts);
+            setMyStats(ms);
         } catch (err) {
             console.error('Dashboard load error:', err);
         } finally {
@@ -216,6 +219,40 @@ export default function DashboardPage() {
                     </div>
                 ))}
             </div>
+
+            {/* My personal stats */}
+            {myStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-navy-900/50 border border-cyan-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <User className="w-4 h-4 text-cyan-400" />
+                            <span className="text-xs font-medium text-cyan-400">Asignate mie</span>
+                        </div>
+                        <p className="text-2xl font-bold">{myStats.my_active}</p>
+                    </div>
+                    <div className="bg-navy-900/50 border border-red-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <AlertTriangle className="w-4 h-4 text-red-400" />
+                            <span className="text-xs font-medium text-red-400">Depășite</span>
+                        </div>
+                        <p className="text-2xl font-bold">{myStats.my_overdue}</p>
+                    </div>
+                    <div className="bg-navy-900/50 border border-yellow-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle2 className="w-4 h-4 text-yellow-400" />
+                            <span className="text-xs font-medium text-yellow-400">Subtask-uri rămase</span>
+                        </div>
+                        <p className="text-2xl font-bold">{myStats.my_pending_subtasks}</p>
+                    </div>
+                    <div className="bg-navy-900/50 border border-green-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <TrendingUp className="w-4 h-4 text-green-400" />
+                            <span className="text-xs font-medium text-green-400">Finalizate luna aceasta</span>
+                        </div>
+                        <p className="text-2xl font-bold">{myStats.my_completed_this_month}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Calendar mode */}
             {showCalendar ? (

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { validateCreateComment } from '../middleware/validation';
 
 const router = Router({ mergeParams: true });
 
@@ -23,7 +24,7 @@ router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) 
 });
 
 // POST /api/tasks/:id/comments
-router.post('/comments', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/comments', authMiddleware, validateCreateComment, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
         const { content, mentions = [] } = req.body;

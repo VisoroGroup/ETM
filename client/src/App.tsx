@@ -11,6 +11,7 @@ import EmailLogsPage from './components/emails/EmailLogsPage';
 import TemplatesPage from './pages/TemplatesPage';
 import PaymentsPage from './components/payments/PaymentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -49,9 +50,9 @@ function AppRoutes() {
         <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
         <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
-        <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
-        <Route path="/financiar" element={<ErrorBoundary><PaymentsPage /></ErrorBoundary>} />
-        <Route path="/emails" element={<ErrorBoundary><EmailLogsPage /></ErrorBoundary>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

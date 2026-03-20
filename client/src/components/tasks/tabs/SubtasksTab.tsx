@@ -5,7 +5,13 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Plus, Check, Trash2, GripVertical, CheckCircle2 } from 'lucide-react';
+import { Plus, Check, Trash2, GripVertical, CheckCircle2, Calendar } from 'lucide-react';
+
+const PRIORITY_COLORS = {
+    low: { dot: 'bg-navy-500', label: 'Scăzut' },
+    medium: { dot: 'bg-yellow-400', label: 'Mediu' },
+    high: { dot: 'bg-red-400', label: 'Ridicat' },
+} as const;
 
 interface Props {
     task: TaskDetail;
@@ -56,6 +62,24 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.delete(taskId, subtaskId);
             onReload();
             onUpdate();
+        } catch {
+            showToast('Eroare', 'error');
+        }
+    }
+
+    async function changePriority(subtaskId: string, priority: 'low' | 'medium' | 'high') {
+        try {
+            await subtasksApi.update(taskId, subtaskId, { priority } as any);
+            onReload();
+        } catch {
+            showToast('Eroare', 'error');
+        }
+    }
+
+    async function changeDueDate(subtaskId: string, due_date: string | null) {
+        try {
+            await subtasksApi.update(taskId, subtaskId, { due_date } as any);
+            onReload();
         } catch {
             showToast('Eroare', 'error');
         }
@@ -119,6 +143,27 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                             <span className={`flex-1 text-sm ${subtask.is_completed ? 'line-through text-navy-500' : ''}`}>
                                                 {subtask.title}
                                             </span>
+
+                                            {/* Priority */}
+                                            <select
+                                                value={subtask.priority || 'medium'}
+                                                onChange={e => changePriority(subtask.id, e.target.value as any)}
+                                                onClick={e => e.stopPropagation()}
+                                                className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[70px]"
+                                            >
+                                                <option value="low">⬇ Scăzut</option>
+                                                <option value="medium">➡ Mediu</option>
+                                                <option value="high">⬆ Ridicat</option>
+                                            </select>
+
+                                            {/* Due date */}
+                                            <input
+                                                type="date"
+                                                value={subtask.due_date || ''}
+                                                onChange={e => changeDueDate(subtask.id, e.target.value || null)}
+                                                onClick={e => e.stopPropagation()}
+                                                className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[110px]"
+                                            />
 
                                             {/* Assign user */}
                                             <select

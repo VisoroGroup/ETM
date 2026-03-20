@@ -7,7 +7,16 @@ export interface AuthRequest extends Request {
     user?: User;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'visoro-task-manager-jwt-secret-dev-2024';
+const DEFAULT_JWT_SECRET = 'visoro-task-manager-jwt-secret-dev-2024';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === DEFAULT_JWT_SECRET) {
+    console.error('🚨 CRITICAL: JWT_SECRET is not set in production! Using insecure default.');
+    throw new Error('JWT_SECRET environment variable must be set in production.');
+}
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  JWT_SECRET not set — using development default. Do NOT use this in production.');
+}
 
 export function generateToken(user: User): string {
     return jwt.sign(

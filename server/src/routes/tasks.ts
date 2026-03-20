@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
+import { validateCreateTask, validateUpdateTask, validateChangeStatus } from '../middleware/validation';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
 import taskAttachmentRoutes from './taskAttachments';
@@ -179,7 +180,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/tasks — create task
-router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/', authMiddleware, validateCreateTask, async (req: AuthRequest, res: Response) => {
     try {
         const { title, description, due_date, department_label, assigned_to } = req.body;
 
@@ -311,7 +312,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/tasks/:id — update task
-router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/:id', authMiddleware, validateUpdateTask, async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { title, description, department_label, assigned_to } = req.body;
@@ -379,7 +380,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/tasks/:id/status — change status
-router.put('/:id/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
