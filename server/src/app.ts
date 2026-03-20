@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import pool from './config/database';
+import { runMigrations } from './database/migrate';
 
 // Load env before anything else
 dotenv.config({ path: path.join(__dirname, '../..', '.env') });
@@ -98,10 +99,17 @@ if (process.env.SENTRY_DSN) {
 }
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`🚀 Visoro Task Manager API running on port ${PORT}`);
     console.log(`📌 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Auth bypass: ${process.env.DEV_AUTH_BYPASS === 'true' ? 'ENABLED' : 'DISABLED'}`);
+
+    // Run pending migrations
+    try {
+        await runMigrations();
+    } catch (err) {
+        console.error('⚠️  Migration error (non-fatal):', err);
+    }
 
     // Start email scheduler
     startEmailScheduler();

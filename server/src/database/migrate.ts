@@ -1,11 +1,8 @@
 import pool from '../config/database';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
 
-dotenv.config({ path: path.join(__dirname, '../../..', '.env') });
-
-async function migrate() {
+export async function runMigrations() {
     const client = await pool.connect();
 
     try {
@@ -30,8 +27,7 @@ async function migrate() {
             );
 
             if (rows.length > 0) {
-                console.log(`⏭️  Skipping ${file} (already executed)`);
-                continue;
+                continue; // already executed
             }
 
             const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
@@ -50,14 +46,22 @@ async function migrate() {
             }
         }
 
-        console.log('\n✅ All migrations completed successfully!');
+        console.log('✅ Migrations up to date.');
     } finally {
         client.release();
-        await pool.end();
     }
 }
 
-migrate().catch((err) => {
-    console.error('Migration failed:', err);
-    process.exit(1);
-});
+// Allow standalone execution: npx tsx src/database/migrate.ts
+if (require.main === module) {
+    import('dotenv').then(dotenv => {
+        dotenv.config({ path: path.join(__dirname, '../../..', '.env') });
+    });
+    runMigrations()
+        .then(() => pool.end())
+        .catch((err) => {
+            console.error('Migration failed:', err);
+            process.exit(1);
+        });
+}
+
