@@ -606,6 +606,59 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
     }
 });
 
+// POST /api/tasks/:id/duplicate — duplicate task with subtasks
+router.post('/:id/duplicate', authMiddleware, async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    try {
+        // Get original task
+        const { rows: [original] } = await pool.query(
+            'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]
+        );
+        if (!original) { res.status(404).json({ error: 'Task negăsit.' }); return; }
+
+        const newId = uuidv4();
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 7);
+
+        // Create duplicate task
+        await pool.query(
+            `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label)
+             VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6)`,
+            [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0], req.user!.id, original.department_label]
+        );
+
+        // Copy subtasks (reset checkboxes, clear assigned_to)
+        const { rows: subtasks } = await pool.query(
+            'SELECT title, order_index FROM subtasks WHERE task_id = $1 ORDER BY order_index', [id]
+        );
+        for (const st of subtasks) {
+            await pool.query(
+                'INSERT INTO subtasks (task_id, title, is_completed, assigned_to, order_index) VALUES ($1, $2, false, NULL, $3)',
+                [newId, st.title, st.order_index]
+            );
+        }
+
+        // Activity log on new task
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'created', $3)`,
+            [newId, req.user!.id, JSON.stringify({ duplicated_from: id, original_title: original.title })]
+        );
+
+        // Activity log on original task
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'created', $3)`,
+            [id, req.user!.id, JSON.stringify({ duplicated_to: newId })]
+        );
+
+        // Return new task
+        const { rows: [newTask] } = await pool.query('SELECT * FROM tasks WHERE id = $1', [newId]);
+        res.status(201).json(newTask);
+    } catch (err) {
+        console.error('Error duplicating task:', err);
+        res.status(500).json({ error: 'Eroare la duplicarea task-ului.' });
+    }
+});
+
 // === SUB-ROUTERS (mounted on /:id) ===
 router.use('/:id', taskSubtaskRoutes);
 router.use('/:id', taskCommentRoutes);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { tasksApi } from '../../services/api';
+import { tasksApi, savedFiltersApi } from '../../services/api';
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,7 +12,8 @@ import { SkeletonTaskList } from '../ui/Skeleton';
 import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
-    LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag
+    LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag,
+    Bookmark, BookmarkPlus
 } from 'lucide-react';
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
@@ -36,6 +37,9 @@ export default function TaskListPage() {
     const [bulkDeptOpen, setBulkDeptOpen] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deptDropdownId, setDeptDropdownId] = useState<string | null>(null);
+    const [savedViews, setSavedViews] = useState<any[]>([]);
+    const [savingView, setSavingView] = useState(false);
+    const [viewName, setViewName] = useState('');
     const { showToast } = useToast();
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
@@ -52,6 +56,30 @@ export default function TaskListPage() {
     useKeyboardShortcuts(shortcuts);
 
     useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, []);
+    useEffect(() => { savedFiltersApi.list().then(setSavedViews).catch(() => {}); }, []);
+    const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== '');
+    async function saveView() {
+        if (!viewName.trim()) return;
+        try {
+            const created = await savedFiltersApi.create(viewName.trim(), 'tasks', filters);
+            setSavedViews(prev => [...prev, created]);
+            setViewName('');
+            setSavingView(false);
+            showToast('Vedere salvată!');
+        } catch { showToast('Eroare la salvare', 'error'); }
+    }
+    async function deleteView(id: string) {
+        try {
+            await savedFiltersApi.delete(id);
+            setSavedViews(prev => prev.filter(v => v.id !== id));
+            showToast('Vedere ștearsă');
+        } catch { showToast('Eroare', 'error'); }
+    }
+    function applyView(view: any) {
+        setFilters(view.filter_config || {});
+        if (view.filter_config?.search) setSearchText(view.filter_config.search);
+        setShowFilters(true);
+    }
 
     useEffect(() => {
         loadTasks();
@@ -269,6 +297,50 @@ export default function TaskListPage() {
                         Filtre {activeFilterCount > 0 && `(${activeFilterCount})`}
                     </button>
                 </div>
+
+                {/* Saved filter chips */}
+                {(savedViews.length > 0 || hasActiveFilters) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {savedViews.filter(v => v.page === 'tasks').map(v => (
+                            <div key={v.id} className="flex items-center group">
+                                <button
+                                    onClick={() => applyView(v)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-l-lg text-xs text-navy-300 hover:bg-navy-700/50 hover:text-white transition-colors"
+                                >
+                                    <Bookmark className="w-3 h-3 text-blue-400" /> {v.name}
+                                </button>
+                                <button
+                                    onClick={() => deleteView(v.id)}
+                                    className="px-1.5 py-1.5 bg-navy-800/50 border border-l-0 border-navy-700/50 rounded-r-lg text-navy-500 hover:text-red-400 transition-colors"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        ))}
+                        {hasActiveFilters && !savingView && (
+                            <button
+                                onClick={() => setSavingView(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-navy-600 rounded-lg text-xs text-navy-400 hover:border-blue-500/50 hover:text-blue-400 transition-colors"
+                            >
+                                <BookmarkPlus className="w-3 h-3" /> Salvează vederea
+                            </button>
+                        )}
+                        {savingView && (
+                            <div className="flex items-center gap-1.5">
+                                <input
+                                    autoFocus
+                                    value={viewName}
+                                    onChange={e => setViewName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && saveView()}
+                                    placeholder="Numele vederii..."
+                                    className="px-2 py-1 bg-navy-800 border border-navy-600 rounded text-xs text-white w-40 outline-none focus:border-blue-500"
+                                />
+                                <button onClick={saveView} className="text-xs text-blue-400 hover:text-blue-300">Salvează</button>
+                                <button onClick={() => { setSavingView(false); setViewName(''); }} className="text-xs text-navy-500 hover:text-navy-300">Anulează</button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Filter panel */}
                 {showFilters && (

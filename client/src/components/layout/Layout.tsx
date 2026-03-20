@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote
+    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -31,6 +31,7 @@ export default function Layout() {
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
+        { to: '/activitate', icon: Activity, label: 'Activitate' },
         { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
         ...(user?.role === 'admin' ? [{ to: '/financiar', icon: Banknote, label: 'Financiar' }] : []),
         ...(user?.role === 'admin' ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),

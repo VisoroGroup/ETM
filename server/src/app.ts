@@ -22,6 +22,8 @@ import notificationRoutes from './routes/notifications';
 import emailRoutes from './routes/emails';
 import templatesRoutes from './routes/templates';
 import paymentsRoutes from './routes/payments';
+import savedFiltersRoutes from './routes/savedFilters';
+import activityFeedRoutes from './routes/activityFeed';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { startEmailScheduler } from './cron/emailScheduler';
 import { startPaymentEmailScheduler } from './cron/paymentScheduler';
@@ -57,7 +59,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/payments', paymentsRoutes);
-
+app.use('/api/saved-filters', savedFiltersRoutes);
+app.use('/api/activity-feed', activityFeedRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {
     let dbOk = false;

@@ -11,6 +11,7 @@ import EmailLogsPage from './components/emails/EmailLogsPage';
 import TemplatesPage from './pages/TemplatesPage';
 import PaymentsPage from './components/payments/PaymentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import ActivityFeedPage from './components/activity/ActivityFeedPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
@@ -49,6 +50,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
         <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
+        <Route path="/activitate" element={<ErrorBoundary><ActivityFeedPage /></ErrorBoundary>} />
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />

@@ -45,6 +45,7 @@ export const tasksApi = {
     changeDueDate: (id: string, due_date: string, reason: string) =>
         api.put(`/tasks/${id}/due-date`, { due_date, reason }).then(r => r.data),
     delete: (id: string) => api.delete(`/tasks/${id}`).then(r => r.data),
+    duplicate: (id: string) => api.post<Task>(`/tasks/${id}/duplicate`).then(r => r.data),
 };
 
 // Subtasks
@@ -104,6 +105,12 @@ export const activityApi = {
     list: (taskId: string) => api.get(`/tasks/${taskId}/activity`).then(r => r.data),
 };
 
+// Activity Feed (global)
+export const activityFeedApi = {
+    list: (params?: { user_id?: string; department?: string; action_type?: string; page?: number; limit?: number }) =>
+        api.get('/activity-feed', { params }).then(r => r.data),
+};
+
 // Alerts (În Atenție)
 export const alertsApi = {
     list: (taskId: string) => api.get<TaskAlert[]>(`/tasks/${taskId}/alerts`).then(r => r.data),
@@ -113,6 +120,14 @@ export const alertsApi = {
         api.put<TaskAlert>(`/tasks/${taskId}/alerts/${alertId}/resolve`, {}).then(r => r.data),
     delete: (taskId: string, alertId: string) =>
         api.delete(`/tasks/${taskId}/alerts/${alertId}`).then(r => r.data),
+};
+
+// Saved Filters
+export const savedFiltersApi = {
+    list: () => api.get('/saved-filters').then(r => r.data),
+    create: (name: string, page: string, filter_config: any) =>
+        api.post('/saved-filters', { name, page, filter_config }).then(r => r.data),
+    delete: (id: string) => api.delete(`/saved-filters/${id}`).then(r => r.data),
 };
 
 // Admin

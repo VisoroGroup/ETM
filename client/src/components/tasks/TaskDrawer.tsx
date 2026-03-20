@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SkeletonDrawer } from '../ui/Skeleton';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
+import { tasksApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,7 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue } from '../../utils/helpers';
 import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
-    ChevronDown, Ban, Trash2,
+    ChevronDown, Ban, Trash2, Copy,
     Loader2, RefreshCw,
     CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil
 } from 'lucide-react';
@@ -429,9 +430,23 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                     {/* Footer actions */}
                     <div className="flex-shrink-0 p-4 border-t border-navy-700/50 flex justify-between">
-                        <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" /> Șterge task
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" /> Șterge
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await tasksApi.duplicate(taskId);
+                                        showToast('Task duplicat cu succes!');
+                                        onUpdate();
+                                    } catch { showToast('Eroare la duplicare', 'error'); }
+                                }}
+                                className="text-xs text-navy-400 hover:text-blue-400 flex items-center gap-1 transition-colors"
+                            >
+                                <Copy className="w-3.5 h-3.5" /> Duplică
+                            </button>
+                        </div>
                         <button onClick={onClose} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">
                             Închide
                         </button>
