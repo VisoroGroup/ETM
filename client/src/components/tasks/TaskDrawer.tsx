@@ -1,18 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
-import { tasksApi, subtasksApi, commentsApi, attachmentsApi, recurringApi, alertsApi } from '../../services/api';
-import type { TaskDetail, TaskStatus, Department, User, Subtask, TaskAlert } from '../../types';
+import { useState, useEffect } from 'react';
+import { tasksApi, recurringApi } from '../../services/api';
+import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue, formatFileSize } from '../../utils/helpers';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import type { DropResult } from '@hello-pangea/dnd';
+import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue } from '../../utils/helpers';
 import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
-    ChevronDown, Plus, Check, Ban, Trash2,
-    Upload, Download, GripVertical, Send, Loader2, RefreshCw,
+    ChevronDown, Ban, Trash2,
+    Loader2, RefreshCw,
     CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck
 } from 'lucide-react';
+
+// Tab components
+import SubtasksTab from './tabs/SubtasksTab';
+import CommentsTab from './tabs/CommentsTab';
+import FilesTab from './tabs/FilesTab';
+import ActivityTab from './tabs/ActivityTab';
+import AlertsTab from './tabs/AlertsTab';
 
 interface Props {
     taskId: string;
@@ -38,21 +43,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [dueDateReason, setDueDateReason] = useState('');
     const [_pendingStatus, setPendingStatus] = useState<TaskStatus | null>(null);
 
-    // Subtask
-    const [newSubtask, setNewSubtask] = useState('');
-
-    // Comment
-    const [newComment, setNewComment] = useState('');
-    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
-    const [mentionQuery, setMentionQuery] = useState('');
-    const [mentionIds, setMentionIds] = useState<string[]>([]);
-    const commentRef = useRef<HTMLTextAreaElement>(null);
-
-    // File
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Alert
-    const [newAlertText, setNewAlertText] = useState('');
+    // Delete confirm
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // Title edit
@@ -161,135 +152,6 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         }
     }
 
-    // Subtasks
-    async function addSubtask() {
-        if (!newSubtask.trim()) return;
-        try {
-            await subtasksApi.create(taskId, { title: newSubtask.trim() });
-            setNewSubtask('');
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function toggleSubtask(subtask: Subtask) {
-        try {
-            await subtasksApi.update(taskId, subtask.id, { is_completed: !subtask.is_completed });
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function assignSubtask(subtaskId: string, userId: string | null) {
-        try {
-            await subtasksApi.update(taskId, subtaskId, { assigned_to: userId } as any);
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function deleteSubtask(subtaskId: string) {
-        try {
-            await subtasksApi.delete(taskId, subtaskId);
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function onDragEnd(result: DropResult) {
-        if (!result.destination || !task) return;
-        const items = Array.from(task.subtasks);
-        const [moved] = items.splice(result.source.index, 1);
-        items.splice(result.destination.index, 0, moved);
-        const order = items.map((item, idx) => ({ id: item.id, order_index: idx }));
-        try {
-            await subtasksApi.reorder(taskId, order);
-            loadTask();
-        } catch {
-            showToast('Eroare la reordonare', 'error');
-        }
-    }
-
-    // Comments
-    function handleCommentInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-        const val = e.target.value;
-        setNewComment(val);
-
-        const lastAt = val.lastIndexOf('@');
-        if (lastAt >= 0) {
-            const afterAt = val.substring(lastAt + 1);
-            if (!afterAt.includes(' ') && afterAt.length <= 30) {
-                setMentionQuery(afterAt.toLowerCase());
-                setShowMentionDropdown(true);
-                return;
-            }
-        }
-        setShowMentionDropdown(false);
-    }
-
-    function selectMention(u: User) {
-        const lastAt = newComment.lastIndexOf('@');
-        const before = newComment.substring(0, lastAt);
-        setNewComment(`${before}@${u.display_name} `);
-        setMentionIds(prev => [...prev, u.id]);
-        setShowMentionDropdown(false);
-        commentRef.current?.focus();
-    }
-
-    async function submitComment() {
-        if (!newComment.trim()) return;
-        try {
-            await commentsApi.create(taskId, newComment.trim(), mentionIds);
-            setNewComment('');
-            setMentionIds([]);
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function deleteComment(commentId: string) {
-        try {
-            await commentsApi.delete(taskId, commentId);
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    // Files
-    async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            await attachmentsApi.upload(taskId, file);
-            showToast('Fișier încărcat!');
-            loadTask();
-            onUpdate();
-        } catch {
-            showToast('Eroare la încărcare', 'error');
-        }
-        e.target.value = '';
-    }
-
-    async function deleteAttachment(attachmentId: string) {
-        try {
-            await attachmentsApi.delete(taskId, attachmentId);
-            showToast('Fișier șters');
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
     // Delete task
     async function handleDeleteTask() {
         setShowDeleteConfirm(false);
@@ -320,61 +182,6 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         }
     }
 
-    // Alerts
-    async function addAlert() {
-        if (!newAlertText.trim()) return;
-        try {
-            await alertsApi.create(taskId, newAlertText.trim());
-            setNewAlertText('');
-            showToast('Alertă adăugată!');
-            loadTask();
-        } catch {
-            showToast('Eroare la adăugarea alertei', 'error');
-        }
-    }
-
-    async function resolveAlert(alertId: string) {
-        try {
-            await alertsApi.resolve(taskId, alertId);
-            showToast('Alertă marcată ca rezolvată');
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    async function deleteAlert(alertId: string) {
-        try {
-            await alertsApi.delete(taskId, alertId);
-            showToast('Alertă ștearsă');
-            loadTask();
-        } catch {
-            showToast('Eroare', 'error');
-        }
-    }
-
-    // Activity action descriptions
-    function getActionDescription(entry: any): string {
-        const d = entry.details || {};
-        switch (entry.action_type) {
-            case 'created': return `a creat task-ul`;
-            case 'status_changed':
-                return `a schimbat statusul din "${STATUSES[d.old_status as TaskStatus]?.label || d.old_status}" în "${STATUSES[d.new_status as TaskStatus]?.label || d.new_status}"${d.reason ? ` — Motiv: ${d.reason}` : ''}`;
-            case 'due_date_changed':
-                return `a schimbat data limită din ${formatDate(d.old_date)} în ${formatDate(d.new_date)} — Motiv: ${d.reason}`;
-            case 'comment_added': return `a adăugat un comentariu`;
-            case 'subtask_added': return `a adăugat subtask-ul "${d.subtask_title}"`;
-            case 'subtask_completed': return `a ${d.completed ? 'completat' : 'debifat'} subtask-ul "${d.subtask_title}"`;
-            case 'subtask_assigned': return `a asignat subtask-ul "${d.subtask_title}" lui ${d.assigned_to_name || 'nimeni'}`;
-            case 'attachment_added': return `a atașat fișierul "${d.file_name}"`;
-            case 'label_changed': return `a schimbat departamentul din "${DEPARTMENTS[d.old_label as Department]?.label}" în "${DEPARTMENTS[d.new_label as Department]?.label}"`;
-            case 'recurring_created': return `a setat task-ul ca recurent (${d.frequency})`;
-            case 'alert_added': return `a adăugat o alertă în "În Atenție"`;
-            case 'alert_resolved': return `a rezolvat o alertă din "În Atenție"`;
-            default: return entry.action_type;
-        }
-    }
-
     if (loading || !task) {
         return (
             <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -389,13 +196,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const completedSubtasks = task.subtasks.filter(s => s.is_completed).length;
     const totalSubtasks = task.subtasks.length;
 
-    const filteredMentionUsers = users.filter(u =>
-        u.display_name.toLowerCase().includes(mentionQuery) ||
-        u.email.toLowerCase().includes(mentionQuery)
-    );
-
     const activeAlerts = task.alerts?.filter((a: TaskAlert) => !a.is_resolved) ?? [];
-    const resolvedAlerts = task.alerts?.filter((a: TaskAlert) => a.is_resolved) ?? [];
 
     const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number; alertActive?: boolean }[] = [
         { key: 'subtasks', label: 'Subtask-uri', icon: <CheckCircle2 className="w-3.5 h-3.5" />, count: totalSubtasks },
@@ -610,343 +411,20 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                     {/* Tab content */}
                     <div className="flex-1 overflow-y-auto p-5">
-                        {/* SUBTASKS TAB */}
                         {activeTab === 'subtasks' && (
-                            <div className="space-y-3">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newSubtask}
-                                        onChange={e => setNewSubtask(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && addSubtask()}
-                                        placeholder="Adaugă subtask..."
-                                        className="flex-1 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
-                                    />
-                                    <button onClick={addSubtask} className="px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors">
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </div>
-
-                                <DragDropContext onDragEnd={onDragEnd}>
-                                    <Droppable droppableId="subtasks">
-                                        {(provided) => (
-                                            <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
-                                                {task.subtasks.map((subtask, index) => (
-                                                    <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
-                                                        {(provided, snapshot) => (
-                                                            <div
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                className={`flex items-center gap-2 p-2.5 rounded-lg transition-colors ${snapshot.isDragging ? 'bg-navy-700/50 shadow-lg' : 'hover:bg-navy-800/30'
-                                                                    }`}
-                                                            >
-                                                                <div {...provided.dragHandleProps} className="text-navy-600 hover:text-navy-400 cursor-grab">
-                                                                    <GripVertical className="w-4 h-4" />
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => toggleSubtask(subtask)}
-                                                                    className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-all ${subtask.is_completed
-                                                                        ? 'bg-blue-500 border-blue-500'
-                                                                        : 'border-navy-600 hover:border-blue-400'
-                                                                        }`}
-                                                                >
-                                                                    {subtask.is_completed && <Check className="w-3 h-3 text-white" />}
-                                                                </button>
-                                                                <span className={`flex-1 text-sm ${subtask.is_completed ? 'line-through text-navy-500' : ''}`}>
-                                                                    {subtask.title}
-                                                                </span>
-
-                                                                {/* Assign user */}
-                                                                <select
-                                                                    value={subtask.assigned_to || ''}
-                                                                    onChange={e => assignSubtask(subtask.id, e.target.value || null)}
-                                                                    className="px-2 py-1 bg-navy-800/50 border border-navy-700/50 rounded text-[11px] text-navy-300 focus:outline-none max-w-[120px]"
-                                                                >
-                                                                    <option value="">Neasignat</option>
-                                                                    {users.map(u => (
-                                                                        <option key={u.id} value={u.id}>{u.display_name}</option>
-                                                                    ))}
-                                                                </select>
-
-                                                                <button
-                                                                    onClick={() => deleteSubtask(subtask.id)}
-                                                                    className="text-navy-600 hover:text-red-400 transition-colors"
-                                                                >
-                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </Draggable>
-                                                ))}
-                                                {provided.placeholder}
-                                            </div>
-                                        )}
-                                    </Droppable>
-                                </DragDropContext>
-
-                                {task.subtasks.length === 0 && (
-                                    <div className="text-center py-8">
-                                        <CheckCircle2 className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                                        <p className="text-navy-500 text-sm">Niciun subtask încă</p>
-                                        <p className="text-navy-600 text-xs">Adaugă subtask-uri pentru a organiza task-ul.</p>
-                                    </div>
-                                )}
-                            </div>
+                            <SubtasksTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} />
                         )}
-
-                        {/* COMMENTS TAB */}
                         {activeTab === 'comments' && (
-                            <div className="space-y-4">
-                                {/* Comment input */}
-                                <div className="relative">
-                                    <textarea
-                                        ref={commentRef}
-                                        value={newComment}
-                                        onChange={handleCommentInput}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
-                                        rows={3}
-                                        placeholder="Scrie un comentariu... folosește @ pentru a menționa"
-                                        className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
-                                    />
-                                    {showMentionDropdown && filteredMentionUsers.length > 0 && (
-                                        <div className="absolute top-full left-0 w-64 mt-1 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto animate-fade-in">
-                                            {filteredMentionUsers.slice(0, 5).map(u => (
-                                                <button
-                                                    key={u.id}
-                                                    onClick={() => selectMention(u)}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-navy-700/50 text-sm text-left transition-colors"
-                                                >
-                                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                                        {u.display_name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-medium">{u.display_name}</p>
-                                                        <p className="text-[10px] text-navy-500">{u.email}</p>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={submitComment}
-                                        disabled={!newComment.trim()}
-                                        className="absolute right-2 bottom-2 p-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg disabled:opacity-30 transition-all"
-                                    >
-                                        <Send className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-
-                                {/* Comments list */}
-                                {task.comments.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {task.comments.map(comment => (
-                                            <div key={comment.id} className="flex gap-2.5 group">
-                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5">
-                                                    {comment.author_name?.charAt(0)}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-medium">{comment.author_name}</span>
-                                                        <span className="text-[10px] text-navy-500">{timeAgo(comment.created_at)}</span>
-                                                        {comment.author_id === user?.id && (
-                                                            <button
-                                                                onClick={() => deleteComment(comment.id)}
-                                                                className="opacity-0 group-hover:opacity-100 text-navy-600 hover:text-red-400 transition-all"
-                                                            >
-                                                                <Trash2 className="w-3 h-3" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-sm text-navy-200 mt-0.5 whitespace-pre-wrap">{comment.content}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <MessageSquare className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                                        <p className="text-navy-500 text-sm">Niciun comentariu încă</p>
-                                    </div>
-                                )}
-                            </div>
+                            <CommentsTab task={task} taskId={taskId} onReload={loadTask} />
                         )}
-
-                        {/* FILES TAB */}
                         {activeTab === 'files' && (
-                            <div className="space-y-3">
-                                <input ref={fileInputRef} type="file" onChange={uploadFile} className="hidden" />
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-navy-700 rounded-lg text-sm text-navy-400 hover:border-blue-500/50 hover:text-blue-400 transition-all"
-                                >
-                                    <Upload className="w-4 h-4" /> Încarcă fișier
-                                </button>
-
-                                {task.attachments.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {task.attachments.map(att => (
-                                            <div key={att.id} className="flex items-center gap-3 p-3 bg-navy-800/30 rounded-lg group">
-                                                <Paperclip className="w-4 h-4 text-navy-500 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm truncate">{att.file_name}</p>
-                                                    <p className="text-xs text-navy-500">{formatFileSize(att.file_size)} · {att.uploader_name} · {timeAgo(att.created_at)}</p>
-                                                </div>
-                                                <a
-                                                    href={att.file_url}
-                                                    download={att.file_name}
-                                                    className="text-navy-500 hover:text-blue-400 transition-colors"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                </a>
-                                                {(att.uploaded_by === user?.id || user?.role === 'admin') && (
-                                                    <button
-                                                        onClick={() => deleteAttachment(att.id)}
-                                                        className="opacity-0 group-hover:opacity-100 text-navy-500 hover:text-red-400 transition-all"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <Paperclip className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                                        <p className="text-navy-500 text-sm">Niciun fișier atașat</p>
-                                    </div>
-                                )}
-                            </div>
+                            <FilesTab task={task} taskId={taskId} onReload={loadTask} onUpdate={onUpdate} />
                         )}
-
-                        {/* ACTIVITY TAB */}
                         {activeTab === 'activity' && (
-                            <div>
-                                {task.activity.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {task.activity.map(entry => (
-                                            <div key={entry.id} className="flex gap-2.5">
-                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-navy-600 to-navy-700 flex items-center justify-center text-navy-300 text-[9px] font-bold flex-shrink-0 mt-0.5">
-                                                    {entry.user_name?.charAt(0)}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="text-xs">
-                                                        <span className="font-medium">{entry.user_name}</span>
-                                                        <span className="text-navy-400"> {getActionDescription(entry)}</span>
-                                                    </p>
-                                                    <p className="text-[10px] text-navy-500 mt-0.5">{timeAgo(entry.created_at)}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <Activity className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                                        <p className="text-navy-500 text-sm">Nicio activitate încă</p>
-                                    </div>
-                                )}
-                            </div>
+                            <ActivityTab task={task} />
                         )}
-                        {/* ALERTS TAB */}
                         {activeTab === 'alerts' && (
-                            <div className="space-y-4">
-                                {/* Warning banner */}
-                                <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-                                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs text-red-300 leading-relaxed">
-                                        Adaugă lucruri <strong>critice</strong> de care trebuie să ții cont. Dacă acestea nu sunt rezolvate, pot apărea probleme grave.
-                                    </p>
-                                </div>
-
-                                {/* Add new alert */}
-                                <div className="flex gap-2">
-                                    <textarea
-                                        value={newAlertText}
-                                        onChange={e => setNewAlertText(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addAlert(); } }}
-                                        rows={2}
-                                        placeholder="Descrie ce trebuie urmărit cu atenție..."
-                                        className="flex-1 px-3 py-2 bg-navy-800/50 border border-red-500/30 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-red-400/60 resize-none"
-                                    />
-                                    <button
-                                        onClick={addAlert}
-                                        disabled={!newAlertText.trim()}
-                                        className="px-3 py-2 bg-red-500 hover:bg-red-400 text-white rounded-lg transition-colors self-end disabled:opacity-30"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </div>
-
-                                {/* Active alerts */}
-                                {activeAlerts.length > 0 && (
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400/70">⚠ Active ({activeAlerts.length})</p>
-                                        {activeAlerts.map((alert: TaskAlert) => (
-                                            <div key={alert.id} className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl group">
-                                                <div className="flex items-start gap-2">
-                                                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                                                    <p className="flex-1 text-sm text-red-100 leading-relaxed">{alert.content}</p>
-                                                </div>
-                                                <div className="flex items-center justify-between mt-2 pl-6">
-                                                    <span className="text-[10px] text-navy-500">{alert.creator_name} · {timeAgo(alert.created_at)}</span>
-                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                        <button
-                                                            onClick={() => resolveAlert(alert.id)}
-                                                            title="Marchează rezolvat"
-                                                            className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg text-[11px] transition-colors"
-                                                        >
-                                                            <ShieldCheck className="w-3 h-3" /> Rezolvat
-                                                        </button>
-                                                        {alert.created_by === user?.id || user?.role === 'admin' ? (
-                                                            <button
-                                                                onClick={() => deleteAlert(alert.id)}
-                                                                className="p-1 text-navy-500 hover:text-red-400 transition-colors"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Resolved alerts */}
-                                {resolvedAlerts.length > 0 && (
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-navy-500">✓ Rezolvate ({resolvedAlerts.length})</p>
-                                        {resolvedAlerts.map((alert: TaskAlert) => (
-                                            <div key={alert.id} className="p-3 bg-navy-800/20 border border-navy-700/30 rounded-xl group opacity-60">
-                                                <div className="flex items-start gap-2">
-                                                    <ShieldCheck className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                                    <p className="flex-1 text-sm text-navy-400 line-through leading-relaxed">{alert.content}</p>
-                                                </div>
-                                                <div className="flex items-center justify-between mt-1 pl-6">
-                                                    <span className="text-[10px] text-navy-600">
-                                                        Rezolvat de {alert.resolved_by_name} · {alert.resolved_at ? timeAgo(alert.resolved_at) : ''}
-                                                    </span>
-                                                    {(alert.created_by === user?.id || user?.role === 'admin') && (
-                                                        <button
-                                                            onClick={() => deleteAlert(alert.id)}
-                                                            className="opacity-0 group-hover:opacity-100 p-1 text-navy-600 hover:text-red-400 transition-all"
-                                                        >
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {activeAlerts.length === 0 && resolvedAlerts.length === 0 && (
-                                    <div className="text-center py-8">
-                                        <AlertTriangle className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                                        <p className="text-navy-500 text-sm">Nicio alertă înregistrată</p>
-                                        <p className="text-navy-600 text-xs">Adaugă lucruri critice de urmărit.</p>
-                                    </div>
-                                )}
-                            </div>
+                            <AlertsTab task={task} taskId={taskId} onReload={loadTask} />
                         )}
                     </div>
 
