@@ -151,7 +151,7 @@ async function runDailyEmailJob() {
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
       FROM tasks t
-      WHERE t.status != 'terminat'
+      WHERE t.status != 'terminat' AND t.deleted_at IS NULL
     `);
 
         // Map of user_id → UserEmail data
@@ -194,7 +194,7 @@ async function runDailyEmailJob() {
 
             const { rows: subtaskAssignees } = await pool.query(
                 `SELECT DISTINCT assigned_to FROM subtasks
-         WHERE task_id = $1 AND assigned_to IS NOT NULL`,
+         WHERE task_id = $1 AND assigned_to IS NOT NULL AND deleted_at IS NULL`,
                 [task.id]
             );
             for (const row of subtaskAssignees) {
