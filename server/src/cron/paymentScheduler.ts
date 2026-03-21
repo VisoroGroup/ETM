@@ -84,26 +84,36 @@ export async function runDailyPaymentEmailJob() {
             // But let's just do: daysDiff (calendar days). If we want strictly "every 2 working days", there's math involved.
             // Let's approximate: 1 working day = 1 calendar day if weekday.
             // Let's just track it by checking payment_reminders 'overdue' records.
+            // Batch: get latest overdue reminder sent_at for all overdue payments (eliminates N+1)
+            const overdueIds = allOverdue.filter(p => !processedPaymentIds.has(p.id)).map(p => p.id);
+            const lastOverdueMap = new Map<string, Date>();
+            if (overdueIds.length > 0) {
+                const { rows: overdueReminders } = await client.query(`
+                    SELECT DISTINCT ON (payment_id) payment_id, sent_at 
+                    FROM payment_reminders 
+                    WHERE payment_id = ANY($1::uuid[]) AND reminder_type = 'overdue' AND sent = true
+                    ORDER BY payment_id, sent_at DESC
+                `, [overdueIds]);
+                for (const row of overdueReminders) {
+                    lastOverdueMap.set(row.payment_id, new Date(row.sent_at));
+                }
+            }
+
             for (const payment of allOverdue) {
                 if (processedPaymentIds.has(payment.id)) continue;
                 
                 const dueDateDate = new Date(payment.due_date);
                 dueDateDate.setHours(0,0,0,0);
                 
-                // Workaround for purely strict 2 working days:
-                // Find the latest overdue reminder sent for this payment.
-                const { rows: sentOverdue } = await client.query(`
-                    SELECT sent_at FROM payment_reminders 
-                    WHERE payment_id = $1 AND reminder_type = 'overdue' AND sent = true
-                    ORDER BY sent_at DESC LIMIT 1
-                `, [payment.id]);
+                // Look up last overdue reminder from the batch Map
+                const lastSentDate = lastOverdueMap.get(payment.id);
 
                 let shouldSend = false;
-                if (sentOverdue.length === 0) {
+                if (!lastSentDate) {
                     // Never sent an overdue email for this, send it now
                     shouldSend = true;
                 } else {
-                    const lastSent = new Date(sentOverdue[0].sent_at);
+                    const lastSent = new Date(lastSentDate);
                     lastSent.setHours(0,0,0,0);
                     // Did at least 2 working days pass?
                     let workingDaysPassed = 0;
