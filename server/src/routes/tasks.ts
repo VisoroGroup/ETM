@@ -289,6 +289,12 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     case 'monthly':
                         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
                         break;
+                    case 'quarterly':
+                        nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+                        break;
+                    case 'yearly':
+                        nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+                        break;
                 }
 
                 // Create new task
