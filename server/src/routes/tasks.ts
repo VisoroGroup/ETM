@@ -425,8 +425,14 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
             [id, req.user!.id, JSON.stringify({ old_status: oldStatus, new_status: status, reason: reason || null })]
         );
 
-        // If status changed to 'terminat' and there's a recurring task, create next instance
+        // If status changed to 'terminat', auto-resolve all alerts
         if (status === 'terminat') {
+            await pool.query(
+                `UPDATE task_alerts SET is_resolved = true, resolved_at = NOW() WHERE task_id = $1 AND is_resolved = false`,
+                [id]
+            );
+
+            // Also handle recurring tasks
             const { rows: recurringRows } = await pool.query(
                 `SELECT * FROM recurring_tasks WHERE template_task_id = $1 AND is_active = true`,
                 [id]
