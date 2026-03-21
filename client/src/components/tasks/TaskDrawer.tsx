@@ -255,7 +255,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                         {task.description || <span className="text-navy-600 italic">Adaugă o descriere...</span>}
                                         <Pencil className="w-3 h-3 text-navy-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                     </p>
-                                )
+                                )}
                             </div>
                             <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors flex-shrink-0">
                                 <X className="w-5 h-5" />
