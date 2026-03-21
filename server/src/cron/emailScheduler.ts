@@ -162,7 +162,7 @@ async function runDailyEmailJob() {
             if (userEmails.has(userId)) return userEmails.get(userId)!;
 
             const { rows: userRows } = await pool.query(
-                'SELECT id, email, display_name FROM users WHERE id = $1',
+                'SELECT id, email, display_name FROM users WHERE id = $1 AND is_active = true',
                 [userId]
             );
 

@@ -269,7 +269,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
-            'SELECT id, email, display_name, avatar_url, departments, role FROM users ORDER BY display_name'
+            'SELECT id, email, display_name, avatar_url, departments, role FROM users WHERE is_active = true ORDER BY display_name'
         );
         res.json(rows);
     } catch (err) {

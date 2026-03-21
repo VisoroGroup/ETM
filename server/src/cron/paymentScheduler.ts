@@ -217,7 +217,7 @@ export async function runDailyPaymentEmailJob() {
             `;
 
             // Get all admins
-            const { rows: admins } = await pool.query(`SELECT id, email, display_name FROM users WHERE role = 'admin'`);
+            const { rows: admins } = await pool.query(`SELECT id, email, display_name FROM users WHERE role = 'admin' AND is_active = true`);
             
             for (const admin of admins) {
                 try {

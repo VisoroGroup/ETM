@@ -40,7 +40,7 @@ export async function authMiddleware(
                 const token = authHeader.substring(7);
                 try {
                     const decoded = jwt.verify(token, JWT_SECRET) as any;
-                    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+                    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
                     if (rows.length > 0) {
                         req.user = rows[0];
                         return next();
@@ -51,7 +51,7 @@ export async function authMiddleware(
             }
 
             // Use the first user as dev user
-            const { rows } = await pool.query('SELECT * FROM users ORDER BY created_at LIMIT 1');
+            const { rows } = await pool.query('SELECT * FROM users WHERE is_active = true ORDER BY created_at LIMIT 1');
             if (rows.length > 0) {
                 req.user = rows[0];
                 return next();
@@ -76,7 +76,7 @@ export async function authMiddleware(
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+        const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
 
         if (rows.length === 0) {
             res.status(401).json({ error: 'Utilizator negăsit.' });

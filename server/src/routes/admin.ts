@@ -12,8 +12,9 @@ router.use(requireRole('admin'));
 router.get('/users', async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
-            SELECT id, microsoft_id, email, display_name, avatar_url, departments, role, created_at, updated_at
+            SELECT id, microsoft_id, email, display_name, avatar_url, departments, role, is_active, created_at, updated_at
             FROM users
+            WHERE is_active = true
             ORDER BY display_name ASC
         `);
         res.json(rows);
@@ -93,7 +94,7 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
 
     try {
         const { rows } = await pool.query(
-            `DELETE FROM users WHERE id = $1 RETURNING id, display_name`,
+            `UPDATE users SET is_active = false, deactivated_at = NOW() WHERE id = $1 AND is_active = true RETURNING id, display_name`,
             [id]
         );
 
@@ -102,7 +103,7 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
             return;
         }
 
-        res.json({ success: true, deleted: rows[0] });
+        res.json({ success: true, deactivated: rows[0] });
     } catch (err) {
         console.error('Admin delete user error:', err);
         res.status(500).json({ error: 'Eroare la ștergerea utilizatorului.' });
@@ -114,7 +115,7 @@ router.get('/stats', async (_req: AuthRequest, res: Response) => {
     try {
         const { rows: [stats] } = await pool.query(`
             SELECT
-                (SELECT COUNT(*) FROM users) as total_users,
+                (SELECT COUNT(*) FROM users WHERE is_active = true) as total_users,
                 (SELECT COUNT(*) FROM tasks) as total_tasks,
                 (SELECT COUNT(*) FROM tasks WHERE status = 'terminat') as completed_tasks,
                 (SELECT COUNT(*) FROM tasks WHERE status = 'blocat') as blocked_tasks,
