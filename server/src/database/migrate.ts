@@ -54,14 +54,16 @@ export async function runMigrations() {
 
 // Allow standalone execution: npx tsx src/database/migrate.ts
 if (require.main === module) {
-    import('dotenv').then(dotenv => {
+    (async () => {
+        const dotenv = await import('dotenv');
         dotenv.config({ path: path.join(__dirname, '../../..', '.env') });
+        console.log('Migráció indítása...');
+        await runMigrations();
+        await pool.end();
+        console.log('Migráció kész, pool lezárva.');
+    })().catch((err) => {
+        console.error('Migráció hiba:', err);
+        process.exit(1);
     });
-    runMigrations()
-        .then(() => pool.end())
-        .catch((err) => {
-            console.error('Migration failed:', err);
-            process.exit(1);
-        });
 }
 
