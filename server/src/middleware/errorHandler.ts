@@ -16,5 +16,5 @@ export const globalErrorHandler = (err: Error, _req: Request, res: Response, _ne
         return;
     }
 
-    res.status(500).json({ error: 'Szerverhiba. Kérjük próbálja újra később.' });
+    res.status(500).json({ error: 'Eroare de server. Vă rugăm încercați din nou.' });
 };

@@ -110,7 +110,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             values.push(assigned_to);
         }
 
-        // CSAPATLAPÚ NÉZET: regular 'user' role sees only  tasks they created or are assigned to via subtasks
+        // TEAM-BASED VIEW: regular 'user' role sees only tasks they created or are assigned to via subtasks
         if (req.user?.role === 'user') {
             conditions.push(`(
                 t.created_by = $${paramIndex} OR

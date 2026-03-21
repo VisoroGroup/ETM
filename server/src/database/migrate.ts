@@ -57,12 +57,12 @@ if (require.main === module) {
     (async () => {
         const dotenv = await import('dotenv');
         dotenv.config({ path: path.join(__dirname, '../../..', '.env') });
-        console.log('Migráció indítása...');
+        console.log('Starting migrations...');
         await runMigrations();
         await pool.end();
-        console.log('Migráció kész, pool lezárva.');
+        console.log('Migrations complete, pool closed.');
     })().catch((err) => {
-        console.error('Migráció hiba:', err);
+        console.error('Migration error:', err);
         process.exit(1);
     });
 }

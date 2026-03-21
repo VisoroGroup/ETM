@@ -8,11 +8,11 @@ import { PaymentReminderType } from '../types';
 
 const router = Router();
 
-// Toate rutele de finanțe sunt protejate și accesibile DOAR adminilor
+// All finance routes are protected and accessible ONLY to admins
 router.use(authMiddleware);
 router.use(requireRole('admin'));
 
-// Helper pentru a genera reminder-urile la crearea unei plăți
+// Helper to generate reminders when creating a payment
 const generatePaymentReminders = async (paymentId: string, dueDate: Date, client: any) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -140,17 +140,17 @@ router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) 
             ]
         );
 
-        // Activitate Log
+        // Activity log
         await client.query(
             `INSERT INTO payment_activity_log (id, payment_id, user_id, action_type, details)
              VALUES ($1, $2, $3, $4, $5)`,
             [uuidv4(), paymentId, req.user!.id, 'created', JSON.stringify({ title, amount, category })]
         );
 
-        // Reminders
+        // Generate reminders
         await generatePaymentReminders(paymentId, new Date(due_date), client);
 
-        // Comentariu inițial
+        // Initial comment
         if (initial_comment) {
             await client.query(
                 `INSERT INTO payment_comments (id, payment_id, author_id, content) VALUES ($1, $2, $3, $4)`,
@@ -171,7 +171,7 @@ router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) 
     }
 });
 
-// GET /api/payments/summary — carduri sumar
+// GET /api/payments/summary — summary cards
 router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
@@ -209,7 +209,7 @@ router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
     });
 }));
 
-// GET /api/payments/chart — date pentru bar chart (ultimele 6 luni)
+// GET /api/payments/chart — bar chart data (last 6 months)
 router.get('/chart', async (req: AuthRequest, res: Response) => {
     try {
         const query = `

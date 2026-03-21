@@ -6,7 +6,7 @@ import { sendTestEmail } from '../services/emailService';
 const router = Router();
 router.use(authMiddleware);
 
-// GET /api/emails/logs — email log lista (admin only)
+// GET /api/emails/logs — email log list (admin only)
 router.get('/logs', requireRole('admin', 'manager'), async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
@@ -23,7 +23,7 @@ router.get('/logs', requireRole('admin', 'manager'), async (_req: AuthRequest, r
     }
 });
 
-// GET /api/emails/logs/my — saját email log
+// GET /api/emails/logs/my — own email log
 router.get('/logs/my', async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
@@ -38,7 +38,7 @@ router.get('/logs/my', async (req: AuthRequest, res: Response) => {
     }
 });
 
-// POST /api/emails/test — teszt email küldés (admin only)
+// POST /api/emails/test — send test email (admin only)
 router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Response) => {
     try {
         const { to, name } = req.body;
@@ -48,7 +48,7 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
 
         if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
             res.status(400).json({
-                error: 'Azure credentials neasetate. Adaugă AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET și GRAPH_SENDER_EMAIL în Railway Variables.'
+                error: 'Azure credentials not set. Add AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET and GRAPH_SENDER_EMAIL in Railway Variables.'
             });
             return;
         }
@@ -74,7 +74,7 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
         ).catch(() => {});
 
         res.status(500).json({
-            error: 'Email küldési hiba: ' + (err.message || 'Ismeretlen hiba'),
+            error: 'Email send error: ' + (err.message || 'Unknown error'),
             details: err.code || null
         });
     }
