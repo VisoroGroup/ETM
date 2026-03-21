@@ -20,7 +20,7 @@ function validate<T>(schema: z.ZodSchema<T>) {
 
 export const createTaskSchema = z.object({
     title: z.string().min(1, 'Titlul este obligatoriu').max(255),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     department_label: z.string().min(1),
     due_date: z.string().min(1, 'Data limită este obligatorie'),
     assigned_to: z.string().uuid().nullable().optional(),
@@ -31,7 +31,7 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = z.object({
     title: z.string().min(1).max(255).optional(),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     department_label: z.string().optional(),
     due_date: z.string().optional(),
     assigned_to: z.string().uuid().nullable().optional(),
