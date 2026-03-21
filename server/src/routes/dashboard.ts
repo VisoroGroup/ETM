@@ -129,7 +129,7 @@ router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Respo
              FROM task_alerts a
              JOIN tasks t ON a.task_id = t.id
              JOIN users u ON a.created_by = u.id
-             WHERE a.is_resolved = false AND t.deleted_at IS NULL
+             WHERE a.is_resolved = false AND t.deleted_at IS NULL AND t.status != 'terminat'
              ORDER BY a.created_at DESC
              LIMIT 20`
         );
