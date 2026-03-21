@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
+import { validateCreatePayment } from '../middleware/validation';
 import { v4 as uuidv4 } from 'uuid';
 import { PaymentReminderType } from '../types';
 
@@ -123,7 +124,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/payments — create payment
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -131,11 +132,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
             title, amount, currency = 'RON', category, beneficiary_name,
             due_date, is_recurring = false, recurring_frequency, initial_comment
         } = req.body;
-
-        if (!title || !amount || !category || !due_date) {
-            res.status(400).json({ error: 'Titlu, sumă, categorie și data scadentă sunt obligatorii.' });
-            return;
-        }
 
         const paymentId = uuidv4();
         

@@ -62,3 +62,22 @@ export const validateUpdateTask = validate(updateTaskSchema);
 export const validateChangeStatus = validate(changeStatusSchema);
 export const validateCreateComment = validate(createCommentSchema);
 export const validateCreateTemplate = validate(createTemplateSchema);
+
+// --- Payment schemas ---
+
+export const createPaymentSchema = z.object({
+    title: z.string().min(1, 'Titlul este obligatoriu').max(200),
+    amount: z.union([z.number().positive('Suma trebuie să fie pozitivă'), z.string().min(1)]),
+    currency: z.string().max(10).default('RON'),
+    category: z.enum(['stat', 'partener_furnizor', 'furnizor_servicii', 'furnizor_echipamente', 'marketing', 'salarii']),
+    beneficiary_name: z.string().max(200).nullable().optional(),
+    due_date: z.string().min(1, 'Data scadentă este obligatorie'),
+    is_recurring: z.boolean().default(false),
+    recurring_frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).nullable().optional(),
+    initial_comment: z.string().max(2000).optional(),
+});
+
+export const updatePaymentSchema = createPaymentSchema.partial();
+
+export const validateCreatePayment = validate(createPaymentSchema);
+export const validateUpdatePayment = validate(updatePaymentSchema);
