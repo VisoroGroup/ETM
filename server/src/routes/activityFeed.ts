@@ -65,8 +65,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
                 FROM payment_activity_log pa
                 JOIN users u ON pa.user_id = u.id
                 LEFT JOIN payments p ON pa.payment_id = p.id
-                ${user_id ? `WHERE pa.user_id = $1` : ''}
-                ${action_type && user_id ? `AND pa.action_type = $2` : action_type ? `WHERE pa.action_type = $1` : ''}
+                WHERE p.deleted_at IS NULL
+                ${user_id ? `AND pa.user_id = $1` : ''}
+                ${action_type && user_id ? `AND pa.action_type = $2` : action_type ? `AND pa.action_type = $1` : ''}
             `;
         }
 

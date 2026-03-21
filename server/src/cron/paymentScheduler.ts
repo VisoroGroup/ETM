@@ -40,12 +40,13 @@ export async function runDailyPaymentEmailJob() {
                 WHERE pr.sent = false 
                   AND pr.actual_sent_date <= $1
                   AND p.status = 'de_platit'
+                  AND p.deleted_at IS NULL
             `, [today.toISOString()]);
 
             // 2. Get overdue payments for the "every 2 working days" logic
             const { rows: allOverdue } = await client.query(`
                 SELECT * FROM payments 
-                WHERE status = 'de_platit' AND due_date < $1
+                WHERE status = 'de_platit' AND due_date < $1 AND deleted_at IS NULL
             `, [today.toISOString()]);
 
             // Track which payments shouldn't be processed twice
@@ -144,8 +145,8 @@ export async function runDailyPaymentEmailJob() {
             const { rows: summaryRows } = await client.query(`
                 SELECT 
                     SUM(CASE WHEN due_date >= date_trunc('month', current_date) AND due_date < (date_trunc('month', current_date) + interval '1 month') THEN amount ELSE 0 END) as to_pay_month,
-                    (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'platit' AND paid_at >= date_trunc('month', current_date) AND paid_at < (date_trunc('month', current_date) + interval '1 month')) as paid_month
-                FROM payments WHERE status = 'de_platit'
+                    (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= date_trunc('month', current_date) AND paid_at < (date_trunc('month', current_date) + interval '1 month')) as paid_month
+                FROM payments WHERE status = 'de_platit' AND deleted_at IS NULL
             `);
             const totalToPayMonth = parseFloat(summaryRows[0].to_pay_month || 0) + parseFloat(summaryRows[0].paid_month || 0);
             const paidMonth = parseFloat(summaryRows[0].paid_month || 0);

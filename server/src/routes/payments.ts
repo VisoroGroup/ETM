@@ -56,7 +56,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const { status, category, period, recurring } = req.query;
         let queryParams: any[] = [];
-        let whereClauses: string[] = [];
+        let whereClauses: string[] = ['p.deleted_at IS NULL'];
 
         if (status) {
             queryParams.push(status);
@@ -192,21 +192,21 @@ router.get('/summary', async (req: AuthRequest, res: Response) => {
         // 1. Total de platit luna aceasta
         const toPayQuery = await pool.query(
             `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'de_platit' AND due_date >= $1 AND due_date <= $2`,
+             WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date >= $1 AND due_date <= $2`,
             [startOfMonth, endOfMonth]
         );
 
         // 2. Deja platit luna aceasta
         const paidQuery = await pool.query(
             `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'platit' AND paid_at >= $1 AND paid_at <= $2`,
+             WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= $1 AND paid_at <= $2`,
             [startOfMonth, endOfMonth]
         );
 
         // 3. Depasite (restante totale)
         const overdueQuery = await pool.query(
             `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'de_platit' AND due_date < $1`,
+             WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date < $1`,
             [currentDate]
         );
 
@@ -235,7 +235,7 @@ router.get('/chart', async (req: AuthRequest, res: Response) => {
                 SUM(CASE WHEN status = 'platit' THEN amount ELSE 0 END) as paid,
                 SUM(CASE WHEN status = 'de_platit' THEN amount ELSE 0 END) as unpaid
             FROM payments
-            WHERE due_date >= date_trunc('month', current_date - interval '5 months')
+            WHERE deleted_at IS NULL AND due_date >= date_trunc('month', current_date - interval '5 months')
             GROUP BY to_char(due_date, 'YYYY-MM')
             ORDER BY month ASC
         `;
@@ -259,7 +259,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
              FROM payments p
              LEFT JOIN users creator ON p.created_by = creator.id
              LEFT JOIN users payer ON p.paid_by = payer.id
-             WHERE p.id = $1`,
+             WHERE p.id = $1 AND p.deleted_at IS NULL`,
             [req.params.id]
         );
         if (rows.length === 0) return res.status(404).json({ error: 'Plata negăsită' });
@@ -276,7 +276,7 @@ router.put('/:id/mark-paid', async (req: AuthRequest, res: Response) => {
         await client.query('BEGIN');
         
         // 1. Fetch current payment
-        const { rows } = await client.query('SELECT * FROM payments WHERE id = $1', [req.params.id]);
+        const { rows } = await client.query('SELECT * FROM payments WHERE id = $1 AND deleted_at IS NULL', [req.params.id]);
         if (rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Plată negăsită' });
@@ -351,12 +351,28 @@ router.put('/:id/mark-paid', async (req: AuthRequest, res: Response) => {
     }
 });
 
-// DELETE, PUT, Comments, Activity... (abbreviated implementations for brevity/scaffolding)
+// DELETE /:id — soft delete payment
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
     try {
-        await pool.query('DELETE FROM payments WHERE id = $1', [req.params.id]);
+        const { rows } = await pool.query(
+            `UPDATE payments SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+            [req.params.id]
+        );
+
+        if (rows.length === 0) {
+            res.status(404).json({ error: 'Plata negăsită sau deja ștearsă' });
+            return;
+        }
+
+        // Log the deletion in activity log
+        await pool.query(
+            `INSERT INTO payment_activity_log (id, payment_id, user_id, action_type, details) VALUES ($1, $2, $3, $4, $5)`,
+            [uuidv4(), req.params.id, req.user!.id, 'payment_deleted', JSON.stringify({ title: rows[0].title, amount: rows[0].amount })]
+        );
+
         res.json({ message: 'Plată ștearsă' });
     } catch (err) {
+        console.error('Error deleting payment:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
