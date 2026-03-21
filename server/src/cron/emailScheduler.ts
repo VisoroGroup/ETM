@@ -154,31 +154,46 @@ async function runDailyEmailJob() {
       WHERE t.status != 'terminat' AND t.deleted_at IS NULL
     `);
 
+        // Batch: load all active users into a Map (eliminates N+1 user queries)
+        const { rows: allUsers } = await pool.query(
+            `SELECT id, email, display_name FROM users WHERE is_active = true`
+        );
+        const usersMap = new Map(allUsers.map(u => [u.id, u]));
+
+        // Batch: load all subtask assignees grouped by task_id (eliminates N+1 subtask queries)
+        const taskIds = tasks.map(t => t.id);
+        const subtaskAssigneesMap = new Map<string, string[]>();
+        if (taskIds.length > 0) {
+            const { rows: allAssignees } = await pool.query(
+                `SELECT task_id, assigned_to FROM subtasks
+                 WHERE task_id = ANY($1::uuid[]) AND assigned_to IS NOT NULL AND deleted_at IS NULL`,
+                [taskIds]
+            );
+            for (const row of allAssignees) {
+                if (!subtaskAssigneesMap.has(row.task_id)) subtaskAssigneesMap.set(row.task_id, []);
+                const arr = subtaskAssigneesMap.get(row.task_id)!;
+                if (!arr.includes(row.assigned_to)) arr.push(row.assigned_to);
+            }
+        }
+
         // Map of user_id → UserEmail data
         const userEmails: Map<string, UserEmail> = new Map();
 
-        // Helper to get or create user entry
-        const getOrCreateUserEntry = async (userId: string): Promise<UserEmail | null> => {
+        const getOrCreateUserEntry = (userId: string): UserEmail | null => {
             if (userEmails.has(userId)) return userEmails.get(userId)!;
-
-            const { rows: userRows } = await pool.query(
-                'SELECT id, email, display_name FROM users WHERE id = $1 AND is_active = true',
-                [userId]
-            );
-
-            if (userRows.length === 0) return null;
+            const user = usersMap.get(userId);
+            if (!user) return null;
 
             const entry: UserEmail = {
                 user_id: userId,
-                email: userRows[0].email,
-                display_name: userRows[0].display_name,
+                email: user.email,
+                display_name: user.display_name,
                 overdue: [],
                 due_today: [],
                 due_soon: [],
                 weekly: [],
                 blocked: []
             };
-
             userEmails.set(userId, entry);
             return entry;
         };
@@ -189,21 +204,16 @@ async function runDailyEmailJob() {
 
             if (!send && task.status !== 'blocat') continue;
 
-            // Get all relevant users (creator + subtask assignees)
+            // Get all relevant users (creator + subtask assignees) from Maps
             const relevantUserIds = new Set<string>([task.created_by]);
-
-            const { rows: subtaskAssignees } = await pool.query(
-                `SELECT DISTINCT assigned_to FROM subtasks
-         WHERE task_id = $1 AND assigned_to IS NOT NULL AND deleted_at IS NULL`,
-                [task.id]
-            );
-            for (const row of subtaskAssignees) {
-                relevantUserIds.add(row.assigned_to);
+            const assignees = subtaskAssigneesMap.get(task.id) || [];
+            for (const uid of assignees) {
+                relevantUserIds.add(uid);
             }
 
             // Add task to each relevant user's email
             for (const userId of relevantUserIds) {
-                const userEntry = await getOrCreateUserEntry(userId);
+                const userEntry = getOrCreateUserEntry(userId);
                 if (!userEntry) continue;
 
                 const taskData: TaskForEmail = {
