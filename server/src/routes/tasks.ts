@@ -278,7 +278,14 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                 let nextDueDate = new Date(recurring.next_run_date);
                 switch (recurring.frequency) {
                     case 'daily':
-                        nextDueDate.setDate(nextDueDate.getDate() + 1);
+                        if (recurring.workdays_only) {
+                            // Skip weekends: advance to next working day
+                            do {
+                                nextDueDate.setDate(nextDueDate.getDate() + 1);
+                            } while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6);
+                        } else {
+                            nextDueDate.setDate(nextDueDate.getDate() + 1);
+                        }
                         break;
                     case 'weekly':
                         nextDueDate.setDate(nextDueDate.getDate() + 7);

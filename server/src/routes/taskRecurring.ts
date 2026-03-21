@@ -8,10 +8,10 @@ const router = Router({ mergeParams: true });
 router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
-        const { frequency } = req.body;
+        const { frequency, workdays_only = false } = req.body;
 
-        if (!frequency || !['daily', 'weekly', 'biweekly', 'monthly'].includes(frequency)) {
-            res.status(400).json({ error: 'Frecvența este obligatorie (daily, weekly, biweekly, monthly).' });
+        if (!frequency || !['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'].includes(frequency)) {
+            res.status(400).json({ error: 'Frecvența este obligatorie (daily, weekly, biweekly, monthly, quarterly, yearly).' });
             return;
         }
 
@@ -28,6 +28,8 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
             case 'weekly': nextRunDate.setDate(nextRunDate.getDate() + 7); break;
             case 'biweekly': nextRunDate.setDate(nextRunDate.getDate() + 14); break;
             case 'monthly': nextRunDate.setMonth(nextRunDate.getMonth() + 1); break;
+            case 'quarterly': nextRunDate.setMonth(nextRunDate.getMonth() + 3); break;
+            case 'yearly': nextRunDate.setFullYear(nextRunDate.getFullYear() + 1); break;
         }
 
         // Check if recurring already exists
@@ -38,16 +40,16 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
         let result;
         if (existing.length > 0) {
             const { rows } = await pool.query(
-                `UPDATE recurring_tasks SET frequency = $1, next_run_date = $2, is_active = true, updated_at = NOW()
-         WHERE template_task_id = $3 RETURNING *`,
-                [frequency, nextRunDate.toISOString().split('T')[0], taskId]
+                `UPDATE recurring_tasks SET frequency = $1, next_run_date = $2, is_active = true, workdays_only = $3, updated_at = NOW()
+         WHERE template_task_id = $4 RETURNING *`,
+                [frequency, nextRunDate.toISOString().split('T')[0], workdays_only, taskId]
             );
             result = rows[0];
         } else {
             const { rows } = await pool.query(
-                `INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, created_by)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-                [taskId, frequency, nextRunDate.toISOString().split('T')[0], req.user!.id]
+                `INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, workdays_only, created_by)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+                [taskId, frequency, nextRunDate.toISOString().split('T')[0], workdays_only, req.user!.id]
             );
             result = rows[0];
         }

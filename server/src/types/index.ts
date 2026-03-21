@@ -121,6 +121,7 @@ export interface RecurringTask {
     frequency: RecurringFrequency;
     next_run_date: string;
     is_active: boolean;
+    workdays_only: boolean;
     created_by: string;
     created_at: Date;
     updated_at: Date;

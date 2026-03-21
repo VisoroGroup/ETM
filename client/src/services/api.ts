@@ -94,8 +94,8 @@ export const dashboardApi = {
 
 // Recurring
 export const recurringApi = {
-    set: (taskId: string, frequency: string) =>
-        api.post(`/tasks/${taskId}/recurring`, { frequency }).then(r => r.data),
+    set: (taskId: string, frequency: string, workdays_only: boolean = false) =>
+        api.post(`/tasks/${taskId}/recurring`, { frequency, workdays_only }).then(r => r.data),
     remove: (taskId: string) =>
         api.delete(`/tasks/${taskId}/recurring`).then(r => r.data),
 };

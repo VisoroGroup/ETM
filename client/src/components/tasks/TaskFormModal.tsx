@@ -16,6 +16,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [assignedTo, setAssignedTo] = useState<string>('');
     const [isRecurring, setIsRecurring] = useState(false);
     const [frequency, setFrequency] = useState<RecurringFrequency>('weekly');
+    const [workdaysOnly, setWorkdaysOnly] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [users, setUsers] = useState<User[]>([]);
@@ -44,7 +45,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
             // Set recurring if needed
             if (isRecurring && task.id) {
                 const { recurringApi } = await import('../../services/api');
-                await recurringApi.set(task.id, frequency);
+                await recurringApi.set(task.id, frequency, workdaysOnly);
             }
 
             onCreated();
@@ -165,6 +166,17 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                         <option key={f} value={f}>{FREQUENCIES[f]}</option>
                                     ))}
                                 </select>
+                                {frequency === 'daily' && (
+                                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={workdaysOnly}
+                                            onChange={e => setWorkdaysOnly(e.target.checked)}
+                                            className="w-4 h-4 rounded border-navy-600 bg-navy-800 text-blue-500 focus:ring-blue-500"
+                                        />
+                                        <span className="text-xs text-navy-300">Doar în zile lucrătoare (Luni-Vineri)</span>
+                                    </label>
+                                )}
                             </div>
                         )}
                     </div>
