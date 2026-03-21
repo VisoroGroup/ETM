@@ -89,6 +89,13 @@ router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) 
             `, [task.id, subtasks[i].title, i]);
         }
 
+        // Activity log
+        await client.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details)
+             VALUES ($1, $2, 'created', $3)`,
+            [task.id, req.user!.id, JSON.stringify({ from_template: t.id, template_title: t.title })]
+        );
+
         await client.query('COMMIT');
         res.status(201).json(task);
     } catch (err: any) {
