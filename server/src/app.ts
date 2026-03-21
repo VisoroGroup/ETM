@@ -37,7 +37,16 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (() => {
+        if (process.env.NODE_ENV === 'production') {
+            if (!process.env.CLIENT_URL) {
+                console.warn('⚠️ CLIENT_URL is not set in production! CORS will block all cross-origin requests.');
+                return false;
+            }
+            return process.env.CLIENT_URL;
+        }
+        return process.env.CLIENT_URL || 'http://localhost:5173';
+    })(),
     credentials: true
 }));
 app.use(express.json());
