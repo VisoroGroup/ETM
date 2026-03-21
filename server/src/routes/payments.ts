@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { validateCreatePayment } from '../middleware/validation';
+import { asyncHandler } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 import { PaymentReminderType } from '../types';
 
@@ -53,75 +54,68 @@ const generatePaymentReminders = async (paymentId: string, dueDate: Date, client
 };
 
 // GET /api/payments — list payments with filters
-router.get('/', async (req: AuthRequest, res: Response) => {
-    try {
-        const { status, category, period, recurring } = req.query;
-        let queryParams: any[] = [];
-        let whereClauses: string[] = ['p.deleted_at IS NULL'];
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { status, category, period, recurring } = req.query;
+    let queryParams: any[] = [];
+    let whereClauses: string[] = ['p.deleted_at IS NULL'];
 
-        if (status) {
-            queryParams.push(status);
-            whereClauses.push(`status = $${queryParams.length}`);
-        }
-
-        if (category) {
-            const categories = (category as string).split(',');
-            queryParams.push(categories);
-            whereClauses.push(`category = ANY($${queryParams.length})`);
-        }
-
-        if (recurring === 'true') {
-            whereClauses.push(`is_recurring = true`);
-        } else if (recurring === 'false') {
-            whereClauses.push(`is_recurring = false`);
-        }
-
-        if (period) {
-            const today = new Date();
-            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            
-            const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-            const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-
-            if (period === 'luna_aceasta') {
-                queryParams.push(startOfMonth.toISOString(), endOfMonth.toISOString());
-                whereClauses.push(`due_date >= $${queryParams.length - 1} AND due_date <= $${queryParams.length}`);
-            } else if (period === 'luna_viitoare') {
-                queryParams.push(nextMonthStart.toISOString(), nextMonthEnd.toISOString());
-                whereClauses.push(`due_date >= $${queryParams.length - 1} AND due_date <= $${queryParams.length}`);
-            } else if (period === 'depasite') {
-                queryParams.push(new Date().toISOString());
-                whereClauses.push(`due_date < $${queryParams.length} AND status = 'de_platit'`);
-            }
-        }
-
-        const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-        // Sorting: Due date ascending (most urgent first). 
-        // We will do exact sorting in frontend or complex CASE WHEN here. For now, simple order.
-        const query = `
-            SELECT p.*,
-                   creator.display_name as creator_name,
-                   creator.avatar_url as creator_avatar,
-                   payer.display_name as payer_name,
-                   payer.avatar_url as payer_avatar
-            FROM payments p
-            LEFT JOIN users creator ON p.created_by = creator.id
-            LEFT JOIN users payer ON p.paid_by = payer.id
-            ${whereString}
-            ORDER BY 
-                CASE WHEN p.status = 'platit' THEN 1 ELSE 0 END, -- paid at the bottom
-                p.due_date ASC
-        `;
-
-        const { rows } = await pool.query(query, queryParams);
-        res.json(rows);
-    } catch (err) {
-        console.error('Error fetching payments:', err);
-        res.status(500).json({ error: 'Eroare la preluarea plăților' });
+    if (status) {
+        queryParams.push(status);
+        whereClauses.push(`status = $${queryParams.length}`);
     }
-});
+
+    if (category) {
+        const categories = (category as string).split(',');
+        queryParams.push(categories);
+        whereClauses.push(`category = ANY($${queryParams.length})`);
+    }
+
+    if (recurring === 'true') {
+        whereClauses.push(`is_recurring = true`);
+    } else if (recurring === 'false') {
+        whereClauses.push(`is_recurring = false`);
+    }
+
+    if (period) {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+        if (period === 'luna_aceasta') {
+            queryParams.push(startOfMonth.toISOString(), endOfMonth.toISOString());
+            whereClauses.push(`due_date >= $${queryParams.length - 1} AND due_date <= $${queryParams.length}`);
+        } else if (period === 'luna_viitoare') {
+            queryParams.push(nextMonthStart.toISOString(), nextMonthEnd.toISOString());
+            whereClauses.push(`due_date >= $${queryParams.length - 1} AND due_date <= $${queryParams.length}`);
+        } else if (period === 'depasite') {
+            queryParams.push(new Date().toISOString());
+            whereClauses.push(`due_date < $${queryParams.length} AND status = 'de_platit'`);
+        }
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const query = `
+        SELECT p.*,
+               creator.display_name as creator_name,
+               creator.avatar_url as creator_avatar,
+               payer.display_name as payer_name,
+               payer.avatar_url as payer_avatar
+        FROM payments p
+        LEFT JOIN users creator ON p.created_by = creator.id
+        LEFT JOIN users payer ON p.paid_by = payer.id
+        ${whereString}
+        ORDER BY 
+            CASE WHEN p.status = 'platit' THEN 1 ELSE 0 END,
+            p.due_date ASC
+    `;
+
+    const { rows } = await pool.query(query, queryParams);
+    res.json(rows);
+}));
 
 // POST /api/payments — create payment
 router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) => {
@@ -178,50 +172,42 @@ router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) 
 });
 
 // GET /api/payments/summary — carduri sumar
-router.get('/summary', async (req: AuthRequest, res: Response) => {
-    try {
-        const today = new Date();
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59).toISOString();
-        const currentDate = today.toISOString();
+router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const currentDate = today.toISOString();
 
-        // 1. Total de platit luna aceasta
-        const toPayQuery = await pool.query(
-            `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date >= $1 AND due_date <= $2`,
-            [startOfMonth, endOfMonth]
-        );
+    const toPayQuery = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+         WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date >= $1 AND due_date <= $2`,
+        [startOfMonth, endOfMonth]
+    );
 
-        // 2. Deja platit luna aceasta
-        const paidQuery = await pool.query(
-            `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= $1 AND paid_at <= $2`,
-            [startOfMonth, endOfMonth]
-        );
+    const paidQuery = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+         WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= $1 AND paid_at <= $2`,
+        [startOfMonth, endOfMonth]
+    );
 
-        // 3. Depasite (restante totale)
-        const overdueQuery = await pool.query(
-            `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-             WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date < $1`,
-            [currentDate]
-        );
+    const overdueQuery = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+         WHERE status = 'de_platit' AND deleted_at IS NULL AND due_date < $1`,
+        [currentDate]
+    );
 
-        const toPay = parseFloat(toPayQuery.rows[0].total);
-        const paid = parseFloat(paidQuery.rows[0].total);
-        const overdue = parseFloat(overdueQuery.rows[0].total);
+    const toPay = parseFloat(toPayQuery.rows[0].total);
+    const paid = parseFloat(paidQuery.rows[0].total);
+    const overdue = parseFloat(overdueQuery.rows[0].total);
 
-        res.json({
-            totalThisMonth: toPay + paid,
-            toPayThisMonth: toPay,
-            paidThisMonth: paid,
-            remainingThisMonth: toPay, // amount still to be paid (de_platit status, due this month)
-            overdueTotal: overdue
-        });
-    } catch (err) {
-        console.error('Error fetching payment summary:', err);
-        res.status(500).json({ error: 'Eroare la calcularea sumarului' });
-    }
-});
+    res.json({
+        totalThisMonth: toPay + paid,
+        toPayThisMonth: toPay,
+        paidThisMonth: paid,
+        remainingThisMonth: toPay,
+        overdueTotal: overdue
+    });
+}));
 
 // GET /api/payments/chart — date pentru bar chart (ultimele 6 luni)
 router.get('/chart', async (req: AuthRequest, res: Response) => {

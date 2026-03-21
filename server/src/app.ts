@@ -25,6 +25,7 @@ import savedFiltersRoutes from './routes/savedFilters';
 import activityFeedRoutes from './routes/activityFeed';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
+import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
 import { startPaymentEmailScheduler } from './cron/paymentScheduler';
 
@@ -95,6 +96,9 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 }
+
+// Global error handler — catches errors from asyncHandler-wrapped routes
+app.use(globalErrorHandler);
 
 // Sentry error handler — must be AFTER all routes
 if (process.env.SENTRY_DSN) {
