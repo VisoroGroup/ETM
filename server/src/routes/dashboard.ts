@@ -63,32 +63,31 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
        GROUP BY department_label ORDER BY department_label`
         );
 
-        // Completion trend - last 4 weeks
-        const weeks = [];
-        for (let i = 3; i >= 0; i--) {
-            const weekStart = new Date();
-            weekStart.setDate(weekStart.getDate() - (weekStart.getDay() || 7) + 1 - (i * 7));
-            weekStart.setHours(0, 0, 0, 0);
+        // Completion trend - last 4 weeks (single query instead of 4)
+        const { rows: weekRows } = await pool.query(`
+            SELECT
+                w.week_start::date AS week_start,
+                (w.week_start + INTERVAL '6 days')::date AS week_end,
+                COUNT(t.id) AS count
+            FROM generate_series(
+                date_trunc('week', NOW() - INTERVAL '3 weeks'),
+                date_trunc('week', NOW()),
+                INTERVAL '1 week'
+            ) AS w(week_start)
+            LEFT JOIN tasks t ON t.status = 'terminat'
+                AND t.deleted_at IS NULL
+                AND t.updated_at >= w.week_start
+                AND t.updated_at < w.week_start + INTERVAL '7 days'
+            GROUP BY w.week_start
+            ORDER BY w.week_start ASC
+        `);
 
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            weekEnd.setHours(23, 59, 59, 999);
-
-            const { rows } = await pool.query(
-                `SELECT COUNT(*) FROM tasks
-         WHERE status = 'terminat'
-         AND updated_at BETWEEN $1 AND $2
-         AND deleted_at IS NULL`,
-                [weekStart.toISOString(), weekEnd.toISOString()]
-            );
-
-            weeks.push({
-                week_start: weekStart.toISOString().split('T')[0],
-                week_end: weekEnd.toISOString().split('T')[0],
-                count: parseInt(rows[0].count),
-                label: `Săpt. ${4 - i}`
-            });
-        }
+        const weeks = weekRows.map((row, i) => ({
+            week_start: row.week_start.toISOString().split('T')[0],
+            week_end: row.week_end.toISOString().split('T')[0],
+            count: parseInt(row.count),
+            label: `Săpt. ${i + 1}`
+        }));
 
         // Urgent tasks - top 10 upcoming (not completed)
         const today = new Date().toISOString().split('T')[0];
