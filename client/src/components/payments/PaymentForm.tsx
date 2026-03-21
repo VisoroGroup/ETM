@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCreatePayment } from '../../services/payments';
-import { PAYMENT_CATEGORIES } from '../../../../server/src/types';
+import { PAYMENT_CATEGORIES } from '../../types';
 import { X, Loader2, Save } from 'lucide-react';
 
 interface PaymentFormProps {

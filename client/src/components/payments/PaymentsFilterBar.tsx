@@ -1,5 +1,5 @@
 import React from 'react';
-import { PAYMENT_CATEGORIES } from '../../../../server/src/types'; // Using relative to be safe or define locally
+import { PAYMENT_CATEGORIES } from '../../types';
 import { Search, Filter, X } from 'lucide-react';
 
 interface PaymentsFilterBarProps {

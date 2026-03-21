@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePayment, useMarkPaymentPaid, usePaymentComments, usePaymentActivity, useCreatePaymentComment } from '../../services/payments';
-import { PAYMENT_CATEGORIES } from '../../../../server/src/types';
+import { PAYMENT_CATEGORIES } from '../../types';
 import { X, CheckCircle2, MessageSquare, Activity, Send, Loader2, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';

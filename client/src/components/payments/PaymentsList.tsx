@@ -1,7 +1,6 @@
 import React from 'react';
-import { PaymentWithDetails } from '../../../../server/src/types';
+import { PaymentWithDetails, PAYMENT_CATEGORIES } from '../../types';
 import PaymentBadge, { getPaymentUrgency } from './PaymentBadge';
-import { PAYMENT_CATEGORIES } from '../../../../server/src/types'; 
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { FileText, MessageSquare, Repeat } from 'lucide-react';

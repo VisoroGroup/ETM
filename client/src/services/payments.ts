@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import { PaymentWithDetails, Payment, PaymentComment, PaymentActivityLogEntry } from '../../../server/src/types';
+import { PaymentWithDetails, Payment, PaymentComment, PaymentActivityLogEntry } from '../types';
 
 // Fetch Toate Plățile
 export const usePayments = (filters: { status?: string; category?: string; period?: string; recurring?: string }) => {
