@@ -215,9 +215,10 @@ router.get('/summary', async (req: AuthRequest, res: Response) => {
         const overdue = parseFloat(overdueQuery.rows[0].total);
 
         res.json({
+            totalThisMonth: toPay + paid,
             toPayThisMonth: toPay,
             paidThisMonth: paid,
-            remainingThisMonth: toPay - paid, // Could be logical or just remaining in the 'de_platit' pool
+            remainingThisMonth: toPay, // amount still to be paid (de_platit status, due this month)
             overdueTotal: overdue
         });
     } catch (err) {
