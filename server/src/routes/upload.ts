@@ -23,15 +23,51 @@ const storage = multer.diskStorage({
     }
 });
 
+// Allowed file types for upload
+const ALLOWED_MIME_TYPES = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain', 'text/csv'
+];
+
+const ALLOWED_EXTENSIONS = [
+    '.jpg', '.jpeg', '.png', '.gif', '.webp',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+    '.txt', '.csv'
+];
+
 const upload = multer({
     storage,
     limits: {
         fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760') // 10MB default
+    },
+    fileFilter: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ALLOWED_MIME_TYPES.includes(file.mimetype) && ALLOWED_EXTENSIONS.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Nem engedélyezett fájltípus: ${file.mimetype} (${ext})`));
+        }
     }
 });
 
 // POST /api/upload/:taskId — upload file to task
-router.post('/:taskId', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            // Multer error (file too large, etc.)
+            return res.status(400).json({ error: `Eroare la upload: ${err.message}` });
+        } else if (err) {
+            // File filter rejection or other error
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { taskId } = req.params;
         const file = req.file;
