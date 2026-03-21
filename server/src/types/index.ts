@@ -1,4 +1,8 @@
-// Shared TypeScript types for the Visoro Task Manager
+// ==========================================
+// Server-side type definitions (SOURCE OF TRUTH)
+// Client types: client/src/types/index.ts
+// Keep both files in sync when modifying.
+// ==========================================
 
 export type UserRole = 'admin' | 'manager' | 'user';
 
@@ -48,6 +52,7 @@ export interface Task {
     status: TaskStatus;
     due_date: string;
     created_by: string;
+    assigned_to: string | null;
     department_label: Department;
     created_at: Date;
     updated_at: Date;
@@ -205,7 +210,8 @@ export type PaymentActionType =
     | 'date_changed' 
     | 'comment_added' 
     | 'recurring_created' 
-    | 'category_changed';
+    | 'category_changed'
+    | 'payment_deleted';
 
 export interface Payment {
     id: string;

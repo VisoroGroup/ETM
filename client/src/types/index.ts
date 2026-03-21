@@ -1,3 +1,10 @@
+// ==========================================
+// Client-side type definitions
+// Source of truth: server/src/types/index.ts
+// Keep both files in sync when modifying.
+// Client uses string for dates (JSON serialization)
+// Client adds UI-specific fields (bg, border) to constants
+// ==========================================
 export type UserRole = 'admin' | 'manager' | 'user';
 export type Department = 'departament_1' | 'departament_2' | 'departament_3' | 'departament_4' | 'departament_5' | 'departament_6' | 'departament_7';
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
