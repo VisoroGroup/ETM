@@ -84,7 +84,7 @@ router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) 
         const subtasks: { title: string }[] = t.subtasks || [];
         for (let i = 0; i < subtasks.length; i++) {
             await client.query(`
-                INSERT INTO subtasks (task_id, title, position)
+                INSERT INTO subtasks (task_id, title, order_index)
                 VALUES ($1, $2, $3)
             `, [task.id, subtasks[i].title, i]);
         }
