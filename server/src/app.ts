@@ -25,6 +25,7 @@ import paymentsRoutes from './routes/payments';
 import savedFiltersRoutes from './routes/savedFilters';
 import activityFeedRoutes from './routes/activityFeed';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
+import { authMiddleware } from './middleware/auth';
 import { startEmailScheduler } from './cron/emailScheduler';
 import { startPaymentEmailScheduler } from './cron/paymentScheduler';
 
@@ -46,7 +47,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', globalLimiter);
 
 // Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
+app.use('/uploads', authMiddleware, express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
 
 // Routes (auth + upload get stricter limits)
 app.use('/api/auth', authLimiter, authRoutes);
