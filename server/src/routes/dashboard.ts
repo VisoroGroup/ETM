@@ -100,7 +100,7 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
        JOIN users u ON t.created_by = u.id
        LEFT JOIN (
          SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
-         FROM subtasks GROUP BY task_id
+         FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
        ) sub ON sub.task_id = t.id
        WHERE t.status != 'terminat' AND t.deleted_at IS NULL
        ORDER BY t.due_date ASC
