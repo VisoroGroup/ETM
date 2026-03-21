@@ -17,30 +17,31 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         } = req.query;
 
         const isAdmin = req.user!.role === 'admin';
-        const conditions: string[] = [];
-        const values: any[] = [];
-        let idx = 1;
+        const pageNum = parseInt(page as string, 10);
+        const limitNum = parseInt(limit as string, 10);
+        const offset = (pageNum - 1) * limitNum;
+
+        // --- Task activities query (separate parameter tracking) ---
+        const taskConditions: string[] = [];
+        const taskValues: any[] = [];
+        let taskIdx = 1;
 
         if (user_id) {
-            conditions.push(`a.user_id = $${idx++}`);
-            values.push(user_id);
+            taskConditions.push(`a.user_id = $${taskIdx++}`);
+            taskValues.push(user_id);
         }
-
         if (department) {
-            conditions.push(`t.department_label = $${idx++}`);
-            values.push(department);
+            taskConditions.push(`t.department_label = $${taskIdx++}`);
+            taskValues.push(department);
         }
-
         if (action_type) {
-            conditions.push(`a.action_type = $${idx++}`);
-            values.push(action_type);
+            taskConditions.push(`a.action_type = $${taskIdx++}`);
+            taskValues.push(action_type);
         }
 
-        const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
-        const offset = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
+        const taskWhere = taskConditions.length > 0 ? 'WHERE ' + taskConditions.join(' AND ') : '';
 
-        // Task activities
-        let query = `
+        const taskQuery = `
             SELECT 
                 a.id, a.task_id, a.user_id, a.action_type, a.details, a.created_at,
                 u.display_name as user_name, u.avatar_url,
@@ -49,14 +50,38 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             FROM activity_log a
             JOIN users u ON a.user_id = u.id
             LEFT JOIN tasks t ON a.task_id = t.id
-            ${whereClause}
+            ${taskWhere}
         `;
 
-        // For admin, also include payment activities
-        let paymentQuery = '';
+        const [taskResult, taskCountResult] = await Promise.all([
+            pool.query(taskQuery, taskValues),
+            pool.query(
+                `SELECT COUNT(*) as total FROM activity_log a LEFT JOIN tasks t ON a.task_id = t.id ${taskWhere}`,
+                taskValues
+            )
+        ]);
+
+        let allItems = taskResult.rows;
+        let totalCount = parseInt(taskCountResult.rows[0].total, 10);
+
+        // --- Payment activities query (admin only, no department filter) ---
         if (isAdmin && !department) {
-            paymentQuery = `
-                UNION ALL
+            const payConditions: string[] = ['p.deleted_at IS NULL'];
+            const payValues: any[] = [];
+            let payIdx = 1;
+
+            if (user_id) {
+                payConditions.push(`pa.user_id = $${payIdx++}`);
+                payValues.push(user_id);
+            }
+            if (action_type) {
+                payConditions.push(`pa.action_type = $${payIdx++}`);
+                payValues.push(action_type);
+            }
+
+            const payWhere = 'WHERE ' + payConditions.join(' AND ');
+
+            const payQuery = `
                 SELECT 
                     pa.id, pa.payment_id as task_id, pa.user_id, pa.action_type, pa.details, pa.created_at,
                     u.display_name as user_name, u.avatar_url,
@@ -65,41 +90,26 @@ router.get('/', async (req: AuthRequest, res: Response) => {
                 FROM payment_activity_log pa
                 JOIN users u ON pa.user_id = u.id
                 LEFT JOIN payments p ON pa.payment_id = p.id
-                WHERE p.deleted_at IS NULL
-                ${user_id ? `AND pa.user_id = $1` : ''}
-                ${action_type && user_id ? `AND pa.action_type = $2` : action_type ? `AND pa.action_type = $1` : ''}
+                ${payWhere}
             `;
+
+            const [payResult, payCountResult] = await Promise.all([
+                pool.query(payQuery, payValues),
+                pool.query(
+                    `SELECT COUNT(*) as total FROM payment_activity_log pa LEFT JOIN payments p ON pa.payment_id = p.id ${payWhere}`,
+                    payValues
+                )
+            ]);
+
+            allItems = [...allItems, ...payResult.rows];
+            totalCount += parseInt(payCountResult.rows[0].total, 10);
         }
 
-        const finalQuery = `
-            SELECT * FROM (
-                ${query}
-                ${paymentQuery}
-            ) combined
-            ORDER BY created_at DESC
-            LIMIT $${idx++} OFFSET $${idx++}
-        `;
+        // Sort combined results by created_at DESC and apply pagination in JS
+        allItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const paginatedItems = allItems.slice(offset, offset + limitNum);
 
-        values.push(parseInt(limit as string, 10), offset);
-
-        const { rows } = await pool.query(finalQuery, values);
-
-        // Get total count
-        const countQuery = `
-            SELECT COUNT(*) as total FROM (
-                SELECT a.id FROM activity_log a
-                LEFT JOIN tasks t ON a.task_id = t.id
-                ${whereClause}
-                ${isAdmin && !department ? `
-                    UNION ALL
-                    SELECT pa.id FROM payment_activity_log pa
-                    ${user_id ? `WHERE pa.user_id = $1` : ''}
-                ` : ''}
-            ) c
-        `;
-        const { rows: [{ total }] } = await pool.query(countQuery, values.slice(0, -2));
-
-        res.json({ items: rows, total: parseInt(total, 10), page: parseInt(page as string, 10) });
+        res.json({ items: paginatedItems, total: totalCount, page: pageNum });
     } catch (err) {
         console.error('Activity feed error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea fluxului de activitate.' });
