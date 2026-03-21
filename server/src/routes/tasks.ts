@@ -242,51 +242,50 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
             return;
         }
 
-        // Get subtasks
-        const { rows: subtasks } = await pool.query(
-            `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
+        // Run all sub-queries in parallel (they only depend on task id)
+        const [
+            { rows: subtasks },
+            { rows: comments },
+            { rows: attachments },
+            { rows: activity },
+            { rows: alerts }
+        ] = await Promise.all([
+            pool.query(
+                `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
        FROM subtasks s
        LEFT JOIN users u ON s.assigned_to = u.id
        WHERE s.task_id = $1 AND s.deleted_at IS NULL
        ORDER BY s.order_index`,
-            [id]
-        );
-
-        // Get recent comments (last 20)
-        const { rows: comments } = await pool.query(
-            `SELECT c.*, u.display_name AS author_name, u.avatar_url AS author_avatar
+                [id]
+            ),
+            pool.query(
+                `SELECT c.*, u.display_name AS author_name, u.avatar_url AS author_avatar
        FROM task_comments c
        JOIN users u ON c.author_id = u.id
        WHERE c.task_id = $1
        ORDER BY c.created_at DESC
        LIMIT 20`,
-            [id]
-        );
-
-        // Get attachments
-        const { rows: attachments } = await pool.query(
-            `SELECT a.*, u.display_name AS uploader_name
+                [id]
+            ),
+            pool.query(
+                `SELECT a.*, u.display_name AS uploader_name
        FROM task_attachments a
        JOIN users u ON a.uploaded_by = u.id
        WHERE a.task_id = $1
        ORDER BY a.created_at DESC`,
-            [id]
-        );
-
-        // Get activity log (last 50)
-        const { rows: activity } = await pool.query(
-            `SELECT al.*, u.display_name AS user_name, u.avatar_url AS user_avatar
+                [id]
+            ),
+            pool.query(
+                `SELECT al.*, u.display_name AS user_name, u.avatar_url AS user_avatar
        FROM activity_log al
        JOIN users u ON al.user_id = u.id
        WHERE al.task_id = $1
        ORDER BY al.created_at DESC
        LIMIT 50`,
-            [id]
-        );
-
-        // Get alerts
-        const { rows: alerts } = await pool.query(
-            `SELECT a.*,
+                [id]
+            ),
+            pool.query(
+                `SELECT a.*,
                uc.display_name AS creator_name, uc.avatar_url AS creator_avatar,
                ur.display_name AS resolved_by_name
              FROM task_alerts a
@@ -294,8 +293,9 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
              LEFT JOIN users ur ON a.resolved_by = ur.id
              WHERE a.task_id = $1
              ORDER BY a.created_at DESC`,
-            [id]
-        );
+                [id]
+            )
+        ]);
 
         res.json({
             ...taskRows[0],
