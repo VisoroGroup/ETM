@@ -9,7 +9,7 @@ router.use(authMiddleware);
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
-            `SELECT id, email, display_name, avatar_url, department, role, created_at FROM users WHERE id = $1`,
+            `SELECT id, email, display_name, avatar_url, departments, role, created_at FROM users WHERE id = $1`,
             [req.user!.id]
         );
         if (rows.length === 0) {
@@ -54,7 +54,7 @@ router.patch('/', async (req: AuthRequest, res: Response) => {
         values.push(req.user!.id);
 
         const { rows } = await pool.query(
-            `UPDATE users SET ${setParts.join(', ')} WHERE id = $${idx} RETURNING id, email, display_name, avatar_url, department, role`,
+            `UPDATE users SET ${setParts.join(', ')} WHERE id = $${idx} RETURNING id, email, display_name, avatar_url, departments, role`,
             values
         );
 
