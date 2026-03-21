@@ -6,6 +6,16 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware, generateToken } from '../middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
 
+interface MsGraphUser {
+    id: string;
+    displayName: string;
+    mail: string | null;
+    userPrincipalName: string;
+    jobTitle?: string;
+}
+
+type SqlValue = string | number | boolean | null | string[];
+
 // One-time auth code store — codes expire after 60 seconds and are single-use
 const AUTH_CODE_TTL_MS = 60_000;
 const authCodeStore = new Map<string, { token: string; expiresAt: number }>();
@@ -71,7 +81,7 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         const graphResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
             headers: { Authorization: `Bearer ${tokenResponse.accessToken}` }
         });
-        const msUser = await graphResponse.json() as any;
+        const msUser = await graphResponse.json() as MsGraphUser;
         const email = msUser.mail || msUser.userPrincipalName;
 
         // First try to find pre-seeded user by email (for Mia, Alisa, Emo etc.)
@@ -219,7 +229,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
                 return;
             }
 
-            const msUser = await graphResponse.json() as any;
+            const msUser = await graphResponse.json() as MsGraphUser;
 
             // Upsert user
             const { rows } = await pool.query(
@@ -290,7 +300,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         }
 
         const updates: string[] = [];
-        const values: any[] = [];
+        const values: SqlValue[] = [];
         let paramIndex = 1;
 
         if (departments) {

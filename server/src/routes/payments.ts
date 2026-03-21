@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
+import { PoolClient } from 'pg';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { validateCreatePayment } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -13,7 +14,7 @@ router.use(authMiddleware);
 router.use(requireRole('admin'));
 
 // Helper to generate reminders when creating a payment
-const generatePaymentReminders = async (paymentId: string, dueDate: Date, client: any) => {
+const generatePaymentReminders = async (paymentId: string, dueDate: Date, client: PoolClient) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const due = new Date(dueDate);
@@ -56,7 +57,7 @@ const generatePaymentReminders = async (paymentId: string, dueDate: Date, client
 // GET /api/payments — list payments with filters
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { status, category, period, recurring } = req.query;
-    let queryParams: any[] = [];
+    let queryParams: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any -- Express query params
     let whereClauses: string[] = ['p.deleted_at IS NULL'];
 
     if (status) {

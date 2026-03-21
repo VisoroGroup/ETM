@@ -3,6 +3,14 @@ import jwt from 'jsonwebtoken';
 import pool from '../config/database';
 import { User } from '../types';
 
+interface JwtPayload {
+    id: string;
+    email: string;
+    role: string;
+    iat: number;
+    exp: number;
+}
+
 export interface AuthRequest extends Request {
     user?: User;
 }
@@ -39,7 +47,7 @@ export async function authMiddleware(
             if (authHeader && authHeader.startsWith('Bearer ')) {
                 const token = authHeader.substring(7);
                 try {
-                    const decoded = jwt.verify(token, JWT_SECRET) as any;
+                    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
                     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
                     if (rows.length > 0) {
                         req.user = rows[0];
@@ -75,7 +83,7 @@ export async function authMiddleware(
     const token = authHeader.substring(7);
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
         const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
 
         if (rows.length === 0) {
