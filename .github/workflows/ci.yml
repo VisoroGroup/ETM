@@ -32,3 +32,6 @@ jobs:
           npm install
           npx tsc --noEmit
 
+      - name: Run Server Tests
+        working-directory: server
+        run: npm test
