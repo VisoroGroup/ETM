@@ -1,12 +1,11 @@
+// Load env FIRST — before any other import that reads process.env
+import './env';
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import dotenv from 'dotenv';
 import pool from './config/database';
 import { runMigrations } from './database/migrate';
-
-// Load env before anything else
-dotenv.config({ path: path.join(__dirname, '../..', '.env') });
 
 // Init Sentry ASAP (before other imports so it can instrument them)
 import { initSentry, sentryErrorHandler } from './config/sentry';
