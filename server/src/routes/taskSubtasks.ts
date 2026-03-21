@@ -199,22 +199,15 @@ router.put('/subtasks-reorder', authMiddleware, async (req: AuthRequest, res: Re
             return;
         }
 
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            for (const item of order) {
-                await client.query(
-                    'UPDATE subtasks SET order_index = $1 WHERE id = $2 AND task_id = $3',
-                    [item.order_index, item.id, taskId]
-                );
-            }
-            await client.query('COMMIT');
-        } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-        } finally {
-            client.release();
-        }
+        const ids = order.map((o: { id: string; order_index: number }) => o.id);
+        const indices = order.map((o: { id: string; order_index: number }) => o.order_index);
+
+        await pool.query(`
+            UPDATE subtasks s
+            SET order_index = v.new_order, updated_at = NOW()
+            FROM (SELECT unnest($1::uuid[]) AS id, unnest($2::int[]) AS new_order) v
+            WHERE s.id = v.id AND s.task_id = $3
+        `, [ids, indices, taskId]);
 
         res.json({ message: 'Ordinea a fost actualizată.' });
     } catch (err) {
