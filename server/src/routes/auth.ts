@@ -1,9 +1,24 @@
 import { Router, Response, Request } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { ConfidentialClientApplication } from '@azure/msal-node';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware, generateToken } from '../middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
+
+// One-time auth code store — codes expire after 60 seconds and are single-use
+const AUTH_CODE_TTL_MS = 60_000;
+const authCodeStore = new Map<string, { token: string; expiresAt: number }>();
+
+// Clean up expired codes every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [code, entry] of authCodeStore) {
+        if (entry.expiresAt < now) {
+            authCodeStore.delete(code);
+        }
+    }
+}, 5 * 60_000);
 
 const router = Router();
 
@@ -92,12 +107,53 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         }
 
         const token = generateToken(user);
-        // Redirect to frontend with token — use CLIENT_URL so user stays on correct domain
-        res.redirect(`${clientUrl}/?token=${token}`);
+
+        // Generate one-time auth code instead of putting JWT in URL
+        const authCode = crypto.randomUUID();
+        authCodeStore.set(authCode, {
+            token,
+            expiresAt: Date.now() + AUTH_CODE_TTL_MS,
+        });
+
+        // Redirect with short-lived code — client will exchange it for the JWT
+        res.redirect(`${clientUrl}/?code=${authCode}`);
     } catch (err) {
         console.error('Microsoft OAuth callback error:', err);
         const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
         res.redirect(`${clientUrl}/?error=oauth_failed`);
+    }
+});
+
+// POST /api/auth/exchange — exchange one-time code for JWT token
+router.post('/exchange', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { code } = req.body;
+
+        if (!code || typeof code !== 'string') {
+            res.status(400).json({ error: 'Codul de autentificare lipsește.' });
+            return;
+        }
+
+        const entry = authCodeStore.get(code);
+
+        if (!entry) {
+            res.status(401).json({ error: 'Cod de autentificare invalid sau deja folosit.' });
+            return;
+        }
+
+        // Delete immediately — single use
+        authCodeStore.delete(code);
+
+        // Check expiration
+        if (entry.expiresAt < Date.now()) {
+            res.status(401).json({ error: 'Codul de autentificare a expirat.' });
+            return;
+        }
+
+        res.json({ token: entry.token });
+    } catch (err) {
+        console.error('Auth code exchange error:', err);
+        res.status(500).json({ error: 'Eroare la schimbul codului de autentificare.' });
     }
 });
 

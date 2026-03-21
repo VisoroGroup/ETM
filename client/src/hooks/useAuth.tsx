@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import { authApi } from '../services/api';
+import axios from 'axios';
 
 interface AuthContextType {
     user: User | null;
@@ -26,20 +27,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Handle token from Microsoft OAuth callback
+        // Handle OAuth callback — exchange one-time code for JWT token
         const params = new URLSearchParams(window.location.search);
-        const oauthToken = params.get('token');
+        const oauthCode = params.get('code');
         const oauthError = params.get('error');
 
-        if (oauthToken) {
-            localStorage.setItem('visoro_token', oauthToken);
+        if (oauthCode) {
+            // Clean URL immediately so code isn't visible in browser history
             window.history.replaceState({}, '', '/');
+            // Exchange the one-time code for a JWT token
+            axios.post('/api/auth/exchange', { code: oauthCode })
+                .then(({ data }) => {
+                    localStorage.setItem('visoro_token', data.token);
+                    checkAuth();
+                })
+                .catch((err) => {
+                    console.error('Auth code exchange failed:', err);
+                    setLoading(false);
+                });
         } else if (oauthError) {
             console.error('OAuth error:', oauthError);
             window.history.replaceState({}, '', '/');
+            setLoading(false);
+        } else {
+            checkAuth();
         }
-
-        checkAuth();
     }, []);
 
     async function checkAuth() {
