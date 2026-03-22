@@ -1,7 +1,15 @@
 node_modules
-dist
+.git
+.gitignore
 .env
 .env.*
 .env.local
-.git
 *.md
+LICENSE
+.github
+.vscode
+server/dist
+client/dist
+uploads/*
+*.log
+.DS_Store
