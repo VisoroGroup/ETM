@@ -24,6 +24,21 @@ function getActionDescription(entry: any): string {
         case 'recurring_created': return `a setat task-ul ca recurent (${d.frequency})`;
         case 'alert_added': return `a adăugat o alertă în "În Atenție"`;
         case 'alert_resolved': return `a rezolvat o alertă din "În Atenție"`;
+        case 'title_changed': return `a modificat titlul: „${d.old_value}" → „${d.new_value}"`;
+        case 'description_changed': return `a modificat descrierea`;
+        case 'assigned_to_changed':
+            if (d.new_name) return `a atribuit sarcina lui ${d.new_name}`;
+            return `a eliminat atribuirea (era: ${d.old_name || '—'})`;
+        case 'department_changed':
+            return `a mutat sarcina: ${DEPARTMENTS[d.old_value as Department]?.label || d.old_value} → ${DEPARTMENTS[d.new_value as Department]?.label || d.new_value}`;
+        case 'task_deleted': return `a șters sarcina`;
+        case 'task_duplicated': return `a duplicat sarcina`;
+        case 'checklist_updated':
+            if (d.action === 'item_added') return `a adăugat în checklist: „${d.title}"`;
+            return `a actualizat checklist-ul`;
+        case 'dependency_added': return `a adăugat o dependență`;
+        case 'dependency_removed': return `a eliminat o dependență`;
+        case 'dependency_resolved': return `a rezolvat o dependență`;
         default: return entry.action_type;
     }
 }

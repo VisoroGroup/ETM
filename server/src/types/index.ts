@@ -34,7 +34,15 @@ export type ActionType =
     | 'alert_resolved'
     | 'dependency_added'
     | 'dependency_removed'
-    | 'dependency_resolved';
+    | 'dependency_resolved'
+    | 'checklist_updated'
+    | 'title_changed'
+    | 'description_changed'
+    | 'assigned_to_changed'
+    | 'department_changed'
+    | 'task_created'
+    | 'task_duplicated'
+    | 'task_deleted';
 
 export interface User {
     id: string;
@@ -74,6 +82,17 @@ export interface TaskDependency {
     created_by: string;
     creator_name?: string;
     created_at: Date;
+}
+
+export interface ChecklistItem {
+    id: string;
+    task_id: string;
+    title: string;
+    is_checked: boolean;
+    order_index: number;
+    created_by: string;
+    created_at: Date;
+    updated_at: Date;
 }
 
 export interface TaskWithDetails extends Task {
@@ -298,4 +317,24 @@ export const PAYMENT_CATEGORIES: Record<PaymentCategory, { label: string; color:
     furnizor_echipamente: { label: 'Furnizor de echipamente', color: '#0891B2' },
     marketing: { label: 'Marketing / Publicitate', color: '#EA580C' },
     salarii: { label: 'Salarii / Personal', color: '#16A34A' },
+};
+
+export interface WidgetConfig {
+    widget_id: string;
+    visible: boolean;
+    order: number;
+    size: 'full' | 'half';
+}
+
+export const AVAILABLE_WIDGETS: Record<string, { label: string; description: string; adminOnly?: boolean }> = {
+    global_stats: { label: 'Statistici globale', description: 'Numărul total de sarcini active, restante, blocate și completate' },
+    my_stats: { label: 'Sarcinile mele', description: 'Statisticile sarcinilor tale personale' },
+    status_chart: { label: 'Distribuție status', description: 'Grafic cu distribuția statusurilor sarcinilor' },
+    dept_chart: { label: 'Distribuție departamente', description: 'Grafic pe departamente' },
+    trend_chart: { label: 'Trend completare', description: 'Graficul completărilor din ultimele 4 săptămâni' },
+    urgent_tasks: { label: 'Sarcini urgente', description: 'Top 10 sarcini cu termen apropiat' },
+    active_alerts: { label: 'Alerte active', description: 'Alertele nerezolvate din sistem' },
+    bottlenecks: { label: 'Blocaje critice', description: 'Sarcinile care blochează cele mai multe altele' },
+    payment_summary: { label: 'Sumar plăți', description: 'Rezumatul plăților lunii curente', adminOnly: true },
+    calendar: { label: 'Calendar', description: 'Vizualizare calendar cu termenele sarcinilor' },
 };

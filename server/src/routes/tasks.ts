@@ -13,6 +13,7 @@ import taskActivityRoutes from './taskActivity';
 import taskRecurringRoutes from './taskRecurring';
 import taskAlertRoutes from './taskAlerts';
 import taskDependencyRoutes from './taskDependencies';
+import taskChecklistRoutes from './taskChecklist';
 
 const router = Router();
 
@@ -504,5 +505,6 @@ router.use('/:id', taskActivityRoutes);
 router.use('/:id', taskRecurringRoutes);
 router.use('/:id', taskAlertRoutes);
 router.use('/:id', taskDependencyRoutes);
+router.use('/:id', taskChecklistRoutes);
 
 export default router;

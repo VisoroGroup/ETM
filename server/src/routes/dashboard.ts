@@ -229,4 +229,84 @@ router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Respons
     }
 });
 
+// --- Dashboard Preferences (widget layout) ---
+
+const DEFAULT_LAYOUTS: Record<string, any[]> = {
+    admin: [
+        { widget_id: 'global_stats', visible: true, order: 0, size: 'full' },
+        { widget_id: 'my_stats', visible: true, order: 1, size: 'full' },
+        { widget_id: 'status_chart', visible: true, order: 2, size: 'half' },
+        { widget_id: 'dept_chart', visible: true, order: 3, size: 'half' },
+        { widget_id: 'trend_chart', visible: true, order: 4, size: 'full' },
+        { widget_id: 'urgent_tasks', visible: true, order: 5, size: 'full' },
+        { widget_id: 'active_alerts', visible: true, order: 6, size: 'full' },
+        { widget_id: 'bottlenecks', visible: true, order: 7, size: 'full' },
+        { widget_id: 'payment_summary', visible: true, order: 8, size: 'full' },
+        { widget_id: 'calendar', visible: false, order: 9, size: 'full' },
+    ],
+    manager: [
+        { widget_id: 'global_stats', visible: true, order: 0, size: 'full' },
+        { widget_id: 'my_stats', visible: true, order: 1, size: 'full' },
+        { widget_id: 'dept_chart', visible: true, order: 2, size: 'full' },
+        { widget_id: 'urgent_tasks', visible: true, order: 3, size: 'full' },
+        { widget_id: 'active_alerts', visible: true, order: 4, size: 'full' },
+        { widget_id: 'bottlenecks', visible: true, order: 5, size: 'full' },
+        { widget_id: 'status_chart', visible: false, order: 6, size: 'half' },
+        { widget_id: 'trend_chart', visible: false, order: 7, size: 'full' },
+        { widget_id: 'payment_summary', visible: false, order: 8, size: 'full' },
+        { widget_id: 'calendar', visible: false, order: 9, size: 'full' },
+    ],
+    user: [
+        { widget_id: 'my_stats', visible: true, order: 0, size: 'full' },
+        { widget_id: 'urgent_tasks', visible: true, order: 1, size: 'full' },
+        { widget_id: 'calendar', visible: true, order: 2, size: 'full' },
+        { widget_id: 'global_stats', visible: false, order: 3, size: 'full' },
+        { widget_id: 'status_chart', visible: false, order: 4, size: 'half' },
+        { widget_id: 'dept_chart', visible: false, order: 5, size: 'half' },
+        { widget_id: 'trend_chart', visible: false, order: 6, size: 'full' },
+        { widget_id: 'active_alerts', visible: false, order: 7, size: 'full' },
+        { widget_id: 'bottlenecks', visible: false, order: 8, size: 'full' },
+        { widget_id: 'payment_summary', visible: false, order: 9, size: 'full' },
+    ],
+};
+
+// GET /api/dashboard/preferences
+router.get('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { rows } = await pool.query(
+            'SELECT widget_layout FROM dashboard_preferences WHERE user_id = $1', [req.user!.id]
+        );
+        if (rows.length > 0) {
+            res.json(rows[0].widget_layout);
+        } else {
+            const role = req.user!.role || 'user';
+            res.json(DEFAULT_LAYOUTS[role] || DEFAULT_LAYOUTS.user);
+        }
+    } catch (err) {
+        console.error('Preferences error:', err);
+        res.status(500).json({ error: 'Eroare la preferințe.' });
+    }
+});
+
+// PUT /api/dashboard/preferences
+router.put('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { widget_layout } = req.body;
+        if (!Array.isArray(widget_layout)) {
+            res.status(400).json({ error: 'widget_layout trebuie să fie un array.' });
+            return;
+        }
+        await pool.query(
+            `INSERT INTO dashboard_preferences (user_id, widget_layout, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET widget_layout = $2, updated_at = NOW()`,
+            [req.user!.id, JSON.stringify(widget_layout)]
+        );
+        res.json({ message: 'Preferințe salvate.' });
+    } catch (err) {
+        console.error('Save preferences error:', err);
+        res.status(500).json({ error: 'Eroare la salvare.' });
+    }
+});
+
 export default router;

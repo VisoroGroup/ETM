@@ -10,7 +10,7 @@ export type Department = 'departament_1' | 'departament_2' | 'departament_3' | '
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 export type AlertStatus = 'active' | 'resolved';
-export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved' | 'dependency_added' | 'dependency_removed' | 'dependency_resolved';
+export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved' | 'dependency_added' | 'dependency_removed' | 'dependency_resolved' | 'checklist_updated' | 'title_changed' | 'description_changed' | 'assigned_to_changed' | 'department_changed' | 'task_created' | 'task_duplicated' | 'task_deleted';
 
 export interface User {
     id: string;
@@ -62,6 +62,17 @@ export interface TaskDependency {
     created_at: string;
 }
 
+export interface ChecklistItem {
+    id: string;
+    task_id: string;
+    title: string;
+    is_checked: boolean;
+    order_index: number;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface TaskAlert {
     id: string;
     task_id: string;
@@ -84,6 +95,7 @@ export interface TaskDetail extends Task {
     activity: ActivityLogEntry[];
     alerts: TaskAlert[];
     dependencies?: { blocks: TaskDependency[]; blocked_by: TaskDependency[] };
+    checklist?: ChecklistItem[];
 }
 
 export interface Subtask {
@@ -264,5 +276,25 @@ export const PAYMENT_CATEGORIES: Record<PaymentCategory, { label: string; color:
     furnizor_echipamente: { label: 'Furnizor de echipamente', color: '#0891B2' },
     marketing: { label: 'Marketing / Publicitate', color: '#EA580C' },
     salarii: { label: 'Salarii / Personal', color: '#16A34A' },
+};
+
+export interface WidgetConfig {
+    widget_id: string;
+    visible: boolean;
+    order: number;
+    size: 'full' | 'half';
+}
+
+export const AVAILABLE_WIDGETS: Record<string, { label: string; description: string; adminOnly?: boolean }> = {
+    global_stats: { label: 'Statistici globale', description: 'Numărul total de sarcini active, restante, blocate și completate' },
+    my_stats: { label: 'Sarcinile mele', description: 'Statisticile sarcinilor tale personale' },
+    status_chart: { label: 'Distribuție status', description: 'Grafic cu distribuția statusurilor sarcinilor' },
+    dept_chart: { label: 'Distribuție departamente', description: 'Grafic pe departamente' },
+    trend_chart: { label: 'Trend completare', description: 'Graficul completărilor din ultimele 4 săptămâni' },
+    urgent_tasks: { label: 'Sarcini urgente', description: 'Top 10 sarcini cu termen apropiat' },
+    active_alerts: { label: 'Alerte active', description: 'Alertele nerezolvate din sistem' },
+    bottlenecks: { label: 'Blocaje critice', description: 'Sarcinile care blochează cele mai multe altele' },
+    payment_summary: { label: 'Sumar plăți', description: 'Rezumatul plăților lunii curente', adminOnly: true },
+    calendar: { label: 'Calendar', description: 'Vizualizare calendar cu termenele sarcinilor' },
 };
 

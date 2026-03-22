@@ -11,7 +11,7 @@ import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
     ChevronDown, Ban, Trash2, Copy,
     Loader2, RefreshCw,
-    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil, Link2
+    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil, Link2, ListChecks
 } from 'lucide-react';
 
 // Tab components
@@ -21,6 +21,7 @@ import FilesTab from './tabs/FilesTab';
 import ActivityTab from './tabs/ActivityTab';
 import AlertsTab from './tabs/AlertsTab';
 import DependenciesTab from './tabs/DependenciesTab';
+import ChecklistTab from './tabs/ChecklistTab';
 import ErrorBoundary from '../ErrorBoundary';
 
 interface Props {
@@ -29,7 +30,7 @@ interface Props {
     onUpdate: () => void;
 }
 
-type Tab = 'subtasks' | 'comments' | 'files' | 'activity' | 'alerts' | 'dependencies';
+type Tab = 'subtasks' | 'checklist' | 'comments' | 'files' | 'activity' | 'alerts' | 'dependencies';
 
 export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const td = useTaskDetail(taskId);
@@ -178,6 +179,12 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number; alertActive?: boolean }[] = [
         { key: 'subtasks', label: 'Subtask-uri', icon: <CheckCircle2 className="w-3.5 h-3.5" />, count: totalSubtasks },
+        {
+            key: 'checklist' as Tab,
+            label: 'Checklist',
+            icon: <ListChecks className="w-3.5 h-3.5" />,
+            count: task.checklist?.length ?? 0,
+        },
         { key: 'comments', label: 'Comentarii', icon: <MessageSquare className="w-3.5 h-3.5" />, count: task.comments.length },
         { key: 'files', label: 'Fișiere', icon: <Paperclip className="w-3.5 h-3.5" />, count: task.attachments.length },
         { key: 'activity', label: 'Activitate', icon: <Activity className="w-3.5 h-3.5" />, count: task.activity.length },
@@ -435,6 +442,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                         )}
                         {activeTab === 'dependencies' && (
                             <ErrorBoundary><DependenciesTab taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
+                        )}
+                        {activeTab === 'checklist' && (
+                            <ErrorBoundary><ChecklistTab taskId={taskId} checklist={task.checklist ?? []} onUpdate={td.refetch} /></ErrorBoundary>
                         )}
                     </div>
 

@@ -30,7 +30,8 @@ export async function getTaskById(id: string) {
         { rows: attachments },
         { rows: activity },
         { rows: alerts },
-        { rows: allDeps }
+        { rows: allDeps },
+        { rows: checklist }
     ] = await Promise.all([
         pool.query(
             `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
@@ -89,6 +90,10 @@ export async function getTaskById(id: string) {
              WHERE (td.blocking_task_id = $1 OR td.blocked_task_id = $1)
              ORDER BY td.created_at DESC`,
             [id]
+        ),
+        pool.query(
+            `SELECT * FROM task_checklist_items WHERE task_id = $1 ORDER BY order_index ASC`,
+            [id]
         )
     ]);
 
@@ -103,6 +108,7 @@ export async function getTaskById(id: string) {
             blocks: allDeps.filter(d => d.blocking_task_id === id),
             blocked_by: allDeps.filter(d => d.blocked_task_id === id),
         },
+        checklist,
     };
 }
 
@@ -126,7 +132,7 @@ export async function createTask(
     await pool.query(
         `INSERT INTO activity_log (task_id, user_id, action_type, details)
        VALUES ($1, $2, 'created', $3)`,
-        [taskId, userId, JSON.stringify({ title, department: department_label })]
+        [taskId, userId, JSON.stringify({ title, description, department_label, assigned_to, due_date })]
     );
 
     return rows[0];
@@ -139,6 +145,11 @@ export async function updateTask(
     data: { title?: string; description?: string; department_label?: string; assigned_to?: string },
     userId: string
 ) {
+    // Fetch old task for audit comparison
+    const { rows: oldRows } = await pool.query('SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (oldRows.length === 0) return undefined;
+    const oldTask = oldRows[0];
+
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -152,18 +163,6 @@ export async function updateTask(
         values.push(data.description);
     }
     if (data.department_label !== undefined) {
-        // Log label change
-        const { rows: oldRows } = await pool.query('SELECT department_label FROM tasks WHERE id = $1', [id]);
-        if (oldRows.length > 0 && oldRows[0].department_label !== data.department_label) {
-            await pool.query(
-                `INSERT INTO activity_log (task_id, user_id, action_type, details)
-           VALUES ($1, $2, 'label_changed', $3)`,
-                [id, userId, JSON.stringify({
-                    old_label: oldRows[0].department_label,
-                    new_label: data.department_label
-                })]
-            );
-        }
         updates.push(`department_label = $${paramIndex++}`);
         values.push(data.department_label);
     }
@@ -182,18 +181,74 @@ export async function updateTask(
         values
     );
 
-    return rows.length > 0 ? rows[0] : undefined; // undefined = not found
+    if (rows.length === 0) return undefined;
+
+    // --- Audit logging: log each field change separately ---
+    if (data.title !== undefined && data.title !== oldTask.title) {
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'title_changed', $3)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.title, new_value: data.title })]
+        );
+    }
+    if (data.description !== undefined && data.description !== oldTask.description) {
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'description_changed', $3)`,
+            [id, userId, JSON.stringify({
+                old_value: (oldTask.description || '').substring(0, 200),
+                new_value: (data.description || '').substring(0, 200)
+            })]
+        );
+    }
+    if (data.department_label !== undefined && data.department_label !== oldTask.department_label) {
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'department_changed', $3)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.department_label, new_value: data.department_label })]
+        );
+    }
+    if (data.assigned_to !== undefined && (data.assigned_to || null) !== oldTask.assigned_to) {
+        let oldName = null, newName = null;
+        if (oldTask.assigned_to) {
+            const { rows: u } = await pool.query('SELECT display_name FROM users WHERE id = $1', [oldTask.assigned_to]);
+            oldName = u[0]?.display_name;
+        }
+        if (data.assigned_to) {
+            const { rows: u } = await pool.query('SELECT display_name FROM users WHERE id = $1', [data.assigned_to]);
+            newName = u[0]?.display_name;
+        }
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'assigned_to_changed', $3)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.assigned_to, old_name: oldName, new_value: data.assigned_to || null, new_name: newName })]
+        );
+        // Notification to new assignee
+        if (data.assigned_to && data.assigned_to !== userId) {
+            const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
+            const creatorName = creator[0]?.display_name || 'Cineva';
+            await pool.query(
+                `INSERT INTO notifications (user_id, task_id, type, message, created_by)
+                 VALUES ($1, $2, 'task_assigned', $3, $4)`,
+                [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId]
+            );
+        }
+    }
+
+    return rows[0];
 }
 
 // ------- DELETE /:id — soft delete -------
 
 export async function softDeleteTask(id: string, userId: string, userRole: string) {
-    const { rows } = await pool.query('SELECT created_by FROM tasks WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT created_by, title FROM tasks WHERE id = $1', [id]);
     if (rows.length === 0) return { error: 'not_found' as const };
 
     if (rows[0].created_by !== userId && userRole !== 'admin') {
         return { error: 'forbidden' as const };
     }
+
+    // Audit log: task deleted
+    await pool.query(
+        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_deleted', $3)`,
+        [id, userId, JSON.stringify({ title: rows[0].title })]
+    );
 
     await pool.query('UPDATE tasks SET deleted_at = NOW() WHERE id = $1', [id]);
     return { success: true };

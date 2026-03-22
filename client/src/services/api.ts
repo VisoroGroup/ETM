@@ -91,6 +91,8 @@ export const dashboardApi = {
     activeAlerts: () => api.get<any[]>('/dashboard/active-alerts').then(r => r.data),
     myStats: () => api.get<any>('/dashboard/my-stats').then(r => r.data),
     bottlenecks: () => api.get<any[]>('/dashboard/bottlenecks').then(r => r.data),
+    getPreferences: () => api.get('/dashboard/preferences').then(r => r.data),
+    savePreferences: (widget_layout: any[]) => api.put('/dashboard/preferences', { widget_layout }).then(r => r.data),
 };
 
 // Dependencies
@@ -101,6 +103,17 @@ export const dependenciesApi = {
         api.post(`/tasks/${taskId}/dependencies`, data).then(r => r.data),
     remove: (taskId: string, depId: string) =>
         api.delete(`/tasks/${taskId}/dependencies/${depId}`).then(r => r.data),
+};
+
+// Checklist
+export const checklistApi = {
+    list: (taskId: string) => api.get(`/tasks/${taskId}/checklist`).then(r => r.data),
+    add: (taskId: string, title: string) => api.post(`/tasks/${taskId}/checklist`, { title }).then(r => r.data),
+    update: (taskId: string, itemId: string, data: { title?: string; is_checked?: boolean }) =>
+        api.put(`/tasks/${taskId}/checklist/${itemId}`, data).then(r => r.data),
+    remove: (taskId: string, itemId: string) => api.delete(`/tasks/${taskId}/checklist/${itemId}`).then(r => r.data),
+    reorder: (taskId: string, order: { id: string; order_index: number }[]) =>
+        api.put(`/tasks/${taskId}/checklist-reorder`, { order }).then(r => r.data),
 };
 
 // Recurring

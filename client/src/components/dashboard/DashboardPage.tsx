@@ -10,10 +10,13 @@ import {
 } from 'recharts';
 import {
     TrendingUp, AlertTriangle, Ban, CheckCircle2, Activity,
-    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell, Link2
+    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell, Link2, FileDown, Settings
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
+import ReportModal from './ReportModal';
+import DashboardCustomizer from './DashboardCustomizer';
+import type { WidgetConfig } from '../../types';
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -25,6 +28,9 @@ export default function DashboardPage() {
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
     const [myStats, setMyStats] = useState<any>(null);
     const [bottlenecks, setBottlenecks] = useState<any[]>([]);
+    const [showReport, setShowReport] = useState(false);
+    const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
+    const [showCustomizer, setShowCustomizer] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -34,13 +40,14 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
         try {
-            const [s, c, tasks, alerts, ms, bn] = await Promise.all([
+            const [s, c, tasks, alerts, ms, bn, prefs] = await Promise.all([
                 dashboardApi.stats(),
                 dashboardApi.charts(),
                 tasksApi.list(),
                 dashboardApi.activeAlerts().catch(() => []),
                 dashboardApi.myStats().catch(() => null),
-                dashboardApi.bottlenecks().catch(() => [])
+                dashboardApi.bottlenecks().catch(() => []),
+                dashboardApi.getPreferences().catch(() => []),
             ]);
             setStats(s);
             setCharts(c);
@@ -48,6 +55,7 @@ export default function DashboardPage() {
             setActiveAlerts(alerts);
             setMyStats(ms);
             setBottlenecks(bn);
+            setWidgetLayout(prefs);
         } catch (err) {
             console.error('Dashboard load error:', err);
         } finally {
@@ -112,6 +120,13 @@ export default function DashboardPage() {
         },
     ];
 
+    // Widget visibility helper
+    const isVisible = (widgetId: string) => {
+        if (widgetLayout.length === 0) return true; // no prefs = show all
+        const w = widgetLayout.find(w => w.widget_id === widgetId);
+        return w ? w.visible : true;
+    };
+
     return (
         <div className="p-6 space-y-6 animate-fade-in">
             {/* Header + Controls */}
@@ -134,6 +149,17 @@ export default function DashboardPage() {
                         Sarcinile mele
                     </button>
 
+                    {/* Report button — admin/manager only */}
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <button
+                            onClick={() => setShowReport(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
+                        >
+                            <FileDown className="w-3.5 h-3.5" />
+                            Raport
+                        </button>
+                    )}
+
                     {/* Calendar / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">
                         <button
@@ -155,11 +181,20 @@ export default function DashboardPage() {
                             Calendar
                         </button>
                     </div>
+
+                    {/* Settings gear */}
+                    <button
+                        onClick={() => setShowCustomizer(true)}
+                        className="p-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-navy-400 hover:text-white hover:border-navy-600 transition-all"
+                        title="Personalizare panou"
+                    >
+                        <Settings className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
 
             {/* "În Atenție" — Active alerts panel */}
-            {activeAlerts.length > 0 && (
+            {isVisible('active_alerts') && activeAlerts.length > 0 && (
                 <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-5 shadow-lg shadow-red-500/5 animate-slide-up">
                     {/* Pulsating glow */}
                     <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
@@ -199,7 +234,8 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Stat Cards — clicabil pentru overdue și blocat */}
+            {/* Stat Cards */}
+            {isVisible('global_stats') && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map((card, i) => (
                     <div
@@ -222,9 +258,10 @@ export default function DashboardPage() {
                     </div>
                 ))}
             </div>
+            )}
 
             {/* My personal stats */}
-            {myStats && (
+            {isVisible('my_stats') && myStats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-navy-900/50 border border-cyan-500/30 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-1">
@@ -258,7 +295,7 @@ export default function DashboardPage() {
             )}
 
             {/* Calendar mode */}
-            {showCalendar ? (
+            {showCalendar && isVisible('calendar') ? (
                 <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                     <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-blue-400" />
@@ -270,8 +307,10 @@ export default function DashboardPage() {
             ) : (
                 <>
                     {/* Charts Row */}
+                    {(isVisible('status_chart') || isVisible('dept_chart') || isVisible('trend_chart')) && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Status Distribution - Donut */}
+                        {isVisible('status_chart') && (
                         <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                             <h3 className="text-sm font-semibold mb-4">Distribuție pe statusuri</h3>
                             {statusChartData.length > 0 ? (
@@ -307,8 +346,10 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         </div>
+                        )}
 
                         {/* Department Distribution - Bar */}
+                        {isVisible('dept_chart') && (
                         <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                             <h3 className="text-sm font-semibold mb-4">Task-uri pe departament</h3>
                             {deptChartData.length > 0 ? (
@@ -329,8 +370,10 @@ export default function DashboardPage() {
                                 <div className="h-[200px] flex items-center justify-center text-navy-500 text-sm">Nicio dată</div>
                             )}
                         </div>
+                        )}
 
                         {/* Completion Trend - Line */}
+                        {isVisible('trend_chart') && (
                         <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                             <h3 className="text-sm font-semibold mb-4">Trend finalizare (4 săptămâni)</h3>
                             {trendData.length > 0 ? (
@@ -347,9 +390,12 @@ export default function DashboardPage() {
                                 <div className="h-[200px] flex items-center justify-center text-navy-500 text-sm">Nicio dată</div>
                             )}
                         </div>
+                        )}
                     </div>
+                    )}
 
                     {/* Urgent Tasks */}
+                    {isVisible('urgent_tasks') && (
                     <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -415,9 +461,10 @@ export default function DashboardPage() {
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Bottleneck Tasks */}
-                    {bottlenecks.length > 0 && (
+                    {isVisible('bottlenecks') && bottlenecks.length > 0 && (
                         <div className="bg-navy-900/50 border border-orange-500/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -452,6 +499,8 @@ export default function DashboardPage() {
                     )}
                 </>
             )}
+            {showReport && <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />}
+            {showCustomizer && <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />}
         </div>
     );
 }
