@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue } from '../../utils/helpers';
-import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle, X } from 'lucide-react';
+import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle, X, Link2 } from 'lucide-react';
 import { tasksApi, commentsApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 
@@ -226,6 +226,14 @@ function KanbanCard({ task, index, isDragging, onClick }: {
 
                     {/* Title */}
                     <p className="text-sm font-medium leading-snug mb-2 line-clamp-2">{task.title}</p>
+
+                    {/* Dependency badge */}
+                    {(task.dependency_count ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 mb-2">
+                            <Link2 className="w-3 h-3 text-orange-400" />
+                            <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
+                        </div>
+                    )}
 
                     {/* Blocked reason — ONLY when status is blocat */}
                     {task.status === 'blocat' && task.blocked_reason && (

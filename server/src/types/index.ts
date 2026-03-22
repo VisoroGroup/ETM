@@ -31,7 +31,10 @@ export type ActionType =
     | 'label_changed'
     | 'recurring_created'
     | 'alert_added'
-    | 'alert_resolved';
+    | 'alert_resolved'
+    | 'dependency_added'
+    | 'dependency_removed'
+    | 'dependency_resolved';
 
 export interface User {
     id: string;
@@ -56,6 +59,21 @@ export interface Task {
     department_label: Department;
     created_at: Date;
     updated_at: Date;
+    dependency_count?: number;
+    blocks_count?: number;
+}
+
+export interface TaskDependency {
+    id: string;
+    blocking_task_id: string;
+    blocked_task_id: string;
+    blocking_task_title?: string;
+    blocked_task_title?: string;
+    blocking_task_status?: TaskStatus;
+    blocked_task_status?: TaskStatus;
+    created_by: string;
+    creator_name?: string;
+    created_at: Date;
 }
 
 export interface TaskWithDetails extends Task {

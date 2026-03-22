@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import {
     TrendingUp, AlertTriangle, Ban, CheckCircle2, Activity,
-    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell
+    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell, Link2
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
@@ -24,6 +24,7 @@ export default function DashboardPage() {
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
     const [myStats, setMyStats] = useState<any>(null);
+    const [bottlenecks, setBottlenecks] = useState<any[]>([]);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -33,18 +34,20 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
         try {
-            const [s, c, tasks, alerts, ms] = await Promise.all([
+            const [s, c, tasks, alerts, ms, bn] = await Promise.all([
                 dashboardApi.stats(),
                 dashboardApi.charts(),
                 tasksApi.list(),
                 dashboardApi.activeAlerts().catch(() => []),
-                dashboardApi.myStats().catch(() => null)
+                dashboardApi.myStats().catch(() => null),
+                dashboardApi.bottlenecks().catch(() => [])
             ]);
             setStats(s);
             setCharts(c);
             setAllTasks(tasks.tasks || tasks);
             setActiveAlerts(alerts);
             setMyStats(ms);
+            setBottlenecks(bn);
         } catch (err) {
             console.error('Dashboard load error:', err);
         } finally {
@@ -412,6 +415,41 @@ export default function DashboardPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Bottleneck Tasks */}
+                    {bottlenecks.length > 0 && (
+                        <div className="bg-navy-900/50 border border-orange-500/30 rounded-xl p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold flex items-center gap-2">
+                                    <Link2 className="w-4 h-4 text-orange-400" />
+                                    Blocaje critice
+                                </h3>
+                            </div>
+                            <div className="space-y-2">
+                                {bottlenecks.map((task: any) => (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => navigate('/tasks', { state: { openTaskId: task.id } })}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all hover:bg-navy-800/50 border-l-2 border-orange-500 bg-orange-500/5"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">{task.title}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {task.assignee_name && (
+                                                    <span className="text-[10px] text-navy-400">{task.assignee_name}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-orange-400">
+                                            <Link2 className="w-3.5 h-3.5" />
+                                            <span className="text-xs font-bold">{task.blocks_count}</span>
+                                            <span className="text-[10px] text-navy-400">blocat{parseInt(task.blocks_count) !== 1 ? 'e' : ''}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

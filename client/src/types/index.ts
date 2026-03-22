@@ -10,7 +10,7 @@ export type Department = 'departament_1' | 'departament_2' | 'departament_3' | '
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 export type AlertStatus = 'active' | 'resolved';
-export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved';
+export type ActionType = 'created' | 'status_changed' | 'due_date_changed' | 'comment_added' | 'subtask_added' | 'subtask_completed' | 'subtask_assigned' | 'attachment_added' | 'label_changed' | 'recurring_created' | 'alert_added' | 'alert_resolved' | 'dependency_added' | 'dependency_removed' | 'dependency_resolved';
 
 export interface User {
     id: string;
@@ -45,6 +45,21 @@ export interface Task {
     recurring_frequency?: RecurringFrequency;
     blocked_reason?: string | null;
     department?: Department | null;
+    dependency_count?: number;
+    blocks_count?: number;
+}
+
+export interface TaskDependency {
+    id: string;
+    blocking_task_id: string;
+    blocked_task_id: string;
+    blocking_task_title?: string;
+    blocked_task_title?: string;
+    blocking_task_status?: TaskStatus;
+    blocked_task_status?: TaskStatus;
+    created_by: string;
+    creator_name?: string;
+    created_at: string;
 }
 
 export interface TaskAlert {
@@ -68,6 +83,7 @@ export interface TaskDetail extends Task {
     attachments: TaskAttachment[];
     activity: ActivityLogEntry[];
     alerts: TaskAlert[];
+    dependencies?: { blocks: TaskDependency[]; blocked_by: TaskDependency[] };
 }
 
 export interface Subtask {
@@ -141,6 +157,8 @@ export interface TaskFilters {
     period?: string;
     recurring?: string;
     assigned_to?: string;
+    page?: number;
+    limit?: number;
 }
 
 // Constants

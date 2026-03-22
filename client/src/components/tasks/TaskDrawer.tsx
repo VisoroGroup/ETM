@@ -11,7 +11,7 @@ import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
     ChevronDown, Ban, Trash2, Copy,
     Loader2, RefreshCw,
-    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil
+    CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil, Link2
 } from 'lucide-react';
 
 // Tab components
@@ -20,6 +20,7 @@ import CommentsTab from './tabs/CommentsTab';
 import FilesTab from './tabs/FilesTab';
 import ActivityTab from './tabs/ActivityTab';
 import AlertsTab from './tabs/AlertsTab';
+import DependenciesTab from './tabs/DependenciesTab';
 import ErrorBoundary from '../ErrorBoundary';
 
 interface Props {
@@ -28,7 +29,7 @@ interface Props {
     onUpdate: () => void;
 }
 
-type Tab = 'subtasks' | 'comments' | 'files' | 'activity' | 'alerts';
+type Tab = 'subtasks' | 'comments' | 'files' | 'activity' | 'alerts' | 'dependencies';
 
 export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const td = useTaskDetail(taskId);
@@ -186,6 +187,12 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             icon: <AlertTriangle className="w-3.5 h-3.5" />,
             count: activeAlerts.length,
             alertActive: activeAlerts.length > 0,
+        },
+        {
+            key: 'dependencies' as Tab,
+            label: 'Dependențe',
+            icon: <Link2 className="w-3.5 h-3.5" />,
+            count: (task.dependencies?.blocks?.length ?? 0) + (task.dependencies?.blocked_by?.length ?? 0),
         },
     ];
 
@@ -425,6 +432,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                         )}
                         {activeTab === 'alerts' && (
                             <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
+                        )}
+                        {activeTab === 'dependencies' && (
+                            <ErrorBoundary><DependenciesTab taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
                         )}
                     </div>
 

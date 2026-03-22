@@ -12,6 +12,7 @@ import taskAttachmentRoutes from './taskAttachments';
 import taskActivityRoutes from './taskActivity';
 import taskRecurringRoutes from './taskRecurring';
 import taskAlertRoutes from './taskAlerts';
+import taskDependencyRoutes from './taskDependencies';
 
 const router = Router();
 
@@ -139,7 +140,9 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         (SELECT tsc.reason FROM task_status_changes tsc
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
-         ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
+         ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason,
+        COALESCE(deps.dep_count, 0) AS dependency_count,
+        COALESCE(blks.blocks_count, 0) AS blocks_count
       FROM tasks t
       JOIN users u ON t.created_by = u.id
       LEFT JOIN users au ON t.assigned_to = au.id
@@ -152,6 +155,17 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         FROM activity_log GROUP BY task_id
       ) al ON al.task_id = t.id
       LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
+      LEFT JOIN (
+        SELECT blocked_task_id, COUNT(*) AS dep_count
+        FROM task_dependencies td2
+        JOIN tasks bt2 ON td2.blocking_task_id = bt2.id AND bt2.status != 'terminat'
+        GROUP BY blocked_task_id
+      ) deps ON deps.blocked_task_id = t.id
+      LEFT JOIN (
+        SELECT blocking_task_id, COUNT(*) AS blocks_count
+        FROM task_dependencies
+        GROUP BY blocking_task_id
+      ) blks ON blks.blocking_task_id = t.id
       ${whereClause}
       ORDER BY
         CASE WHEN t.status = 'terminat' THEN 1 ELSE 0 END,
@@ -345,6 +359,32 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     })]
                 );
             }
+
+            // Handle dependency resolution: notify blocked tasks
+            const { rows: blockedTasks } = await pool.query(
+                `SELECT td.blocked_task_id, t.title, t.assigned_to
+                 FROM task_dependencies td
+                 JOIN tasks t ON td.blocked_task_id = t.id
+                 WHERE td.blocking_task_id = $1 AND t.deleted_at IS NULL`,
+                [id]
+            );
+
+            const completedTaskTitle = rows[0].title;
+            for (const bt of blockedTasks) {
+                await pool.query(
+                    `INSERT INTO activity_log (task_id, user_id, action_type, details)
+                     VALUES ($1, $2, 'dependency_resolved', $3)`,
+                    [bt.blocked_task_id, req.user!.id, JSON.stringify({ resolved_by_task: id, resolved_task_title: completedTaskTitle })]
+                );
+                if (bt.assigned_to) {
+                    await pool.query(
+                        `INSERT INTO notifications (user_id, task_id, type, message)
+                         VALUES ($1, $2, 'dependency_resolved', $3)`,
+                        [bt.assigned_to, bt.blocked_task_id,
+                         `\u201E${completedTaskTitle}\u201D s-a finalizat \u2014 sarcina ta \u201E${bt.title}\u201D este deblocat\u0103!`]
+                    );
+                }
+            }
         }
 
         res.json(rows[0]);
@@ -463,5 +503,6 @@ router.use('/:id', taskAttachmentRoutes);
 router.use('/:id', taskActivityRoutes);
 router.use('/:id', taskRecurringRoutes);
 router.use('/:id', taskAlertRoutes);
+router.use('/:id', taskDependencyRoutes);
 
 export default router;

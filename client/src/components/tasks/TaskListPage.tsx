@@ -13,7 +13,7 @@ import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
     LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag,
-    Bookmark, BookmarkPlus
+    Bookmark, BookmarkPlus, Link2
 } from 'lucide-react';
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
@@ -503,6 +503,18 @@ export default function TaskListPage() {
                                         <div className="flex items-center gap-1 mt-1">
                                             <RefreshCw className="w-3 h-3 text-cyan-400" />
                                             <span className="text-[10px] text-cyan-400">Recurent</span>
+                                        </div>
+                                    )}
+                                    {(task.dependency_count ?? 0) > 0 && (
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <Link2 className="w-3 h-3 text-orange-400" />
+                                            <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
+                                        </div>
+                                    )}
+                                    {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <Link2 className="w-3 h-3 text-amber-400" />
+                                            <span className="text-[10px] text-amber-400">Blochează {task.blocks_count}</span>
                                         </div>
                                     )}
                                 </div>

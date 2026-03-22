@@ -206,4 +206,27 @@ router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) 
     }
 });
 
+// GET /api/dashboard/bottlenecks — top tasks blocking the most others
+router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { rows } = await pool.query(`
+            SELECT t.id, t.title, t.status, t.department_label, t.assigned_to,
+                   u.display_name AS assignee_name,
+                   COUNT(td.blocked_task_id) AS blocks_count
+            FROM tasks t
+            JOIN task_dependencies td ON td.blocking_task_id = t.id
+            JOIN tasks bt ON td.blocked_task_id = bt.id AND bt.status != 'terminat' AND bt.deleted_at IS NULL
+            LEFT JOIN users u ON t.assigned_to = u.id
+            WHERE t.status != 'terminat' AND t.deleted_at IS NULL
+            GROUP BY t.id, t.title, t.status, t.department_label, t.assigned_to, u.display_name
+            ORDER BY blocks_count DESC
+            LIMIT 5
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error('Bottlenecks error:', err);
+        res.status(500).json({ error: 'Eroare la bottlenecks.' });
+    }
+});
+
 export default router;

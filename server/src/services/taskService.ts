@@ -29,7 +29,8 @@ export async function getTaskById(id: string) {
         { rows: comments },
         { rows: attachments },
         { rows: activity },
-        { rows: alerts }
+        { rows: alerts },
+        { rows: allDeps }
     ] = await Promise.all([
         pool.query(
             `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
@@ -75,16 +76,33 @@ export async function getTaskById(id: string) {
              WHERE a.task_id = $1
              ORDER BY a.created_at DESC`,
             [id]
+        ),
+        pool.query(
+            `SELECT td.*,
+               bt.title AS blocking_task_title, bt.status AS blocking_task_status,
+               bdt.title AS blocked_task_title, bdt.status AS blocked_task_status,
+               u.display_name AS creator_name
+             FROM task_dependencies td
+             JOIN tasks bt ON td.blocking_task_id = bt.id
+             JOIN tasks bdt ON td.blocked_task_id = bdt.id
+             JOIN users u ON td.created_by = u.id
+             WHERE (td.blocking_task_id = $1 OR td.blocked_task_id = $1)
+             ORDER BY td.created_at DESC`,
+            [id]
         )
     ]);
 
     return {
         ...taskRows[0],
         subtasks,
-        comments: comments.reverse(), // Oldest first for display
+        comments: comments.reverse(),
         attachments,
         activity,
         alerts,
+        dependencies: {
+            blocks: allDeps.filter(d => d.blocking_task_id === id),
+            blocked_by: allDeps.filter(d => d.blocked_task_id === id),
+        },
     };
 }
 

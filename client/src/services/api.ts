@@ -90,6 +90,17 @@ export const dashboardApi = {
     charts: () => api.get<DashboardCharts>('/dashboard/charts').then(r => r.data),
     activeAlerts: () => api.get<any[]>('/dashboard/active-alerts').then(r => r.data),
     myStats: () => api.get<any>('/dashboard/my-stats').then(r => r.data),
+    bottlenecks: () => api.get<any[]>('/dashboard/bottlenecks').then(r => r.data),
+};
+
+// Dependencies
+export const dependenciesApi = {
+    list: (taskId: string) =>
+        api.get(`/tasks/${taskId}/dependencies`).then(r => r.data),
+    add: (taskId: string, data: { blocking_task_id: string; blocked_task_id: string }) =>
+        api.post(`/tasks/${taskId}/dependencies`, data).then(r => r.data),
+    remove: (taskId: string, depId: string) =>
+        api.delete(`/tasks/${taskId}/dependencies/${depId}`).then(r => r.data),
 };
 
 // Recurring
