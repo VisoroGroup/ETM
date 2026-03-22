@@ -143,6 +143,7 @@ export async function runDailyPaymentEmailJob() {
             }
 
             await client.query('COMMIT');
+            client.release();
 
             // If nothing to send, exit early
             const totalToSend = overduePayments.length + dueToday.length + due7Days.length + due14Days.length + due21Days.length + due30Days.length;
@@ -152,7 +153,7 @@ export async function runDailyPaymentEmailJob() {
             }
 
             // Calculate totals
-            const { rows: summaryRows } = await client.query(`
+            const { rows: summaryRows } = await pool.query(`
                 SELECT 
                     SUM(CASE WHEN due_date >= date_trunc('month', current_date) AND due_date < (date_trunc('month', current_date) + interval '1 month') THEN amount ELSE 0 END) as to_pay_month,
                     (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= date_trunc('month', current_date) AND paid_at < (date_trunc('month', current_date) + interval '1 month')) as paid_month
@@ -254,8 +255,9 @@ export async function runDailyPaymentEmailJob() {
                 }
             }
 
-        } finally {
-            client.release();
+        } catch (txErr) {
+            try { await client.query('ROLLBACK'); client.release(); } catch { /* already released */ }
+            throw txErr;
         }
     } catch (err) {
         console.error('💳 Payment email job failed:', err);
