@@ -40,5 +40,5 @@ RUN npm install tsx
 
 EXPOSE 8080
 
-# Run migrations then start server
-CMD ["sh", "-c", "npx tsx src/database/migrate.ts && node dist/app.js"]
+# Start server (migrations run automatically from app.ts with non-fatal error handling)
+CMD ["node", "dist/app.js"]
