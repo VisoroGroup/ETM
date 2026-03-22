@@ -3,6 +3,7 @@ import './env';
 
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import path from 'path';
 import pool from './config/database';
 import { runMigrations } from './database/migrate';
@@ -49,6 +50,7 @@ app.use(cors({
     })(),
     credentials: true
 }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
