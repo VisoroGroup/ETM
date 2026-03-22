@@ -298,3 +298,49 @@ export const AVAILABLE_WIDGETS: Record<string, { label: string; description: str
     calendar: { label: 'Calendar', description: 'Vizualizare calendar cu termenele sarcinilor' },
 };
 
+export type WebhookEventType =
+    | 'task.created'
+    | 'task.completed'
+    | 'task.status_changed'
+    | 'task.assigned'
+    | 'task.overdue'
+    | 'payment.due_soon'
+    | 'payment.overdue'
+    | 'payment.paid';
+
+export type WebhookDeliveryStatus = 'pending' | 'sending' | 'delivered' | 'failed' | 'retrying';
+
+export interface WebhookSubscription {
+    id: string;
+    url: string;
+    event_type: WebhookEventType;
+    secret: string | null;
+    description: string | null;
+    is_active: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+    creator_name?: string;
+    success_count?: number;
+    fail_count?: number;
+    last_success?: string | null;
+}
+
+export interface WebhookDelivery {
+    id: string;
+    subscription_id: string;
+    event_type: WebhookEventType;
+    payload: Record<string, any>;
+    response_status: number | null;
+    response_body: string | null;
+    attempt: number;
+    max_attempts: number;
+    status: WebhookDeliveryStatus;
+    next_retry_at: string | null;
+    error_message: string | null;
+    delivered_at: string | null;
+    created_at: string;
+    url?: string;
+    subscription_description?: string;
+}
+

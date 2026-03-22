@@ -194,5 +194,16 @@ export const templatesApi = {
     use: (id: string, due_date: string) => api.post(`/templates/${id}/use`, { due_date }).then(r => r.data),
 };
 
+export const webhookApi = {
+    getAll: () => api.get('/webhooks').then(r => r.data),
+    create: (data: { url: string; event_type: string; secret?: string; description?: string }) =>
+        api.post('/webhooks', data).then(r => r.data),
+    update: (id: string, data: any) => api.put(`/webhooks/${id}`, data).then(r => r.data),
+    delete: (id: string) => api.delete(`/webhooks/${id}`),
+    test: (id: string) => api.post(`/webhooks/${id}/test`).then(r => r.data),
+    getDeliveries: (params?: { event_type?: string; status?: string; subscription_id?: string; limit?: number; offset?: number }) =>
+        api.get('/webhooks/deliveries', { params }).then(r => r.data),
+};
+
 export { api };
 export default api;

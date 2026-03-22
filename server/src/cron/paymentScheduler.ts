@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { formatDateRo, isWorkingDay, daysDiff } from '../utils/dateUtils';
 import { PAYMENT_CATEGORIES } from '../types';
 import { sendEmail } from '../services/emailService';
+import { dispatchWebhook } from '../services/webhookService';
 
 interface PaymentForEmail {
     id: string;
@@ -133,6 +134,12 @@ export async function runDailyPaymentEmailJob() {
                         category: payment.category, beneficiary_name: payment.beneficiary_name, 
                         due_date: payment.due_date, days_overdue: daysDiff(today, new Date(payment.due_date))
                     });
+
+                    // Webhook: payment.overdue
+                    dispatchWebhook('payment.overdue', {
+                        payment: { id: payment.id, title: payment.title, amount: payment.amount, category: payment.category, due_date: payment.due_date },
+                        days_overdue: daysDiff(today, new Date(payment.due_date))
+                    }).catch(err => console.error('[WEBHOOK] payment.overdue dispatch error:', err.message));
 
                     // Log the overdue reminder
                     await client.query(`

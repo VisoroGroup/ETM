@@ -3,6 +3,7 @@ import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw } from 'lucide-rea
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../services/api';
 import { User, DEPARTMENTS, Department } from '../../types';
+import WebhookManager from './WebhookManager';
 
 const ROLES = ['admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
@@ -239,6 +240,11 @@ export default function AdminPage() {
                         </tbody>
                     </table>
                 )}
+            </div>
+
+            {/* Webhook Manager */}
+            <div className="mt-8">
+                <WebhookManager />
             </div>
         </div>
     );

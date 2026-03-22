@@ -6,6 +6,7 @@ import { TaskStatus } from '../types';
 import { validateCreateTask, validateUpdateTask, validateChangeStatus } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
 import * as taskService from '../services/taskService';
+import { dispatchWebhook } from '../services/webhookService';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
 import taskAttachmentRoutes from './taskAttachments';
@@ -386,6 +387,21 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     );
                 }
             }
+        }
+
+        // Webhook: task.status_changed
+        dispatchWebhook('task.status_changed', {
+            task: rows[0],
+            actor: { id: req.user!.id, name: req.user!.display_name, email: req.user!.email },
+            changes: { old_status: oldStatus, new_status: status }
+        }).catch(err => console.error('[WEBHOOK] task.status_changed dispatch error:', err.message));
+
+        // Webhook: task.completed (extra event when finishing)
+        if (status === 'terminat') {
+            dispatchWebhook('task.completed', {
+                task: rows[0],
+                actor: { id: req.user!.id, name: req.user!.display_name, email: req.user!.email }
+            }).catch(err => console.error('[WEBHOOK] task.completed dispatch error:', err.message));
         }
 
         res.json(rows[0]);

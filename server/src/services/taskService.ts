@@ -1,6 +1,7 @@
 import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
+import { dispatchWebhook } from './webhookService';
 
 // ------- GET /:id — full task detail with related data -------
 
@@ -135,6 +136,12 @@ export async function createTask(
         [taskId, userId, JSON.stringify({ title, description, department_label, assigned_to, due_date })]
     );
 
+    // Webhook: task.created
+    dispatchWebhook('task.created', {
+        task: rows[0],
+        actor: { id: userId }
+    }).catch(err => console.error('[WEBHOOK] task.created dispatch error:', err.message));
+
     return rows[0];
 }
 
@@ -229,6 +236,12 @@ export async function updateTask(
                 [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId]
             );
         }
+        // Webhook: task.assigned
+        dispatchWebhook('task.assigned', {
+            task: rows[0],
+            actor: { id: userId },
+            changes: { old_assigned_to: oldTask.assigned_to, new_assigned_to: data.assigned_to || null }
+        }).catch(err => console.error('[WEBHOOK] task.assigned dispatch error:', err.message));
     }
 
     return rows[0];

@@ -4,6 +4,7 @@ import { PoolClient } from 'pg';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { validateCreatePayment } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
+import { dispatchWebhook } from '../services/webhookService';
 import { v4 as uuidv4 } from 'uuid';
 import { PaymentReminderType } from '../types';
 
@@ -325,6 +326,13 @@ router.put('/:id/mark-paid', async (req: AuthRequest, res: Response) => {
         }
 
         await client.query('COMMIT');
+
+        // Webhook: payment.paid (fire-and-forget, after COMMIT)
+        dispatchWebhook('payment.paid', {
+            payment: { ...payment, status: 'platit', paid_at: paidAt },
+            actor: { id: req.user!.id, name: req.user!.display_name, email: req.user!.email }
+        }).catch(err => console.error('[WEBHOOK] payment.paid dispatch error:', err.message));
+
         res.json({ message: 'Plata a fost marcată ca plătită' });
     } catch (err) {
         await client.query('ROLLBACK');

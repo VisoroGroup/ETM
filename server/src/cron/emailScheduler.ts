@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { shouldSendReminder, daysDiff, formatDateRo, isWorkingDay } from '../utils/dateUtils';
 import { DEPARTMENTS } from '../types';
 import { sendEmail } from '../services/emailService';
+import { dispatchWebhook } from '../services/webhookService';
 
 interface TaskForEmail {
     id: string;
@@ -230,6 +231,12 @@ async function runDailyEmailJob() {
                     userEntry.blocked.push(taskData);
                 } else if (phase === 'overdue') {
                     userEntry.overdue.push(taskData);
+                    // Webhook: task.overdue (fire-and-forget, deduplicated per task)
+                    const daysOver = daysDiff(today, dueDate);
+                    dispatchWebhook('task.overdue', {
+                        task: { id: task.id, title: task.title, due_date: task.due_date, status: task.status, department_label: task.department_label },
+                        days_overdue: daysOver
+                    }).catch(err => console.error('[WEBHOOK] task.overdue dispatch error:', err.message));
                 } else if (phase === 'due_today') {
                     userEntry.due_today.push(taskData);
                 } else if (phase === '4_days_before' || phase === '2_days_before' || phase === '1_day_before') {
