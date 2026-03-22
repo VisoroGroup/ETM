@@ -1,0 +1,18 @@
+{
+  "name": "Visoro Task Manager",
+  "short_name": "Visoro ETM",
+  "description": "Aplicație de gestionare a sarcinilor pentru Visoro Global SRL",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#102a43",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/visoro-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -138,8 +138,8 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-            {/* Bottom Navigation — mobile only */}
-            <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 ${
+            {/* Bottom Navigation — mobile only (with safe-area for notched devices) */}
+            <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 safe-area-bottom ${
                 darkMode ? 'bg-navy-900/95 border-navy-700/60 backdrop-blur-md' : 'bg-white/95 border-gray-200 backdrop-blur-md'
             }`}>
                 {navItems.slice(0, 4).map(({ to, icon: Icon, label }) => (
