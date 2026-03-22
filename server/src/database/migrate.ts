@@ -15,7 +15,12 @@ export async function runMigrations() {
       )
     `);
 
-        const migrationsDir = path.join(__dirname, 'migrations');
+        // In production, __dirname is dist/database/ but .sql files are in src/database/migrations/
+        let migrationsDir = path.join(__dirname, 'migrations');
+        if (!fs.existsSync(migrationsDir)) {
+            // Fallback: resolve from project root to src/database/migrations
+            migrationsDir = path.join(__dirname, '..', '..', 'src', 'database', 'migrations');
+        }
         const files = fs.readdirSync(migrationsDir)
             .filter(f => f.endsWith('.sql'))
             .sort();
