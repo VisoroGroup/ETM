@@ -273,7 +273,7 @@ export default function DashboardPage() {
                     <div className="bg-navy-900/50 border border-red-500/30 rounded-xl p-3 md:p-4">
                         <div className="flex items-center gap-1.5 mb-1">
                             <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-red-400">Depășite</span>
+                            <span className="text-[10px] md:text-xs font-medium text-red-400">Depășite (ale mele)</span>
                         </div>
                         <p className="text-xl md:text-2xl font-bold">{myStats.my_overdue}</p>
                     </div>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                     <div className="bg-navy-900/50 border border-green-500/30 rounded-xl p-3 md:p-4">
                         <div className="flex items-center gap-1.5 mb-1">
                             <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-green-400">Finalizate</span>
+                            <span className="text-[10px] md:text-xs font-medium text-green-400">Finalizate (ale mele)</span>
                         </div>
                         <p className="text-xl md:text-2xl font-bold">{myStats.my_completed_this_month}</p>
                     </div>
