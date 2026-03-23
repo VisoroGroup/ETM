@@ -40,6 +40,7 @@ export default function TaskListPage() {
     const [savedViews, setSavedViews] = useState<any[]>([]);
     const [savingView, setSavingView] = useState(false);
     const [viewName, setViewName] = useState('');
+    const { user } = useAuth();
     const { showToast } = useToast();
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
@@ -163,7 +164,7 @@ export default function TaskListPage() {
         setSearchText('');
     }
 
-    const activeFilterCount = Object.values(filters).filter(Boolean).length;
+    const activeFilterCount = Object.entries(filters).filter(([k, v]) => k !== 'my_tasks' && Boolean(v)).length;
 
     // Bulk helpers
     const allSelected = tasks.length > 0 && selectedIds.size === tasks.length;
@@ -308,6 +309,20 @@ export default function TaskListPage() {
                             className="flex-1 md:flex-none px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                         >
                             Caută
+                        </button>
+                        <button
+                            onClick={() => setFilters(prev => ({
+                                ...prev,
+                                my_tasks: prev.my_tasks === 'true' ? undefined : 'true'
+                            }))}
+                            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg text-sm transition-colors ${
+                                filters.my_tasks === 'true'
+                                    ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
+                                    : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
+                            }`}
+                        >
+                            <UserCircle className="w-4 h-4" />
+                            Sarcinile mele
                         </button>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
