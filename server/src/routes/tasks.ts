@@ -7,6 +7,7 @@ import { validateCreateTask, validateUpdateTask, validateChangeStatus } from '..
 import { asyncHandler } from '../middleware/errorHandler';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
+import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
 import taskAttachmentRoutes from './taskAttachments';
@@ -398,8 +399,9 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
             const newLabel = statusLabels[status] || status;
             const taskTitle = rows[0].title;
 
-            import('../services/notificationEmailService').then(({ getTaskStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
-                getTaskStakeholders(id, req.user!.id).then(stakeholders => {
+            (async () => {
+                try {
+                    const stakeholders = await getTaskStakeholders(id, req.user!.id);
                     const bodyLines = [
                         `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a schimbat statusul sarcinii:</p>`,
                         `<p style="font-size: 14px; margin: 8px 0;">
@@ -410,7 +412,6 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     if (status === 'blocat' && reason) {
                         bodyLines.push(`<p style="color: #EF4444; font-size: 13px; margin-top: 8px;">📝 Motiv: ${reason}</p>`);
                     }
-
                     for (const user of stakeholders) {
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
@@ -425,8 +426,10 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                             htmlBody, emailType: 'status_changed',
                         }).catch(err => console.error('[status_changed] Email error:', err));
                     }
-                }).catch(err => console.error('[status_changed] Stakeholder error:', err));
-            }).catch(err => console.error('[status_changed] Import error:', err));
+                } catch (err) {
+                    console.error('[status_changed] Email notification error:', err);
+                }
+            })();
         }
 
         // Webhook: task.status_changed

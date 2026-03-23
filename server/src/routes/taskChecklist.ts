@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
 
@@ -92,32 +93,34 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
 
     // EMAIL: checklist item checked (false → true only)
     if (is_checked === true && oldItem.is_checked === false) {
-        import('../services/notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
-            pool.query('SELECT title, created_by, assigned_to FROM tasks WHERE id = $1', [taskId]).then(({ rows: taskRows }) => {
+        (async () => {
+            try {
+                const { rows: taskRows } = await pool.query('SELECT title, created_by, assigned_to FROM tasks WHERE id = $1', [taskId]);
                 const task = taskRows[0];
                 if (!task) return;
                 const itemTitle = title || oldItem.title;
-                getSpecificStakeholders([task.created_by, task.assigned_to], req.user!.id).then(stakeholders => {
-                    for (const user of stakeholders) {
-                        const htmlBody = buildNotificationHtml({
-                            recipientName: user.display_name,
-                            subtitle: 'Element checklist finalizat',
-                            bodyLines: [
-                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a bifat un element din checklist:</p>`,
-                                `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">☑️ ${itemTitle}</p>`,
-                            ],
-                            taskId,
-                            taskTitle: task.title,
-                        });
-                        sendNotificationEmail({
-                            userId: user.id, userEmail: user.email, userName: user.display_name,
-                            taskId, subject: `[ETM] Checklist bifat — ${itemTitle}`,
-                            htmlBody, emailType: 'checklist_checked',
-                        }).catch(err => console.error('[checklist_checked] Email error:', err));
-                    }
-                }).catch(err => console.error('[checklist_checked] Stakeholder error:', err));
-            }).catch(err => console.error('[checklist_checked] Task query error:', err));
-        }).catch(err => console.error('[checklist_checked] Import error:', err));
+                const stakeholders = await getSpecificStakeholders([task.created_by, task.assigned_to], req.user!.id);
+                for (const user of stakeholders) {
+                    const htmlBody = buildNotificationHtml({
+                        recipientName: user.display_name,
+                        subtitle: 'Element checklist finalizat',
+                        bodyLines: [
+                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a bifat un element din checklist:</p>`,
+                            `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">☑️ ${itemTitle}</p>`,
+                        ],
+                        taskId,
+                        taskTitle: task.title,
+                    });
+                    sendNotificationEmail({
+                        userId: user.id, userEmail: user.email, userName: user.display_name,
+                        taskId, subject: `[ETM] Checklist bifat — ${itemTitle}`,
+                        htmlBody, emailType: 'checklist_checked',
+                    }).catch(err => console.error('[checklist_checked] Email error:', err));
+                }
+            } catch (err) {
+                console.error('[checklist_checked] Email notification error:', err);
+            }
+        })();
     }
 
     res.json(rows[0]);

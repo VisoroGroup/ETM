@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { validateCreateComment } from '../middleware/validation';
+import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
 
@@ -87,7 +88,6 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
             if (mentions && mentions.length > 0) {
                 const mentionedIds = mentions.filter((mid: string) => mid !== req.user!.id);
                 if (mentionedIds.length > 0) {
-                    const { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } = await import('../services/notificationEmailService');
                     const stakeholders = await getSpecificStakeholders(mentionedIds, req.user!.id);
 
                     for (const mu of stakeholders) {

@@ -2,6 +2,7 @@ import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
 import { dispatchWebhook } from './webhookService';
+import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from './notificationEmailService';
 
 // ------- GET /:id — full task detail with related data -------
 
@@ -236,11 +237,12 @@ export async function updateTask(
                 [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId]
             );
 
-            // EMAIL: notify new assignee
-            import('./notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
-                getSpecificStakeholders([data.assigned_to!], userId).then(stakeholders => {
+            // EMAIL: notify new assignee (fire-and-forget)
+            (async () => {
+                try {
+                    const stakeholders = await getSpecificStakeholders([data.assigned_to!], userId);
+                    const taskTitle = data.title || oldTask.title;
                     for (const user of stakeholders) {
-                        const taskTitle = data.title || oldTask.title;
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
                             subtitle: 'Sarcină atribuită',
@@ -251,17 +253,15 @@ export async function updateTask(
                             taskTitle,
                         });
                         sendNotificationEmail({
-                            userId: user.id,
-                            userEmail: user.email,
-                            userName: user.display_name,
-                            taskId: id,
-                            subject: `[ETM] Sarcină atribuită — ${taskTitle}`,
-                            htmlBody,
-                            emailType: 'task_assigned',
+                            userId: user.id, userEmail: user.email, userName: user.display_name,
+                            taskId: id, subject: `[ETM] Sarcină atribuită — ${taskTitle}`,
+                            htmlBody, emailType: 'task_assigned',
                         }).catch(err => console.error('[task_assigned] Email error:', err));
                     }
-                }).catch(err => console.error('[task_assigned] Stakeholder error:', err));
-            }).catch(err => console.error('[task_assigned] Import error:', err));
+                } catch (err) {
+                    console.error('[task_assigned] Email notification error:', err);
+                }
+            })();
         }
         // Webhook: task.assigned
         dispatchWebhook('task.assigned', {
