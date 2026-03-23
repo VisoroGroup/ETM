@@ -195,9 +195,9 @@ export default function DashboardPage() {
 
             {/* "În Atenție" — Active alerts panel */}
             {isVisible('active_alerts') && activeAlerts.length > 0 && (
-                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-5 shadow-lg shadow-red-500/5 animate-slide-up">
+                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-4 md:p-5 shadow-lg shadow-red-500/5 animate-slide-up overflow-hidden">
                     {/* Pulsating glow */}
-                    <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
                     <div className="relative">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-bold flex items-center gap-2 text-red-400">

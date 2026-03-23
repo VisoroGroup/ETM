@@ -35,20 +35,49 @@ export function SkeletonTaskRow() {
     );
 }
 
+// Mobile task card skeleton
+function SkeletonTaskCard() {
+    return (
+        <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl p-4 animate-pulse space-y-3">
+            <div className="flex items-start gap-3">
+                <SkeletonBlock className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                    <SkeletonBlock className="h-4 w-3/4" />
+                    <SkeletonBlock className="h-3 w-1/2" />
+                </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+                <SkeletonBlock className="h-5 w-20 rounded-full" />
+                <SkeletonBlock className="h-5 w-24 rounded-full" />
+                <SkeletonBlock className="h-5 w-16 rounded-full" />
+            </div>
+        </div>
+    );
+}
+
 // Task list skeleton (header + N rows)
 export function SkeletonTaskList({ rows = 5 }: { rows?: number }) {
     return (
-        <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 border-b border-navy-700/50">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <SkeletonBlock key={i} className="h-3 w-16" />
+        <>
+            {/* Mobile skeleton */}
+            <div className="md:hidden space-y-2">
+                {Array.from({ length: rows }).map((_, i) => (
+                    <SkeletonTaskCard key={i} />
                 ))}
             </div>
-            {Array.from({ length: rows }).map((_, i) => (
-                <SkeletonTaskRow key={i} />
-            ))}
-        </div>
+            {/* Desktop skeleton */}
+            <div className="hidden md:block bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
+                {/* Header */}
+                <div className="grid grid-cols-[32px_1fr_120px_130px_140px_80px_130px_100px] gap-2 px-4 py-3 bg-navy-800/30 border-b border-navy-700/50">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <SkeletonBlock key={i} className="h-3 w-16" />
+                    ))}
+                </div>
+                {Array.from({ length: rows }).map((_, i) => (
+                    <SkeletonTaskRow key={i} />
+                ))}
+            </div>
+        </>
     );
 }
 
