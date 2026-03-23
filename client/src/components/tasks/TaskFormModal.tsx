@@ -58,7 +58,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
                     <h2 className="text-lg font-bold">Task nou</h2>
                     <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors">
@@ -66,7 +66,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
                     {error && (
                         <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>
                     )}

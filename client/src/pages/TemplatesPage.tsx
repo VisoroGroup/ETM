@@ -82,8 +82,8 @@ export default function TemplatesPage() {
     function removeSubtask(i: number) { setSubtasks(p => p.filter((_, idx) => idx !== i)); }
 
     return (
-        <div className="p-6 animate-fade-in">
-            <div className="flex items-center justify-between mb-6">
+        <div className="p-4 md:p-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <LayoutTemplate className="w-6 h-6 text-blue-400" /> Șabloane
@@ -92,7 +92,7 @@ export default function TemplatesPage() {
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg transition-all"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg transition-all self-start sm:self-auto"
                 >
                     <Plus className="w-4 h-4" /> Șablon nou
                 </button>

@@ -60,7 +60,7 @@ export default function EmailLogsPage() {
     const failedCount = logs.filter(l => l.status === 'failed').length;
 
     return (
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className="p-4 md:p-6 max-w-5xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -74,7 +74,7 @@ export default function EmailLogsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-navy-800/50 border border-navy-700/50 rounded-xl p-4">
                     <p className="text-2xl font-bold text-white">{logs.length}</p>
                     <p className="text-xs text-navy-400 mt-0.5">Total emailuri</p>
@@ -96,7 +96,7 @@ export default function EmailLogsPage() {
                         <TestTube className="w-4 h-4 text-amber-400" />
                         <h2 className="text-sm font-semibold">Trimite email de test</h2>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <input
                             type="email"
                             value={testEmail}
@@ -125,7 +125,7 @@ export default function EmailLogsPage() {
             )}
 
             {/* Logs table */}
-            <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-hidden">
+            <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-x-auto">
                 <div className="px-4 py-3 border-b border-navy-700/50">
                     <h2 className="text-sm font-semibold">
                         {user?.role === 'admin' || user?.role === 'manager' ? 'Toate emailurile' : 'Emailurile mele'}

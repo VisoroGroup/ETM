@@ -168,7 +168,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     if (loading || !task) {
         return (
             <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                <div className="w-full md:max-w-2xl h-full bg-navy-900 shadow-2xl animate-slide-in" onClick={e => e.stopPropagation()}>
+                <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in rounded-t-2xl md:rounded-none overflow-hidden" onClick={e => e.stopPropagation()}>
                     <SkeletonDrawer />
                 </div>
             </div>

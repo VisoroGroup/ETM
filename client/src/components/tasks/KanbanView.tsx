@@ -88,7 +88,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
     return (
         <>
             <DragDropContext onDragStart={(e) => setDraggingId(e.draggableId)} onDragEnd={onDragEnd}>
-                <div className="flex gap-4 h-full overflow-x-auto pb-4">
+                <div className="flex gap-4 h-full overflow-x-auto pb-20 md:pb-4">
                     {COLUMNS.map(col => {
                         const colTasks = grouped[col.key];
                         return (

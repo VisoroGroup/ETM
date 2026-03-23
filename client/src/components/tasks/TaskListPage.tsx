@@ -193,14 +193,16 @@ export default function TaskListPage() {
         setShowDeleteConfirm(false);
         let ok = 0;
         let fail = 0;
+        let lastError = '';
         for (const id of selectedIds) {
             try { await tasksApi.delete(id); ok++; } catch (e: any) {
                 fail++;
-                console.error(`[bulkDelete] Failed to delete task ${id}:`, e.response?.status, e.response?.data?.error || e.message);
+                lastError = e.response?.data?.error || e.message || 'Unknown error';
+                console.error(`[bulkDelete] Failed to delete task ${id}:`, e.response?.status, lastError);
             }
         }
         if (fail > 0) {
-            showToast(`${ok} șters, ${fail} eșuat — posibil nu ai permisiunea`, 'error');
+            showToast(`${ok} șters, ${fail} eșuat: ${lastError}`, 'error');
         } else {
             showToast(`${ok} task-uri șterse`);
         }

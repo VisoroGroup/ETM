@@ -85,7 +85,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
+        <div className="p-4 md:p-6 max-w-6xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ export default function AdminPage() {
 
             {/* Stats */}
             {stats && (
-                <div className="grid grid-cols-5 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
                     {[
                         { label: 'Utilizatori', value: stats.total_users, color: 'text-blue-400' },
                         { label: 'Sarcini total', value: stats.total_tasks, color: 'text-white' },
@@ -130,6 +130,7 @@ export default function AdminPage() {
                         <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : (
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-navy-700/50">
@@ -239,6 +240,7 @@ export default function AdminPage() {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 )}
             </div>
 

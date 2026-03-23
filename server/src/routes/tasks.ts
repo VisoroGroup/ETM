@@ -545,15 +545,15 @@ router.put('/:id/due-date', authMiddleware, async (req: AuthRequest, res: Respon
     }
 });
 
-// DELETE /api/tasks/:id — soft delete task (creator or admin only)
+// DELETE /api/tasks/:id — soft delete task
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const result = await taskService.softDeleteTask(req.params.id, req.user!.id, req.user!.role);
     if ('error' in result) {
         if (result.error === 'not_found') {
-            res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+            res.status(404).json({ error: 'Task-ul nu a fost găsit sau a fost deja șters.' });
             return;
         }
-        res.status(403).json({ error: 'Doar creatorul sau un admin poate șterge task-ul.' });
+        res.status(403).json({ error: `Nu ai permisiunea de a șterge acest task. (role: ${req.user!.role})` });
         return;
     }
     res.status(204).send();
