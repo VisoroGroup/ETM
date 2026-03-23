@@ -349,4 +349,42 @@ router.put('/preferences', authMiddleware, async (req: AuthRequest, res: Respons
     }
 });
 
+// GET /api/dashboard/calendar-events — tasks + subtasks with due_date for calendar
+router.get('/calendar-events', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const scope = userScopeFilter(req.user!, 't', 1);
+
+        // Tasks with due_date
+        const { rows: tasks } = await pool.query(`
+            SELECT t.id, t.title, t.due_date, t.status, t.department_label, t.assigned_to,
+                   u.display_name AS assignee_name,
+                   'task' AS event_type, NULL AS parent_task_id, NULL AS parent_task_title
+            FROM tasks t
+            LEFT JOIN users u ON t.assigned_to = u.id
+            WHERE t.due_date IS NOT NULL AND t.deleted_at IS NULL AND t.status != 'terminat' ${scope.clause}
+            ORDER BY t.due_date ASC
+        `, [...scope.values]);
+
+        // Subtasks with due_date (from non-deleted parent tasks)
+        const { rows: subtasks } = await pool.query(`
+            SELECT s.id, s.title, s.due_date, 
+                   CASE WHEN s.is_completed THEN 'terminat' ELSE 'de_rezolvat' END AS status,
+                   t.department_label, s.assigned_to,
+                   u.display_name AS assignee_name,
+                   'subtask' AS event_type, t.id AS parent_task_id, t.title AS parent_task_title
+            FROM subtasks s
+            JOIN tasks t ON s.task_id = t.id
+            LEFT JOIN users u ON s.assigned_to = u.id
+            WHERE s.due_date IS NOT NULL AND s.is_completed = false
+              AND (s.deleted_at IS NULL) AND t.deleted_at IS NULL AND t.status != 'terminat' ${scope.clause}
+            ORDER BY s.due_date ASC
+        `, [...scope.values]);
+
+        res.json([...tasks, ...subtasks]);
+    } catch (err) {
+        console.error('Calendar events error:', err);
+        res.status(500).json({ error: 'Eroare la evenimentele calendarului.' });
+    }
+});
+
 export default router;

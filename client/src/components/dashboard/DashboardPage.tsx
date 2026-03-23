@@ -135,28 +135,28 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold">Dashboard</h1>
                     <p className="text-navy-400 text-sm mt-1">Bine ai venit! Iată o privire de ansamblu.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
                     {/* Sarcinile mele filter */}
                     <button
                         onClick={() => setMyTasksOnly(v => !v)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                        className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all border ${
                             myTasksOnly
                                 ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
                                 : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:text-white hover:border-navy-600'
                         }`}
                     >
                         <User className="w-3.5 h-3.5" />
-                        Sarcinile mele
+                        <span className="hidden sm:inline">Sarcinile</span> mele
                     </button>
 
                     {/* Report button — admin/manager only */}
                     {(user?.role === 'admin' || user?.role === 'manager') && (
                         <button
                             onClick={() => setShowReport(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
+                            className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
                         >
                             <FileDown className="w-3.5 h-3.5" />
-                            Raport
+                            <span className="hidden sm:inline">Raport</span>
                         </button>
                     )}
 
@@ -164,21 +164,21 @@ export default function DashboardPage() {
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">
                         <button
                             onClick={() => setShowCalendar(false)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            className={`flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                                 !showCalendar ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                             }`}
                         >
                             <List className="w-3.5 h-3.5" />
-                            Listă
+                            <span className="hidden sm:inline">Listă</span>
                         </button>
                         <button
                             onClick={() => setShowCalendar(true)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            className={`flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                                 showCalendar ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                             }`}
                         >
                             <CalendarDays className="w-3.5 h-3.5" />
-                            Calendar
+                            <span className="hidden sm:inline">Calendar</span>
                         </button>
                     </div>
 
@@ -236,25 +236,25 @@ export default function DashboardPage() {
 
             {/* Stat Cards */}
             {isVisible('global_stats') && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {statCards.map((card, i) => (
                     <div
                         key={i}
                         onClick={card.onClick}
-                        className={`bg-navy-900/50 border border-navy-700/50 rounded-xl p-5 transition-all animate-slide-up ${
+                        className={`bg-navy-900/50 border border-navy-700/50 rounded-xl p-3 md:p-5 transition-all animate-slide-up ${
                             card.onClick ? 'cursor-pointer hover:border-navy-500/70 hover:bg-navy-800/50 hover:scale-[1.01]' : ''
                         }`}
                         style={{ animationDelay: `${i * 100}ms` }}
                         title={card.onClick ? 'Apasă pentru lista filtrată' : undefined}
                     >
-                        <div className="flex items-center justify-between mb-3">
-                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
-                                <card.icon className="w-5 h-5 text-white" />
+                        <div className="flex items-center justify-between mb-2 md:mb-3">
+                            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
+                                <card.icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
                             </div>
-                            {card.onClick && <ChevronRight className="w-4 h-4 text-navy-500" />}
+                            {card.onClick && <ChevronRight className="w-4 h-4 text-navy-500 hidden md:block" />}
                         </div>
-                        <p className="text-3xl font-bold">{card.value}</p>
-                        <p className="text-navy-400 text-sm mt-1">{card.label}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{card.value}</p>
+                        <p className="text-navy-400 text-[11px] md:text-sm mt-0.5 md:mt-1 leading-tight">{card.label}</p>
                     </div>
                 ))}
             </div>
@@ -262,34 +262,34 @@ export default function DashboardPage() {
 
             {/* My personal stats */}
             {isVisible('my_stats') && myStats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-navy-900/50 border border-cyan-500/30 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                            <User className="w-4 h-4 text-cyan-400" />
-                            <span className="text-xs font-medium text-cyan-400">Asignate mie</span>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div className="bg-navy-900/50 border border-cyan-500/30 rounded-xl p-3 md:p-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-cyan-400">Asignate mie</span>
                         </div>
-                        <p className="text-2xl font-bold">{myStats.my_active}</p>
+                        <p className="text-xl md:text-2xl font-bold">{myStats.my_active}</p>
                     </div>
-                    <div className="bg-navy-900/50 border border-red-500/30 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                            <AlertTriangle className="w-4 h-4 text-red-400" />
-                            <span className="text-xs font-medium text-red-400">Depășite</span>
+                    <div className="bg-navy-900/50 border border-red-500/30 rounded-xl p-3 md:p-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-red-400">Depășite</span>
                         </div>
-                        <p className="text-2xl font-bold">{myStats.my_overdue}</p>
+                        <p className="text-xl md:text-2xl font-bold">{myStats.my_overdue}</p>
                     </div>
-                    <div className="bg-navy-900/50 border border-yellow-500/30 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                            <CheckCircle2 className="w-4 h-4 text-yellow-400" />
-                            <span className="text-xs font-medium text-yellow-400">Subtask-uri rămase</span>
+                    <div className="bg-navy-900/50 border border-yellow-500/30 rounded-xl p-3 md:p-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-yellow-400">Subtask-uri rămase</span>
                         </div>
-                        <p className="text-2xl font-bold">{myStats.my_pending_subtasks}</p>
+                        <p className="text-xl md:text-2xl font-bold">{myStats.my_pending_subtasks}</p>
                     </div>
-                    <div className="bg-navy-900/50 border border-green-500/30 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                            <TrendingUp className="w-4 h-4 text-green-400" />
-                            <span className="text-xs font-medium text-green-400">Finalizate luna aceasta</span>
+                    <div className="bg-navy-900/50 border border-green-500/30 rounded-xl p-3 md:p-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-green-400">Finalizate</span>
                         </div>
-                        <p className="text-2xl font-bold">{myStats.my_completed_this_month}</p>
+                        <p className="text-xl md:text-2xl font-bold">{myStats.my_completed_this_month}</p>
                     </div>
                 </div>
             )}
@@ -302,17 +302,17 @@ export default function DashboardPage() {
                         Vedere calendar — termene limită
                         {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                     </h3>
-                    <CalendarView tasks={filteredTasks.filter(t => t.due_date && t.status !== 'terminat')} />
+                    <CalendarView />
                 </div>
             ) : (
                 <>
                     {/* Charts Row */}
                     {(isVisible('status_chart') || isVisible('dept_chart') || isVisible('trend_chart')) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         {/* Status Distribution - Donut */}
                         {isVisible('status_chart') && (
-                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
-                            <h3 className="text-sm font-semibold mb-4">Distribuție pe statusuri</h3>
+                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-4 md:p-5">
+                            <h3 className="text-xs md:text-sm font-semibold mb-3 md:mb-4">Distribuție pe statusuri</h3>
                             {statusChartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <PieChart>

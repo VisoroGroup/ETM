@@ -91,6 +91,7 @@ export const dashboardApi = {
     activeAlerts: () => api.get<any[]>('/dashboard/active-alerts').then(r => r.data),
     myStats: () => api.get<any>('/dashboard/my-stats').then(r => r.data),
     bottlenecks: () => api.get<any[]>('/dashboard/bottlenecks').then(r => r.data),
+    calendarEvents: () => api.get<any[]>('/dashboard/calendar-events').then(r => r.data),
     getPreferences: () => api.get('/dashboard/preferences').then(r => r.data),
     savePreferences: (widget_layout: any[]) => api.put('/dashboard/preferences', { widget_layout }).then(r => r.data),
 };

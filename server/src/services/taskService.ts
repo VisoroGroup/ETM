@@ -277,10 +277,14 @@ export async function updateTask(
 // ------- DELETE /:id — soft delete -------
 
 export async function softDeleteTask(id: string, userId: string, userRole: string) {
-    const { rows } = await pool.query('SELECT created_by, title FROM tasks WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT created_by, assigned_to, title FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
     if (rows.length === 0) return { error: 'not_found' as const };
 
-    if (rows[0].created_by !== userId && userRole !== 'admin') {
+    const isCreator = rows[0].created_by === userId;
+    const isAssignee = rows[0].assigned_to === userId;
+    const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
+
+    if (!isCreator && !isAssignee && !isAdminOrManager) {
         return { error: 'forbidden' as const };
     }
 

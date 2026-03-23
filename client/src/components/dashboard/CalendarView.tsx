@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Task, STATUSES, DEPARTMENTS } from '../../types';
+import { STATUSES, DEPARTMENTS } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { dashboardApi } from '../../services/api';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 const locales = { 'ro': ro };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
-interface Props {
-    tasks: Task[];
+interface CalendarEvent {
+    id: string;
+    title: string;
+    due_date: string;
+    status: string;
+    department_label: string;
+    assigned_to: string | null;
+    assignee_name: string | null;
+    event_type: 'task' | 'subtask';
+    parent_task_id: string | null;
+    parent_task_title: string | null;
 }
 
 const messages = {
@@ -28,25 +38,35 @@ const messages = {
     event: 'Sarcină',
 };
 
-export default function CalendarView({ tasks }: Props) {
+export default function CalendarView() {
     const navigate = useNavigate();
     const [view, setView] = useState<View>('month');
     const [date, setDate] = useState(new Date());
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const events = tasks
-        .filter(t => t.due_date)
-        .map(t => ({
-            id: t.id,
-            title: t.title,
-            start: new Date(t.due_date!),
-            end: new Date(t.due_date!),
-            resource: t,
+    useEffect(() => {
+        dashboardApi.calendarEvents()
+            .then(data => setCalendarEvents(data))
+            .catch(err => console.error('Calendar events error:', err))
+            .finally(() => setLoading(false));
+    }, []);
+
+    const events = calendarEvents
+        .filter(e => e.due_date)
+        .map(e => ({
+            id: e.id,
+            title: e.event_type === 'subtask' ? `↳ ${e.title}` : e.title,
+            start: new Date(e.due_date),
+            end: new Date(e.due_date),
+            resource: e,
         }));
 
     const eventStyleGetter = (event: any) => {
-        const task: Task = event.resource;
-        const dept = DEPARTMENTS[task.department_label];
-        const isOverdue = new Date(task.due_date!) < new Date() && task.status !== 'terminat';
+        const ev: CalendarEvent = event.resource;
+        const dept = DEPARTMENTS[ev.department_label as keyof typeof DEPARTMENTS];
+        const isOverdue = new Date(ev.due_date) < new Date() && ev.status !== 'terminat';
+        const isSubtask = ev.event_type === 'subtask';
         const bgColor = isOverdue ? '#ef4444' : (dept?.color || '#3b82f6');
         
         if (view === 'agenda') {
@@ -60,22 +80,24 @@ export default function CalendarView({ tasks }: Props) {
 
         return {
             style: {
-                backgroundColor: bgColor,
-                border: 'none',
+                backgroundColor: isSubtask ? `${bgColor}99` : bgColor,
+                border: isSubtask ? `1px dashed ${bgColor}` : 'none',
                 borderRadius: '4px',
                 color: 'white',
                 fontSize: '11px',
                 padding: '2px 6px',
-                opacity: task.status === 'terminat' ? 0.5 : 1,
+                opacity: ev.status === 'terminat' ? 0.5 : 1,
+                fontStyle: isSubtask ? 'italic' : 'normal',
             }
         };
     };
 
     const CustomAgendaEvent = ({ event }: any) => {
-        const task: Task = event.resource;
-        const dept = DEPARTMENTS[task.department_label];
-        const isOverdue = new Date(task.due_date!) < new Date() && task.status !== 'terminat';
+        const ev: CalendarEvent = event.resource;
+        const dept = DEPARTMENTS[ev.department_label as keyof typeof DEPARTMENTS];
+        const isOverdue = new Date(ev.due_date) < new Date() && ev.status !== 'terminat';
         const dotColor = isOverdue ? '#ef4444' : (dept?.color || '#3b82f6');
+        const isSubtask = ev.event_type === 'subtask';
         return (
             <div className="flex items-center gap-2.5">
                 {isOverdue ? (
@@ -84,14 +106,37 @@ export default function CalendarView({ tasks }: Props) {
                         <AlertTriangle className="w-3.5 h-3.5 text-red-500 relative z-10" />
                     </div>
                 ) : (
-                    <div className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: dotColor }} />
+                    <div
+                        className={`flex-shrink-0 shadow-sm ${isSubtask ? 'w-2.5 h-2.5 rounded-sm' : 'w-3 h-3 rounded-full'}`}
+                        style={{ backgroundColor: dotColor }}
+                    />
                 )}
-                <span className={`${task.status === 'terminat' ? 'opacity-50 line-through' : ''} ${isOverdue ? 'text-red-400 font-semibold' : ''}`}>
-                    {event.title}
-                </span>
+                <div className="flex flex-col">
+                    <span className={`${ev.status === 'terminat' ? 'opacity-50 line-through' : ''} ${isOverdue ? 'text-red-400 font-semibold' : ''} ${isSubtask ? 'italic' : ''}`}>
+                        {isSubtask ? `↳ ${ev.title}` : ev.title}
+                    </span>
+                    {isSubtask && ev.parent_task_title && (
+                        <span className="text-[10px] text-navy-500">
+                            din: {ev.parent_task_title}
+                        </span>
+                    )}
+                    {ev.assignee_name && (
+                        <span className="text-[10px] text-navy-500">
+                            → {ev.assignee_name}
+                        </span>
+                    )}
+                </div>
             </div>
         );
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+            </div>
+        );
+    }
 
     return (
         <div className="calendar-wrapper">
@@ -166,7 +211,7 @@ export default function CalendarView({ tasks }: Props) {
                 events={events}
                 startAccessor="start"
                 endAccessor="end"
-                style={{ height: 480 }}
+                style={{ height: 550 }}
                 view={view}
                 onView={setView}
                 date={date}
@@ -180,12 +225,20 @@ export default function CalendarView({ tasks }: Props) {
                     }
                 }}
                 onSelectEvent={(event: any) => {
-                    navigate('/tasks', { state: { openTaskId: event.id } });
+                    const ev: CalendarEvent = event.resource;
+                    const taskId = ev.event_type === 'subtask' ? ev.parent_task_id : ev.id;
+                    if (taskId) {
+                        navigate('/tasks', { state: { openTaskId: taskId } });
+                    }
                 }}
                 popup
                 tooltipAccessor={(event: any) => {
-                    const task = event.resource as Task;
-                    return `${task.title} — ${STATUSES[task.status]?.label || task.status}`;
+                    const ev: CalendarEvent = event.resource;
+                    const prefix = ev.event_type === 'subtask' ? `[Subtask] ` : '';
+                    const statusLabel = STATUSES[ev.status as keyof typeof STATUSES]?.label || ev.status;
+                    const assignee = ev.assignee_name ? ` — ${ev.assignee_name}` : '';
+                    const parent = ev.parent_task_title ? `\nTask: ${ev.parent_task_title}` : '';
+                    return `${prefix}${ev.title} — ${statusLabel}${assignee}${parent}`;
                 }}
             />
         </div>

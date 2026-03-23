@@ -106,79 +106,79 @@ export default function ActivityFeedPage() {
     const hasMore = items.length < total;
 
     return (
-        <div className="p-6 max-w-4xl mx-auto animate-fade-in">
+        <div className="p-4 md:p-6 max-w-4xl mx-auto animate-fade-in">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
                 <div className="flex items-center gap-3">
-                    <Activity className="w-6 h-6 text-blue-400" />
+                    <Activity className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
                     <div>
-                        <h1 className="text-2xl font-bold">Activitate</h1>
-                        <p className="text-navy-400 text-sm mt-0.5">{total} activități</p>
+                        <h1 className="text-xl md:text-2xl font-bold">Activitate</h1>
+                        <p className="text-navy-400 text-xs md:text-sm mt-0.5">{total} activități</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => loadFeed(1)}
-                        className="flex items-center gap-2 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                     >
-                        <RefreshCw className="w-4 h-4" /> Reîncarcă
+                        <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" /> Reîncarcă
                     </button>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors ${
+                        className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 border rounded-lg text-xs md:text-sm transition-colors ${
                             showFilters || filterUser || filterDept || filterAction
                                 ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
                                 : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
                         }`}
                     >
-                        <Filter className="w-4 h-4" /> Filtre
+                        <Filter className="w-3.5 h-3.5 md:w-4 md:h-4" /> Filtre
                     </button>
                 </div>
             </div>
 
             {/* Filters */}
             {showFilters && (
-                <div className="mb-4 bg-navy-900/50 border border-navy-700/50 rounded-xl p-4 animate-slide-up flex gap-4 flex-wrap">
+                <div className="mb-4 bg-navy-900/50 border border-navy-700/50 rounded-xl p-3 md:p-4 animate-slide-up grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label className="text-xs text-navy-400 mb-1 block">Utilizator</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Utilizator</label>
                         <select
                             value={filterUser}
                             onChange={e => setFilterUser(e.target.value)}
-                            className="bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none min-w-[150px]"
+                            className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
                             <option value="">Toți</option>
                             {users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs text-navy-400 mb-1 block">Departament</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Departament</label>
                         <select
                             value={filterDept}
                             onChange={e => setFilterDept(e.target.value)}
-                            className="bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none min-w-[150px]"
+                            className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
                             <option value="">Toate</option>
                             {DEPT_KEYS.map(d => <option key={d} value={d}>{DEPARTMENTS[d].label}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs text-navy-400 mb-1 block">Tip acțiune</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Tip acțiune</label>
                         <select
                             value={filterAction}
                             onChange={e => setFilterAction(e.target.value)}
-                            className="bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none min-w-[150px]"
+                            className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
                             <option value="">Toate</option>
                             {ACTION_TYPES.map(a => <option key={a} value={a}>{ACTION_LABELS[a] || a}</option>)}
                         </select>
                     </div>
                     {(filterUser || filterDept || filterAction) && (
-                        <div className="flex items-end">
+                        <div className="flex items-end sm:col-span-3">
                             <button
                                 onClick={() => { setFilterUser(''); setFilterDept(''); setFilterAction(''); }}
-                                className="text-xs text-navy-400 hover:text-white transition-colors px-2 py-1.5"
+                                className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1.5"
                             >
-                                Resetează
+                                Resetează filtrele
                             </button>
                         </div>
                     )}
