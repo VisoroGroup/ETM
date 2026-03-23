@@ -278,29 +278,27 @@ export async function updateTask(
 
 export async function softDeleteTask(id: string, userId: string, userRole: string) {
     const { rows } = await pool.query('SELECT created_by, assigned_to, title FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
-    
-    console.log('[SOFT_DELETE]', { taskId: id, userId, userRole, found: rows.length, created_by: rows[0]?.created_by, assigned_to: rows[0]?.assigned_to });
-    
     if (rows.length === 0) return { error: 'not_found' as const };
 
     const isCreator = rows[0].created_by === userId;
     const isAssignee = rows[0].assigned_to === userId;
     const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
-    console.log('[SOFT_DELETE] perms:', { isCreator, isAssignee, isAdminOrManager });
-
     if (!isCreator && !isAssignee && !isAdminOrManager) {
         return { error: 'forbidden' as const };
     }
 
-    // Audit log: task deleted
-    await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_deleted', $3)`,
-        [id, userId, JSON.stringify({ title: rows[0].title })]
-    );
+    // Audit log (non-blocking — don't let enum errors block the actual delete)
+    try {
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_deleted', $3)`,
+            [id, userId, JSON.stringify({ title: rows[0].title })]
+        );
+    } catch (err) {
+        console.error('[softDeleteTask] Audit log failed (enum may be missing):', err);
+    }
 
     await pool.query('UPDATE tasks SET deleted_at = NOW() WHERE id = $1', [id]);
-    console.log('[SOFT_DELETE] success:', id);
     return { success: true };
 }
 
