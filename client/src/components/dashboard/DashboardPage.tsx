@@ -128,14 +128,14 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="p-6 space-y-6 animate-fade-in">
+        <div className="p-4 md:p-6 space-y-6 animate-fade-in">
             {/* Header + Controls */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold">Dashboard</h1>
                     <p className="text-navy-400 text-sm mt-1">Bine ai venit! Iată o privire de ansamblu.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Sarcinile mele filter */}
                     <button
                         onClick={() => setMyTasksOnly(v => !v)}

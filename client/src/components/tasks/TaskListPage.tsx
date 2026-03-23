@@ -221,14 +221,14 @@ export default function TaskListPage() {
     }
 
     return (
-        <div className="p-6 animate-fade-in">
+        <div className="p-4 md:p-6 animate-fade-in">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold">Sarcini</h1>
                     <p className="text-navy-400 text-sm mt-1">{total} task-uri</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Kanban / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-1">
                         <button
@@ -250,7 +250,7 @@ export default function TaskListPage() {
                     </div>
                     <button
                         onClick={() => exportToCSV(tasks)}
-                        className="flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
+                        className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                         title="Exportă lista curentă"
                     >
                         CSV
@@ -267,7 +267,7 @@ export default function TaskListPage() {
 
             {/* Search & Filters */}
             <div className="mb-4 space-y-3">
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex-1 relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
                         <input
@@ -280,22 +280,24 @@ export default function TaskListPage() {
                             className="w-full pl-10 pr-4 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                     </div>
-                    <button
-                        onClick={handleSearch}
-                        className="px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
-                    >
-                        Caută
-                    </button>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg text-sm transition-colors ${showFilters || activeFilterCount > 0
-                                ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
-                                : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
-                            }`}
-                    >
-                        <Filter className="w-4 h-4" />
-                        Filtre {activeFilterCount > 0 && `(${activeFilterCount})`}
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleSearch}
+                            className="flex-1 md:flex-none px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
+                        >
+                            Caută
+                        </button>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg text-sm transition-colors ${showFilters || activeFilterCount > 0
+                                    ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
+                                    : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
+                                }`}
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filtre {activeFilterCount > 0 && `(${activeFilterCount})`}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Saved filter chips */}
@@ -446,187 +448,292 @@ export default function TaskListPage() {
                     </button>
                 </div>
             ) : (
-                <div className="bg-navy-900/30 border border-navy-700/50 rounded-xl">
-                    {/* Table header */}
-                    <div className="grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
-                        {/* Select all checkbox */}
-                        <div className="flex items-center" onClick={toggleAll}>
-                            {allSelected
-                                ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
-                                : someSelected
-                                    ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
-                                    : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
-                        </div>
-                        <span>Titlu</span>
-                        <span>Status</span>
-                        <span>Data limită</span>
-                        <span>Subtask</span>
-                        <span>Creat de</span>
-                        <span>Departament</span>
-                        <span>Activitate</span>
+                <>
+                    {/* ===== MOBILE CARD LAYOUT (<md) ===== */}
+                    <div className="md:hidden space-y-2">
+                        {tasks.map((task, index) => {
+                            const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                            const isChecked = selectedIds.has(task.id);
+                            return (
+                                <div
+                                    key={task.id}
+                                    onClick={() => setSelectedTaskId(task.id)}
+                                    className={`bg-navy-900/30 border border-navy-700/50 rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${
+                                        isChecked ? 'border-l-4 border-l-blue-500 bg-blue-500/5' :
+                                        dueStat === 'overdue' ? 'border-l-4 border-l-red-500 bg-red-500/5' :
+                                        dueStat === 'today' ? 'border-l-4 border-l-yellow-500 bg-yellow-500/5' : ''
+                                    }`}
+                                    style={{ animationDelay: `${index * 30}ms` }}
+                                >
+                                    {/* Top row: checkbox + title */}
+                                    <div className="flex items-start gap-3">
+                                        <div
+                                            className="mt-0.5 flex-shrink-0"
+                                            onClick={e => { e.stopPropagation(); toggleId(task.id); }}
+                                        >
+                                            {isChecked
+                                                ? <CheckSquare className="w-5 h-5 text-blue-400" />
+                                                : <Square className="w-5 h-5 text-navy-600" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold leading-snug">{task.title}</p>
+                                            {task.status === 'blocat' && task.blocked_reason && (
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
+                                                    <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom row: status + date + subtasks + dept */}
+                                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                        {/* Status badge */}
+                                        <span
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                                            style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
+                                        >
+                                            {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
+                                            {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                            {STATUSES[task.status]?.label}
+                                        </span>
+
+                                        {/* Due date */}
+                                        <span className={`text-[10px] font-medium flex items-center gap-1 ${
+                                            dueStat === 'overdue' ? 'text-red-400' :
+                                            dueStat === 'today' ? 'text-yellow-400' :
+                                            dueStat === 'tomorrow' ? 'text-orange-400' :
+                                            dueStat === 'soon' ? 'text-amber-400' :
+                                            'text-navy-400'
+                                        }`}>
+                                            <Calendar className="w-3 h-3" />
+                                            {formatDate(task.due_date)}
+                                            {dueStat === 'overdue' && (
+                                                <span className="text-red-400/70 ml-1">Depășit cu {getDaysOverdue(task.due_date)}z</span>
+                                            )}
+                                        </span>
+
+                                        {/* Subtask progress */}
+                                        {(task.subtask_total ?? 0) > 0 && (
+                                            <span className="text-[10px] text-navy-400 flex items-center gap-1">
+                                                {task.subtask_completed}/{task.subtask_total}
+                                                <div className="w-10 h-1 bg-navy-700 rounded-full">
+                                                    <div
+                                                        className="h-full bg-blue-400 rounded-full"
+                                                        style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </span>
+                                        )}
+
+                                        {/* Department */}
+                                        {task.department_label && DEPARTMENTS[task.department_label] && (
+                                            <span
+                                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                                                style={{ background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }}
+                                            >
+                                                {DEPARTMENTS[task.department_label].label}
+                                            </span>
+                                        )}
+
+                                        {/* Recurring / dependency icons */}
+                                        {task.is_recurring && (
+                                            <RefreshCw className="w-3 h-3 text-cyan-400" />
+                                        )}
+                                        {(task.dependency_count ?? 0) > 0 && (
+                                            <span className="text-[10px] text-orange-400 flex items-center gap-0.5">
+                                                <Link2 className="w-3 h-3" /> {task.dependency_count}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
 
-                    {/* Task rows */}
-                    {tasks.map((task, index) => {
-                        const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
-                        const isChecked = selectedIds.has(task.id);
-                        return (
-                            <div
-                                key={task.id}
-                                onClick={() => setSelectedTaskId(task.id)}
-                                className={`grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
-                                    isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
-                                    dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
-                                    dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
-                                }`}
-                                style={{ animationDelay: `${index * 30}ms` }}
-                            >
-                                {/* Row checkbox */}
-                                <div
-                                    className="flex items-center"
-                                    onClick={e => { e.stopPropagation(); toggleId(task.id); }}
-                                >
-                                    {isChecked
-                                        ? <CheckSquare className="w-4 h-4 text-blue-400" />
-                                        : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400" />}
-                                </div>
-                                {/* Title */}
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate">{task.title}</p>
-                                    {task.status === 'blocat' && task.blocked_reason && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
-                                            <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
-                                        </div>
-                                    )}
-                                    {task.is_recurring && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <RefreshCw className="w-3 h-3 text-cyan-400" />
-                                            <span className="text-[10px] text-cyan-400">Recurent</span>
-                                        </div>
-                                    )}
-                                    {(task.dependency_count ?? 0) > 0 && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <Link2 className="w-3 h-3 text-orange-400" />
-                                            <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
-                                        </div>
-                                    )}
-                                    {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <Link2 className="w-3 h-3 text-amber-400" />
-                                            <span className="text-[10px] text-amber-400">Blochează {task.blocks_count}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Status */}
-                                <div>
-                                    <span
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border"
-                                        style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
-                                    >
-                                        {task.status === 'blocat' && <Ban className="w-3 h-3" />}
-                                        {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}
-                                        {STATUSES[task.status]?.label}
-                                    </span>
-                                </div>
-
-                                {/* Due date */}
-                                <div>
-                                    <span className={`text-xs font-medium ${dueStat === 'overdue' ? 'text-red-400' :
-                                            dueStat === 'today' ? 'text-yellow-400' :
-                                                dueStat === 'tomorrow' ? 'text-orange-400' :
-                                                    dueStat === 'soon' ? 'text-amber-400' :
-                                                        'text-navy-300'
-                                        }`}>
-                                        <Calendar className="w-3 h-3 inline mr-1" />
-                                        {formatDate(task.due_date)}
-                                    </span>
-                                    {dueStat === 'overdue' && (
-                                        <p className="text-[10px] text-red-400/80 mt-0.5">
-                                            Depășit cu {getDaysOverdue(task.due_date)} zile
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Subtask progress */}
-                                <div>
-                                    {(task.subtask_total ?? 0) > 0 && (
-                                        <div>
-                                            <span className="text-xs text-navy-300">
-                                                {task.subtask_completed}/{task.subtask_total}
-                                            </span>
-                                            <div className="w-full h-1.5 bg-navy-700 rounded-full mt-1">
-                                                <div
-                                                    className="h-full bg-blue-400 rounded-full transition-all"
-                                                    style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Creator */}
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                        {task.creator_name?.charAt(0) || '?'}
-                                    </div>
-                                    <span className="text-xs text-navy-300 truncate">{task.creator_name}</span>
-                                </div>
-
-                                {/* Department — inline editable */}
-                                <div className="relative w-full" onClick={e => e.stopPropagation()}>
-                                    <button
-                                        onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                        className="flex items-center justify-between w-full px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all hover:opacity-80"
-                                        style={task.department_label && DEPARTMENTS[task.department_label]
-                                            ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
-                                            : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
-                                        }
-                                    >
-                                        <span className="truncate">
-                                            {task.department_label && DEPARTMENTS[task.department_label]
-                                                ? DEPARTMENTS[task.department_label].label
-                                                : '—'
-                                            }
-                                        </span>
-                                        <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-60" />
-                                    </button>
-                                    {deptDropdownId === task.id && (
-                                        <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
-                                            {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
-                                                <button
-                                                    key={dept}
-                                                    onClick={() => changeDepartment(task.id, dept)}
-                                                    className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700"
-                                                    style={{ color: DEPARTMENTS[dept].color }}
-                                                >
-                                                    <span
-                                                        className="w-2 h-2 rounded-full flex-shrink-0"
-                                                        style={{ background: DEPARTMENTS[dept].color }}
-                                                    />
-                                                    {DEPARTMENTS[dept].label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Last activity */}
-                                <div>
-                                    <span className="text-[11px] text-navy-500">
-                                        {task.last_activity ? timeAgo(task.last_activity) : '-'}
-                                    </span>
-                                </div>
+                    {/* ===== DESKTOP TABLE LAYOUT (md+) ===== */}
+                    <div className="hidden md:block bg-navy-900/30 border border-navy-700/50 rounded-xl">
+                        {/* Table header */}
+                        <div className="grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
+                            {/* Select all checkbox */}
+                            <div className="flex items-center" onClick={toggleAll}>
+                                {allSelected
+                                    ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
+                                    : someSelected
+                                        ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
+                                        : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
                             </div>
-                        );
-                    })}
-                </div>
+                            <span>Titlu</span>
+                            <span>Status</span>
+                            <span>Data limită</span>
+                            <span>Subtask</span>
+                            <span>Creat de</span>
+                            <span>Departament</span>
+                            <span>Activitate</span>
+                        </div>
+
+                        {/* Task rows */}
+                        {tasks.map((task, index) => {
+                            const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                            const isChecked = selectedIds.has(task.id);
+                            return (
+                                <div
+                                    key={task.id}
+                                    onClick={() => setSelectedTaskId(task.id)}
+                                    className={`grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
+                                        isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
+                                        dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
+                                        dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
+                                    }`}
+                                    style={{ animationDelay: `${index * 30}ms` }}
+                                >
+                                    {/* Row checkbox */}
+                                    <div
+                                        className="flex items-center"
+                                        onClick={e => { e.stopPropagation(); toggleId(task.id); }}
+                                    >
+                                        {isChecked
+                                            ? <CheckSquare className="w-4 h-4 text-blue-400" />
+                                            : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400" />}
+                                    </div>
+                                    {/* Title */}
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate">{task.title}</p>
+                                        {task.status === 'blocat' && task.blocked_reason && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
+                                                <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
+                                            </div>
+                                        )}
+                                        {task.is_recurring && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <RefreshCw className="w-3 h-3 text-cyan-400" />
+                                                <span className="text-[10px] text-cyan-400">Recurent</span>
+                                            </div>
+                                        )}
+                                        {(task.dependency_count ?? 0) > 0 && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <Link2 className="w-3 h-3 text-orange-400" />
+                                                <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
+                                            </div>
+                                        )}
+                                        {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <Link2 className="w-3 h-3 text-amber-400" />
+                                                <span className="text-[10px] text-amber-400">Blochează {task.blocks_count}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Status */}
+                                    <div>
+                                        <span
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                            style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
+                                        >
+                                            {task.status === 'blocat' && <Ban className="w-3 h-3" />}
+                                            {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}
+                                            {STATUSES[task.status]?.label}
+                                        </span>
+                                    </div>
+
+                                    {/* Due date */}
+                                    <div>
+                                        <span className={`text-xs font-medium ${dueStat === 'overdue' ? 'text-red-400' :
+                                                dueStat === 'today' ? 'text-yellow-400' :
+                                                    dueStat === 'tomorrow' ? 'text-orange-400' :
+                                                        dueStat === 'soon' ? 'text-amber-400' :
+                                                            'text-navy-300'
+                                            }`}>
+                                            <Calendar className="w-3 h-3 inline mr-1" />
+                                            {formatDate(task.due_date)}
+                                        </span>
+                                        {dueStat === 'overdue' && (
+                                            <p className="text-[10px] text-red-400/80 mt-0.5">
+                                                Depășit cu {getDaysOverdue(task.due_date)} zile
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Subtask progress */}
+                                    <div>
+                                        {(task.subtask_total ?? 0) > 0 && (
+                                            <div>
+                                                <span className="text-xs text-navy-300">
+                                                    {task.subtask_completed}/{task.subtask_total}
+                                                </span>
+                                                <div className="w-full h-1.5 bg-navy-700 rounded-full mt-1">
+                                                    <div
+                                                        className="h-full bg-blue-400 rounded-full transition-all"
+                                                        style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Creator */}
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                            {task.creator_name?.charAt(0) || '?'}
+                                        </div>
+                                        <span className="text-xs text-navy-300 truncate">{task.creator_name}</span>
+                                    </div>
+
+                                    {/* Department — inline editable */}
+                                    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
+                                            className="flex items-center justify-between w-full px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all hover:opacity-80"
+                                            style={task.department_label && DEPARTMENTS[task.department_label]
+                                                ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
+                                                : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
+                                            }
+                                        >
+                                            <span className="truncate">
+                                                {task.department_label && DEPARTMENTS[task.department_label]
+                                                    ? DEPARTMENTS[task.department_label].label
+                                                    : '—'
+                                                }
+                                            </span>
+                                            <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-60" />
+                                        </button>
+                                        {deptDropdownId === task.id && (
+                                            <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
+                                                {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
+                                                    <button
+                                                        key={dept}
+                                                        onClick={() => changeDepartment(task.id, dept)}
+                                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700"
+                                                        style={{ color: DEPARTMENTS[dept].color }}
+                                                    >
+                                                        <span
+                                                            className="w-2 h-2 rounded-full flex-shrink-0"
+                                                            style={{ background: DEPARTMENTS[dept].color }}
+                                                        />
+                                                        {DEPARTMENTS[dept].label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Last activity */}
+                                    <div>
+                                        <span className="text-[11px] text-navy-500">
+                                            {task.last_activity ? timeAgo(task.last_activity) : '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-3 bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-500/10 animate-slide-up">
+                <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-500/10 animate-slide-up flex-wrap justify-center max-w-[95vw]">
                     <span className="text-sm font-semibold text-blue-400 mr-2">{selectedIds.size} selectat{selectedIds.size > 1 ? 'e' : ''}</span>
 
                     {/* Status change */}
