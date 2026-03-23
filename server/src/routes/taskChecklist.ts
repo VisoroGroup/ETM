@@ -29,6 +29,16 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
 
     const taskId = req.params.id;
 
+    // Verify task exists and is not deleted
+    const { rows: taskCheck } = await pool.query(
+        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
+        [taskId]
+    );
+    if (taskCheck.length === 0) {
+        res.status(404).json({ error: 'A task nem létezik vagy törölve lett.' });
+        return;
+    }
+
     // Auto order_index
     const { rows: [{ next_idx }] } = await pool.query(
         `SELECT COALESCE(MAX(order_index), -1) + 1 AS next_idx FROM task_checklist_items WHERE task_id = $1`,

@@ -116,10 +116,11 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             values.push(assigned_to);
         }
 
-        // TEAM-BASED VIEW: regular 'user' role sees only tasks they created or are assigned to via subtasks
+        // TEAM-BASED VIEW: regular 'user' role sees only tasks they created, are assigned to, or have subtasks assigned to them
         if (req.user?.role === 'user') {
             conditions.push(`(
                 t.created_by = $${paramIndex} OR
+                t.assigned_to = $${paramIndex} OR
                 EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = t.id AND st.assigned_to = $${paramIndex})
             )`);
             values.push(req.user.id);

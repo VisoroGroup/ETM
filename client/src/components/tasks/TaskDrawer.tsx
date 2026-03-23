@@ -147,7 +147,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     async function handleDeleteTask() {
         setShowDeleteConfirm(false);
         td.deleteTask.mutate(undefined, {
-            onSuccess: () => { showToast('Task șters'); onClose(); onUpdate(); },
+            onSuccess: () => {
+                showToast('Task șters');
+                onClose();
+                setTimeout(() => onUpdate(), 300);
+            },
             onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
         });
     }

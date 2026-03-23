@@ -280,6 +280,14 @@ export async function softDeleteTask(id: string, userId: string, userRole: strin
     const { rows } = await pool.query('SELECT created_by, title FROM tasks WHERE id = $1', [id]);
     if (rows.length === 0) return { error: 'not_found' as const };
 
+    console.log('[DELETE DEBUG]', {
+        taskId: id,
+        userId,
+        userRole,
+        created_by: rows[0]?.created_by,
+        match: rows[0]?.created_by === userId
+    });
+
     if (rows[0].created_by !== userId && userRole !== 'admin') {
         return { error: 'forbidden' as const };
     }

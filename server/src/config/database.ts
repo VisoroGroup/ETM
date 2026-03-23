@@ -1,4 +1,9 @@
 import { Pool } from 'pg';
+import pg from 'pg';
+
+// Prevent pg from converting DATE to JavaScript Date object
+// Return as plain YYYY-MM-DD string instead
+pg.types.setTypeParser(1082, (val: string) => val); // 1082 = DATE OID
 
 /**
  * SSL configuration for PostgreSQL connection.

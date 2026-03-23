@@ -159,7 +159,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                             {/* Due date */}
                                             <input
                                                 type="date"
-                                                value={subtask.due_date || ''}
+                                                value={subtask.due_date ? subtask.due_date.slice(0, 10) : ''}
                                                 onChange={e => changeDueDate(subtask.id, e.target.value || null)}
                                                 onClick={e => e.stopPropagation()}
                                                 className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[110px]"

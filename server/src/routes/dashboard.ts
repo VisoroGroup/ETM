@@ -2,24 +2,51 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 
+/**
+ * Generates a SQL WHERE clause fragment that limits visibility for 'user' role.
+ * Admin and manager see everything; regular users see only:
+ * - Tasks they created
+ * - Tasks assigned to them
+ * - Tasks with subtasks assigned to them
+ */
+function userScopeFilter(
+    user: { id: string; role: string },
+    tableAlias: string = 't',
+    startParamIndex: number = 1
+): { clause: string; values: any[]; nextParamIndex: number } {
+    if (user.role === 'admin' || user.role === 'manager') {
+        return { clause: '', values: [], nextParamIndex: startParamIndex };
+    }
+    const p = startParamIndex;
+    return {
+        clause: `AND (${tableAlias}.created_by = $${p} OR ${tableAlias}.assigned_to = $${p} OR EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = ${tableAlias}.id AND st.assigned_to = $${p}))`,
+        values: [user.id],
+        nextParamIndex: p + 1,
+    };
+}
+
 const router = Router();
 
 // GET /api/dashboard/stats — summary numbers
 router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const today = new Date().toISOString().split('T')[0];
+        const scope = userScopeFilter(req.user!, 'tasks', 1);
+        let p = scope.nextParamIndex;
 
         const { rows: active } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE status IN ('de_rezolvat', 'in_realizare') AND deleted_at IS NULL`
+            `SELECT COUNT(*) FROM tasks WHERE status IN ('de_rezolvat', 'in_realizare') AND deleted_at IS NULL ${scope.clause}`,
+            [...scope.values]
         );
 
         const { rows: overdue } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE due_date < $1 AND status NOT IN ('terminat') AND deleted_at IS NULL`,
-            [today]
+            `SELECT COUNT(*) FROM tasks WHERE due_date < $${p} AND status NOT IN ('terminat') AND deleted_at IS NULL ${scope.clause}`,
+            [...scope.values, today]
         );
 
         const { rows: blocked } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE status = 'blocat' AND deleted_at IS NULL`
+            `SELECT COUNT(*) FROM tasks WHERE status = 'blocat' AND deleted_at IS NULL ${scope.clause}`,
+            [...scope.values]
         );
 
         // Completed this month
@@ -28,12 +55,15 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
         startOfMonth.setHours(0, 0, 0, 0);
         const { rows: completed } = await pool.query(
             `SELECT COUNT(*) FROM tasks WHERE status = 'terminat'
-       AND updated_at >= $1 AND deleted_at IS NULL`,
-            [startOfMonth.toISOString()]
+       AND updated_at >= $${p} AND deleted_at IS NULL ${scope.clause}`,
+            [...scope.values, startOfMonth.toISOString()]
         );
 
         // Total tasks
-        const { rows: total } = await pool.query(`SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL`);
+        const { rows: total } = await pool.query(
+            `SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL ${scope.clause}`,
+            [...scope.values]
+        );
 
         res.json({
             active: parseInt(active[0].count),
@@ -51,19 +81,24 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
 // GET /api/dashboard/charts — chart data
 router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+        const scope = userScopeFilter(req.user!, 'tasks', 1);
+
         // Status distribution
         const { rows: statusDist } = await pool.query(
-            `SELECT status, COUNT(*) AS count FROM tasks WHERE deleted_at IS NULL GROUP BY status ORDER BY status`
+            `SELECT status, COUNT(*) AS count FROM tasks WHERE deleted_at IS NULL ${scope.clause} GROUP BY status ORDER BY status`,
+            [...scope.values]
         );
 
         // Department distribution
         const { rows: deptDist } = await pool.query(
             `SELECT department_label, COUNT(*) AS count FROM tasks
-       WHERE status != 'terminat' AND deleted_at IS NULL
-       GROUP BY department_label ORDER BY department_label`
+       WHERE status != 'terminat' AND deleted_at IS NULL ${scope.clause}
+       GROUP BY department_label ORDER BY department_label`,
+            [...scope.values]
         );
 
-        // Completion trend - last 4 weeks (single query instead of 4)
+        // Completion trend - last 4 weeks
+        const scopeT = userScopeFilter(req.user!, 't', 1);
         const { rows: weekRows } = await pool.query(`
             SELECT
                 w.week_start::date AS week_start,
@@ -78,19 +113,20 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
                 AND t.deleted_at IS NULL
                 AND t.updated_at >= w.week_start
                 AND t.updated_at < w.week_start + INTERVAL '7 days'
+                ${scopeT.clause.replace('AND ', '')}
             GROUP BY w.week_start
             ORDER BY w.week_start ASC
-        `);
+        `, [...scopeT.values]);
 
         const weeks = weekRows.map((row, i) => ({
-            week_start: row.week_start.toISOString().split('T')[0],
-            week_end: row.week_end.toISOString().split('T')[0],
+            week_start: typeof row.week_start === 'string' ? row.week_start : row.week_start.toISOString().split('T')[0],
+            week_end: typeof row.week_end === 'string' ? row.week_end : row.week_end.toISOString().split('T')[0],
             count: parseInt(row.count),
             label: `Săpt. ${i + 1}`
         }));
 
         // Urgent tasks - top 10 upcoming (not completed)
-        const today = new Date().toISOString().split('T')[0];
+        const scopeU = userScopeFilter(req.user!, 't', 1);
         const { rows: urgent } = await pool.query(
             `SELECT t.*, u.display_name AS creator_name, u.avatar_url AS creator_avatar,
         COALESCE(sub.total, 0) AS subtask_total,
@@ -101,9 +137,10 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
          SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
          FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
        ) sub ON sub.task_id = t.id
-       WHERE t.status != 'terminat' AND t.deleted_at IS NULL
+       WHERE t.status != 'terminat' AND t.deleted_at IS NULL ${scopeU.clause}
        ORDER BY t.due_date ASC
-       LIMIT 10`
+       LIMIT 10`,
+            [...scopeU.values]
         );
 
         res.json({
@@ -121,6 +158,7 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
 // GET /api/dashboard/active-alerts — all unresolved alerts across tasks
 router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+        const scope = userScopeFilter(req.user!, 't', 1);
         const { rows } = await pool.query(
             `SELECT a.id, a.task_id, a.content, a.created_at,
                     t.title AS task_title, t.status AS task_status, t.department_label,
@@ -128,9 +166,10 @@ router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Respo
              FROM task_alerts a
              JOIN tasks t ON a.task_id = t.id
              JOIN users u ON a.created_by = u.id
-             WHERE a.is_resolved = false AND t.deleted_at IS NULL AND t.status != 'terminat'
+             WHERE a.is_resolved = false AND t.deleted_at IS NULL AND t.status != 'terminat' ${scope.clause}
              ORDER BY a.created_at DESC
-             LIMIT 20`
+             LIMIT 20`,
+            [...scope.values]
         );
         res.json(rows);
     } catch (err) {
@@ -209,6 +248,7 @@ router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) 
 // GET /api/dashboard/bottlenecks — top tasks blocking the most others
 router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+        const scope = userScopeFilter(req.user!, 't', 1);
         const { rows } = await pool.query(`
             SELECT t.id, t.title, t.status, t.department_label, t.assigned_to,
                    u.display_name AS assignee_name,
@@ -217,11 +257,11 @@ router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Respons
             JOIN task_dependencies td ON td.blocking_task_id = t.id
             JOIN tasks bt ON td.blocked_task_id = bt.id AND bt.status != 'terminat' AND bt.deleted_at IS NULL
             LEFT JOIN users u ON t.assigned_to = u.id
-            WHERE t.status != 'terminat' AND t.deleted_at IS NULL
+            WHERE t.status != 'terminat' AND t.deleted_at IS NULL ${scope.clause}
             GROUP BY t.id, t.title, t.status, t.department_label, t.assigned_to, u.display_name
             ORDER BY blocks_count DESC
             LIMIT 5
-        `);
+        `, [...scope.values]);
         res.json(rows);
     } catch (err) {
         console.error('Bottlenecks error:', err);
@@ -264,7 +304,7 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
         { widget_id: 'status_chart', visible: false, order: 4, size: 'half' },
         { widget_id: 'dept_chart', visible: false, order: 5, size: 'half' },
         { widget_id: 'trend_chart', visible: false, order: 6, size: 'full' },
-        { widget_id: 'active_alerts', visible: false, order: 7, size: 'full' },
+        { widget_id: 'active_alerts', visible: true, order: 3, size: 'full' },
         { widget_id: 'bottlenecks', visible: false, order: 8, size: 'full' },
         { widget_id: 'payment_summary', visible: false, order: 9, size: 'full' },
     ],

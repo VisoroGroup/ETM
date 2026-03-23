@@ -228,6 +228,10 @@ export function useTaskDetail(taskId: string) {
     // Delete task
     const deleteTask = useMutation({
         mutationFn: () => tasksApi.delete(taskId),
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        },
     });
 
     // Add alert
