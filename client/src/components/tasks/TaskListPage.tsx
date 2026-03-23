@@ -91,6 +91,18 @@ export default function TaskListPage() {
             setSelectedTaskId(state.openTaskId);
             window.history.replaceState({}, document.title);
         }
+        // Support email links: /tasks?openTaskId=xyz
+        const urlParams = new URLSearchParams(window.location.search);
+        const openTaskIdParam = urlParams.get('openTaskId');
+        if (openTaskIdParam) {
+            setSelectedTaskId(openTaskIdParam);
+            // Clean URL without reload
+            urlParams.delete('openTaskId');
+            const cleanUrl = urlParams.toString()
+                ? `${window.location.pathname}?${urlParams.toString()}`
+                : window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
         if (state?.filter === 'overdue') {
             setFilters({ period: 'overdue' });
             setShowFilters(true);

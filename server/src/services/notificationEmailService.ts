@@ -32,7 +32,7 @@ export function buildNotificationHtml(params: {
 }): string {
     const { recipientName, subtitle, bodyLines, taskId, taskTitle, ctaLabel = 'Deschide sarcina' } = params;
     const firstName = recipientName.split(' ')[0];
-    const taskUrl = `${APP_URL}/tasks/${taskId}`;
+    const taskUrl = `${APP_URL}/tasks?openTaskId=${taskId}`;
 
     return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
