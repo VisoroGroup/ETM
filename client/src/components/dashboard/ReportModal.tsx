@@ -48,7 +48,14 @@ export default function ReportModal({ isOpen, onClose }: Props) {
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-            if (!response.ok) throw new Error('Eroare la generare');
+            if (!response.ok) {
+                let errorMsg = `Eroare ${response.status}`;
+                try {
+                    const errBody = await response.json();
+                    errorMsg = errBody.error || errBody.message || errorMsg;
+                } catch { /* response wasn't JSON */ }
+                throw new Error(errorMsg);
+            }
             const blob = await response.blob();
             const ext = format === 'excel' ? 'xlsx' : 'pdf';
             const link = document.createElement('a');
@@ -57,8 +64,8 @@ export default function ReportModal({ isOpen, onClose }: Props) {
             link.click();
             URL.revokeObjectURL(link.href);
             onClose();
-        } catch {
-            alert('Eroare la generarea raportului.');
+        } catch (e: any) {
+            alert(`Eroare la generarea raportului: ${e?.message || 'Eroare necunoscută'}`);
         } finally {
             setGenerating(false);
         }
