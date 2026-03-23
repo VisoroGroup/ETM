@@ -389,6 +389,46 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
             }
         }
 
+        // EMAIL: notify stakeholders about status change
+        {
+            const statusLabels: Record<string, string> = {
+                de_rezolvat: 'De rezolvat', in_realizare: 'În realizare',
+                terminat: 'Terminat', blocat: 'Blocat',
+            };
+            const newLabel = statusLabels[status] || status;
+            const taskTitle = rows[0].title;
+
+            import('../services/notificationEmailService').then(({ getTaskStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+                getTaskStakeholders(id, req.user!.id).then(stakeholders => {
+                    const bodyLines = [
+                        `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a schimbat statusul sarcinii:</p>`,
+                        `<p style="font-size: 14px; margin: 8px 0;">
+                            <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${statusLabels[oldStatus] || oldStatus}</span>
+                            → <span style="background: ${status === 'terminat' ? '#d1fae5' : status === 'blocat' ? '#fee2e2' : '#dbeafe'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
+                        </p>`,
+                    ];
+                    if (status === 'blocat' && reason) {
+                        bodyLines.push(`<p style="color: #EF4444; font-size: 13px; margin-top: 8px;">📝 Motiv: ${reason}</p>`);
+                    }
+
+                    for (const user of stakeholders) {
+                        const htmlBody = buildNotificationHtml({
+                            recipientName: user.display_name,
+                            subtitle: `Status schimbat → ${newLabel}`,
+                            bodyLines,
+                            taskId: id,
+                            taskTitle,
+                        });
+                        sendNotificationEmail({
+                            userId: user.id, userEmail: user.email, userName: user.display_name,
+                            taskId: id, subject: `[ETM] Status: ${newLabel} — ${taskTitle}`,
+                            htmlBody, emailType: 'status_changed',
+                        }).catch(err => console.error('[status_changed] Email error:', err));
+                    }
+                }).catch(err => console.error('[status_changed] Stakeholder error:', err));
+            }).catch(err => console.error('[status_changed] Import error:', err));
+        }
+
         // Webhook: task.status_changed
         dispatchWebhook('task.status_changed', {
             task: rows[0],

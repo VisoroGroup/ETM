@@ -83,66 +83,36 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
                 );
             }
 
-            // Send EMAIL to mentioned users
+            // Send EMAIL to mentioned users (centralized via notificationEmailService)
             if (mentions && mentions.length > 0) {
                 const mentionedIds = mentions.filter((mid: string) => mid !== req.user!.id);
                 if (mentionedIds.length > 0) {
-                    // Check Azure credentials are present before attempting email
-                    const hasAzureCredentials = !!(
-                        process.env.AZURE_CLIENT_ID &&
-                        process.env.AZURE_CLIENT_SECRET &&
-                        process.env.AZURE_TENANT_ID
-                    );
+                    const { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } = await import('../services/notificationEmailService');
+                    const stakeholders = await getSpecificStakeholders(mentionedIds, req.user!.id);
 
-                    if (!hasAzureCredentials) {
-                        console.warn(`📧 [MENTION] Email not sent — Azure credentials missing (AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID). Mentioned users: ${mentionedIds.join(', ')}`);
-                    } else {
-                        const { rows: mentionedUsers } = await pool.query(
-                            'SELECT id, email, display_name FROM users WHERE id = ANY($1)',
-                            [mentionedIds]
-                        );
+                    for (const mu of stakeholders) {
+                        const htmlBody = buildNotificationHtml({
+                            recipientName: mu.display_name,
+                            subtitle: 'Mențiune nouă',
+                            bodyLines: [
+                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> te-a menționat într-un comentariu la sarcina:</p>`,
+                                `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0;">
+                                    <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"</p>
+                                </div>`,
+                            ],
+                            taskId,
+                            taskTitle,
+                        });
 
-                        const { sendEmail } = await import('../services/emailService');
-                        const appUrl = process.env.CLIENT_URL || 'https://etm-production-62a7.up.railway.app';
-
-                        for (const mu of mentionedUsers) {
-                            console.log(`📧 [MENTION] Attempting to send email to ${mu.email} (${mu.display_name})...`);
-                            try {
-                                await sendEmail({
-                                    to: mu.email,
-                                    subject: `[ETM] ${req.user!.display_name} te-a menționat — ${taskTitle}`,
-                                    htmlBody: `
-                                        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
-                                            <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                                                <h1 style="margin: 0; font-size: 20px;">Visoro Task Manager</h1>
-                                                <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">Mențiune nouă</p>
-                                            </div>
-                                            <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
-                                                <p style="font-size: 16px; color: #333;">Bună, <strong>${mu.display_name}</strong>!</p>
-                                                <p style="color: #555; font-size: 14px;">
-                                                    <strong>${req.user!.display_name}</strong> te-a menționat într-un comentariu la sarcina:
-                                                </p>
-                                                <div style="background: #f0f4f8; border-left: 4px solid #2563EB; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-                                                    <p style="margin: 0 0 4px; font-weight: bold; color: #1E3A5F;">${taskTitle}</p>
-                                                    <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"</p>
-                                                </div>
-                                                <a href="${appUrl}/tasks" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: 8px;">
-                                                    Deschide sarcina
-                                                </a>
-                                                <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
-                                                <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-                                                    Această notificare a fost generată automat de Visoro Task Manager.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    `,
-                                    displayName: mu.display_name,
-                                });
-                                console.log(`📧 [MENTION] Email sent successfully to ${mu.email} for task ${taskId}`);
-                            } catch (emailErr: any) {
-                                console.error(`📧 [MENTION] Failed to send email to ${mu.email}:`, emailErr?.message || emailErr);
-                            }
-                        }
+                        sendNotificationEmail({
+                            userId: mu.id,
+                            userEmail: mu.email,
+                            userName: mu.display_name,
+                            taskId,
+                            subject: `[ETM] ${req.user!.display_name} te-a menționat — ${taskTitle}`,
+                            htmlBody,
+                            emailType: 'mention',
+                        }).catch(err => console.error('[MENTION] Email error:', err));
                     }
                 }
             }

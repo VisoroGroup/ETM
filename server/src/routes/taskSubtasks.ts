@@ -69,6 +69,33 @@ router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response)
                 } catch (notifErr) {
                     console.error('Notification error (non-critical):', notifErr);
                 }
+
+                // EMAIL: notify subtask assignee
+                import('../services/notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+                    // Get task title for the email
+                    pool.query('SELECT title FROM tasks WHERE id = $1', [taskId]).then(({ rows: taskRows }) => {
+                        const taskTitle = taskRows[0]?.title || 'Sarcină';
+                        getSpecificStakeholders([assigned_to], req.user!.id).then(stakeholders => {
+                            for (const user of stakeholders) {
+                                const htmlBody = buildNotificationHtml({
+                                    recipientName: user.display_name,
+                                    subtitle: 'Sub-sarcină atribuită',
+                                    bodyLines: [
+                                        `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ți-a atribuit o sub-sarcină:</p>`,
+                                        `<p style="color: #333; font-size: 14px; font-weight: bold; margin: 8px 0;">📌 ${title}</p>`,
+                                    ],
+                                    taskId,
+                                    taskTitle,
+                                });
+                                sendNotificationEmail({
+                                    userId: user.id, userEmail: user.email, userName: user.display_name,
+                                    taskId, subject: `[ETM] Sub-sarcină atribuită — ${title}`,
+                                    htmlBody, emailType: 'subtask_assigned',
+                                }).catch(err => console.error('[subtask_assigned] Email error:', err));
+                            }
+                        }).catch(err => console.error('[subtask_assigned] Stakeholder error:', err));
+                    }).catch(err => console.error('[subtask_assigned] Task query error:', err));
+                }).catch(err => console.error('[subtask_assigned] Import error:', err));
             }
         }
 
@@ -118,6 +145,37 @@ router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res:
                         completed: is_completed
                     })]
                 );
+
+                // EMAIL: subtask completed (false → true only)
+                if (is_completed === true && oldRows[0].is_completed === false) {
+                    import('../services/notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+                        pool.query('SELECT title, created_by, assigned_to FROM tasks WHERE id = $1', [taskId]).then(({ rows: taskRows }) => {
+                            const task = taskRows[0];
+                            if (!task) return;
+                            // Scoped: task created_by + task assigned_to + this subtask's assigned_to
+                            const recipientIds = [task.created_by, task.assigned_to, oldRows[0].assigned_to];
+                            getSpecificStakeholders(recipientIds, req.user!.id).then(stakeholders => {
+                                for (const user of stakeholders) {
+                                    const htmlBody = buildNotificationHtml({
+                                        recipientName: user.display_name,
+                                        subtitle: 'Sub-sarcină finalizată',
+                                        bodyLines: [
+                                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a finalizat o sub-sarcină:</p>`,
+                                            `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">✅ ${oldRows[0].title}</p>`,
+                                        ],
+                                        taskId,
+                                        taskTitle: task.title,
+                                    });
+                                    sendNotificationEmail({
+                                        userId: user.id, userEmail: user.email, userName: user.display_name,
+                                        taskId, subject: `[ETM] Sub-sarcină finalizată — ${oldRows[0].title}`,
+                                        htmlBody, emailType: 'subtask_completed',
+                                    }).catch(err => console.error('[subtask_completed] Email error:', err));
+                                }
+                            }).catch(err => console.error('[subtask_completed] Stakeholder error:', err));
+                        }).catch(err => console.error('[subtask_completed] Task query error:', err));
+                    }).catch(err => console.error('[subtask_completed] Import error:', err));
+                }
             }
         }
         if (assigned_to !== undefined) {
@@ -143,6 +201,34 @@ router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res:
                         assigned_to_name: assignedName
                     })]
                 );
+
+                // EMAIL: subtask reassigned
+                if (assigned_to && assigned_to !== req.user!.id) {
+                    import('../services/notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+                        pool.query('SELECT title FROM tasks WHERE id = $1', [taskId]).then(({ rows: taskRows }) => {
+                            const taskTitle = taskRows[0]?.title || 'Sarcină';
+                            getSpecificStakeholders([assigned_to], req.user!.id).then(stakeholders => {
+                                for (const user of stakeholders) {
+                                    const htmlBody = buildNotificationHtml({
+                                        recipientName: user.display_name,
+                                        subtitle: 'Sub-sarcină atribuită',
+                                        bodyLines: [
+                                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ți-a atribuit o sub-sarcină:</p>`,
+                                            `<p style="color: #333; font-size: 14px; font-weight: bold; margin: 8px 0;">📌 ${oldRows[0].title}</p>`,
+                                        ],
+                                        taskId,
+                                        taskTitle,
+                                    });
+                                    sendNotificationEmail({
+                                        userId: user.id, userEmail: user.email, userName: user.display_name,
+                                        taskId, subject: `[ETM] Sub-sarcină atribuită — ${oldRows[0].title}`,
+                                        htmlBody, emailType: 'subtask_assigned',
+                                    }).catch(err => console.error('[subtask_assigned] Email error:', err));
+                                }
+                            }).catch(err => console.error('[subtask_assigned] Stakeholder error:', err));
+                        }).catch(err => console.error('[subtask_assigned] Task query error:', err));
+                    }).catch(err => console.error('[subtask_assigned] Import error:', err));
+                }
             }
         }
         if (due_date !== undefined) {

@@ -235,6 +235,33 @@ export async function updateTask(
                  VALUES ($1, $2, 'task_assigned', $3, $4)`,
                 [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId]
             );
+
+            // EMAIL: notify new assignee
+            import('./notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+                getSpecificStakeholders([data.assigned_to!], userId).then(stakeholders => {
+                    for (const user of stakeholders) {
+                        const taskTitle = data.title || oldTask.title;
+                        const htmlBody = buildNotificationHtml({
+                            recipientName: user.display_name,
+                            subtitle: 'Sarcină atribuită',
+                            bodyLines: [
+                                `<p style="color: #555; font-size: 14px;"><strong>${creatorName}</strong> ți-a atribuit o sarcină:</p>`,
+                            ],
+                            taskId: id,
+                            taskTitle,
+                        });
+                        sendNotificationEmail({
+                            userId: user.id,
+                            userEmail: user.email,
+                            userName: user.display_name,
+                            taskId: id,
+                            subject: `[ETM] Sarcină atribuită — ${taskTitle}`,
+                            htmlBody,
+                            emailType: 'task_assigned',
+                        }).catch(err => console.error('[task_assigned] Email error:', err));
+                    }
+                }).catch(err => console.error('[task_assigned] Stakeholder error:', err));
+            }).catch(err => console.error('[task_assigned] Import error:', err));
         }
         // Webhook: task.assigned
         dispatchWebhook('task.assigned', {

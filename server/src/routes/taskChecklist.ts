@@ -55,6 +55,17 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     const { title, is_checked } = req.body;
     const { id: taskId, itemId } = req.params;
 
+    // Get old value for completion detection
+    const { rows: oldRows } = await pool.query(
+        'SELECT is_checked, title FROM task_checklist_items WHERE id = $1 AND task_id = $2',
+        [itemId, taskId]
+    );
+    if (oldRows.length === 0) {
+        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
+        return;
+    }
+    const oldItem = oldRows[0];
+
     const sets: string[] = [];
     const vals: any[] = [];
     let idx = 1;
@@ -77,6 +88,36 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     if (rows.length === 0) {
         res.status(404).json({ error: 'Elementul nu a fost găsit.' });
         return;
+    }
+
+    // EMAIL: checklist item checked (false → true only)
+    if (is_checked === true && oldItem.is_checked === false) {
+        import('../services/notificationEmailService').then(({ getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail }) => {
+            pool.query('SELECT title, created_by, assigned_to FROM tasks WHERE id = $1', [taskId]).then(({ rows: taskRows }) => {
+                const task = taskRows[0];
+                if (!task) return;
+                const itemTitle = title || oldItem.title;
+                getSpecificStakeholders([task.created_by, task.assigned_to], req.user!.id).then(stakeholders => {
+                    for (const user of stakeholders) {
+                        const htmlBody = buildNotificationHtml({
+                            recipientName: user.display_name,
+                            subtitle: 'Element checklist finalizat',
+                            bodyLines: [
+                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a bifat un element din checklist:</p>`,
+                                `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">☑️ ${itemTitle}</p>`,
+                            ],
+                            taskId,
+                            taskTitle: task.title,
+                        });
+                        sendNotificationEmail({
+                            userId: user.id, userEmail: user.email, userName: user.display_name,
+                            taskId, subject: `[ETM] Checklist bifat — ${itemTitle}`,
+                            htmlBody, emailType: 'checklist_checked',
+                        }).catch(err => console.error('[checklist_checked] Email error:', err));
+                    }
+                }).catch(err => console.error('[checklist_checked] Stakeholder error:', err));
+            }).catch(err => console.error('[checklist_checked] Task query error:', err));
+        }).catch(err => console.error('[checklist_checked] Import error:', err));
     }
 
     res.json(rows[0]);
