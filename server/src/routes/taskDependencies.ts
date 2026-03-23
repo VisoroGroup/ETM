@@ -54,11 +54,15 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 
     // Circular dependency check via recursive CTE
     // Walk UP from blocking_task_id: if we find blocked_task_id, it's circular
+    // Also filter out deleted tasks to avoid false positives from soft-deleted chains
     const { rows: circular } = await pool.query(`
         WITH RECURSIVE dep_chain AS (
-            SELECT blocking_task_id FROM task_dependencies WHERE blocked_task_id = $1
+            SELECT td.blocking_task_id FROM task_dependencies td
+            JOIN tasks t ON td.blocking_task_id = t.id AND t.deleted_at IS NULL
+            WHERE td.blocked_task_id = $1
             UNION
             SELECT td.blocking_task_id FROM task_dependencies td
+            JOIN tasks t ON td.blocking_task_id = t.id AND t.deleted_at IS NULL
             JOIN dep_chain dc ON td.blocked_task_id = dc.blocking_task_id
         )
         SELECT 1 FROM dep_chain WHERE blocking_task_id = $2 LIMIT 1

@@ -282,7 +282,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                 [id]
             );
 
-            // Also handle recurring tasks
+            // Also handle recurring tasks — wrapped in transaction for atomicity
             const { rows: recurringRows } = await pool.query(
                 `SELECT * FROM recurring_tasks WHERE template_task_id = $1 AND is_active = true`,
                 [id]
@@ -297,7 +297,6 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                 switch (recurring.frequency) {
                     case 'daily':
                         if (recurring.workdays_only) {
-                            // Skip weekends: advance to next working day
                             do {
                                 nextDueDate.setDate(nextDueDate.getDate() + 1);
                             } while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6);
@@ -322,46 +321,59 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                         break;
                 }
 
-                // Create new task
-                const newTaskId = uuidv4();
-                await pool.query(
-                    `INSERT INTO tasks (id, title, description, due_date, created_by, department_label)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-                    [newTaskId, task.title, task.description, nextDueDate.toISOString().split('T')[0],
-                        task.created_by, task.department_label]
-                );
+                // Use a transaction to ensure all recurring task operations succeed or fail together
+                const client = await pool.connect();
+                try {
+                    await client.query('BEGIN');
 
-                // Copy subtasks as template
-                const { rows: oldSubtasks } = await pool.query(
-                    `SELECT title, assigned_to, order_index FROM subtasks WHERE task_id = $1 ORDER BY order_index`,
-                    [id]
-                );
-
-                for (const st of oldSubtasks) {
-                    await pool.query(
-                        `INSERT INTO subtasks (task_id, title, assigned_to, order_index)
-             VALUES ($1, $2, $3, $4)`,
-                        [newTaskId, st.title, st.assigned_to, st.order_index]
+                    const newTaskId = uuidv4();
+                    await client.query(
+                        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label)
+                         VALUES ($1, $2, $3, $4, $5, $6)`,
+                        [newTaskId, task.title, task.description, nextDueDate.toISOString().split('T')[0],
+                            task.created_by, task.department_label]
                     );
+
+                    // Copy subtasks as template
+                    const { rows: oldSubtasks } = await client.query(
+                        `SELECT title, assigned_to, order_index FROM subtasks WHERE task_id = $1 AND deleted_at IS NULL ORDER BY order_index`,
+                        [id]
+                    );
+
+                    for (const st of oldSubtasks) {
+                        await client.query(
+                            `INSERT INTO subtasks (task_id, title, assigned_to, order_index)
+                             VALUES ($1, $2, $3, $4)`,
+                            [newTaskId, st.title, st.assigned_to, st.order_index]
+                        );
+                    }
+
+                    // Update recurring task to point to new task
+                    await client.query(
+                        `UPDATE recurring_tasks SET template_task_id = $1, next_run_date = $2, updated_at = NOW()
+                         WHERE id = $3`,
+                        [newTaskId, nextDueDate.toISOString().split('T')[0], recurring.id]
+                    );
+
+                    // Activity log for recurring creation
+                    await client.query(
+                        `INSERT INTO activity_log (task_id, user_id, action_type, details)
+                         VALUES ($1, $2, 'recurring_created', $3)`,
+                        [newTaskId, req.user!.id, JSON.stringify({
+                            source_task_id: id,
+                            frequency: recurring.frequency,
+                            new_due_date: nextDueDate.toISOString().split('T')[0]
+                        })]
+                    );
+
+                    await client.query('COMMIT');
+                } catch (recurringErr) {
+                    await client.query('ROLLBACK');
+                    console.error('Error creating recurring task (rolled back):', recurringErr);
+                    // Don't fail the whole status change — the original task is already updated
+                } finally {
+                    client.release();
                 }
-
-                // Update recurring task to point to new task
-                await pool.query(
-                    `UPDATE recurring_tasks SET template_task_id = $1, next_run_date = $2, updated_at = NOW()
-           WHERE id = $3`,
-                    [newTaskId, nextDueDate.toISOString().split('T')[0], recurring.id]
-                );
-
-                // Activity log for recurring creation
-                await pool.query(
-                    `INSERT INTO activity_log (task_id, user_id, action_type, details)
-           VALUES ($1, $2, 'recurring_created', $3)`,
-                    [newTaskId, req.user!.id, JSON.stringify({
-                        source_task_id: id,
-                        frequency: recurring.frequency,
-                        new_due_date: nextDueDate.toISOString().split('T')[0]
-                    })]
-                );
             }
 
             // Handle dependency resolution: notify blocked tasks

@@ -113,7 +113,7 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
                 AND t.deleted_at IS NULL
                 AND t.updated_at >= w.week_start
                 AND t.updated_at < w.week_start + INTERVAL '7 days'
-                ${scopeT.clause.replace('AND ', '')}
+                ${scopeT.clause}
             GROUP BY w.week_start
             ORDER BY w.week_start ASC
         `, [...scopeT.values]);

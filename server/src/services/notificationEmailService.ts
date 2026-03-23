@@ -5,6 +5,18 @@ import { sendEmail } from './emailService';
 
 const APP_URL = process.env.CLIENT_URL || 'https://etm-production-62a7.up.railway.app';
 
+/**
+ * Escape HTML special characters to prevent XSS in emails.
+ */
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -31,20 +43,22 @@ export function buildNotificationHtml(params: {
     ctaLabel?: string;          // defaults to "Deschide sarcina"
 }): string {
     const { recipientName, subtitle, bodyLines, taskId, taskTitle, ctaLabel = 'Deschide sarcina' } = params;
-    const firstName = recipientName.split(' ')[0];
-    const taskUrl = `${APP_URL}/tasks?openTaskId=${taskId}`;
+    const firstName = escapeHtml(recipientName.split(' ')[0]);
+    const safeSubtitle = escapeHtml(subtitle);
+    const safeTaskTitle = escapeHtml(taskTitle);
+    const taskUrl = `${APP_URL}/tasks?openTaskId=${encodeURIComponent(taskId)}`;
 
     return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
       <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
         <h1 style="margin: 0; font-size: 20px;">Visoro Task Manager</h1>
-        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">${subtitle}</p>
+        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">${safeSubtitle}</p>
       </div>
       <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
         <p style="font-size: 16px; color: #333;">Bună, <strong>${firstName}</strong>!</p>
         ${bodyLines.join('\n')}
         <div style="background: #f0f4f8; border-left: 4px solid #2563EB; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-          <p style="margin: 0; font-weight: bold; color: #1E3A5F;">${taskTitle}</p>
+          <p style="margin: 0; font-weight: bold; color: #1E3A5F;">${safeTaskTitle}</p>
         </div>
         <a href="${taskUrl}" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: 8px;">
           ${ctaLabel}
