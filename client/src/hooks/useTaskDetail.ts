@@ -15,7 +15,8 @@ export function useTaskDetail(taskId: string) {
     const { data: task, isLoading: loading, refetch } = useQuery({
         queryKey: TASK_KEY(taskId),
         queryFn: () => tasksApi.get(taskId),
-        staleTime: 10_000,
+        staleTime: 5_000,
+        refetchInterval: 5_000,   // poll every 5s so colleague comments appear live
     });
 
     // ---- Helpers ----

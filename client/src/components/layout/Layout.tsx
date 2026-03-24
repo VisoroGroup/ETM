@@ -83,8 +83,6 @@ export default function Layout() {
 
                 {/* Bottom section */}
                 <div className={`p-3 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-200'} space-y-1`}>
-                    {/* Notification bell */}
-                    <NotificationBell collapsed={collapsed} darkMode={darkMode} />
 
                     {/* Dark mode toggle */}
                     <button
@@ -137,6 +135,11 @@ export default function Layout() {
             <main className={`flex-1 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 overflow-x-hidden`}>
                 <Outlet />
             </main>
+
+            {/* Notification bell — fixed top-right */}
+            <div className="fixed top-3 right-4 z-50">
+                <NotificationBell collapsed={true} darkMode={darkMode} />
+            </div>
 
             {/* Bottom Navigation — mobile only (with safe-area for notched devices) */}
             <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 safe-area-bottom ${

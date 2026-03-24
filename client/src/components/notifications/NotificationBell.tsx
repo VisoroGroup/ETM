@@ -79,26 +79,18 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         <div ref={ref} className="relative">
             <button
                 onClick={handleOpen}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${collapsed ? 'justify-center' : ''} ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-all shadow-lg ${darkMode ? 'bg-navy-800 text-navy-200 hover:bg-navy-700 border border-navy-600/50' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-md'}`}
             >
-                <div className="relative">
-                    <Bell className="w-4 h-4" />
-                    {count > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
-                            {count > 9 ? '9+' : count}
-                        </span>
-                    )}
-                </div>
-                {!collapsed && <span>Notificări</span>}
-                {!collapsed && count > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                        {count}
+                <Bell className="w-5 h-5" />
+                {count > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                        {count > 9 ? '9+' : count}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div className={`absolute bottom-full left-0 mb-2 w-80 rounded-xl shadow-2xl border z-50 ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
+                <div className={`absolute top-full right-0 mt-2 w-80 rounded-xl shadow-2xl border z-50 ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
                     <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-600' : 'border-gray-100'}`}>
                         <h3 className="text-sm font-semibold">Notificări</h3>
                         {count > 0 && (
