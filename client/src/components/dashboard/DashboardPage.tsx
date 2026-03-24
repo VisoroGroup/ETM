@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardApi, tasksApi } from '../../services/api';
+import { dashboardApi, tasksApi, alertsApi } from '../../services/api';
 import { DashboardStats, DashboardCharts, Task, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                     </button>
 
                     {/* Report button — admin/manager only */}
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && (
                         <button
                             onClick={() => setShowReport(true)}
                             className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
@@ -213,20 +213,38 @@ export default function DashboardPage() {
                             {activeAlerts.map((alert) => (
                                 <div
                                     key={alert.id}
-                                    onClick={() => navigate('/tasks', { state: { openTaskId: alert.task_id } })}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-navy-900/60 border border-red-500/20 cursor-pointer transition-all hover:bg-navy-800/80 hover:border-red-500/40 hover:translate-x-1 group"
+                                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-md">
-                                        <AlertTriangle className="w-4 h-4 text-white" />
+                                    <div
+                                        onClick={() => navigate('/tasks', { state: { openTaskId: alert.task_id } })}
+                                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:translate-x-1 transition-transform"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                                            <AlertTriangle className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold truncate group-hover:text-white transition-colors">
+                                                {alert.task_title}
+                                            </p>
+                                            <p className="text-xs text-navy-300 mt-0.5 line-clamp-1">{alert.content}</p>
+                                            <span className="text-[10px] text-navy-500 mt-1 inline-block">de {alert.creator_name} · {timeAgo(alert.created_at)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold truncate group-hover:text-white transition-colors">
-                                            {alert.task_title}
-                                        </p>
-                                        <p className="text-xs text-navy-300 mt-0.5 line-clamp-1">{alert.content}</p>
-                                        <span className="text-[10px] text-navy-500 mt-1 inline-block">de {alert.creator_name} · {timeAgo(alert.created_at)}</span>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4 text-navy-600 group-hover:text-red-400 transition-colors flex-shrink-0" />
+                                    {/* Resolve button */}
+                                    <button
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                                await alertsApi.resolve(alert.task_id, alert.id);
+                                                setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
+                                            } catch {}
+                                        }}
+                                        title="Marchează rezolvat"
+                                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+                                    >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        Rezolvat
+                                    </button>
                                 </div>
                             ))}
                         </div>

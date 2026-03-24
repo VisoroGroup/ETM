@@ -52,15 +52,42 @@ export default function CalendarView() {
             .finally(() => setLoading(false));
     }, []);
 
-    const events = calendarEvents
-        .filter(e => e.due_date)
-        .map(e => ({
-            id: e.id,
-            title: e.event_type === 'subtask' ? `↳ ${e.title}` : e.title,
-            start: new Date(e.due_date),
-            end: new Date(e.due_date),
-            resource: e,
-        }));
+    // Sort events so subtasks appear directly after their parent task
+    const sortedCalendarEvents = [...calendarEvents].filter(e => e.due_date);
+
+    // Group: parent tasks first (alphabetically), then insert subtasks after their parent
+    const parentTasks = sortedCalendarEvents.filter(e => e.event_type !== 'subtask');
+    const subtasksByParent = new Map<string, CalendarEvent[]>();
+    for (const e of sortedCalendarEvents.filter(e => e.event_type === 'subtask')) {
+        const pid = e.parent_task_id || '';
+        if (!subtasksByParent.has(pid)) subtasksByParent.set(pid, []);
+        subtasksByParent.get(pid)!.push(e);
+    }
+
+    // Build ordered list: each parent followed by its subtasks
+    const orderedEvents: CalendarEvent[] = [];
+    const usedParentIds = new Set<string>();
+    for (const parent of parentTasks) {
+        orderedEvents.push(parent);
+        usedParentIds.add(parent.id);
+        const subs = subtasksByParent.get(parent.id);
+        if (subs) {
+            orderedEvents.push(...subs);
+            subtasksByParent.delete(parent.id);
+        }
+    }
+    // Orphan subtasks (parent not in current view)
+    for (const [, subs] of subtasksByParent) {
+        orderedEvents.push(...subs);
+    }
+
+    const events = orderedEvents.map(e => ({
+        id: e.id,
+        title: e.event_type === 'subtask' ? `↳ ${e.title}` : e.title,
+        start: new Date(e.due_date),
+        end: new Date(e.due_date),
+        resource: e,
+    }));
 
     const eventStyleGetter = (event: any) => {
         const ev: CalendarEvent = event.resource;

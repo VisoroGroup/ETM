@@ -12,6 +12,7 @@ import TemplatesPage from './pages/TemplatesPage';
 import PaymentsPage from './components/payments/PaymentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import ActivityFeedPage from './components/activity/ActivityFeedPage';
+import DayViewPage from './components/dayview/DayViewPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
@@ -52,9 +53,10 @@ function AppRoutes() {
         <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
         <Route path="/activitate" element={<ErrorBoundary><ActivityFeedPage /></ErrorBoundary>} />
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
-        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

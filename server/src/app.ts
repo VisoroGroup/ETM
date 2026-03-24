@@ -26,6 +26,7 @@ import savedFiltersRoutes from './routes/savedFilters';
 import activityFeedRoutes from './routes/activityFeed';
 import reportsRoutes from './routes/reports';
 import webhookRoutes from './routes/webhooks';
+import dayViewRoutes from './routes/dayView';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
@@ -77,6 +78,7 @@ app.use('/api/saved-filters', savedFiltersRoutes);
 app.use('/api/activity-feed', activityFeedRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/day-view', dayViewRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {
     let dbOk = false;

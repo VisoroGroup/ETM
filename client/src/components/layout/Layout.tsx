@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity
+    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -28,14 +28,19 @@ export default function Layout() {
         localStorage.setItem('sidebar-collapsed', String(collapsed));
     }, [collapsed]);
 
+    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const isSuperAdmin = user?.role === 'superadmin';
+    const isManagerOrAbove = isAdmin || user?.role === 'manager';
+
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
         { to: '/activitate', icon: Activity, label: 'Activitate' },
         { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
-        ...(user?.role === 'admin' ? [{ to: '/financiar', icon: Banknote, label: 'Financiar' }] : []),
-        ...(user?.role === 'admin' ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
-        ...((user?.role === 'admin' || user?.role === 'manager') ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
+        ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Financiar' }] : []),
+        ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Napi nézet' }] : []),
+        ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
+        ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
     ];
 
 

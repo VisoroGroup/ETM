@@ -4,7 +4,7 @@
 // Keep both files in sync when modifying.
 // ==========================================
 
-export type UserRole = 'admin' | 'manager' | 'user';
+export type UserRole = 'superadmin' | 'admin' | 'manager' | 'user';
 
 export type Department =
     | 'departament_1'

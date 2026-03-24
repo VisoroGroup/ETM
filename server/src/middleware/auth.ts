@@ -105,7 +105,12 @@ export function requireRole(...roles: string[]) {
             return;
         }
 
-        if (!roles.includes(req.user.role)) {
+        // superadmin inherits all lower roles (admin, manager, user)
+        const effectiveRoles = req.user.role === 'superadmin'
+            ? ['superadmin', 'admin', 'manager', 'user']
+            : [req.user.role];
+
+        if (!roles.some(r => effectiveRoles.includes(r))) {
             res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
             return;
         }

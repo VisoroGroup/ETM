@@ -101,7 +101,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
                                     >
                                         <ShieldCheck className="w-3 h-3" /> Rezolvat
                                     </button>
-                                    {alert.created_by === user?.id || user?.role === 'admin' ? (
+                                    {alert.created_by === user?.id || user?.role === 'admin' || user?.role === 'superadmin' ? (
                                         <button
                                             onClick={() => deleteAlert(alert.id)}
                                             className="p-1 text-navy-500 hover:text-red-400 transition-colors"
@@ -130,7 +130,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
                                 <span className="text-[10px] text-navy-600">
                                     Rezolvat de {alert.resolved_by_name} · {alert.resolved_at ? timeAgo(alert.resolved_at) : ''}
                                 </span>
-                                {(alert.created_by === user?.id || user?.role === 'admin') && (
+                                {(alert.created_by === user?.id || user?.role === 'admin' || user?.role === 'superadmin') && (
                                     <button
                                         onClick={() => deleteAlert(alert.id)}
                                         className="opacity-0 group-hover:opacity-100 p-1 text-navy-600 hover:text-red-400 transition-all"

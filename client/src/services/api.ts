@@ -205,6 +205,22 @@ export const webhookApi = {
     getDeliveries: (params?: { event_type?: string; status?: string; subscription_id?: string; limit?: number; offset?: number }) =>
         api.get('/webhooks/deliveries', { params }).then(r => r.data),
 };
+// Day View (superadmin)
+export const dayViewApi = {
+    get: (date: string) => api.get(`/day-view`, { params: { date } }).then(r => r.data),
+    downloadPdf: async (userId: string, date: string) => {
+        const res = await api.get(`/day-view/pdf/${userId}`, {
+            params: { date },
+            responseType: 'blob',
+        });
+        const url = URL.createObjectURL(res.data);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `tasks_${date}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+    },
+};
 
 export { api };
 export default api;
