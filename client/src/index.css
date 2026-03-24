@@ -24,11 +24,16 @@
 }
 
 html, body {
-  overflow-x: hidden;
   max-width: 100vw;
 }
 
+html {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body {
+  overflow-x: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -66,7 +71,7 @@ body {
 
 /* Use dynamic viewport height for correct mobile browser chrome sizing */
 html {
-  height: 100dvh;
+  min-height: 100dvh;
 }
 
 /* iOS smooth momentum scrolling on older versions */
