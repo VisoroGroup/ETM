@@ -79,18 +79,18 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         <div ref={ref} className="relative">
             <button
                 onClick={handleOpen}
-                className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-all shadow-lg ${darkMode ? 'bg-navy-800 text-navy-200 hover:bg-navy-700 border border-navy-600/50' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-md'}`}
+                className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-all ${darkMode ? 'text-navy-300 hover:bg-navy-700/60' : 'text-gray-500 hover:bg-gray-100'}`}
             >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4" />
                 {count > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center animate-pulse">
                         {count > 9 ? '9+' : count}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div className={`absolute top-full right-0 mt-2 w-80 rounded-xl shadow-2xl border z-50 ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
+                <div className={`absolute left-full top-0 ml-2 w-80 rounded-xl shadow-2xl border z-[100] ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
                     <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-600' : 'border-gray-100'}`}>
                         <h3 className="text-sm font-semibold">Notificări</h3>
                         {count > 0 && (

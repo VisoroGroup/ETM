@@ -54,11 +54,15 @@ export default function Layout() {
                         <img src="/visoro-logo.png" alt="Visoro" className="w-full h-full object-cover" />
                     </div>
                     {!collapsed && (
-                        <div className="ml-3 overflow-hidden">
+                        <div className="ml-3 overflow-hidden flex-1">
                             <h1 className="text-sm font-bold truncate">Visoro Task Manager</h1>
                             <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>Visoro Global SRL</p>
                         </div>
                     )}
+                    {/* Notification bell in sidebar header */}
+                    <div className={collapsed ? 'mt-2' : 'ml-auto'}>
+                        <NotificationBell collapsed={collapsed} darkMode={darkMode} />
+                    </div>
                 </div>
 
                 {/* Navigation */}
@@ -141,10 +145,6 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-            {/* Notification bell — fixed top-right corner */}
-            <div className="fixed top-2 right-2 z-[60]">
-                <NotificationBell collapsed={true} darkMode={darkMode} />
-            </div>
 
             {/* Bottom Navigation — mobile only (with safe-area for notched devices) */}
             <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 safe-area-bottom ${
