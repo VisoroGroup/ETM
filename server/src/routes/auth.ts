@@ -294,7 +294,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         const { departments, role } = req.body;
 
         // Only admin can change roles/departments
-        if (req.user!.role !== 'admin' && req.user!.id !== id) {
+        if (req.user!.role !== 'admin' && req.user!.role !== 'superadmin' && req.user!.id !== id) {
             res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
             return;
         }
@@ -307,7 +307,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
             updates.push(`departments = $${paramIndex++}`);
             values.push(departments);
         }
-        if (role && req.user!.role === 'admin') {
+        if (role && (req.user!.role === 'admin' || req.user!.role === 'superadmin')) {
             updates.push(`role = $${paramIndex++}`);
             values.push(role);
         }

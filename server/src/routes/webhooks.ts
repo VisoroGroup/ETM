@@ -9,7 +9,7 @@ const router = Router();
 
 // --- Middleware: admin-only ---
 const adminOnly = (req: AuthRequest, res: Response, next: any) => {
-    if (req.user?.role !== 'admin') {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
         res.status(403).json({ error: 'Doar administratorii pot gestiona webhook-urile' });
         return;
     }

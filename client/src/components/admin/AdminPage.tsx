@@ -5,7 +5,7 @@ import { adminApi } from '../../services/api';
 import { User, DEPARTMENTS, Department } from '../../types';
 import WebhookManager from './WebhookManager';
 
-const ROLES = ['admin', 'manager', 'user'] as const;
+const ROLES = ['superadmin', 'admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
 
 export default function AdminPage() {
@@ -72,7 +72,7 @@ export default function AdminPage() {
         }
     };
 
-    if (currentUser?.role !== 'admin') {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'superadmin') {
         return (
             <div className="flex items-center justify-center h-96">
                 <div className="text-center">

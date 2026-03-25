@@ -20,7 +20,7 @@ router.delete('/attachments/:attachmentId', authMiddleware, async (req: AuthRequ
             return;
         }
 
-        if (existing[0].uploaded_by !== req.user!.id && req.user!.role !== 'admin') {
+        if (existing[0].uploaded_by !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
             res.status(403).json({ error: 'Poți șterge doar fișierele încărcate de tine.' });
             return;
         }

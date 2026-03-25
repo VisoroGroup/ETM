@@ -42,7 +42,7 @@ export default function PaymentsPage() {
     const { data: payments, isLoading } = usePayments(filters);
     
     // Protect route for admin only
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'superadmin') {
         return <Navigate to="/" replace />;
     }
 

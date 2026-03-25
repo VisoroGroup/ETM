@@ -106,7 +106,7 @@ router.delete('/alerts/:alertId', authMiddleware, async (req: AuthRequest, res: 
             return;
         }
 
-        if (existing[0].created_by !== req.user!.id && req.user!.role !== 'admin') {
+        if (existing[0].created_by !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
             res.status(403).json({ error: 'Poți șterge doar propriile alerte.' });
             return;
         }

@@ -205,7 +205,7 @@ router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, r
             return;
         }
 
-        if (existing[0].author_id !== req.user!.id && req.user!.role !== 'admin') {
+        if (existing[0].author_id !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
             res.status(403).json({ error: 'Poți șterge doar propriile comentarii.' });
             return;
         }
