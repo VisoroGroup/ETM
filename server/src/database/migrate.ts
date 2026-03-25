@@ -44,8 +44,10 @@ export async function runMigrations() {
             if (hasAlterType) {
                 // Run WITHOUT transaction (required for ALTER TYPE ADD VALUE)
                 try {
-                    // Split by semicolons and run each statement separately
-                    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+                    // Split by semicolons, strip SQL comments line-by-line, keep non-empty statements
+                    const statements = sql.split(';')
+                        .map(s => s.split('\n').filter(line => !line.trim().startsWith('--')).join('\n').trim())
+                        .filter(s => s.length > 0);
                     for (const stmt of statements) {
                         await client.query(stmt);
                     }
