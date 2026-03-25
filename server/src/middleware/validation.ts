@@ -47,6 +47,7 @@ export const changeStatusSchema = z.object({
 export const createCommentSchema = z.object({
     content: z.string().min(1, 'Comentariul nu poate fi gol').max(5000),
     mentions: z.array(z.string().uuid()).optional().default([]),
+    parent_comment_id: z.string().uuid().nullable().optional().default(null),
 });
 
 export const createTemplateSchema = z.object({
