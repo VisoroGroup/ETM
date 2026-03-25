@@ -135,6 +135,52 @@ app.listen(PORT, async () => {
         console.error('⚠️  Migration error (non-fatal):', err);
     }
 
+    // Ensure superadmin role exists and owner is set (idempotent, runs every boot)
+    try {
+        const client = await pool.connect();
+        try {
+            // Step 1: Add superadmin to enum if not exists
+            try {
+                await client.query(`ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'superadmin' BEFORE 'admin'`);
+                console.log('✅ superadmin enum value ensured');
+            } catch (enumErr: any) {
+                // Already exists is fine
+                if (enumErr?.message?.includes('already exists')) {
+                    console.log('✅ superadmin enum value already exists');
+                } else {
+                    console.error('⚠️ ALTER TYPE error:', enumErr?.message);
+                }
+            }
+
+            // Step 2: Set owner as superadmin
+            const { rowCount } = await client.query(
+                `UPDATE users SET role = 'superadmin' WHERE email = 'ledenyi.robert@visoro-global.ro' AND role != 'superadmin'`
+            );
+            if (rowCount && rowCount > 0) {
+                console.log('✅ Owner account set to superadmin');
+            } else {
+                console.log('ℹ️  Owner already superadmin or not found');
+            }
+
+            // Step 3: Ensure comment_reactions table exists
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS comment_reactions (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    comment_id UUID NOT NULL REFERENCES task_comments(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    reaction VARCHAR(20) NOT NULL DEFAULT '👍',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(comment_id, user_id, reaction)
+                )
+            `);
+            console.log('✅ comment_reactions table ensured');
+        } finally {
+            client.release();
+        }
+    } catch (err: any) {
+        console.error('⚠️  Startup setup error (non-fatal):', err?.message);
+    }
+
     // Start email scheduler
     startEmailScheduler();
     startPaymentEmailScheduler();
