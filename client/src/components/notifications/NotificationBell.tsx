@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../../services/api';
 
 interface Props {
@@ -23,6 +24,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
 
     const fetchCount = async () => {
         try {
@@ -108,8 +110,14 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                             notifications.map(n => (
                                 <div
                                     key={n.id}
-                                    onClick={() => !n.is_read && markRead(n.id)}
-                                    className={`px-4 py-3 border-b last:border-0 cursor-pointer transition-colors ${
+                                    onClick={() => {
+                                        if (!n.is_read) markRead(n.id);
+                                        if (n.task_id) {
+                                            setOpen(false);
+                                            navigate('/tasks', { state: { openTaskId: n.task_id } });
+                                        }
+                                    }}
+                                    className={`px-4 py-3 border-b last:border-0 cursor-pointer transition-colors hover:bg-navy-700/40 ${
                                         n.is_read
                                             ? darkMode ? 'border-navy-700' : 'border-gray-50'
                                             : darkMode ? 'bg-blue-500/10 border-navy-700' : 'bg-blue-50 border-gray-100'
