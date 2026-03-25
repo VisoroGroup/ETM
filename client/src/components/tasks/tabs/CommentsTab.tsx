@@ -182,16 +182,15 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                     <span className="text-[10px] text-navy-500">{timeAgo(comment.created_at)}</span>
 
                     <div className="ml-auto flex items-center gap-1">
-                        {/* Reply button — only for top-level comments */}
-                        {!isReply && (
-                            <button
-                                onClick={() => startReply(comment)}
-                                className="opacity-0 group-hover:opacity-100 text-navy-500 hover:text-blue-400 transition-all p-0.5 flex items-center gap-0.5 text-[10px]"
-                                title="Răspunde"
-                            >
-                                <Reply className="w-3 h-3" />
-                            </button>
-                        )}
+                        {/* Reply button */}
+                        <button
+                            onClick={() => startReply(comment)}
+                            className="text-navy-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all px-1.5 py-0.5 rounded flex items-center gap-0.5 text-[10px]"
+                            title="Răspunde"
+                        >
+                            <Reply className="w-3 h-3" />
+                            <span className="hidden sm:inline">Răspunde</span>
+                        </button>
 
                         {/* Like button */}
                         <button
