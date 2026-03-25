@@ -145,7 +145,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
     }
 
     // Single comment card
-    function CommentCard({ comment, isReply = false }: { comment: TaskComment; isReply?: boolean }) {
+    function CommentCard({ comment, isReply = false, parentComment }: { comment: TaskComment; isReply?: boolean; parentComment?: TaskComment }) {
         const borderColor = getBorderColor(comment.author_id);
         const avatarColor = getAvatarColor(comment.author_id);
         const isOwn = comment.author_id === user?.id;
@@ -156,6 +156,17 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
 
         return (
             <div className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60 ${isReply ? 'ml-8' : ''}`}>
+                {/* Reply-to indicator */}
+                {isReply && parentComment && (
+                    <div className="flex items-center gap-1.5 mb-1.5 pl-7">
+                        <Reply className="w-3 h-3 text-navy-500 flex-shrink-0" />
+                        <div className="flex items-center gap-1 text-[10px] text-navy-500 bg-navy-900/40 px-2 py-0.5 rounded-full overflow-hidden max-w-full">
+                            <span className="text-blue-400 font-medium flex-shrink-0">{parentComment.author_name}</span>
+                            <span className="truncate italic">"{parentComment.content.substring(0, 60)}{parentComment.content.length > 60 ? '…' : ''}"</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1.5">
                     <div className={`${isReply ? 'w-5 h-5 text-[8px]' : 'w-6 h-6 text-[9px]'} rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold flex-shrink-0`}>
@@ -294,7 +305,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                         {/* Thread line */}
                                         <div className="absolute left-4 top-0 bottom-0 w-px bg-navy-700/50" />
                                         {replies.map(reply => (
-                                            <CommentCard key={reply.id} comment={reply} isReply />
+                                            <CommentCard key={reply.id} comment={reply} isReply parentComment={comment} />
                                         ))}
                                     </div>
                                 )}
