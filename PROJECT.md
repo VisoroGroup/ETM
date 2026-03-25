@@ -43,10 +43,13 @@ ETM/
 │   └── src/
 │       ├── App.tsx      # Router + AuthProvider + ToastProvider
 │       ├── components/
-│       │   ├── auth/         # LoginPage
-│       │   ├── dashboard/    # DashboardPage (Recharts)
-│       │   ├── layout/       # Layout (sidebar, dark mode toggle)
-│       │   └── tasks/        # TaskListPage, TaskDrawer, TaskFormModal
+│       │   ├── auth/         # LoginPage, ProtectedRoute
+│       │   ├── dashboard/    # DashboardPage, CalendarView, ReportModal
+│       │   ├── dayview/      # DayViewPage (superadmin napi nezet)
+│       │   ├── layout/       # Layout (sidebar, dark mode, notification bell)
+│       │   ├── notifications/ # NotificationBell (fixed top-right)
+│       │   ├── payments/     # PaymentsPage, PaymentDrawer, PaymentForm
+│       │   └── tasks/        # TaskListPage, TaskDrawer, KanbanView
 │       ├── hooks/            # useAuth, useToast
 │       ├── services/         # api.ts (axios)
 │       ├── types/            # TypeScript interfészek + konstansok
@@ -57,11 +60,11 @@ ETM/
 │       ├── config/           # database.ts — pg Pool, SSL prod-ban
 │       ├── cron/             # emailScheduler.ts — napi email összefoglaló
 │       ├── database/
-│       │   ├── migrations/   # 001–011 SQL migrációk
+│       │   ├── migrations/   # 001-031 SQL migraciok
 │       │   ├── migrate.ts    # Migration runner
 │       │   └── seed.ts       # Dev seed adatok
-│       ├── middleware/        # auth.ts — JWT + generateToken + requireRole
-│       ├── routes/           # auth.ts, tasks.ts, dashboard.ts, upload.ts
+│       ├── middleware/        # auth.ts - JWT + generateToken + requireRole (superadmin orokles)
+│       ├── routes/           # auth, tasks, dashboard, dayView, payments, reports, webhooks, ...
 │       ├── types/            # Server-side interfészek
 │       └── utils/            # dateUtils.ts
 ├── Dockerfile            # Multi-stage: builder + runner
@@ -91,7 +94,7 @@ ETM/
 | `payment_activity_log` | payment_id, user_id, action_type, details |
 | `payment_reminders` | payment_id, reminder_type (30_days, 14_days etc) |
 
-**ENUMok:** `user_role` (admin/manager/user) · `department_type` (departament_1..7) · `task_status` (de_rezolvat/in_realizare/terminat/blocat) · `recurring_frequency` (daily/weekly/biweekly/monthly)
+**ENUMok:** `user_role` (superadmin/admin/manager/user) - `department_type` (departament_1..7) - `task_status` (de_rezolvat/in_realizare/terminat/blocat) - `recurring_frequency` (daily/weekly/biweekly/monthly)
 
 ---
 
@@ -129,20 +132,26 @@ ETM/
 - `POST /` — Creare plată nouă
 - `GET /:id` — Részletek plată
 - `PUT /:id/mark-paid` — Marcare achitat + recurență automată
-- `GET/POST /:id/comments` — Comentarii la plată
-- `GET /:id/activity` — Istoric complet
+- `GET/POST /:id/comments` - Comentarii la plata
+- `GET /:id/activity` - Istoric complet
+
+### Day View (`/api/day-view`) - **Superadmin Only**
+- `GET /` - Aznapi feladatok szemelyen csoportositva (`?date=YYYY-MM-DD`)
+- `GET /pdf/:userId` - Branded PDF export szemelyen (`?date=YYYY-MM-DD`)
 
 ---
 
 ## TaskDrawer — 5 fül
 
-| # | Fül | Tartalom |
+| # | Ful | Tartalom |
 |---|-----|---------|
-| 1 | Subtask-uri | DnD rendezés, user assign, completion |
-| 2 | Comentarii | @mention dropdown, delete |
-| 3 | Fișiere | Upload (max 10MB), download, delete |
-| 4 | Activitate | Automatikus napló minden változásról |
-| 5 | **În Atenție** | Kritikus figyelmeztetők — piros badge ha aktív, resolve + delete |
+| 1 | Subtask-uri | DnD rendezes, user assign, due_date, priority, completion |
+| 2 | Checklist | DnD rendezes, checkbox |
+| 3 | Comentarii | @mention dropdown, delete, **auto-refresh 5mp** |
+| 4 | Fisiere | Upload (max 10MB), download, delete |
+| 5 | Activitate | Automatikus naplo minden valtozasrol |
+| 6 | **In Atentie** | Kritikus figyelmeztetek - piros badge ha aktiv, resolve + delete |
+| 7 | Dependente | Task blokkolasi kapcsolatok |
 
 **"În Atenție" fül működése:**
 - Piros pulzáló badge a fül fejlécén, ha van aktív (nem megoldott) alert
@@ -160,7 +169,9 @@ ETM/
 3. **Activity log** → minden változás automatikusan naplózódik
 4. **Recurring tasks** → befejezéskor automatikusan létrehozza a következőt (subtask-ok is másolódnak)
 5. **Email emlékeztetők** → 3 fázis: lejárt, utolsó 7 nap, heti (csak munkanapok, 07:00 Bukarest)
-6. **"În Atenție"** → task-onkénti kritikus figyelmeztetők, megoldottnak jelölhetők
+6. **In Atentie** - task-onkenti kritikus figyelmeztetok, megoldottnak jelolhetok (dashboard-rol is!)
+7. **Superadmin** - oroklodik admin/manager/user jogok; exkluziv: Day View oldal
+8. **Auto-refresh** - task detail 5mp polling (kommentek, subtaskok eloben frissulnek)
 
 ---
 
@@ -242,14 +253,30 @@ Az "În Atenție" fül csak task megnyitásakor látható (a TaskDrawer-ben).
 - ✅ Frontend: `TaskAlert` type, `alertsApi`, TaskDrawer 5. fül
 - ✅ Git push: commit `a8e127f`
 
-### 2026-03-19 — Modul Financiar (Plăți) - Dashboard Administrator
+### 2026-03-19 - Modul Financiar (Plati) - Dashboard Administrator
 **Conversation:** `efeb07a3-4067-4238-813e-d4c7872c6fc5`
-- ✅ Migration 018: 4 tábla mơu pentru `payments`
-- ✅ Backend `/api/payments` + Middleware restrictiv Admin.
-- ✅ Cron job scheduler (`Eu/Bucharest`) pentru remindere 30/21/14/7/0 zile și restanțe, auto-weekend shift.
-- ✅ Frontend: Dashboard Financiar (`/financiar`), Cards, Recharts 6 luni, Filtre, Visual Countdown Badges.
-- ✅ Frontend: Side-Drawer + Form modal pentru comentarii și activity logs specifice banilor.
+- Migration 018: 4 tabla pentru `payments`
+- Backend `/api/payments` + Middleware restrictiv Admin
+- Cron job scheduler (`Eu/Bucharest`) pentru remindere 30/21/14/7/0 zile
+- Frontend: Dashboard Financiar (`/financiar`), Cards, Recharts, Filtre, Countdown Badges
+- Frontend: Side-Drawer + Form modal pentru comentarii si activity logs
+
+### 2026-03-24 - Superadmin + Day View + UI fixes
+**Conversation:** `0e2f808f-f407-435f-8b9f-5feb03712d89`
+- Notification bell athelyezve bal lentrol -> jobb felso sarok (fixed pozicio)
+- Auto-refresh kommentek: `refetchInterval: 5_000` a `useTaskDetail` hook-ban
+- Scroll javitas: `html { height: 100dvh }` -> `min-height: 100dvh` + `overflow-y: auto`
+- Migration 031: `superadmin` role (ledenyi.robert@visoro-global.ro)
+- `requireRole()` - superadmin orokles (admin/manager/user jogok automatikusan)
+- **Day View** oldal (`/day-view`) - superadmin exkluziv:
+  - Napi feladatok szemelyen csoportositva
+  - Drag-to-reorder munkatarsak (localStorage mentes)
+  - Datumvalaszto: tegnap/ma/holnap navigacio
+  - Szemelyen branded PDF export (pdfkit, Visoro branding)
+- Dashboard In Atentie - kozvetlenul resolve-olhato (nem kell a taskba belemenni)
+- Naptar - subtaskok a szulo task alatt jelennek meg (parent->child csoportositas)
+- Git push: commits `ae59927`, `79c543c`, `4522bf8`
 
 ---
 
-*Utolsó frissítés: 2026-03-19*
+*Utolso frissites: 2026-03-24*

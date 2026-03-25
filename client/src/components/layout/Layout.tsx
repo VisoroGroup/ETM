@@ -141,8 +141,8 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-            {/* Notification bell — fixed top-right */}
-            <div className="fixed top-3 right-4 z-50">
+            {/* Notification bell — fixed top-right corner */}
+            <div className="fixed top-2 right-2 z-[60]">
                 <NotificationBell collapsed={true} darkMode={darkMode} />
             </div>
 
