@@ -99,6 +99,28 @@ export async function getTaskById(id: string) {
         )
     ]);
 
+    // Fetch reactions for all comments in one query
+    const commentIds = comments.map((c: any) => c.id);
+    if (commentIds.length > 0) {
+        const { rows: reactions } = await pool.query(
+            `SELECT cr.comment_id, cr.reaction, cr.user_id, u.display_name
+             FROM comment_reactions cr
+             JOIN users u ON cr.user_id = u.id
+             WHERE cr.comment_id = ANY($1)`,
+            [commentIds]
+        );
+        const reactionMap = new Map<string, any[]>();
+        for (const r of reactions) {
+            if (!reactionMap.has(r.comment_id)) reactionMap.set(r.comment_id, []);
+            reactionMap.get(r.comment_id)!.push({ user_id: r.user_id, display_name: r.display_name, reaction: r.reaction });
+        }
+        for (const c of comments) {
+            (c as any).reactions = reactionMap.get(c.id) || [];
+        }
+    } else {
+        for (const c of comments) (c as any).reactions = [];
+    }
+
     return {
         ...taskRows[0],
         subtasks,
