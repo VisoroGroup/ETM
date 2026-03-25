@@ -163,6 +163,7 @@ export function useTaskDetail(taskId: string) {
                 author_name: 'Tu',
                 content,
                 mentions: [],
+                reactions: [],
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
