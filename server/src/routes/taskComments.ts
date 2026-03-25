@@ -18,9 +18,33 @@ router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) 
        ORDER BY c.created_at ASC`,
             [taskId]
         );
+
+        // Fetch reactions for all comments in one query
+        const commentIds = rows.map(r => r.id);
+        if (commentIds.length > 0) {
+            const { rows: reactions } = await pool.query(
+                `SELECT cr.comment_id, cr.reaction, cr.user_id, u.display_name
+                 FROM comment_reactions cr
+                 JOIN users u ON cr.user_id = u.id
+                 WHERE cr.comment_id = ANY($1)`,
+                [commentIds]
+            );
+            // Group reactions per comment
+            const reactionMap = new Map<string, any[]>();
+            for (const r of reactions) {
+                if (!reactionMap.has(r.comment_id)) reactionMap.set(r.comment_id, []);
+                reactionMap.get(r.comment_id)!.push({ user_id: r.user_id, display_name: r.display_name, reaction: r.reaction });
+            }
+            for (const row of rows) {
+                row.reactions = reactionMap.get(row.id) || [];
+            }
+        } else {
+            for (const row of rows) row.reactions = [];
+        }
+
         res.json(rows);
     } catch (err) {
-        res.status(500).json({ error: 'Eroare la încărcarea comentariilor.' });
+        res.status(500).json({ error: 'Eroare la incarcarea comentariilor.' });
     }
 });
 
@@ -190,6 +214,36 @@ router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, r
         res.json({ message: 'Comentariul a fost șters.' });
     } catch (err) {
         res.status(500).json({ error: 'Eroare la ștergerea comentariului.' });
+    }
+});
+
+// POST /api/tasks/:id/comments/:commentId/react — toggle reaction
+router.post('/comments/:commentId/react', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const { commentId } = req.params;
+        const reaction = req.body.reaction || '👍';
+
+        // Check if already reacted
+        const { rows: existing } = await pool.query(
+            'SELECT id FROM comment_reactions WHERE comment_id = $1 AND user_id = $2 AND reaction = $3',
+            [commentId, req.user!.id, reaction]
+        );
+
+        if (existing.length > 0) {
+            // Remove reaction
+            await pool.query('DELETE FROM comment_reactions WHERE id = $1', [existing[0].id]);
+            res.json({ toggled: 'removed' });
+        } else {
+            // Add reaction
+            await pool.query(
+                'INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES ($1, $2, $3)',
+                [commentId, req.user!.id, reaction]
+            );
+            res.json({ toggled: 'added' });
+        }
+    } catch (err) {
+        console.error('Reaction error:', err);
+        res.status(500).json({ error: 'Eroare la reactie.' });
     }
 });
 

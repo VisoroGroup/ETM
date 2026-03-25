@@ -4,7 +4,43 @@ import type { TaskDetail, User } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { timeAgo } from '../../../utils/helpers';
-import { MessageSquare, Send, Trash2 } from 'lucide-react';
+import { MessageSquare, Send, Trash2, ThumbsUp } from 'lucide-react';
+
+// Deterministic avatar color per author
+const AVATAR_COLORS = [
+    'from-blue-500 to-cyan-500',
+    'from-pink-500 to-rose-500',
+    'from-emerald-500 to-teal-500',
+    'from-amber-500 to-orange-500',
+    'from-violet-500 to-purple-500',
+    'from-red-500 to-pink-500',
+    'from-cyan-500 to-blue-500',
+    'from-lime-500 to-green-500',
+];
+
+function getAvatarColor(authorId: string): string {
+    let hash = 0;
+    for (let i = 0; i < authorId.length; i++) hash = authorId.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// Left border color per author (solid colors for left accent)
+const BORDER_COLORS = [
+    'border-blue-500',
+    'border-pink-500',
+    'border-emerald-500',
+    'border-amber-500',
+    'border-violet-500',
+    'border-red-500',
+    'border-cyan-500',
+    'border-lime-500',
+];
+
+function getBorderColor(authorId: string): string {
+    let hash = 0;
+    for (let i = 0; i < authorId.length; i++) hash = authorId.charCodeAt(i) + ((hash << 5) - hash);
+    return BORDER_COLORS[Math.abs(hash) % BORDER_COLORS.length];
+}
 
 interface Props {
     task: TaskDetail;
@@ -67,10 +103,34 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
         }
     }
 
+    async function toggleReaction(commentId: string) {
+        try {
+            await commentsApi.toggleReaction(taskId, commentId);
+            onReload();
+        } catch {
+            showToast('Eroare', 'error');
+        }
+    }
+
     const filteredMentionUsers = users.filter(u =>
         u.display_name.toLowerCase().includes(mentionQuery) ||
         u.email.toLowerCase().includes(mentionQuery)
     );
+
+    // Highlight @mentions in comment text
+    function renderContent(content: string) {
+        const parts = content.split(/(@[A-ZÀ-Ža-zà-ž\s]+?)(?=\s|$|@)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('@')) {
+                return (
+                    <span key={i} className="text-blue-400 font-medium bg-blue-500/10 px-0.5 rounded">
+                        {part}
+                    </span>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
+    }
 
     return (
         <div className="space-y-4">
@@ -93,7 +153,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                 onClick={() => selectMention(u)}
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-navy-700/50 text-sm text-left transition-colors"
                             >
-                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${getAvatarColor(u.id)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
                                     {u.display_name.charAt(0)}
                                 </div>
                                 <div>
@@ -113,31 +173,80 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                 </button>
             </div>
 
-            {/* Comments list */}
+            {/* Comments list — card-style with colored left border per author */}
             {task.comments.length > 0 ? (
-                <div className="space-y-3">
-                    {task.comments.map(comment => (
-                        <div key={comment.id} className="flex gap-2.5 group">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5">
-                                {comment.author_name?.charAt(0)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium">{comment.author_name}</span>
+                <div className="space-y-2">
+                    {task.comments.map(comment => {
+                        const borderColor = getBorderColor(comment.author_id);
+                        const avatarColor = getAvatarColor(comment.author_id);
+                        const isOwn = comment.author_id === user?.id;
+                        const reactions = comment.reactions || [];
+                        const likeCount = reactions.length;
+                        const iLiked = reactions.some(r => r.user_id === user?.id);
+                        const likedByNames = reactions.map(r => r.display_name);
+
+                        return (
+                            <div
+                                key={comment.id}
+                                className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60`}
+                            >
+                                {/* Header: avatar + name + time + actions */}
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0`}>
+                                        {comment.author_avatar
+                                            ? <img src={comment.author_avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                                            : comment.author_name?.charAt(0).toUpperCase()
+                                        }
+                                    </div>
+                                    <span className={`text-xs font-semibold ${isOwn ? 'text-blue-300' : 'text-white'}`}>
+                                        {comment.author_name}
+                                        {isOwn && <span className="text-[9px] text-navy-500 ml-1 font-normal">(tu)</span>}
+                                    </span>
                                     <span className="text-[10px] text-navy-500">{timeAgo(comment.created_at)}</span>
-                                    {comment.author_id === user?.id && (
+
+                                    <div className="ml-auto flex items-center gap-1">
+                                        {/* Like button */}
                                         <button
-                                            onClick={() => deleteComment(comment.id)}
-                                            className="opacity-0 group-hover:opacity-100 text-navy-600 hover:text-red-400 transition-all"
+                                            onClick={() => toggleReaction(comment.id)}
+                                            title={likedByNames.length > 0 ? likedByNames.join(', ') : 'Like'}
+                                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] transition-all ${
+                                                iLiked
+                                                    ? 'bg-blue-500/20 text-blue-400'
+                                                    : 'opacity-0 group-hover:opacity-100 text-navy-500 hover:text-blue-400 hover:bg-navy-700/50'
+                                            }`}
                                         >
-                                            <Trash2 className="w-3 h-3" />
+                                            <ThumbsUp className={`w-3 h-3 ${iLiked ? 'fill-blue-400' : ''}`} />
+                                            {likeCount > 0 && <span className="font-medium">{likeCount}</span>}
                                         </button>
-                                    )}
+
+                                        {/* Delete button */}
+                                        {comment.author_id === user?.id && (
+                                            <button
+                                                onClick={() => deleteComment(comment.id)}
+                                                className="opacity-0 group-hover:opacity-100 text-navy-600 hover:text-red-400 transition-all p-0.5"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="text-sm text-navy-200 mt-0.5 whitespace-pre-wrap">{comment.content}</p>
+
+                                {/* Comment content with highlighted mentions */}
+                                <p className="text-sm text-navy-200 whitespace-pre-wrap leading-relaxed pl-8">
+                                    {renderContent(comment.content)}
+                                </p>
+
+                                {/* Reactions summary */}
+                                {likeCount > 0 && (
+                                    <div className="flex items-center gap-1 mt-1.5 pl-8">
+                                        <span className="text-[10px] text-navy-500 flex items-center gap-0.5">
+                                            👍 {likedByNames.join(', ')}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-8">

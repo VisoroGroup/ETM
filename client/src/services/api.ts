@@ -69,6 +69,8 @@ export const commentsApi = {
         api.put<TaskComment>(`/tasks/${taskId}/comments/${commentId}`, { content }).then(r => r.data),
     delete: (taskId: string, commentId: string) =>
         api.delete(`/tasks/${taskId}/comments/${commentId}`).then(r => r.data),
+    toggleReaction: (taskId: string, commentId: string, reaction = '\ud83d\udc4d') =>
+        api.post(`/tasks/${taskId}/comments/${commentId}/react`, { reaction }).then(r => r.data),
 };
 
 // Attachments

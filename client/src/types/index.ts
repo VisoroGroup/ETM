@@ -121,6 +121,7 @@ export interface TaskComment {
     author_avatar?: string | null;
     content: string;
     mentions: string[];
+    reactions: { user_id: string; display_name: string; reaction: string }[];
     created_at: string;
     updated_at: string;
 }
