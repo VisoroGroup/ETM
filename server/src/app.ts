@@ -174,6 +174,12 @@ app.listen(PORT, async () => {
                 )
             `);
             console.log('✅ comment_reactions table ensured');
+
+            // Step 4: Add parent_comment_id for reply threading
+            try {
+                await client.query(`ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS parent_comment_id UUID REFERENCES task_comments(id) ON DELETE CASCADE`);
+                console.log('✅ parent_comment_id column ensured');
+            } catch { console.log('ℹ️  parent_comment_id column already exists'); }
         } finally {
             client.release();
         }

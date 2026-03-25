@@ -52,7 +52,7 @@ router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) 
 router.post('/comments', authMiddleware, validateCreateComment, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
-        const { content, mentions = [] } = req.body;
+        const { content, mentions = [], parent_comment_id = null } = req.body;
 
         if (!content || content.trim() === '') {
             res.status(400).json({ error: 'Conținutul comentariului este obligatoriu.' });
@@ -60,9 +60,9 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
         }
 
         const { rows } = await pool.query(
-            `INSERT INTO task_comments (task_id, author_id, content, mentions)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-            [taskId, req.user!.id, content, mentions]
+            `INSERT INTO task_comments (task_id, author_id, content, mentions, parent_comment_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [taskId, req.user!.id, content, mentions, parent_comment_id]
         );
 
         // Activity log

@@ -63,8 +63,8 @@ export const subtasksApi = {
 // Comments
 export const commentsApi = {
     list: (taskId: string) => api.get<TaskComment[]>(`/tasks/${taskId}/comments`).then(r => r.data),
-    create: (taskId: string, content: string, mentions: string[]) =>
-        api.post<TaskComment>(`/tasks/${taskId}/comments`, { content, mentions }).then(r => r.data),
+    create: (taskId: string, content: string, mentions: string[], parentCommentId?: string | null) =>
+        api.post<TaskComment>(`/tasks/${taskId}/comments`, { content, mentions, parent_comment_id: parentCommentId || null }).then(r => r.data),
     update: (taskId: string, commentId: string, content: string) =>
         api.put<TaskComment>(`/tasks/${taskId}/comments/${commentId}`, { content }).then(r => r.data),
     delete: (taskId: string, commentId: string) =>
