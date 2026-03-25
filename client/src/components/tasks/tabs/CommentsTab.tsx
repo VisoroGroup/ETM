@@ -6,32 +6,57 @@ import { useToast } from '../../../hooks/useToast';
 import { timeAgo } from '../../../utils/helpers';
 import { MessageSquare, Send, Trash2, ThumbsUp, Reply, X } from 'lucide-react';
 
-// Deterministic avatar color per author
-const AVATAR_COLORS = [
-    'from-blue-500 to-cyan-500',
-    'from-pink-500 to-rose-500',
-    'from-emerald-500 to-teal-500',
-    'from-amber-500 to-orange-500',
-    'from-violet-500 to-purple-500',
-    'from-red-500 to-pink-500',
-    'from-cyan-500 to-blue-500',
-    'from-lime-500 to-green-500',
+// Fixed avatar + border colors per known user (by first name), plus fallback palette
+const NAMED_COLORS: Record<string, { avatar: string; border: string }> = {
+    'róbert':  { avatar: 'from-blue-800 to-blue-600',    border: 'border-blue-700' },
+    'robert':  { avatar: 'from-blue-800 to-blue-600',    border: 'border-blue-700' },
+    'emo':     { avatar: 'from-pink-500 to-rose-400',    border: 'border-pink-500' },
+    'emőke':   { avatar: 'from-pink-500 to-rose-400',    border: 'border-pink-500' },
+    'alisa':   { avatar: 'from-amber-400 to-yellow-300', border: 'border-amber-400' },
+    'mária':   { avatar: 'from-emerald-500 to-green-400', border: 'border-emerald-500' },
+    'maria':   { avatar: 'from-emerald-500 to-green-400', border: 'border-emerald-500' },
+};
+
+// Fallback palette for any other users
+const FALLBACK_AVATARS = [
+    { avatar: 'from-violet-500 to-purple-500', border: 'border-violet-500' },
+    { avatar: 'from-cyan-500 to-teal-400',     border: 'border-cyan-500' },
+    { avatar: 'from-orange-500 to-red-400',     border: 'border-orange-500' },
+    { avatar: 'from-lime-500 to-green-500',     border: 'border-lime-500' },
+    { avatar: 'from-fuchsia-500 to-pink-500',   border: 'border-fuchsia-500' },
+    { avatar: 'from-sky-500 to-indigo-500',     border: 'border-sky-500' },
+    { avatar: 'from-rose-500 to-red-500',       border: 'border-rose-500' },
+    { avatar: 'from-teal-500 to-cyan-500',      border: 'border-teal-500' },
 ];
 
-function getAvatarColor(authorId: string): string {
-    let hash = 0;
-    for (let i = 0; i < authorId.length; i++) hash = authorId.charCodeAt(i) + ((hash << 5) - hash);
-    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+// Cache: authorId -> color pair
+const authorColorCache = new Map<string, { avatar: string; border: string }>();
+let fallbackIndex = 0;
+
+function getAuthorColors(authorId: string, authorName?: string): { avatar: string; border: string } {
+    if (authorColorCache.has(authorId)) return authorColorCache.get(authorId)!;
+
+    // Try matching by first name
+    const firstName = (authorName || '').split(' ')[0].toLowerCase();
+    const named = NAMED_COLORS[firstName];
+    if (named) {
+        authorColorCache.set(authorId, named);
+        return named;
+    }
+
+    // Fallback: assign next available color
+    const fb = FALLBACK_AVATARS[fallbackIndex % FALLBACK_AVATARS.length];
+    fallbackIndex++;
+    authorColorCache.set(authorId, fb);
+    return fb;
 }
 
-const BORDER_COLORS = [
-    'border-blue-500', 'border-pink-500', 'border-emerald-500', 'border-amber-500',
-    'border-violet-500', 'border-red-500', 'border-cyan-500', 'border-lime-500',
-];
-function getBorderColor(authorId: string): string {
-    let hash = 0;
-    for (let i = 0; i < authorId.length; i++) hash = authorId.charCodeAt(i) + ((hash << 5) - hash);
-    return BORDER_COLORS[Math.abs(hash) % BORDER_COLORS.length];
+function getAvatarColor(authorId: string, authorName?: string): string {
+    return getAuthorColors(authorId, authorName).avatar;
+}
+
+function getBorderColor(authorId: string, authorName?: string): string {
+    return getAuthorColors(authorId, authorName).border;
 }
 
 interface Props {
@@ -146,8 +171,8 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
 
     // Single comment card
     function CommentCard({ comment, isReply = false, parentComment }: { comment: TaskComment; isReply?: boolean; parentComment?: TaskComment }) {
-        const borderColor = getBorderColor(comment.author_id);
-        const avatarColor = getAvatarColor(comment.author_id);
+        const borderColor = getBorderColor(comment.author_id, comment.author_name);
+        const avatarColor = getAvatarColor(comment.author_id, comment.author_name);
         const isOwn = comment.author_id === user?.id;
         const reactions = comment.reactions || [];
         const likeCount = reactions.length;
@@ -268,7 +293,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                 onClick={() => selectMention(u)}
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-navy-700/50 text-sm text-left transition-colors"
                             >
-                                <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${getAvatarColor(u.id)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
+                                <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${getAvatarColor(u.id, u.display_name)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
                                     {u.display_name.charAt(0)}
                                 </div>
                                 <div>
