@@ -38,16 +38,36 @@ export async function runMigrations() {
             const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
             console.log(`🔄 Running migration: ${file}`);
 
-            await client.query('BEGIN');
-            try {
-                await client.query(sql);
-                await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
-                await client.query('COMMIT');
-                console.log(`✅ Completed: ${file}`);
-            } catch (err) {
-                await client.query('ROLLBACK');
-                console.error(`❌ Failed: ${file}`, err);
-                throw err;
+            // PostgreSQL ALTER TYPE ... ADD VALUE cannot run inside a transaction
+            const hasAlterType = sql.toUpperCase().includes('ALTER TYPE');
+
+            if (hasAlterType) {
+                // Run WITHOUT transaction (required for ALTER TYPE ADD VALUE)
+                try {
+                    // Split by semicolons and run each statement separately
+                    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+                    for (const stmt of statements) {
+                        await client.query(stmt);
+                    }
+                    await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
+                    console.log(`✅ Completed (no-txn): ${file}`);
+                } catch (err) {
+                    console.error(`❌ Failed: ${file}`, err);
+                    throw err;
+                }
+            } else {
+                // Normal: run inside transaction
+                await client.query('BEGIN');
+                try {
+                    await client.query(sql);
+                    await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
+                    await client.query('COMMIT');
+                    console.log(`✅ Completed: ${file}`);
+                } catch (err) {
+                    await client.query('ROLLBACK');
+                    console.error(`❌ Failed: ${file}`, err);
+                    throw err;
+                }
             }
         }
 
