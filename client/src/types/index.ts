@@ -172,6 +172,7 @@ export interface TaskFilters {
     recurring?: string;
     assigned_to?: string;
     my_tasks?: string;
+    exclude_status?: string;
     page?: number;
     limit?: number;
 }

@@ -119,7 +119,7 @@ export default function TaskListPage() {
     const loadTasks = useCallback(async () => {
         try {
             setLoading(true);
-            const result = await tasksApi.list(filters);
+            const result = await tasksApi.list({ ...filters, exclude_status: 'terminat' });
             setTasks(result.tasks);
             setTotal(result.total);
         } catch (err) {

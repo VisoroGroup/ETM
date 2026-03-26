@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock
+    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -41,6 +41,7 @@ export default function Layout() {
         ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Napi nézet' }] : []),
         ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
         ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
+        { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
     ];
 
 

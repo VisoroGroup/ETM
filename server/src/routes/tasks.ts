@@ -30,6 +30,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             recurring,
             assigned_to,
             my_tasks,
+            exclude_status,
             page = '1',
             limit = '50'
         } = req.query;
@@ -43,6 +44,12 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             const statuses = (status as string).split(',');
             conditions.push(`t.status = ANY($${paramIndex++})`);
             values.push(statuses);
+        }
+
+        // Exclude status (e.g. exclude_status=terminat)
+        if (exclude_status) {
+            conditions.push(`t.status != $${paramIndex++}`);
+            values.push(exclude_status as string);
         }
 
         // Department filter (multi-select, comma separated)
