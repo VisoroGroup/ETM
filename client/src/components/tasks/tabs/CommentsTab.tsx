@@ -159,25 +159,48 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
         });
     }
 
-    // Build threaded comment structure: top-level + ALL replies flattened under root ancestor
+    // Build threaded comment tree: group by DIRECT parent
     const commentById = new Map<string, TaskComment>();
     for (const c of task.comments) commentById.set(c.id, c);
 
-    // Walk up the chain to find the root top-level comment
-    function findRootId(commentId: string): string {
-        const c = commentById.get(commentId);
-        if (!c || !c.parent_comment_id) return commentId;
-        return findRootId(c.parent_comment_id);
-    }
-
     const topLevel = task.comments.filter(c => !c.parent_comment_id);
-    const repliesMap = new Map<string, TaskComment[]>();
+    const childrenMap = new Map<string, TaskComment[]>();
     for (const c of task.comments) {
         if (c.parent_comment_id) {
-            const rootId = findRootId(c.id);
-            if (!repliesMap.has(rootId)) repliesMap.set(rootId, []);
-            repliesMap.get(rootId)!.push(c);
+            if (!childrenMap.has(c.parent_comment_id)) childrenMap.set(c.parent_comment_id, []);
+            childrenMap.get(c.parent_comment_id)!.push(c);
         }
+    }
+
+    // Recursive thread renderer (max 4 levels deep to avoid UI overflow)
+    function CommentThread({ comment, depth = 0 }: { comment: TaskComment; depth?: number }) {
+        const children = childrenMap.get(comment.id) || [];
+        const parentComment = comment.parent_comment_id ? commentById.get(comment.parent_comment_id) : undefined;
+        const isReply = depth > 0;
+        // Cap indentation at depth 4
+        const indentPx = Math.min(depth, 4) * 28;
+
+        return (
+            <div>
+                <div className="relative" style={{ paddingLeft: isReply ? `${indentPx}px` : '0px' }}>
+                    {/* L-shaped thread connector */}
+                    {isReply && (
+                        <>
+                            <div className="absolute w-px bg-navy-600/60" style={{ left: `${indentPx - 20}px`, top: '-6px', height: '30px' }} />
+                            <div className="absolute h-px bg-navy-600/60" style={{ left: `${indentPx - 20}px`, top: '24px', width: '14px' }} />
+                        </>
+                    )}
+                    <CommentCard comment={comment} isReply={isReply} parentComment={parentComment} />
+                </div>
+                {children.length > 0 && (
+                    <div className="space-y-1.5 mt-1.5">
+                        {children.map(child => (
+                            <CommentThread key={child.id} comment={child} depth={depth + 1} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     }
 
     // Single comment card
@@ -327,35 +350,9 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             {/* Comments list — threaded */}
             {topLevel.length > 0 ? (
                 <div className="space-y-2">
-                    {topLevel.map(comment => {
-                        const replies = repliesMap.get(comment.id) || [];
-                        return (
-                            <div key={comment.id}>
-                                {/* Parent comment */}
-                                <CommentCard comment={comment} />
-
-                                {/* Replies */}
-                                {replies.length > 0 && (
-                                    <div className="space-y-1.5 mt-1.5 relative">
-                                        {replies.map((reply, index) => {
-                                            const isLast = index === replies.length - 1;
-                                            return (
-                                                <div key={reply.id} className="relative pl-[44px]">
-                                                    {/* Vertical Thread Line */}
-                                                    <div className={`absolute left-[16px] w-px bg-navy-600/60 ${isLast ? 'top-[-6px] h-[30px]' : 'top-[-6px] bottom-[-6px]'}`} />
-                                                    
-                                                    {/* Horizontal Thread Line (L-curve) */}
-                                                    <div className="absolute left-[16px] top-[24px] w-[20px] h-px bg-navy-600/60" />
-                                                    
-                                                    <CommentCard comment={reply} isReply parentComment={reply.parent_comment_id ? commentById.get(reply.parent_comment_id) || comment : comment} />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {topLevel.map(comment => (
+                        <CommentThread key={comment.id} comment={comment} depth={0} />
+                    ))}
                 </div>
             ) : (
                 <div className="text-center py-8">
