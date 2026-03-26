@@ -159,13 +159,24 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
         });
     }
 
-    // Build threaded comment structure: top-level + replies grouped beneath
+    // Build threaded comment structure: top-level + ALL replies flattened under root ancestor
+    const commentById = new Map<string, TaskComment>();
+    for (const c of task.comments) commentById.set(c.id, c);
+
+    // Walk up the chain to find the root top-level comment
+    function findRootId(commentId: string): string {
+        const c = commentById.get(commentId);
+        if (!c || !c.parent_comment_id) return commentId;
+        return findRootId(c.parent_comment_id);
+    }
+
     const topLevel = task.comments.filter(c => !c.parent_comment_id);
     const repliesMap = new Map<string, TaskComment[]>();
     for (const c of task.comments) {
         if (c.parent_comment_id) {
-            if (!repliesMap.has(c.parent_comment_id)) repliesMap.set(c.parent_comment_id, []);
-            repliesMap.get(c.parent_comment_id)!.push(c);
+            const rootId = findRootId(c.id);
+            if (!repliesMap.has(rootId)) repliesMap.set(rootId, []);
+            repliesMap.get(rootId)!.push(c);
         }
     }
 
@@ -336,7 +347,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                                     {/* Horizontal Thread Line (L-curve) */}
                                                     <div className="absolute left-[16px] top-[24px] w-[20px] h-px bg-navy-600/60" />
                                                     
-                                                    <CommentCard comment={reply} isReply parentComment={comment} />
+                                                    <CommentCard comment={reply} isReply parentComment={reply.parent_comment_id ? commentById.get(reply.parent_comment_id) || comment : comment} />
                                                 </div>
                                             );
                                         })}

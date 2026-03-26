@@ -34,4 +34,8 @@ jobs:
 
       - name: Run Server Tests
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          JWT_SECRET: ci-test-secret
+          NODE_ENV: test
         run: npm test
