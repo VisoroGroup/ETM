@@ -180,7 +180,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
         const likedByNames = reactions.map(r => r.display_name);
 
         return (
-            <div className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60 ${isReply ? 'ml-8' : ''}`}>
+            <div className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60`}>
                 {/* Reply-to indicator */}
                 {isReply && parentComment && (
                     <div className="flex items-center gap-1.5 mb-1.5 pl-7">
@@ -326,11 +326,20 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                 {/* Replies */}
                                 {replies.length > 0 && (
                                     <div className="space-y-1.5 mt-1.5 relative">
-                                        {/* Thread line */}
-                                        <div className="absolute left-4 top-0 bottom-0 w-px bg-navy-700/50" />
-                                        {replies.map(reply => (
-                                            <CommentCard key={reply.id} comment={reply} isReply parentComment={comment} />
-                                        ))}
+                                        {replies.map((reply, index) => {
+                                            const isLast = index === replies.length - 1;
+                                            return (
+                                                <div key={reply.id} className="relative pl-[44px]">
+                                                    {/* Vertical Thread Line */}
+                                                    <div className={`absolute left-[16px] w-px bg-navy-600/60 ${isLast ? 'top-[-6px] h-[30px]' : 'top-[-6px] bottom-[-6px]'}`} />
+                                                    
+                                                    {/* Horizontal Thread Line (L-curve) */}
+                                                    <div className="absolute left-[16px] top-[24px] w-[20px] h-px bg-navy-600/60" />
+                                                    
+                                                    <CommentCard comment={reply} isReply parentComment={comment} />
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
