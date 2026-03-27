@@ -32,21 +32,30 @@ setInterval(() => {
 
 const router = Router();
 
-// MSAL config for server-side OAuth
-const msalApp = new ConfidentialClientApplication({
-    auth: {
-        clientId: process.env.AZURE_CLIENT_ID!,
-        authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
-        clientSecret: process.env.AZURE_CLIENT_SECRET!,
+// MSAL config for server-side OAuth — lazy init to avoid crash when credentials are not set (dev mode)
+let _msalApp: ConfidentialClientApplication | null = null;
+function getMsalApp(): ConfidentialClientApplication {
+    if (!_msalApp) {
+        if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
+            throw new Error('Azure AD credentials are not configured. Set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and AZURE_TENANT_ID.');
+        }
+        _msalApp = new ConfidentialClientApplication({
+            auth: {
+                clientId: process.env.AZURE_CLIENT_ID,
+                authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
+                clientSecret: process.env.AZURE_CLIENT_SECRET,
+            }
+        });
     }
-});
+    return _msalApp;
+}
 
 // GET /api/auth/microsoft — redirect to Microsoft OAuth
 router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
     try {
         const serverUrl = process.env.SERVER_URL || `https://${req.headers.host}`;
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
-        const authUrl = await msalApp.getAuthCodeUrl({
+        const authUrl = await getMsalApp().getAuthCodeUrl({
             scopes: ['User.Read'],
             redirectUri,
         });
@@ -71,7 +80,7 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         }
 
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
-        const tokenResponse = await msalApp.acquireTokenByCode({
+        const tokenResponse = await getMsalApp().acquireTokenByCode({
             code,
             scopes: ['User.Read'],
             redirectUri,

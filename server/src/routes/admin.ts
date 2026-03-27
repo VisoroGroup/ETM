@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
+import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
 
 const router = Router();
 
@@ -125,6 +126,82 @@ router.get('/stats', async (_req: AuthRequest, res: Response) => {
     } catch (err) {
         console.error('Admin stats error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea statisticilor.' });
+    }
+});
+
+// ==========================================
+// API TOKEN MANAGEMENT
+// ==========================================
+
+// POST /api/admin/api-tokens — generate a new API token
+router.post('/api-tokens', async (req: AuthRequest, res: Response) => {
+    try {
+        const { name, expires_at } = req.body;
+
+        if (!name || name.trim() === '') {
+            res.status(400).json({ error: 'Numele token-ului este obligatoriu.' });
+            return;
+        }
+
+        const rawToken = generateApiToken();
+        const tokenHash = hashToken(rawToken);
+
+        const { rows } = await pool.query(
+            `INSERT INTO api_tokens (token_hash, name, created_by, expires_at)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id, name, created_at, expires_at`,
+            [tokenHash, name.trim(), req.user!.id, expires_at || null]
+        );
+
+        // Return the raw token ONCE — it will never be shown again
+        res.status(201).json({
+            ...rows[0],
+            token: rawToken,
+            message: 'Salvează acest token! Nu va mai fi afișat.'
+        });
+    } catch (err) {
+        console.error('Generate API token error:', err);
+        res.status(500).json({ error: 'Eroare la generarea token-ului.' });
+    }
+});
+
+// GET /api/admin/api-tokens — list all tokens (without hashes)
+router.get('/api-tokens', async (_req: AuthRequest, res: Response) => {
+    try {
+        const { rows } = await pool.query(`
+            SELECT at.id, at.name, at.is_active, at.created_at, at.last_used_at, at.expires_at,
+                   u.display_name AS created_by_name
+            FROM api_tokens at
+            JOIN users u ON at.created_by = u.id
+            ORDER BY at.created_at DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error('List API tokens error:', err);
+        res.status(500).json({ error: 'Eroare la încărcarea token-urilor.' });
+    }
+});
+
+// DELETE /api/admin/api-tokens/:id — revoke a token
+router.delete('/api-tokens/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { rows } = await pool.query(
+            `UPDATE api_tokens SET is_active = false, updated_at = NOW()
+             WHERE id = $1 AND is_active = true
+             RETURNING id, name`,
+            [id]
+        );
+
+        if (rows.length === 0) {
+            res.status(404).json({ error: 'Token negăsit sau deja revocat.' });
+            return;
+        }
+
+        res.json({ success: true, revoked: rows[0] });
+    } catch (err) {
+        console.error('Revoke API token error:', err);
+        res.status(500).json({ error: 'Eroare la revocarea token-ului.' });
     }
 });
 

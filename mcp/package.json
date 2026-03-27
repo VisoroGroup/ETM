@@ -1,0 +1,13 @@
+{
+  "name": "etm-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Visoro ETM Task Manager",
+  "type": "module",
+  "main": "etm-mcp-server.mjs",
+  "scripts": {
+    "start": "node etm-mcp-server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

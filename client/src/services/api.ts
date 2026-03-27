@@ -166,6 +166,13 @@ export const adminApi = {
     stats: () => api.get('/admin/stats').then(r => r.data),
 };
 
+// API Tokens
+export const apiTokensApi = {
+    list: () => api.get('/admin/api-tokens').then(r => r.data),
+    generate: (name: string) => api.post('/admin/api-tokens', { name }).then(r => r.data),
+    revoke: (id: string) => api.delete(`/admin/api-tokens/${id}`).then(r => r.data),
+};
+
 // Profile
 export const profileApi = {
     get: () => api.get('/profile').then(r => r.data),

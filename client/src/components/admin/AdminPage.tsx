@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../services/api';
 import { User, DEPARTMENTS, Department } from '../../types';
 import WebhookManager from './WebhookManager';
+import ApiTokenManager from './ApiTokenManager';
 
 const ROLES = ['superadmin', 'admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
@@ -247,6 +248,11 @@ export default function AdminPage() {
             {/* Webhook Manager */}
             <div className="mt-8">
                 <WebhookManager />
+            </div>
+
+            {/* API Token Manager */}
+            <div className="mt-8">
+                <ApiTokenManager />
             </div>
         </div>
     );
