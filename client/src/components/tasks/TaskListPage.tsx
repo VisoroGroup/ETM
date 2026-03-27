@@ -604,7 +604,7 @@ export default function TaskListPage() {
                             <span>Status</span>
                             <span>Data limită</span>
                             <span>Subtask</span>
-                            <span>Creat de</span>
+                            <span>Responsabil</span>
                             <span>Departament</span>
                             <span>Activitate</span>
                         </div>
@@ -709,12 +709,18 @@ export default function TaskListPage() {
                                         )}
                                     </div>
 
-                                    {/* Creator */}
+                                    {/* Responsabil */}
                                     <div className="flex items-center gap-1.5">
-                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                            {task.creator_name?.charAt(0) || '?'}
-                                        </div>
-                                        <span className="text-xs text-navy-300 truncate">{task.creator_name}</span>
+                                        {task.assignee_name ? (
+                                            <>
+                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                                    {task.assignee_name.charAt(0)}
+                                                </div>
+                                                <span className="text-xs text-navy-300 truncate">{task.assignee_name}</span>
+                                            </>
+                                        ) : (
+                                            <span className="text-xs text-navy-500">—</span>
+                                        )}
                                     </div>
 
                                     {/* Department — inline editable */}

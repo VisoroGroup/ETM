@@ -19,7 +19,7 @@ import {
     ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-const API_URL = process.env.ETM_API_URL || 'http://localhost:3001';
+const API_URL = process.env.ETM_API_URL || 'https://www.etm-visoro.org';
 const API_TOKEN = process.env.ETM_API_TOKEN;
 
 if (!API_TOKEN) {
