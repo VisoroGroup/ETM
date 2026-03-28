@@ -244,7 +244,7 @@ export default function TaskListPage() {
     }
 
     return (
-        <div className="p-4 md:p-6 animate-fade-in">
+        <div className="p-4 md:p-6 animate-fade-in max-w-[1350px] mx-auto w-full">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
