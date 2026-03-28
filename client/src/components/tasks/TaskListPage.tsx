@@ -685,7 +685,7 @@ export default function TaskListPage() {
                                         <UserAvatar
                                             name={task.assignee_name}
                                             avatarUrl={task.assignee_avatar}
-                                            size="md"
+                                            size="lg"
                                         />
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>

@@ -32,15 +32,16 @@ function getGradientForName(name: string): [string, string] {
 interface UserAvatarProps {
     name?: string | null;
     avatarUrl?: string | null;
-    size?: 'xs' | 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
 }
 
 const SIZE_MAP = {
-    xs: { container: 'w-6 h-6', text: 'text-[10px]', icon: 'w-4 h-4' },
-    sm: { container: 'w-7 h-7', text: 'text-[11px]', icon: 'w-4 h-4' },
-    md: { container: 'w-9 h-9', text: 'text-[13px]', icon: 'w-5 h-5' },
+    xs: { container: 'w-6 h-6', text: 'text-[10px]', icon: 'w-3.5 h-3.5' },
+    sm: { container: 'w-8 h-8', text: 'text-xs', icon: 'w-4 h-4' },
+    md: { container: 'w-10 h-10', text: 'text-sm', icon: 'w-5 h-5' },
     lg: { container: 'w-14 h-14', text: 'text-xl', icon: 'w-7 h-7' },
+    xl: { container: 'w-24 h-24', text: 'text-3xl', icon: 'w-12 h-12' },
 };
 
 export default function UserAvatar({ name, avatarUrl, size = 'md', className = '' }: UserAvatarProps) {

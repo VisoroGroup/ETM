@@ -3,6 +3,7 @@ import { X, User, Save, Camera, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { profileApi } from '../../services/api';
 import UserAvatar from '../ui/UserAvatar';
+import AvatarCropper from '../ui/AvatarCropper';
 
 interface Props {
     onClose: () => void;
@@ -17,6 +18,7 @@ export default function ProfileModal({ onClose, darkMode }: Props) {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(user?.avatar_url || '');
+    const [selectedImageForCrop, setSelectedImageForCrop] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSave = async () => {
@@ -56,17 +58,34 @@ export default function ProfileModal({ onClose, darkMode }: Props) {
             return;
         }
 
+        // Open cropper instead of uploading directly
+        const imageUrl = URL.createObjectURL(file);
+        setSelectedImageForCrop(imageUrl);
+        
+        // Reset input so the same file could be selected again if needed
+        e.target.value = '';
+    };
+
+    const handleCropSave = async (croppedFile: File) => {
+        setSelectedImageForCrop(null);
         setUploading(true);
         setError('');
 
         try {
-            const result = await profileApi.uploadAvatar(file);
+            const result = await profileApi.uploadAvatar(croppedFile);
             setPreviewUrl(result.avatar_url);
             if (refreshUser) await refreshUser();
         } catch (err: any) {
             setError(err.response?.data?.error || 'Eroare la încărcarea imaginii.');
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleCropCancel = () => {
+        if (selectedImageForCrop) {
+            URL.revokeObjectURL(selectedImageForCrop);
+            setSelectedImageForCrop(null);
         }
     };
 
@@ -201,6 +220,15 @@ export default function ProfileModal({ onClose, darkMode }: Props) {
                     </button>
                 </div>
             </div>
+
+            {/* Cropper Modal */}
+            {selectedImageForCrop && (
+                <AvatarCropper
+                    imageSrc={selectedImageForCrop}
+                    onCancel={handleCropCancel}
+                    onSave={handleCropSave}
+                />
+            )}
         </div>
     );
 }

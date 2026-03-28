@@ -6,6 +6,7 @@ import { User, DEPARTMENTS, Department } from '../../types';
 import WebhookManager from './WebhookManager';
 import ApiTokenManager from './ApiTokenManager';
 import UserAvatar from '../ui/UserAvatar';
+import AvatarCropper from '../ui/AvatarCropper';
 
 const ROLES = ['superadmin', 'admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
@@ -20,6 +21,7 @@ export default function AdminPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
+    const [cropState, setCropState] = useState<{ userId: string; imageUrl: string } | null>(null);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleAvatarUpload = async (userId: string, file: File) => {
@@ -31,15 +33,32 @@ export default function AdminPage() {
             setError('Imaginea nu poate depăși 5MB.');
             return;
         }
+        
+        const imageUrl = URL.createObjectURL(file);
+        setCropState({ userId, imageUrl });
+    };
+
+    const handleCropSave = async (croppedFile: File) => {
+        if (!cropState) return;
+        const { userId } = cropState;
+        setCropState(null);
+
         setUploadingAvatarId(userId);
         setError('');
         try {
-            const updated = await adminApi.uploadUserAvatar(userId, file);
+            const updated = await adminApi.uploadUserAvatar(userId, croppedFile);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, avatar_url: updated.avatar_url } : u));
         } catch (err: any) {
             setError(err.response?.data?.error || 'Eroare la încărcarea avatarului.');
         } finally {
             setUploadingAvatarId(null);
+        }
+    };
+
+    const handleCropCancel = () => {
+        if (cropState) {
+            URL.revokeObjectURL(cropState.imageUrl);
+            setCropState(null);
         }
     };
 
@@ -300,6 +319,14 @@ export default function AdminPage() {
             <div className="mt-8">
                 <ApiTokenManager />
             </div>
+
+            {cropState && (
+                <AvatarCropper
+                    imageSrc={cropState.imageUrl}
+                    onCancel={handleCropCancel}
+                    onSave={handleCropSave}
+                />
+            )}
         </div>
     );
 }
