@@ -7,6 +7,7 @@ import TaskDrawer from './TaskDrawer';
 import {
     Search, CheckCircle2, RotateCcw, Calendar, Loader2, Archive
 } from 'lucide-react';
+import UserAvatar from '../ui/UserAvatar';
 
 export default function CompletedTasksPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -184,9 +185,11 @@ export default function CompletedTasksPage() {
 
                                 {/* Creator */}
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                        {task.creator_name?.charAt(0) || '?'}
-                                    </div>
+                                    <UserAvatar
+                                        name={task.creator_name}
+                                        avatarUrl={task.creator_avatar}
+                                        size="xs"
+                                    />
                                     <span className="text-xs text-navy-300 truncate">{task.creator_name}</span>
                                 </div>
 

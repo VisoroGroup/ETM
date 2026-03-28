@@ -5,6 +5,7 @@ import { getDueDateStatus, formatDate, getDaysOverdue } from '../../utils/helper
 import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle, X, Link2 } from 'lucide-react';
 import { tasksApi, commentsApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import UserAvatar from '../ui/UserAvatar';
 
 interface Props {
     tasks: Task[];
@@ -266,11 +267,12 @@ function KanbanCard({ task, index, isDragging, onClick }: {
                                 </span>
                             )}
                             {task.assignee_name ? (
-                                <div
-                                    className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold"
-                                    title={task.assignee_name}
-                                >
-                                    {task.assignee_name.charAt(0)}
+                                <div title={task.assignee_name}>
+                                    <UserAvatar
+                                        name={task.assignee_name}
+                                        avatarUrl={task.assignee_avatar}
+                                        size="xs"
+                                    />
                                 </div>
                             ) : (
                                 <UserCircle className="w-4 h-4 text-navy-600" />

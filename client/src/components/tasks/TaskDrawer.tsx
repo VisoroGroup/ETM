@@ -23,6 +23,7 @@ import AlertsTab from './tabs/AlertsTab';
 import DependenciesTab from './tabs/DependenciesTab';
 import ChecklistTab from './tabs/ChecklistTab';
 import ErrorBoundary from '../ErrorBoundary';
+import UserAvatar from '../ui/UserAvatar';
 
 interface Props {
     taskId: string;
@@ -362,9 +363,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                         {/* Creator */}
                         <div className="flex items-center gap-2 mt-3 text-xs text-navy-500">
-                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[9px] font-bold">
-                                {task.creator_name?.charAt(0)}
-                            </div>
+                            <UserAvatar
+                                name={task.creator_name}
+                                avatarUrl={task.creator_avatar}
+                                size="xs"
+                            />
                             Creat de {task.creator_name} · {timeAgo(task.created_at)}
                         </div>
 
@@ -389,9 +392,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             </select>
                             {task.assigned_to && task.assignee_name && (
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold">
-                                        {task.assignee_name.charAt(0)}
-                                    </div>
+                                    <UserAvatar
+                                        name={task.assignee_name}
+                                        avatarUrl={task.assignee_avatar}
+                                        size="xs"
+                                    />
                                     <span className="text-xs text-navy-300">{task.assignee_name}</span>
                                 </div>
                             )}

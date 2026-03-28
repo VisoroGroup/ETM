@@ -7,6 +7,7 @@ import {
     CalendarClock, ChevronDown, ChevronRight, FileDown,
     GripVertical, CheckCircle2, Circle, AlertTriangle, Loader2
 } from 'lucide-react';
+import UserAvatar from '../ui/UserAvatar';
 
 interface DaySubtask {
     title: string;
@@ -217,12 +218,11 @@ export default function DayViewPage() {
                                                     </div>
 
                                                     {/* Avatar */}
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                                        {user.avatar_url
-                                                            ? <img src={user.avatar_url} alt={user.display_name} className="w-8 h-8 rounded-full object-cover" />
-                                                            : user.display_name.charAt(0).toUpperCase()
-                                                        }
-                                                    </div>
+                                                    <UserAvatar
+                                                        name={user.display_name}
+                                                        avatarUrl={user.avatar_url}
+                                                        size="sm"
+                                                    />
 
                                                     {/* Name + task count */}
                                                     <button

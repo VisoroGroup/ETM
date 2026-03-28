@@ -2,6 +2,7 @@ import type { TaskDetail, TaskStatus, Department } from '../../../types';
 import { STATUSES, DEPARTMENTS } from '../../../types';
 import { timeAgo, formatDate } from '../../../utils/helpers';
 import { Activity } from 'lucide-react';
+import UserAvatar from '../../ui/UserAvatar';
 
 interface Props {
     task: TaskDetail;
@@ -50,8 +51,11 @@ export default function ActivityTab({ task }: Props) {
                 <div className="space-y-3">
                     {task.activity.map(entry => (
                         <div key={entry.id} className="flex gap-2.5">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-navy-600 to-navy-700 flex items-center justify-center text-navy-300 text-[9px] font-bold flex-shrink-0 mt-0.5">
-                                {entry.user_name?.charAt(0)}
+                            <div className="flex-shrink-0 mt-0.5">
+                                <UserAvatar
+                                    name={entry.user_name}
+                                    size="xs"
+                                />
                             </div>
                             <div className="flex-1">
                                 <p className="text-xs">

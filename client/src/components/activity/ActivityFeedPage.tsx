@@ -8,6 +8,7 @@ import {
     CheckCircle2, ArrowRight, MessageSquare, Paperclip, Calendar, RefreshCw,
     AlertTriangle, Banknote
 } from 'lucide-react';
+import UserAvatar from '../ui/UserAvatar';
 
 const ACTION_LABELS: Record<string, string> = {
     created: 'a creat',
@@ -201,9 +202,11 @@ export default function ActivityFeedPage() {
                         <div key={`${item.id}-${idx}`} className="flex gap-3 py-3 border-b border-navy-800/50 hover:bg-navy-800/20 transition-colors rounded-lg px-2 -mx-2">
                             {/* Avatar */}
                             <div className="flex-shrink-0 mt-0.5">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold">
-                                    {item.user_name?.charAt(0).toUpperCase() || '?'}
-                                </div>
+                                <UserAvatar
+                                    name={item.user_name}
+                                    avatarUrl={item.avatar_url}
+                                    size="sm"
+                                />
                             </div>
 
                             {/* Content */}

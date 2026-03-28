@@ -5,6 +5,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { timeAgo } from '../../../utils/helpers';
 import { MessageSquare, Send, Trash2, ThumbsUp, Reply, X } from 'lucide-react';
+import UserAvatar from '../../ui/UserAvatar';
 
 // Fixed avatar + border colors per known user (by first name), plus fallback palette
 const NAMED_COLORS: Record<string, { avatar: string; border: string }> = {
@@ -228,12 +229,11 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`${isReply ? 'w-5 h-5 text-[8px]' : 'w-6 h-6 text-[9px]'} rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold flex-shrink-0`}>
-                        {comment.author_avatar
-                            ? <img src={comment.author_avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                            : comment.author_name?.charAt(0).toUpperCase()
-                        }
-                    </div>
+                    <UserAvatar
+                        name={comment.author_name}
+                        avatarUrl={comment.author_avatar}
+                        size={isReply ? 'xs' : 'xs'}
+                    />
                     <span className={`text-xs font-semibold ${isOwn ? 'text-blue-300' : 'text-white'}`}>
                         {comment.author_name}
                         {isOwn && <span className="text-[9px] text-navy-500 ml-1 font-normal">(tu)</span>}
@@ -327,9 +327,11 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                                 onClick={() => selectMention(u)}
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-navy-700/50 text-sm text-left transition-colors"
                             >
-                                <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${getAvatarColor(u.id, u.display_name)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
-                                    {u.display_name.charAt(0)}
-                                </div>
+                                <UserAvatar
+                                    name={u.display_name}
+                                    avatarUrl={u.avatar_url}
+                                    size="xs"
+                                />
                                 <div>
                                     <p className="text-xs font-medium">{u.display_name}</p>
                                     <p className="text-[10px] text-navy-500">{u.email}</p>

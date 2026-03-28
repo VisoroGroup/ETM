@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarcini Mockup (Preview)</title>
+    <!-- Import Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Import Tailwind V4 via CDN -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-navy-50: #f0f4f8;
+            --color-navy-100: #d9e2ec;
+            --color-navy-200: #bcccdc;
+            --color-navy-300: #9fb3c8;
+            --color-navy-400: #829ab1;
+            --color-navy-500: #627d98;
+            --color-navy-600: #486581;
+            --color-navy-700: #334e68;
+            --color-navy-800: #243b53;
+            --color-navy-900: #1E3A5F;
+            --color-navy-950: #102a43;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #102a43; /* navy-950 */
+        }
+    </style>
+    <!-- Import Lucide Icons (Browser Script) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="p-8 antialiased">
+
+<div class="max-w-6xl mx-auto">
+    
+    <div class="mb-6 flex items-end justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Sarcini (Design Nou)</h1>
+            <p class="text-navy-400 text-sm mt-1">Previzualizare layout desktop îmbunătățit</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden shadow-2xl">
+        
+        <!-- Table Header -->
+        <div class="grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-3.5 bg-navy-800/40 text-[11px] uppercase tracking-wider font-semibold text-navy-400 border-b border-navy-700/50 items-center">
+            <div class="flex items-center justify-center">
+                <i data-lucide="square" class="w-4 h-4 opacity-50"></i>
+            </div>
+            <div>Detalii Sarcină</div>
+            <div>Responsabil</div>
+            <div>Termen & Status</div>
+            <div>Departament</div>
+        </div>
+
+        <!-- ROW 1 (Normal Task with Description and Subtasks) -->
+        <div class="grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-4 border-b border-navy-800/80 hover:bg-navy-800/30 transition-colors items-start group cursor-pointer bg-blue-500/5 border-l-2 border-l-blue-500">
+            <!-- Checkbox -->
+            <div class="flex items-center justify-center mt-1">
+                <i data-lucide="check-square" class="w-4 h-4 text-blue-400"></i>
+            </div>
+
+            <!-- Task Info (Title + Desc + Badges) -->
+            <div class="flex flex-col gap-1.5 pr-6">
+                <h3 class="text-[14px] font-semibold text-white leading-snug group-hover:text-blue-400 transition-colors">Cumpana - Digitalizare PUG Infok Fidanak</h3>
+                <p class="text-[12px] text-navy-300 line-clamp-2 leading-relaxed font-normal">Aceasta este o descriere extinsă a task-ului pentru a testa vizualizarea. Trebuie să ne asigurăm că legătura cu sistemul se face automat după preluarea fluxului principal din departamentul tehnic.</p>
+                
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                    <span class="text-[10px] font-medium text-navy-300 flex items-center gap-1.5 bg-navy-800/60 px-2 py-1 rounded border border-navy-700/50">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-blue-500/20 border border-blue-500/50 flex items-center justify-center">
+                            <i data-lucide="check" class="w-2 h-2 text-blue-400"></i>
+                        </span>
+                        1/3 Subtasks
+                    </span>
+                    <span class="text-[10px] font-medium text-cyan-400 flex items-center gap-1 bg-cyan-900/20 px-2 py-1 rounded border border-cyan-800/30">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Recurent
+                    </span>
+                </div>
+            </div>
+
+            <!-- Responsabil -->
+            <div class="flex items-center gap-3 mt-0.5">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-[13px] font-bold shadow-md shadow-blue-500/20 flex-shrink-0">M</div>
+                <div class="flex flex-col min-w-0">
+                    <span class="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Alesnic</span>
+                    <span class="text-[13px] font-semibold text-white truncate">Mária VASZI</span>
+                </div>
+            </div>
+
+            <!-- Due Date & Status -->
+            <div class="flex flex-col gap-2 items-start mt-0.5">
+                <div class="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-md">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    <span class="text-[11px] font-semibold">30 Mar 2026 (Azi)</span>
+                </div>
+                
+                <span class="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border" style="background: rgba(251,191,36,0.12); color: #FBBF24; border-color: rgba(251,191,36,0.4);">
+                    În realizare
+                </span>
+            </div>
+
+            <!-- Department & Activity -->
+            <div class="flex flex-col gap-2 items-start mt-0.5">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border bg-navy-800/50 border-navy-600 text-emerald-400" style="background: rgba(16,185,129,0.12); color: #10B981; border-color: rgba(16,185,129,0.4);">
+                    Productie
+                </span>
+                
+                <div class="text-[10px] text-navy-500 font-medium flex items-center gap-1 mt-1">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    Acum 19 ore
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2 (Overdue Task without Description) -->
+        <div class="grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-4 border-b border-navy-800/80 hover:bg-navy-800/30 transition-colors items-center cursor-pointer bg-red-500/5 border-l-2 border-l-red-500">
+            <!-- Checkbox -->
+            <div class="flex items-center justify-center">
+                <i data-lucide="square" class="w-4 h-4 text-navy-600"></i>
+            </div>
+
+            <!-- Task Info -->
+            <div class="flex flex-col gap-0.5 pr-6">
+                <h3 class="text-[14px] font-semibold text-white leading-snug">NALAS talalkozo</h3>
+            </div>
+
+            <!-- Responsabil -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-[13px] font-bold shadow-md shadow-indigo-500/20 flex-shrink-0">R</div>
+                <div class="flex flex-col min-w-0">
+                    <span class="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Alesnic</span>
+                    <span class="text-[13px] font-semibold text-white truncate">Róbert LEDÉNYI</span>
+                </div>
+            </div>
+
+            <!-- Due Date & Status -->
+            <div class="flex flex-col gap-2 items-start">
+                <div>
+                     <div class="flex items-center gap-1.5 text-red-400">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                        <span class="text-[11px] font-semibold">28 Mar 2026</span>
+                    </div>
+                    <span class="text-[9px] text-red-400/70 font-medium ml-5 block mt-0.5">Depășit cu 2z</span>
+                </div>
+                
+                <span class="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border" style="background: rgba(37,99,235,0.12); color: #60A5FA; border-color: rgba(37,99,235,0.4);">
+                    De rezolvat
+                </span>
+            </div>
+
+            <!-- Department & Activity -->
+            <div class="flex flex-col gap-2 items-start">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border" style="background: rgba(249,115,22,0.12); color: #F97316; border-color: rgba(249,115,22,0.4);">
+                    Extindere
+                </span>
+                <div class="text-[10px] text-navy-500 font-medium flex items-center gap-1 mt-1">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    Acum 2 zile
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    // Initialize icons
+    lucide.createIcons();
+</script>
+</body>
+</html>

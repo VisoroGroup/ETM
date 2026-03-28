@@ -62,6 +62,9 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/api', globalLimiter);
 
 // Static file serving for uploads
+// Avatars are public (browser <img> tags don't send Authorization headers)
+app.use('/uploads/avatars', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads', 'avatars')));
+// Other uploads (task attachments) remain auth-protected
 app.use('/uploads', authMiddleware, express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
 
 // Routes (auth + upload get stricter limits)

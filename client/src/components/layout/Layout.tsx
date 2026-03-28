@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
+import UserAvatar from '../ui/UserAvatar';
 
 export default function Layout() {
     const { user, logout } = useAuth();
@@ -117,13 +118,14 @@ export default function Layout() {
                         <div className={`mt-2 flex items-center gap-2.5 px-3 py-2.5 rounded-lg ${darkMode ? 'bg-navy-800/50' : 'bg-gray-50'}`}>
                             <button
                                 onClick={() => setShowProfile(true)}
-                                className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
+                                className="hover:opacity-80 transition-opacity"
                                 title="Editează profil"
                             >
-                                {user.avatar_url
-                                    ? <img src={user.avatar_url} alt={user.display_name} className="w-8 h-8 rounded-full object-cover" />
-                                    : user.display_name.charAt(0).toUpperCase()
-                                }
+                                <UserAvatar
+                                    name={user.display_name}
+                                    avatarUrl={user.avatar_url}
+                                    size="sm"
+                                />
                             </button>
                             {!collapsed && (
                                 <div className="flex-1 overflow-hidden">
@@ -176,12 +178,11 @@ export default function Layout() {
                             darkMode ? 'text-navy-400' : 'text-gray-500'
                         }`}
                     >
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[9px] font-bold">
-                            {user.avatar_url
-                                ? <img src={user.avatar_url} alt={user.display_name} className="w-5 h-5 rounded-full object-cover" />
-                                : user.display_name.charAt(0).toUpperCase()
-                            }
-                        </div>
+                        <UserAvatar
+                            name={user.display_name}
+                            avatarUrl={user.avatar_url}
+                            size="xs"
+                        />
                         <span>Profil</span>
                     </button>
                 )}

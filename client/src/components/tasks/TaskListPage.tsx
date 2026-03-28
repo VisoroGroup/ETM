@@ -816,9 +816,11 @@ export default function TaskListPage() {
                                 <button onClick={() => bulkAssign(null)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-navy-400 hover:bg-navy-700">— Neasignat —</button>
                                 {users.map(u => (
                                     <button key={u.id} onClick={() => bulkAssign(u.id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-white hover:bg-navy-700">
-                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-[9px] font-bold">
-                                            {(u.display_name || u.email).charAt(0)}
-                                        </div>
+                                        <UserAvatar
+                                            name={u.display_name || u.email}
+                                            avatarUrl={u.avatar_url}
+                                            size="xs"
+                                        />
                                         {u.display_name || u.email}
                                     </button>
                                 ))}
