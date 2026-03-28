@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw, Camera, Loader2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../services/api';
 import { User, DEPARTMENTS, Department } from '../../types';
 import WebhookManager from './WebhookManager';
 import ApiTokenManager from './ApiTokenManager';
+import UserAvatar from '../ui/UserAvatar';
 
 const ROLES = ['superadmin', 'admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
@@ -18,6 +19,29 @@ export default function AdminPage() {
     const [editData, setEditData] = useState<{ role?: string; departments?: string[] }>({});
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
+    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    const handleAvatarUpload = async (userId: string, file: File) => {
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+            setError('Doar imagini (jpg, png, gif, webp) sunt permise.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setError('Imaginea nu poate depăși 5MB.');
+            return;
+        }
+        setUploadingAvatarId(userId);
+        setError('');
+        try {
+            const updated = await adminApi.uploadUserAvatar(userId, file);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, avatar_url: updated.avatar_url } : u));
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Eroare la încărcarea avatarului.');
+        } finally {
+            setUploadingAvatarId(null);
+        }
+    };
 
     const load = async () => {
         setLoading(true);
@@ -146,8 +170,30 @@ export default function AdminPage() {
                                 <tr key={u.id} className="border-b border-navy-700/30 hover:bg-navy-700/20 transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                                {u.display_name.charAt(0).toUpperCase()}
+                                            <div className="relative group cursor-pointer" onClick={() => fileInputRefs.current[u.id]?.click()}>
+                                                <UserAvatar
+                                                    name={u.display_name}
+                                                    avatarUrl={u.avatar_url}
+                                                    size="sm"
+                                                />
+                                                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {uploadingAvatarId === u.id ? (
+                                                        <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                                                    ) : (
+                                                        <Camera className="w-3.5 h-3.5 text-white" />
+                                                    )}
+                                                </div>
+                                                <input
+                                                    ref={el => { fileInputRefs.current[u.id] = el; }}
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) handleAvatarUpload(u.id, file);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
                                             </div>
                                             <div>
                                                 <p className="font-medium text-xs">{u.display_name}</p>

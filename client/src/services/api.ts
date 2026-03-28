@@ -164,6 +164,13 @@ export const adminApi = {
         api.patch(`/admin/users/${id}`, data).then(r => r.data),
     deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),
     stats: () => api.get('/admin/stats').then(r => r.data),
+    uploadUserAvatar: (userId: string, file: File) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return api.post(`/admin/users/${userId}/avatar`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(r => r.data);
+    },
 };
 
 // API Tokens

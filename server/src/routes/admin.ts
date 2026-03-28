@@ -1,4 +1,7 @@
 import { Router, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
@@ -8,6 +11,34 @@ const router = Router();
 // All admin routes require authentication + admin role
 router.use(authMiddleware);
 router.use(requireRole('admin'));
+
+// --- Avatar upload setup for admin ---
+const uploadDir = process.env.UPLOAD_DIR || './uploads';
+const avatarDir = path.join(uploadDir, 'avatars');
+if (!fs.existsSync(avatarDir)) {
+    fs.mkdirSync(avatarDir, { recursive: true });
+}
+
+const avatarStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, avatarDir),
+    filename: (_req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const avatarUpload = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Doar imagini (jpg, png, gif, webp) sunt permise.'));
+        }
+    }
+});
 
 // GET /api/admin/users — list all users with their departments and roles
 router.get('/users', async (_req: AuthRequest, res: Response) => {
@@ -202,6 +233,57 @@ router.delete('/api-tokens/:id', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         console.error('Revoke API token error:', err);
         res.status(500).json({ error: 'Eroare la revocarea token-ului.' });
+    }
+});
+
+// ==========================================
+// ADMIN AVATAR UPLOAD
+// ==========================================
+
+// POST /api/admin/users/:id/avatar — upload avatar for any user
+router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: `Eroare upload: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const file = req.file;
+        if (!file) {
+            res.status(400).json({ error: 'Imaginea este obligatorie.' });
+            return;
+        }
+
+        // Delete old avatar file if exists
+        const { rows: currentUser } = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [id]);
+        if (currentUser.length === 0) {
+            fs.unlinkSync(file.path);
+            res.status(404).json({ error: 'Utilizator negăsit.' });
+            return;
+        }
+        if (currentUser[0]?.avatar_url && currentUser[0].avatar_url.startsWith('/uploads/avatars/')) {
+            try {
+                const oldPath = path.join(uploadDir, 'avatars', path.basename(currentUser[0].avatar_url));
+                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+            } catch {}
+        }
+
+        const avatarUrl = `/uploads/avatars/${file.filename}`;
+
+        const { rows } = await pool.query(
+            `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, display_name, avatar_url, departments, role`,
+            [avatarUrl, id]
+        );
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Admin avatar upload error:', err);
+        res.status(500).json({ error: 'Eroare la încărcarea avatarului.' });
     }
 });
 
