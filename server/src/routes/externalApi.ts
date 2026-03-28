@@ -17,6 +17,8 @@ import { apiTokenAuth, ApiAuthRequest } from '../middleware/apiTokenAuth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { DEPARTMENTS, STATUSES, TaskStatus } from '../types';
 import * as taskService from '../services/taskService';
+import { getAttachmentContent, getMimeType } from '../services/attachmentContentService';
+import path from 'path';
 
 const router = Router();
 
@@ -393,6 +395,110 @@ router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) 
         user_workload: userWorkload,
         generated_at: new Date().toISOString(),
     });
+}));
+
+// ==========================================
+// GET /api/v1/tasks/:taskId/attachments — list attachments
+// ==========================================
+router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const { taskId } = req.params;
+
+    // Verify task exists
+    const { rows: taskRows } = await pool.query(
+        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
+        [taskId]
+    );
+    if (taskRows.length === 0) {
+        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        return;
+    }
+
+    const { rows } = await pool.query(
+        `SELECT a.id, a.task_id, a.file_name, a.file_url, a.file_size, a.created_at,
+                u.display_name AS uploaded_by
+         FROM task_attachments a
+         JOIN users u ON a.uploaded_by = u.id
+         WHERE a.task_id = $1
+         ORDER BY a.created_at DESC`,
+        [taskId]
+    );
+
+    const attachments = rows.map(a => ({
+        id: a.id,
+        task_id: a.task_id,
+        filename: a.file_name,
+        file_type: getMimeType(a.file_name),
+        file_size: a.file_size,
+        uploaded_by: a.uploaded_by,
+        uploaded_at: a.created_at,
+    }));
+
+    res.json({ attachments });
+}));
+
+// ==========================================
+// GET /api/v1/attachments/:attachmentId/content — get file content
+// ==========================================
+router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const { attachmentId } = req.params;
+    const format = (req.query.format as string) === 'base64' ? 'base64' : 'text';
+    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = Math.min(100000, Math.max(1, parseInt(req.query.limit as string) || 100000));
+
+    // Look up attachment
+    const { rows } = await pool.query(
+        `SELECT a.id, a.task_id, a.file_name, a.file_url, a.file_size,
+                u.display_name AS uploaded_by
+         FROM task_attachments a
+         JOIN users u ON a.uploaded_by = u.id
+         WHERE a.id = $1`,
+        [attachmentId]
+    );
+
+    if (rows.length === 0) {
+        res.status(404).json({ error: 'Atașamentul nu a fost găsit.' });
+        return;
+    }
+
+    const attachment = rows[0];
+
+    // Verify parent task still exists
+    const { rows: taskRows } = await pool.query(
+        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
+        [attachment.task_id]
+    );
+    if (taskRows.length === 0) {
+        res.status(404).json({ error: 'Sarcina părinte a fost ștearsă.' });
+        return;
+    }
+
+    try {
+        const result = await getAttachmentContent(
+            attachment.file_url,
+            attachment.file_name,
+            attachment.id,
+            format,
+            offset,
+            limit
+        );
+
+        // Activity log
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details)
+             VALUES ($1, $2, 'attachment_read', $3)`,
+            [attachment.task_id, req.user!.id, JSON.stringify({
+                attachment_id: attachment.id,
+                filename: attachment.file_name,
+                format,
+                via: 'api_v1'
+            })]
+        );
+
+        res.json(result);
+    } catch (err: any) {
+        const status = err.status || 500;
+        res.status(status).json({ error: err.message });
+    }
 }));
 
 export default router;

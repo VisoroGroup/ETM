@@ -164,6 +164,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: 'Összesítő nézet: hány feladat van státuszonként, melyek csúsznak, ki mennyit visz. Ez a legjobb indulópont ha általános áttekintés kell.',
             inputSchema: { type: 'object', properties: {} },
         },
+        {
+            name: 'list_attachments',
+            description: 'Listázza egy feladat csatolmányait (fájlnév, méret, feltöltő). Hasznos mielőtt a tartalmat lekéred.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    task_id: { type: 'string', description: 'A feladat UUID azonosítója.' },
+                },
+                required: ['task_id'],
+            },
+        },
+        {
+            name: 'get_attachment_content',
+            description: 'Lekéri egy csatolt fájl tartalmát szövegként (PDF, DOCX, XLSX, TXT) vagy base64-ként (képek). Nagy fájloknál lapozható offset/limit paraméterekkel.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    attachment_id: { type: 'string', description: 'A csatolmány UUID azonosítója.' },
+                    format: {
+                        type: 'string',
+                        description: 'Visszaadási formátum: "text" (alapértelmezett) vagy "base64".',
+                        enum: ['text', 'base64'],
+                    },
+                    offset: { type: 'number', description: 'Karakter offset a lapozáshoz (csak text formátumnál).' },
+                    limit: { type: 'number', description: 'Max karakterek száma (alapértelmezett: 100000).' },
+                },
+                required: ['attachment_id'],
+            },
+        },
     ],
 }));
 
@@ -222,6 +251,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
             case 'get_summary': {
                 const data = await apiCall('GET', '/summary');
+                return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            }
+
+            case 'list_attachments': {
+                const data = await apiCall('GET', `/tasks/${args.task_id}/attachments`);
+                return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            }
+
+            case 'get_attachment_content': {
+                const params = new URLSearchParams();
+                if (args.format) params.set('format', args.format);
+                if (args.offset !== undefined) params.set('offset', String(args.offset));
+                if (args.limit !== undefined) params.set('limit', String(args.limit));
+                const qs = params.toString();
+                const data = await apiCall('GET', `/attachments/${args.attachment_id}/content${qs ? '?' + qs : ''}`);
                 return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
             }
 
