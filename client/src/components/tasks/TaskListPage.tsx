@@ -18,6 +18,7 @@ import {
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 import { exportToCSV } from '../../utils/exportUtils';
+import UserAvatar from '../ui/UserAvatar';
 
 export default function TaskListPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -681,27 +682,17 @@ export default function TaskListPage() {
 
                                     {/* Responsabil */}
                                     <div className="flex items-center gap-3 mt-0.5">
-                                        {task.assignee_name ? (
-                                            <>
-                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-[13px] font-bold shadow-md shadow-blue-500/20 flex-shrink-0">
-                                                    {task.assignee_name.charAt(0)}
-                                                </div>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
-                                                    <span className="text-[13px] font-semibold text-white truncate">{task.assignee_name}</span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex items-center gap-3">
-                                                 <div className="w-9 h-9 rounded-full bg-navy-800 border border-navy-700 flex items-center justify-center text-navy-500 flex-shrink-0">
-                                                    <UserCircle className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
-                                                    <span className="text-[13px] font-medium text-navy-500 truncate">Neasignat</span>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <UserAvatar
+                                            name={task.assignee_name}
+                                            avatarUrl={task.assignee_avatar}
+                                            size="md"
+                                        />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
+                                            <span className={`text-[13px] font-semibold truncate ${task.assignee_name ? 'text-white' : 'text-navy-500'}`}>
+                                                {task.assignee_name || 'Neasignat'}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Termen & Status */}

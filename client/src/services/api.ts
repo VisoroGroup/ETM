@@ -178,6 +178,14 @@ export const profileApi = {
     get: () => api.get('/profile').then(r => r.data),
     update: (data: { display_name?: string; avatar_url?: string | null }) =>
         api.patch('/profile', data).then(r => r.data),
+    uploadAvatar: (file: File) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return api.post('/profile/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(r => r.data);
+    },
+    deleteAvatar: () => api.delete('/profile/avatar').then(r => r.data),
 };
 
 // Notifications
