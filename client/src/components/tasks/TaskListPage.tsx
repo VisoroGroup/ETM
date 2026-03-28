@@ -589,24 +589,21 @@ export default function TaskListPage() {
                     </div>
 
                     {/* ===== DESKTOP TABLE LAYOUT (md+) ===== */}
-                    <div className="hidden md:block bg-navy-900/30 border border-navy-700/50 rounded-xl">
+                    <div className="hidden md:block bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden shadow-2xl">
                         {/* Table header */}
-                        <div className="grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50 rounded-t-xl">
+                        <div className="grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-3.5 bg-navy-800/40 text-[11px] uppercase tracking-wider font-semibold text-navy-400 border-b border-navy-700/50 items-center">
                             {/* Select all checkbox */}
-                            <div className="flex items-center" onClick={toggleAll}>
+                            <div className="flex items-center justify-center cursor-pointer" onClick={toggleAll}>
                                 {allSelected
                                     ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
                                     : someSelected
                                         ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
                                         : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
                             </div>
-                            <span>Titlu</span>
-                            <span>Status</span>
-                            <span>Data limită</span>
-                            <span>Subtask</span>
-                            <span>Responsabil</span>
-                            <span>Departament</span>
-                            <span>Activitate</span>
+                            <div>Detalii Sarcină</div>
+                            <div>Responsabil</div>
+                            <div>Termen & Status</div>
+                            <div>Departament</div>
                         </div>
 
                         {/* Task rows */}
@@ -617,8 +614,8 @@ export default function TaskListPage() {
                                 <div
                                     key={task.id}
                                     onClick={() => setSelectedTaskId(task.id)}
-                                    className={`grid grid-cols-[32px_1fr_110px_110px_70px_160px_140px_100px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center ${
-                                        isChecked ? 'bg-blue-500/8 border-l-2 border-l-blue-500' :
+                                    className={`grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-4 border-b border-navy-800/80 cursor-pointer transition-colors items-start group hover:bg-navy-800/30 ${
+                                        isChecked ? 'bg-blue-500/5 border-l-2 border-l-blue-500' :
                                         dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
                                         dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
                                     }`}
@@ -626,108 +623,122 @@ export default function TaskListPage() {
                                 >
                                     {/* Row checkbox */}
                                     <div
-                                        className="flex items-center"
+                                        className="flex items-center justify-center mt-1"
                                         onClick={e => { e.stopPropagation(); toggleId(task.id); }}
                                     >
                                         {isChecked
-                                            ? <CheckSquare className="w-4 h-4 text-blue-400" />
-                                            : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400" />}
+                                            ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
+                                            : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400 cursor-pointer" />}
                                     </div>
-                                    {/* Title */}
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">{task.title}</p>
-                                        {task.status === 'blocat' && task.blocked_reason && (
-                                            <div className="flex items-center gap-1 mt-1">
-                                                <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
-                                                <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
-                                            </div>
+
+                                    {/* Task Info */}
+                                    <div className="flex flex-col gap-1.5 pr-6 min-w-0">
+                                        <h3 className="text-[14px] font-semibold text-white leading-snug group-hover:text-blue-400 transition-colors truncate">
+                                            {task.title}
+                                        </h3>
+                                        
+                                        {task.description && (
+                                            <p className="text-[12px] text-navy-300 line-clamp-2 leading-relaxed font-normal">
+                                                {task.description}
+                                            </p>
                                         )}
-                                        {task.is_recurring && (
-                                            <div className="flex items-center gap-1 mt-1">
-                                                <RefreshCw className="w-3 h-3 text-cyan-400" />
-                                                <span className="text-[10px] text-cyan-400">Recurent</span>
-                                            </div>
-                                        )}
-                                        {(task.dependency_count ?? 0) > 0 && (
-                                            <div className="flex items-center gap-1 mt-1">
-                                                <Link2 className="w-3 h-3 text-orange-400" />
-                                                <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
-                                            </div>
-                                        )}
-                                        {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
-                                            <div className="flex items-center gap-1 mt-1">
-                                                <Link2 className="w-3 h-3 text-amber-400" />
-                                                <span className="text-[10px] text-amber-400">Blochează {task.blocks_count}</span>
+                                        
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                            {task.status === 'blocat' && task.blocked_reason && (
+                                                <span className="text-[10px] font-medium text-red-400 flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-800/30">
+                                                    <Ban className="w-3 h-3" /> <span className="truncate max-w-[150px]">{task.blocked_reason}</span>
+                                                </span>
+                                            )}
+                                            
+                                            {(task.subtask_total ?? 0) > 0 && (
+                                                <span className="text-[10px] font-medium text-navy-300 flex items-center gap-1.5 bg-navy-800/60 px-2 py-1 rounded border border-navy-700/50">
+                                                    <span className={`w-3 h-3 rounded-[3px] ${task.subtask_completed === task.subtask_total ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-blue-500/20 border-blue-500/50'} border flex items-center justify-center`}>
+                                                        {task.subtask_completed === task.subtask_total && <CheckSquare className="w-2 h-2 text-emerald-400" />}
+                                                    </span>
+                                                    {task.subtask_completed}/{task.subtask_total} Subtasks
+                                                </span>
+                                            )}
+                                            
+                                            {task.is_recurring && (
+                                                <span className="text-[10px] font-medium text-cyan-400 flex items-center gap-1 bg-cyan-900/20 px-2 py-1 rounded border border-cyan-800/30">
+                                                    <RefreshCw className="w-3 h-3" /> Recurent
+                                                </span>
+                                            )}
+                                            
+                                            {(task.dependency_count ?? 0) > 0 && (
+                                                <span className="text-[10px] font-medium text-orange-400 flex items-center gap-1 bg-orange-900/20 px-2 py-1 rounded border border-orange-800/30">
+                                                    <Link2 className="w-3 h-3" /> Blocat de {task.dependency_count}
+                                                </span>
+                                            )}
+                                            
+                                            {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
+                                                <span className="text-[10px] font-medium text-amber-400 flex items-center gap-1 bg-amber-900/20 px-2 py-1 rounded border border-amber-800/30">
+                                                    <Link2 className="w-3 h-3" /> Blochează {task.blocks_count}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Responsabil */}
+                                    <div className="flex items-center gap-3 mt-0.5">
+                                        {task.assignee_name ? (
+                                            <>
+                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-[13px] font-bold shadow-md shadow-blue-500/20 flex-shrink-0">
+                                                    {task.assignee_name.charAt(0)}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
+                                                    <span className="text-[13px] font-semibold text-white truncate">{task.assignee_name}</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex items-center gap-3">
+                                                 <div className="w-9 h-9 rounded-full bg-navy-800 border border-navy-700 flex items-center justify-center text-navy-500 flex-shrink-0">
+                                                    <UserCircle className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
+                                                    <span className="text-[13px] font-medium text-navy-500 truncate">Neasignat</span>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Status */}
-                                    <div>
+                                    {/* Termen & Status */}
+                                    <div className="flex flex-col gap-2 items-start mt-0.5">
+                                        <div>
+                                            <div className={`flex items-center gap-1.5 ${
+                                                dueStat === 'overdue' ? 'text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md' :
+                                                dueStat === 'today' ? 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-md' :
+                                                dueStat === 'tomorrow' ? 'text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md' :
+                                                dueStat === 'soon' ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md' :
+                                                'text-navy-300 px-1 py-1'
+                                            }`}>
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span className="text-[11px] font-semibold">{formatDate(task.due_date)}</span>
+                                            </div>
+                                            {dueStat === 'overdue' && (
+                                                <span className="text-[9px] text-red-400/80 font-medium ml-1 block mt-1">
+                                                    Depășit cu {getDaysOverdue(task.due_date)}z
+                                                </span>
+                                            )}
+                                        </div>
+                                        
                                         <span
-                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                            className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
                                             style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
                                         >
-                                            {task.status === 'blocat' && <Ban className="w-3 h-3" />}
-                                            {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}
+                                            {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
+                                            {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
                                             {STATUSES[task.status]?.label}
                                         </span>
                                     </div>
 
-                                    {/* Due date */}
-                                    <div>
-                                        <span className={`text-xs font-medium ${dueStat === 'overdue' ? 'text-red-400' :
-                                                dueStat === 'today' ? 'text-yellow-400' :
-                                                    dueStat === 'tomorrow' ? 'text-orange-400' :
-                                                        dueStat === 'soon' ? 'text-amber-400' :
-                                                            'text-navy-300'
-                                            }`}>
-                                            <Calendar className="w-3 h-3 inline mr-1" />
-                                            {formatDate(task.due_date)}
-                                        </span>
-                                        {dueStat === 'overdue' && (
-                                            <p className="text-[10px] text-red-400/80 mt-0.5">
-                                                Depășit cu {getDaysOverdue(task.due_date)} zile
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Subtask progress */}
-                                    <div>
-                                        {(task.subtask_total ?? 0) > 0 && (
-                                            <div>
-                                                <span className="text-xs text-navy-300">
-                                                    {task.subtask_completed}/{task.subtask_total}
-                                                </span>
-                                                <div className="w-full h-1.5 bg-navy-700 rounded-full mt-1">
-                                                    <div
-                                                        className="h-full bg-blue-400 rounded-full transition-all"
-                                                        style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Responsabil */}
-                                    <div className="flex items-center gap-1.5">
-                                        {task.assignee_name ? (
-                                            <>
-                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                                    {task.assignee_name.charAt(0)}
-                                                </div>
-                                                <span className="text-xs text-navy-300 truncate">{task.assignee_name}</span>
-                                            </>
-                                        ) : (
-                                            <span className="text-xs text-navy-500">—</span>
-                                        )}
-                                    </div>
-
-                                    {/* Department — inline editable */}
-                                    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+                                    {/* Departament & Activity */}
+                                    <div className="flex flex-col gap-2 items-start mt-0.5 relative" onClick={e => e.stopPropagation()}>
                                         <button
                                             onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                            className="flex items-center justify-between w-full px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all hover:opacity-80"
+                                            className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1.5 transition-opacity hover:opacity-80"
                                             style={task.department_label && DEPARTMENTS[task.department_label]
                                                 ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
                                                 : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
@@ -736,10 +747,10 @@ export default function TaskListPage() {
                                             <span className="truncate">
                                                 {task.department_label && DEPARTMENTS[task.department_label]
                                                     ? DEPARTMENTS[task.department_label].label
-                                                    : '—'
+                                                    : 'Fără departament'
                                                 }
                                             </span>
-                                            <ChevronDown className="w-3 h-3 ml-1 flex-shrink-0 opacity-60" />
+                                            <ChevronDown className="w-3 h-3 flex-shrink-0 opacity-60" />
                                         </button>
                                         {deptDropdownId === task.id && (
                                             <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
@@ -747,7 +758,7 @@ export default function TaskListPage() {
                                                     <button
                                                         key={dept}
                                                         onClick={() => changeDepartment(task.id, dept)}
-                                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700"
+                                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700 font-medium"
                                                         style={{ color: DEPARTMENTS[dept].color }}
                                                     >
                                                         <span
@@ -759,13 +770,11 @@ export default function TaskListPage() {
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
-
-                                    {/* Last activity */}
-                                    <div>
-                                        <span className="text-[11px] text-navy-500">
-                                            {task.last_activity ? timeAgo(task.last_activity) : '-'}
-                                        </span>
+                                        
+                                        <div className="text-[10px] text-navy-500 font-medium flex items-center gap-1 mt-1">
+                                            <Clock className="w-3 h-3" />
+                                            {task.last_activity ? timeAgo(task.last_activity) : '—'}
+                                        </div>
                                     </div>
                                 </div>
                             );
