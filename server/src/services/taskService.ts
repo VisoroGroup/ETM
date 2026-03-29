@@ -26,15 +26,8 @@ export async function getTaskById(id: string) {
     if (taskRows.length === 0) return null;
 
     // Run all sub-queries in parallel (they only depend on task id)
-    const [
-        { rows: subtasks },
-        { rows: comments },
-        { rows: attachments },
-        { rows: activity },
-        { rows: alerts },
-        { rows: allDeps },
-        { rows: checklist }
-    ] = await Promise.all([
+    const queryNames = ['subtasks', 'comments', 'attachments', 'activity', 'alerts', 'dependencies', 'checklist'];
+    const results = await Promise.allSettled([
         pool.query(
             `SELECT s.*, u.display_name AS assigned_to_name, u.avatar_url AS assigned_to_avatar
        FROM subtasks s
@@ -98,6 +91,21 @@ export async function getTaskById(id: string) {
             [id]
         )
     ]);
+
+    // Extract rows with fallback for failed queries
+    const extractRows = (r: PromiseSettledResult<any>, idx: number): any[] => {
+        if (r.status === 'fulfilled') return r.value.rows;
+        console.warn(`[TaskService] Query "${queryNames[idx]}" failed for task ${id}:`, (r as PromiseRejectedResult).reason?.message);
+        return [];
+    };
+
+    const subtasks = extractRows(results[0], 0);
+    const comments = extractRows(results[1], 1);
+    const attachments = extractRows(results[2], 2);
+    const activity = extractRows(results[3], 3);
+    const alerts = extractRows(results[4], 4);
+    const allDeps = extractRows(results[5], 5);
+    const checklist = extractRows(results[6], 6);
 
     // Fetch reactions for all comments (fail-safe: table may not exist yet)
     try {
