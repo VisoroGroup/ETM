@@ -42,10 +42,19 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 assigned_to: assignedTo || null,
             } as any);
 
-            // Set recurring if needed
+            // Set recurring if needed (non-blocking — task is already created)
             if (isRecurring && task.id) {
-                const { recurringApi } = await import('../../services/api');
-                await recurringApi.set(task.id, frequency, workdaysOnly);
+                try {
+                    const { recurringApi } = await import('../../services/api');
+                    await recurringApi.set(task.id, frequency, workdaysOnly);
+                } catch (recurErr) {
+                    console.error('Recurring setup failed:', recurErr);
+                    setError('Task-ul a fost creat, dar recurența nu a putut fi setată. Poți seta recurența din detalii.');
+                    setSaving(false);
+                    // Still refresh the list so user sees the new task
+                    onCreated();
+                    return;
+                }
             }
 
             onCreated();

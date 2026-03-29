@@ -192,7 +192,20 @@ app.listen(PORT, async () => {
                 }
             }
 
-            // Step 5: Add parent_comment_id for reply threading
+            // Step 5: Ensure quarterly + yearly recurring_frequency exists
+            try {
+                await client.query(`ALTER TYPE recurring_frequency ADD VALUE IF NOT EXISTS 'quarterly'`);
+                await client.query(`ALTER TYPE recurring_frequency ADD VALUE IF NOT EXISTS 'yearly'`);
+                console.log('✅ recurring_frequency quarterly/yearly ensured');
+            } catch (enumErr: any) {
+                if (enumErr?.message?.includes('already exists')) {
+                    console.log('✅ recurring_frequency quarterly/yearly already exists');
+                } else {
+                    console.error('⚠️ recurring_frequency ALTER error:', enumErr?.message);
+                }
+            }
+
+            // Step 6: Add parent_comment_id for reply threading
             try {
                 await client.query(`ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS parent_comment_id UUID REFERENCES task_comments(id) ON DELETE CASCADE`);
                 console.log('✅ parent_comment_id column ensured');
