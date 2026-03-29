@@ -51,9 +51,47 @@ const pool = new Pool({
     ssl: getSslConfig(),
 });
 
+// --- Pool error handling with retry ---
+let consecutiveErrors = 0;
+const MAX_CONSECUTIVE_ERRORS = 5;
+const BACKOFF_DELAYS = [1000, 5000, 15000, 30000, 60000]; // 1s, 5s, 15s, 30s, 60s
+
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    consecutiveErrors++;
+    console.error(`[DB] Unexpected idle client error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message);
+
+    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.error(`[DB] ${MAX_CONSECUTIVE_ERRORS} consecutive pool errors — shutting down.`);
+        gracefulShutdown('pool_errors');
+    } else {
+        const delay = BACKOFF_DELAYS[consecutiveErrors - 1] || 60000;
+        console.warn(`[DB] Will attempt recovery in ${delay / 1000}s...`);
+        setTimeout(async () => {
+            try {
+                const client = await pool.connect();
+                client.release();
+                consecutiveErrors = 0;
+                console.log('[DB] Pool connection recovered.');
+            } catch (retryErr: any) {
+                console.error('[DB] Recovery attempt failed:', retryErr.message);
+            }
+        }, delay);
+    }
 });
+
+// --- Graceful shutdown ---
+async function gracefulShutdown(signal: string) {
+    console.log(`[DB] Graceful shutdown initiated (${signal})...`);
+    try {
+        await pool.end();
+        console.log('[DB] Pool closed.');
+    } catch (err: any) {
+        console.error('[DB] Error closing pool:', err.message);
+    }
+    process.exit(signal === 'pool_errors' ? 1 : 0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export default pool;
