@@ -155,7 +155,7 @@ router.post('/imports/:id/match', asyncHandler(async (req: AuthRequest, res: Res
     const { rows: payments } = await pool.query(`
         SELECT id, title, amount::float, beneficiary_name, due_date::text, status
         FROM payments
-        WHERE deleted_at IS NULL
+        WHERE deleted_at IS NULL AND status = 'de_platit'
         ORDER BY due_date DESC
     `);
 

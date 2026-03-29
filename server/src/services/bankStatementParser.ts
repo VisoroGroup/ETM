@@ -268,10 +268,7 @@ export function matchTransaction(
             }
         }
 
-        // Status check — prefer unpaid
-        if (payment.status === 'de_platit') {
-            confidence += 5;
-        }
+        // (Status check removed — query already filters to unpaid only)
 
         if (confidence > (bestMatch?.confidence ?? 0)) {
             bestMatch = { paymentId: payment.id, confidence, reason: reasons.join(' + ') };
