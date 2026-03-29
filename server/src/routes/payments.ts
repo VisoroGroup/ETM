@@ -375,6 +375,12 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
             [uuidv4(), req.params.id, req.user!.id, 'payment_deleted', JSON.stringify({ title: rows[0].title, amount: rows[0].amount })]
         );
 
+        // Cancel unsent reminders for the deleted payment
+        await pool.query(
+            `UPDATE payment_reminders SET sent = true, sent_at = NOW() WHERE payment_id = $1 AND sent = false`,
+            [req.params.id]
+        );
+
         res.json({ message: 'Plată ștearsă' });
     } catch (err) {
         console.error('Error deleting payment:', err);
