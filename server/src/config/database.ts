@@ -25,8 +25,14 @@ function getSslConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
     }
 
     if (isProduction || dbUrl.includes('railway.app')) {
-        // Railway uses self-signed certs — accept them when no explicit CA is provided
-        return { rejectUnauthorized: false };
+        // Production: always verify certificates
+        // If Railway or hosting provider uses valid certs, this works out of the box.
+        // Set DATABASE_SSL_REJECT=false ONLY if you absolutely must (self-signed staging certs).
+        const allowInsecure = process.env.DATABASE_SSL_REJECT === 'false';
+        if (allowInsecure) {
+            console.warn('⚠️  DATABASE_SSL_REJECT=false — SSL cert verification DISABLED. Do NOT use in production!');
+        }
+        return { rejectUnauthorized: !allowInsecure };
     }
 
     // Local development — no SSL needed
