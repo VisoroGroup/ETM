@@ -36,6 +36,21 @@ function getGraphClient(): Client {
 const SENDER_EMAIL = process.env.GRAPH_SENDER_EMAIL || 'notifications@visoro-global.ro';
 
 /**
+ * Custom error class for email sending failures.
+ * Callers can check `retryable` to decide on retry.
+ */
+export class EmailSendError extends Error {
+    public readonly retryable: boolean;
+    public readonly statusCode?: number;
+    constructor(message: string, retryable: boolean, statusCode?: number) {
+        super(message);
+        this.name = 'EmailSendError';
+        this.retryable = retryable;
+        this.statusCode = statusCode;
+    }
+}
+
+/**
  * Send an email using Microsoft Graph API (Mail.Send application permission)
  */
 export async function sendEmail(params: {
@@ -44,8 +59,6 @@ export async function sendEmail(params: {
     htmlBody: string;
     displayName?: string;
 }): Promise<void> {
-    const client = getGraphClient();
-
     const message = {
         subject: params.subject,
         body: {
@@ -62,10 +75,38 @@ export async function sendEmail(params: {
         ],
     };
 
-    // Send as the sender mailbox using application permissions
-    await client
-        .api(`/users/${SENDER_EMAIL}/sendMail`)
-        .post({ message, saveToSentItems: false });
+    try {
+        const client = getGraphClient();
+        await client
+            .api(`/users/${SENDER_EMAIL}/sendMail`)
+            .post({ message, saveToSentItems: false });
+    } catch (err: any) {
+        const statusCode = err?.statusCode || err?.code;
+        const errMessage = err?.message || 'Unknown email error';
+
+        // Log the error
+        console.error(`[EMAIL] Failed to send to ${params.to}:`, errMessage);
+
+        // Token expired or invalid credentials — reset client for next attempt
+        if (statusCode === 401 || statusCode === 403 || errMessage.includes('token')) {
+            console.warn('[EMAIL] Token/auth error — resetting Graph client for next call.');
+            graphClient = null; // Force re-initialization with fresh token
+            throw new EmailSendError(`Auth error: ${errMessage}`, true, statusCode);
+        }
+
+        // Rate limiting — retryable
+        if (statusCode === 429) {
+            throw new EmailSendError(`Rate limited: ${errMessage}`, true, 429);
+        }
+
+        // Network/timeout errors — retryable
+        if (err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT' || err?.code === 'ENOTFOUND') {
+            throw new EmailSendError(`Network error: ${errMessage}`, true);
+        }
+
+        // All other errors — not retryable (bad request, invalid recipient, etc.)
+        throw new EmailSendError(`Email send failed: ${errMessage}`, false, statusCode);
+    }
 }
 
 /**
