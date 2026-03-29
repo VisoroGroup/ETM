@@ -21,8 +21,18 @@ const generatePaymentReminders = async (paymentId: string, dueDate: Date, client
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
 
-    const diffTime = Math.abs(due.getTime() - today.getTime());
+    const diffTime = due.getTime() - today.getTime(); // positive = future, negative = past
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // If due date is in the past, only create an overdue reminder for today
+    if (diffDays < 0) {
+        await client.query(
+            `INSERT INTO payment_reminders (id, payment_id, reminder_type, scheduled_date, actual_sent_date)
+             VALUES ($1, $2, 'overdue', $3, $3)`,
+            [uuidv4(), paymentId, today.toISOString()]
+        );
+        return;
+    }
 
     const reminders: { type: PaymentReminderType, daysBefore: number }[] = [
         { type: 'day_30', daysBefore: 30 },
@@ -36,6 +46,9 @@ const generatePaymentReminders = async (paymentId: string, dueDate: Date, client
         if (diffDays >= reminder.daysBefore) {
             const scheduledDate = new Date(due);
             scheduledDate.setDate(due.getDate() - reminder.daysBefore);
+
+            // Skip if scheduled date is in the past (already missed)
+            if (scheduledDate < today) continue;
             
             // Adjust for weekend -> move to Friday
             let actualSentDate = new Date(scheduledDate);
