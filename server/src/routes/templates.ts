@@ -1,8 +1,21 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { z } from 'zod';
 
 const router = Router();
+
+const subtaskSchema = z.object({
+    title: z.string().min(1, 'Subtask cím kötelező').max(200, 'Subtask cím max 200 karakter'),
+});
+
+const createTemplateSchema = z.object({
+    title: z.string().min(1, 'Cím kötelező').max(500),
+    description: z.string().max(5000).nullable().optional(),
+    department_label: z.string().max(100).optional(),
+    assigned_to: z.string().uuid().nullable().optional(),
+    subtasks: z.array(subtaskSchema).max(50, 'Maximum 50 subtask engedélyezett').optional().default([]),
+});
 
 // GET /api/templates — list all templates
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -27,23 +40,26 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // POST /api/templates — create template
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, department_label, assigned_to, subtasks } = req.body;
-        if (!title?.trim()) return res.status(400).json({ error: 'Titlul este obligatoriu' });
+        const parsed = createTemplateSchema.parse(req.body);
 
         const result = await pool.query(`
             INSERT INTO task_templates (title, description, department_label, assigned_to, subtasks, created_by)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
         `, [
-            title.trim(),
-            description || null,
-            department_label || 'departament_1',
-            assigned_to || null,
-            JSON.stringify(subtasks || []),
+            parsed.title.trim(),
+            parsed.description || null,
+            parsed.department_label || 'departament_1',
+            parsed.assigned_to || null,
+            JSON.stringify(parsed.subtasks),
             req.user?.id
         ]);
         res.status(201).json(result.rows[0]);
     } catch (err: any) {
+        if (err instanceof z.ZodError) {
+            res.status(400).json({ error: err.errors[0]?.message || 'Validációs hiba' });
+            return;
+        }
         res.status(500).json({ error: err.message });
     }
 });
