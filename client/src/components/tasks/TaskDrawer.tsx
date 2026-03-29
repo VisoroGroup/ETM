@@ -48,7 +48,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [blockedReason, setBlockedReason] = useState('');
     const [newDueDate, setNewDueDate] = useState('');
     const [dueDateReason, setDueDateReason] = useState('');
-    const [_pendingStatus, setPendingStatus] = useState<TaskStatus | null>(null);
+    const [duplicating, setDuplicating] = useState(false);
 
     // Delete confirm
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -72,7 +72,6 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     async function handleStatusChange(newStatus: TaskStatus) {
         setStatusMenuOpen(false);
         if (newStatus === 'blocat') {
-            setPendingStatus(newStatus);
             setBlockedReason('');
             setShowBlockedModal(true);
             return;
@@ -464,16 +463,19 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 <Trash2 className="w-3.5 h-3.5" /> Șterge
                             </button>
                             <button
+                                disabled={duplicating}
                                 onClick={async () => {
+                                    setDuplicating(true);
                                     try {
                                         await tasksApi.duplicate(taskId);
                                         showToast('Task duplicat cu succes!');
                                         onUpdate();
                                     } catch { showToast('Eroare la duplicare', 'error'); }
+                                    finally { setDuplicating(false); }
                                 }}
-                                className="text-xs text-navy-400 hover:text-blue-400 flex items-center gap-1 transition-colors"
+                                className="text-xs text-navy-400 hover:text-blue-400 flex items-center gap-1 transition-colors disabled:opacity-40"
                             >
-                                <Copy className="w-3.5 h-3.5" /> Duplică
+                                {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />} Duplică
                             </button>
                         </div>
                         <button onClick={onClose} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">
@@ -598,9 +600,10 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             </button>
                             <button
                                 onClick={confirmDueDateChange}
-                                disabled={!dueDateReason.trim() || !newDueDate || newDueDate === task.due_date}
-                                className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg text-sm disabled:opacity-30 transition-all"
+                                disabled={!dueDateReason.trim() || !newDueDate || newDueDate === task.due_date || td.changeDueDate.isPending}
+                                className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg text-sm disabled:opacity-30 transition-all flex items-center gap-1.5"
                             >
+                                {td.changeDueDate.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                                 Confirmă schimbarea
                             </button>
                         </div>
