@@ -270,8 +270,18 @@ router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = req.query.month ? parseInt(req.query.month as string) : null;
 
-    const monthFilter = month ? 'AND e.month = $2' : '';
-    const params = month ? [year, month] : [year];
+    const entryConditions = ['e.year = $1'];
+    const cashConditions = ['year = $1'];
+    const params: (number)[] = [year];
+
+    if (month) {
+        params.push(month);
+        entryConditions.push(`e.month = $${params.length}`);
+        cashConditions.push(`month = $${params.length}`);
+    }
+
+    const entryWhere = entryConditions.join(' AND ');
+    const cashWhere = cashConditions.join(' AND ');
 
     // Revenue total
     const revenueQuery = await pool.query(`
@@ -279,7 +289,7 @@ router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
                COALESCE(SUM(e.planned), 0) AS total_revenue_planned
         FROM budget_entries e
         JOIN budget_categories c ON e.category_id = c.id
-        WHERE c.is_revenue = true AND e.year = $1 ${monthFilter}
+        WHERE c.is_revenue = true AND ${entryWhere}
     `, params);
 
     // Expense total (non-revenue, non-summary)
@@ -288,13 +298,13 @@ router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
                COALESCE(SUM(e.planned), 0) AS total_expense_planned
         FROM budget_entries e
         JOIN budget_categories c ON e.category_id = c.id
-        WHERE c.is_revenue = false AND c.is_summary_row = false AND e.year = $1 ${monthFilter}
+        WHERE c.is_revenue = false AND c.is_summary_row = false AND ${entryWhere}
     `, params);
 
     // Latest cash balance
     const cashQuery = await pool.query(`
         SELECT balance FROM cash_balance
-        WHERE year = $1 ${month ? 'AND month = $2' : ''}
+        WHERE ${cashWhere}
         ORDER BY month DESC, week DESC NULLS LAST
         LIMIT 1
     `, params);
