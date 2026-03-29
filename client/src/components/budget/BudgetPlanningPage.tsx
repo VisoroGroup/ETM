@@ -20,7 +20,7 @@ function CellEditor({ value, onSave, isRevenue, darkMode }: { value: number; onS
     const [editing, setEditing] = useState(false);
     const [text, setText] = useState(String(value || ''));
 
-    useEffect(() => { setText(String(value || '')); }, [value]);
+    useEffect(() => { if (!editing) setText(String(value || '')); }, [value, editing]);
 
     if (editing) {
         return (

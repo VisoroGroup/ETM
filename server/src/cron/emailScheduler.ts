@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import pool from '../config/database';
-import { shouldSendReminder, daysDiff, formatDateRo, isWorkingDay } from '../utils/dateUtils';
+import { shouldSendReminder, daysDiff, formatDateRo, isWorkingDay, todayLocal } from '../utils/dateUtils';
 import { DEPARTMENTS } from '../types';
 import { sendEmail } from '../services/emailService';
 import { dispatchWebhook } from '../services/webhookService';
@@ -142,7 +142,7 @@ async function runDailyEmailJob() {
         return;
     }
 
-    console.log(`📧 Running daily email job for ${today.toISOString().split('T')[0]}`);
+    console.log(`📧 Running daily email job for ${todayLocal()}`);
 
     try {
         // Get all active tasks with their blocked reasons
@@ -150,7 +150,7 @@ async function runDailyEmailJob() {
       SELECT t.*,
         (SELECT tsc.reason FROM task_status_changes tsc
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
-         ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
+         ORDER BY tsc.created_at DESC, tsc.id DESC LIMIT 1) AS blocked_reason
       FROM tasks t
       WHERE t.status != 'terminat' AND t.deleted_at IS NULL
     `);

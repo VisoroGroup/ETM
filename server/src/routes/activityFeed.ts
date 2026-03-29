@@ -57,10 +57,25 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         let unionQuery: string;
 
         if (isAdmin && !department) {
+            // Build payment query with its OWN parameter indices that reuse
+            // the same allParams array but track position correctly via indexOf-free logic
             const payConditions: string[] = ['p.deleted_at IS NULL'];
-            if (user_id) payConditions.push(`pa.user_id = $${allParams.indexOf(user_id as string) + 1}`);
-            if (action_type) payConditions.push(`pa.action_type = $${allParams.indexOf(action_type as string) + 1}`);
+            if (user_id) {
+                // Find or add user_id param
+                let paramPos = allParams.indexOf(user_id as string);
+                if (paramPos === -1) {
+                    allParams.push(user_id as string);
+                    paramPos = allParams.length - 1;
+                }
+                payConditions.push(`pa.user_id = $${paramPos + 1}`);
+            }
+            if (action_type) {
+                // Always add a new param entry for action_type to avoid indexOf collision
+                allParams.push(action_type as string);
+                payConditions.push(`pa.action_type = $${allParams.length}`);
+            }
             const payWhere = 'WHERE ' + payConditions.join(' AND ');
+            idx = allParams.length + 1;
 
             const paySelect = `
                 SELECT 

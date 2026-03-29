@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 
 const router = Router({ mergeParams: true });
 
@@ -11,18 +12,10 @@ router.delete('/attachments/:attachmentId', authMiddleware, async (req: AuthRequ
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
-        // Task-level access check (admin/superadmin bypass)
-        if (userRole !== 'admin' && userRole !== 'superadmin') {
-            const { rows: access } = await pool.query(`
-                SELECT 1 FROM tasks WHERE id = $1 AND deleted_at IS NULL AND (created_by = $2 OR assigned_to = $2)
-                UNION
-                SELECT 1 FROM subtasks WHERE task_id = $1 AND assigned_to = $2 AND deleted_at IS NULL
-            `, [taskId, userId]);
-
-            if (access.length === 0) {
-                res.status(403).json({ error: 'Nincs hozzáférésed ehhez a taskhoz.' });
-                return;
-            }
+        // Task-level access check (uses shared middleware — includes manager role)
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
         }
 
         const { rows: existing } = await pool.query(

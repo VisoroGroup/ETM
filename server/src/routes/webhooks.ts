@@ -95,8 +95,10 @@ async function validateWebhookUrlDns(urlStr: string): Promise<{ valid: boolean; 
                 return { valid: false, error: `A domain (${hostname}) belső IP-re oldódik fel (${ip}).` };
             }
         }
-    } catch {
-        // DNS resolution failed — allow it (could be temporary, will fail at delivery)
+    } catch (err) {
+        // DNS resolution failed — fail-closed to prevent SSRF bypass
+        console.warn('[webhook] DNS resolution failed for', hostname, err);
+        return { valid: false, error: `DNS feloldás sikertelen: ${hostname}. A domain nem ellenőrizhető.` };
     }
     return { valid: true };
 }

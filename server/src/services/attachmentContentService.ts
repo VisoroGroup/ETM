@@ -184,6 +184,14 @@ export async function getAttachmentContent(
     }
 
     if (isImage(ext)) {
+        // Check image size before base64 conversion
+        const stats = fs.statSync(filePath);
+        if (stats.size > MAX_BASE64_SIZE) {
+            throw Object.assign(
+                new Error(`Imaginea este prea mare pentru base64 (${(stats.size / 1024 / 1024).toFixed(1)}MB, max ${MAX_BASE64_SIZE / 1024 / 1024}MB).`),
+                { status: 413 }
+            );
+        }
         // Images default to base64 when text is requested
         const buffer = fs.readFileSync(filePath);
         const base64 = buffer.toString('base64');

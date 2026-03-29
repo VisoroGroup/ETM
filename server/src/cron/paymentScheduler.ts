@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import pool from '../config/database';
-import { formatDateRo, isWorkingDay, daysDiff } from '../utils/dateUtils';
+import { formatDateRo, isWorkingDay, daysDiff, todayLocal } from '../utils/dateUtils';
 import { PAYMENT_CATEGORIES } from '../types';
 import { sendEmail } from '../services/emailService';
 import { dispatchWebhook } from '../services/webhookService';
@@ -39,7 +39,7 @@ export async function runDailyPaymentEmailJob() {
                 FROM payment_reminders pr
                 JOIN payments p ON pr.payment_id = p.id
                 WHERE pr.sent = false 
-                  AND pr.actual_sent_date <= $1
+                  AND pr.actual_sent_date::date <= $1::date
                   AND p.status = 'de_platit'
                   AND p.deleted_at IS NULL
             `, [today.toISOString()]);
@@ -166,8 +166,8 @@ export async function runDailyPaymentEmailJob() {
                     (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= date_trunc('month', current_date) AND paid_at < (date_trunc('month', current_date) + interval '1 month')) as paid_month
                 FROM payments WHERE status = 'de_platit' AND deleted_at IS NULL
             `);
-            const totalToPayMonth = parseFloat(summaryRows[0].to_pay_month || 0) + parseFloat(summaryRows[0].paid_month || 0);
-            const paidMonth = parseFloat(summaryRows[0].paid_month || 0);
+            const totalToPayMonth = parseFloat(summaryRows[0]?.to_pay_month ?? '0') || 0 + (parseFloat(summaryRows[0]?.paid_month ?? '0') || 0);
+            const paidMonth = parseFloat(summaryRows[0]?.paid_month ?? '0') || 0;
             const remainingMonth = totalToPayMonth - paidMonth;
 
             // Formatting helper

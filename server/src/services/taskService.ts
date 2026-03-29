@@ -201,7 +201,6 @@ export async function updateTask(
         );
         if (oldRows.length === 0) {
             await client.query('ROLLBACK');
-            client.release();
             return undefined;
         }
         oldTask = oldRows[0];
@@ -229,7 +228,6 @@ export async function updateTask(
 
         if (updates.length === 0) {
             await client.query('ROLLBACK');
-            client.release();
             return null; // Nothing to update
         }
 
@@ -243,7 +241,6 @@ export async function updateTask(
 
         if (rows.length === 0) {
             await client.query('ROLLBACK');
-            client.release();
             return undefined;
         }
         updatedTask = rows[0];

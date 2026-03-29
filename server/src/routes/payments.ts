@@ -133,7 +133,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 }));
 
 // POST /api/payments — create payment
-router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) => {
+router.post('/', validateCreatePayment, asyncHandler(async (req: AuthRequest, res: Response) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -184,7 +184,7 @@ router.post('/', validateCreatePayment, async (req: AuthRequest, res: Response) 
     } finally {
         client.release();
     }
-});
+}));
 
 // GET /api/payments/summary — summary cards
 router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -225,7 +225,7 @@ router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
 }));
 
 // GET /api/payments/chart — bar chart data (last 6 months)
-router.get('/chart', async (req: AuthRequest, res: Response) => {
+router.get('/chart', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const query = `
             SELECT 
@@ -243,10 +243,10 @@ router.get('/chart', async (req: AuthRequest, res: Response) => {
         console.error('Error fetching payment chart data:', err);
         res.status(500).json({ error: 'Eroare la preluarea datelor grafice' });
     }
-});
+}));
 
 // GET /api/payments/:id
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
             `SELECT p.*,
@@ -265,10 +265,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+}));
 
 // PUT /api/payments/:id/mark-paid
-router.put('/:id/mark-paid', async (req: AuthRequest, res: Response) => {
+router.put('/:id/mark-paid', asyncHandler(async (req: AuthRequest, res: Response) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -354,10 +354,10 @@ router.put('/:id/mark-paid', async (req: AuthRequest, res: Response) => {
     } finally {
         client.release();
     }
-});
+}));
 
 // DELETE /:id — soft delete payment
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
             `UPDATE payments SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
@@ -386,9 +386,9 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
         console.error('Error deleting payment:', err);
         res.status(500).json({ error: 'Server error' });
     }
-});
+}));
 
-router.get('/:id/comments', async (req: AuthRequest, res: Response) => {
+router.get('/:id/comments', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
             `SELECT c.*, u.display_name as author_name, u.avatar_url as author_avatar
@@ -402,9 +402,9 @@ router.get('/:id/comments', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+}));
 
-router.post('/:id/comments', async (req: AuthRequest, res: Response) => {
+router.post('/:id/comments', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { content } = req.body;
         const newId = uuidv4();
@@ -426,9 +426,9 @@ router.post('/:id/comments', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+}));
 
-router.get('/:id/activity', async (req: AuthRequest, res: Response) => {
+router.get('/:id/activity', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
             `SELECT a.*, u.display_name as user_name, u.avatar_url as user_avatar
@@ -442,6 +442,6 @@ router.get('/:id/activity', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+}));
 
 export default router;

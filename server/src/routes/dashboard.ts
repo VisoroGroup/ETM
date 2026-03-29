@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
 
 /**
  * Generates a SQL WHERE clause fragment that limits visibility for 'user' role.
@@ -28,7 +29,7 @@ function userScopeFilter(
 const router = Router();
 
 // GET /api/dashboard/stats — summary numbers
-router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/stats', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const today = new Date().toISOString().split('T')[0];
         const scope = userScopeFilter(req.user!, 'tasks', 1);
@@ -76,10 +77,10 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
         console.error('Dashboard stats error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea statisticilor.' });
     }
-});
+}));
 
 // GET /api/dashboard/charts — chart data
-router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/charts', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const scope = userScopeFilter(req.user!, 'tasks', 1);
 
@@ -153,10 +154,10 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
         console.error('Dashboard charts error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea graficelor.' });
     }
-});
+}));
 
 // GET /api/dashboard/active-alerts — all unresolved alerts across tasks
-router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/active-alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const scope = userScopeFilter(req.user!, 't', 1);
         const { rows } = await pool.query(
@@ -176,10 +177,10 @@ router.get('/active-alerts', authMiddleware, async (req: AuthRequest, res: Respo
         console.error('Active alerts error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea alertelor active.' });
     }
-});
+}));
 
 // GET /api/dashboard/my-stats — user-specific stats
-router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/my-stats', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user!.id;
         const today = new Date().toISOString().split('T')[0];
@@ -243,10 +244,10 @@ router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) 
         console.error('My stats error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea statisticilor personale.' });
     }
-});
+}));
 
 // GET /api/dashboard/bottlenecks — top tasks blocking the most others
-router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/bottlenecks', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const scope = userScopeFilter(req.user!, 't', 1);
         const { rows } = await pool.query(`
@@ -267,7 +268,7 @@ router.get('/bottlenecks', authMiddleware, async (req: AuthRequest, res: Respons
         console.error('Bottlenecks error:', err);
         res.status(500).json({ error: 'Eroare la bottlenecks.' });
     }
-});
+}));
 
 // --- Dashboard Preferences (widget layout) ---
 
@@ -300,18 +301,18 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
         { widget_id: 'my_stats', visible: true, order: 0, size: 'full' },
         { widget_id: 'urgent_tasks', visible: true, order: 1, size: 'full' },
         { widget_id: 'calendar', visible: true, order: 2, size: 'full' },
-        { widget_id: 'global_stats', visible: false, order: 3, size: 'full' },
-        { widget_id: 'status_chart', visible: false, order: 4, size: 'half' },
-        { widget_id: 'dept_chart', visible: false, order: 5, size: 'half' },
-        { widget_id: 'trend_chart', visible: false, order: 6, size: 'full' },
         { widget_id: 'active_alerts', visible: true, order: 3, size: 'full' },
+        { widget_id: 'global_stats', visible: false, order: 4, size: 'full' },
+        { widget_id: 'status_chart', visible: false, order: 5, size: 'half' },
+        { widget_id: 'dept_chart', visible: false, order: 6, size: 'half' },
+        { widget_id: 'trend_chart', visible: false, order: 7, size: 'full' },
         { widget_id: 'bottlenecks', visible: false, order: 8, size: 'full' },
         { widget_id: 'payment_summary', visible: false, order: 9, size: 'full' },
     ],
 };
 
 // GET /api/dashboard/preferences
-router.get('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/preferences', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
             'SELECT widget_layout FROM dashboard_preferences WHERE user_id = $1', [req.user!.id]
@@ -326,10 +327,10 @@ router.get('/preferences', authMiddleware, async (req: AuthRequest, res: Respons
         console.error('Preferences error:', err);
         res.status(500).json({ error: 'Eroare la preferințe.' });
     }
-});
+}));
 
 // PUT /api/dashboard/preferences
-router.put('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/preferences', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { widget_layout } = req.body;
         if (!Array.isArray(widget_layout)) {
@@ -347,10 +348,10 @@ router.put('/preferences', authMiddleware, async (req: AuthRequest, res: Respons
         console.error('Save preferences error:', err);
         res.status(500).json({ error: 'Eroare la salvare.' });
     }
-});
+}));
 
 // GET /api/dashboard/calendar-events — tasks + subtasks with due_date for calendar
-router.get('/calendar-events', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/calendar-events', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const scope = userScopeFilter(req.user!, 't', 1);
 
@@ -385,6 +386,6 @@ router.get('/calendar-events', authMiddleware, async (req: AuthRequest, res: Res
         console.error('Calendar events error:', err);
         res.status(500).json({ error: 'Eroare la evenimentele calendarului.' });
     }
-});
+}));
 
 export default router;

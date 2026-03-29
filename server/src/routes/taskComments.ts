@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 import { validateCreateComment } from '../middleware/validation';
 import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail, escapeHtml } from '../services/notificationEmailService';
 
@@ -12,6 +13,11 @@ router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) 
         const { id: taskId } = req.params;
         const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 200);
         const offset = parseInt(req.query.offset as string, 10) || 0;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         const { rows } = await pool.query(
             `SELECT c.*, u.display_name AS author_name, u.avatar_url AS author_avatar
@@ -57,6 +63,11 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
     try {
         const { id: taskId } = req.params;
         const { content, mentions = [], parent_comment_id = null } = req.body;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         if (!content || content.trim() === '') {
             res.status(400).json({ error: 'Conținutul comentariului este obligatoriu.' });
@@ -185,8 +196,13 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
 // PUT /api/tasks/:id/comments/:commentId
 router.put('/comments/:commentId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { commentId } = req.params;
+        const { id: taskId, commentId } = req.params;
         const { content } = req.body;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         // Only author can edit
         const { rows: existing } = await pool.query(
@@ -221,7 +237,12 @@ router.put('/comments/:commentId', authMiddleware, async (req: AuthRequest, res:
 // DELETE /api/tasks/:id/comments/:commentId
 router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { commentId } = req.params;
+        const { id: taskId, commentId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         const { rows: existing } = await pool.query(
             'SELECT author_id FROM task_comments WHERE id = $1', [commentId]
@@ -247,8 +268,13 @@ router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, r
 // POST /api/tasks/:id/comments/:commentId/react — toggle reaction
 router.post('/comments/:commentId/react', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { commentId } = req.params;
+        const { id: taskId, commentId } = req.params;
         const reaction = req.body.reaction || '👍';
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         // Check if already reacted
         const { rows: existing } = await pool.query(

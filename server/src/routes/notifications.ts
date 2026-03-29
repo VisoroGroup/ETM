@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 router.use(authMiddleware);
 
 // GET /api/notifications — get unread notifications for current user
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
             SELECT n.*, u.display_name as created_by_name, u.avatar_url as created_by_avatar,
@@ -23,10 +24,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         console.error('Notifications error:', err);
         res.status(500).json({ error: 'Eroare la notificări.' });
     }
-});
+}));
 
 // GET /api/notifications/unread-count
-router.get('/unread-count', async (req: AuthRequest, res: Response) => {
+router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { rows: [{ count }] } = await pool.query(
             `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`,
@@ -36,10 +37,10 @@ router.get('/unread-count', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Eroare.' });
     }
-});
+}));
 
 // PATCH /api/notifications/:id/read — mark single as read
-router.patch('/:id/read', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         await pool.query(
             `UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2`,
@@ -49,10 +50,10 @@ router.patch('/:id/read', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Eroare.' });
     }
-});
+}));
 
 // PATCH /api/notifications/read-all — mark all as read
-router.patch('/read-all', async (req: AuthRequest, res: Response) => {
+router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         await pool.query(
             `UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
@@ -62,6 +63,6 @@ router.patch('/read-all', async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Eroare.' });
     }
-});
+}));
 
 export default router;

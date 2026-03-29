@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import multer from 'multer';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
 import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
 
 const router = Router();
@@ -25,7 +26,7 @@ const avatarUpload = multer({
 });
 
 // GET /api/admin/users — list all users with their departments and roles
-router.get('/users', async (_req: AuthRequest, res: Response) => {
+router.get('/users', asyncHandler(async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
             SELECT id, microsoft_id, email, display_name, avatar_url, departments, role, is_active, created_at, updated_at
@@ -38,10 +39,10 @@ router.get('/users', async (_req: AuthRequest, res: Response) => {
         console.error('Admin users error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea utilizatorilor.' });
     }
-});
+}));
 
 // PATCH /api/admin/users/:id — update user role and/or departments
-router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { role, departments } = req.body;
 
@@ -97,10 +98,10 @@ router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
         console.error('Admin update user error:', err);
         res.status(500).json({ error: 'Eroare la actualizarea utilizatorului.' });
     }
-});
+}));
 
 // DELETE /api/admin/users/:id — deactivate (soft delete via role change, not actual delete)
-router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     if (req.user?.id === id) {
@@ -124,10 +125,10 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
         console.error('Admin delete user error:', err);
         res.status(500).json({ error: 'Eroare la ștergerea utilizatorului.' });
     }
-});
+}));
 
 // GET /api/admin/stats — overview stats for admin
-router.get('/stats', async (_req: AuthRequest, res: Response) => {
+router.get('/stats', asyncHandler(async (_req: AuthRequest, res: Response) => {
     try {
         const { rows: [stats] } = await pool.query(`
             SELECT
@@ -142,14 +143,14 @@ router.get('/stats', async (_req: AuthRequest, res: Response) => {
         console.error('Admin stats error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea statisticilor.' });
     }
-});
+}));
 
 // ==========================================
 // API TOKEN MANAGEMENT
 // ==========================================
 
 // POST /api/admin/api-tokens — generate a new API token
-router.post('/api-tokens', async (req: AuthRequest, res: Response) => {
+router.post('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { name, expires_at } = req.body;
 
@@ -178,10 +179,10 @@ router.post('/api-tokens', async (req: AuthRequest, res: Response) => {
         console.error('Generate API token error:', err);
         res.status(500).json({ error: 'Eroare la generarea token-ului.' });
     }
-});
+}));
 
 // GET /api/admin/api-tokens — list all tokens (without hashes)
-router.get('/api-tokens', async (_req: AuthRequest, res: Response) => {
+router.get('/api-tokens', asyncHandler(async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
             SELECT at.id, at.name, at.is_active, at.created_at, at.last_used_at, at.expires_at,
@@ -195,10 +196,10 @@ router.get('/api-tokens', async (_req: AuthRequest, res: Response) => {
         console.error('List API tokens error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea token-urilor.' });
     }
-});
+}));
 
 // DELETE /api/admin/api-tokens/:id — revoke a token
-router.delete('/api-tokens/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/api-tokens/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { rows } = await pool.query(
@@ -218,7 +219,7 @@ router.delete('/api-tokens/:id', async (req: AuthRequest, res: Response) => {
         console.error('Revoke API token error:', err);
         res.status(500).json({ error: 'Eroare la revocarea token-ului.' });
     }
-});
+}));
 
 // ==========================================
 // ADMIN AVATAR UPLOAD

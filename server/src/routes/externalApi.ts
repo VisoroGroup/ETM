@@ -205,6 +205,11 @@ router.get('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
         return;
     }
 
+    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Access denied to this task.' });
+        return;
+    }
+
     // Add human-readable labels
     const enriched = {
         ...task,
@@ -222,6 +227,11 @@ router.get('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
     const { id } = req.params;
     const { status, assigned_to, reason } = req.body;
+
+    if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Access denied to this task.' });
+        return;
+    }
 
     // Validate at least one field to update
     if (!status && assigned_to === undefined) {
@@ -322,6 +332,11 @@ router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res:
     const { rows: taskRows } = await pool.query('SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL', [taskId]);
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        return;
+    }
+
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Access denied to this task.' });
         return;
     }
 

@@ -53,6 +53,7 @@ const pool = new Pool({
 
 // --- Pool error handling with retry ---
 let consecutiveErrors = 0;
+let recoveryInProgress = false;
 const MAX_CONSECUTIVE_ERRORS = 5;
 const BACKOFF_DELAYS = [1000, 5000, 15000, 30000, 60000]; // 1s, 5s, 15s, 30s, 60s
 
@@ -66,16 +67,21 @@ pool.on('error', (err) => {
     } else {
         const delay = BACKOFF_DELAYS[consecutiveErrors - 1] || 60000;
         console.warn(`[DB] Will attempt recovery in ${delay / 1000}s...`);
-        setTimeout(async () => {
-            try {
-                const client = await pool.connect();
-                client.release();
-                consecutiveErrors = 0;
-                console.log('[DB] Pool connection recovered.');
-            } catch (retryErr: any) {
-                console.error('[DB] Recovery attempt failed:', retryErr.message);
-            }
-        }, delay);
+        if (!recoveryInProgress) {
+            recoveryInProgress = true;
+            setTimeout(async () => {
+                try {
+                    const client = await pool.connect();
+                    client.release();
+                    consecutiveErrors = 0;
+                    console.log('[DB] Pool connection recovered.');
+                } catch (retryErr: any) {
+                    console.error('[DB] Recovery attempt failed:', retryErr.message);
+                } finally {
+                    recoveryInProgress = false;
+                }
+            }, delay);
+        }
     }
 });
 
