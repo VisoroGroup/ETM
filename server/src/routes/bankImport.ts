@@ -327,7 +327,7 @@ router.post('/imports/:id/approve-all', asyncHandler(async (req: AuthRequest, re
     // Update import
     await pool.query(`
         UPDATE bank_statement_imports SET
-            matched_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'matched' AND approved = true),
+            matched_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'matched'),
             created_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'created'),
             skipped_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'skipped')
         WHERE id = $1
@@ -344,7 +344,7 @@ router.post('/imports/:id/complete', asyncHandler(async (req: AuthRequest, res: 
         UPDATE bank_statement_imports SET
             status = 'completed',
             completed_at = NOW(),
-            matched_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'matched' AND approved = true),
+            matched_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'matched'),
             created_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'created'),
             skipped_count = (SELECT COUNT(*) FROM bank_statement_rows WHERE import_id = $1 AND match_status = 'skipped')
         WHERE id = $1
