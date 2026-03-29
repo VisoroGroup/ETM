@@ -130,7 +130,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                                             className="flex-1 p-2 space-y-2 min-h-[120px] transition-colors rounded-b-xl"
                                             style={{
                                                 background: snapshot.isDraggingOver
-                                                    ? `rgba(${col.key === 'de_rezolvat' ? '100,116,139' : col.key === 'in_realizare' ? '37,99,235' : col.key === 'blocat' ? '220,38,38' : '22,163,74'},0.15)`
+                                                    ? `var(${col.key === 'de_rezolvat' ? '--kanban-drag-default' : col.key === 'in_realizare' ? '--kanban-drag-progress' : col.key === 'blocat' ? '--kanban-drag-blocked' : '--kanban-drag-done'})`
                                                     : undefined,
                                             }}
                                         >

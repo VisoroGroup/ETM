@@ -16,6 +16,17 @@
   --color-navy-950: #102a43;
 }
 
+:root {
+  --chart-tooltip-bg: #1E3A5F;
+  --chart-tooltip-color: #ffffff;
+  --chart-tooltip-radius: 8px;
+  --chart-grid-stroke: #334e68;
+  --kanban-drag-default: rgba(100,116,139,0.15);
+  --kanban-drag-progress: rgba(37,99,235,0.15);
+  --kanban-drag-blocked: rgba(220,38,38,0.15);
+  --kanban-drag-done: rgba(22,163,74,0.15);
+}
+
 @layer base {
   * {
     scrollbar-width: thin;

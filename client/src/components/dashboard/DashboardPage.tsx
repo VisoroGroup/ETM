@@ -353,7 +353,7 @@ export default function DashboardPage() {
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ background: '#1E3A5F', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px' }}
+                                            contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -378,10 +378,10 @@ export default function DashboardPage() {
                             {deptChartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <BarChart data={deptChartData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#334e68" />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-stroke)" />
                                         <XAxis dataKey="name" tick={{ fill: '#829ab1', fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
                                         <YAxis tick={{ fill: '#829ab1', fontSize: 11 }} />
-                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#1E3A5F', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }} />
                                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                             {deptChartData.map((d, i) => (
                                                 <Cell key={i} fill={d.color} />
@@ -402,10 +402,10 @@ export default function DashboardPage() {
                             {trendData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <LineChart data={trendData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#334e68" />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-stroke)" />
                                         <XAxis dataKey="label" tick={{ fill: '#829ab1', fontSize: 11 }} />
                                         <YAxis tick={{ fill: '#829ab1', fontSize: 11 }} allowDecimals={false} />
-                                        <Tooltip contentStyle={{ background: '#1E3A5F', border: 'none', borderRadius: '8px', color: 'white', fontSize: '12px' }} />
+                                        <Tooltip contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }} />
                                         <Line type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6', r: 4 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
