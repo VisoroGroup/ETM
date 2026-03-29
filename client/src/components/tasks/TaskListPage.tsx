@@ -98,7 +98,8 @@ export default function TaskListPage() {
         // Support email links: /tasks?openTaskId=xyz
         const urlParams = new URLSearchParams(window.location.search);
         const openTaskIdParam = urlParams.get('openTaskId');
-        if (openTaskIdParam) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (openTaskIdParam && uuidRegex.test(openTaskIdParam)) {
             setSelectedTaskId(openTaskIdParam);
             // Clean URL without reload
             urlParams.delete('openTaskId');
