@@ -36,8 +36,15 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     conditions.push('ci.deleted_at IS NULL');
     const where = `WHERE ${conditions.join(' AND ')}`;
-    const validSorts = ['issued_date', 'due_date', 'amount', 'client_name', 'paid_date', 'created_at'];
-    const sortCol = validSorts.includes(sort as string) ? sort : 'issued_date';
+    const SORT_COLUMNS: Record<string, string> = {
+        issued_date: 'ci.issued_date',
+        due_date: 'ci.due_date',
+        amount: 'ci.amount',
+        client_name: 'ci.client_name',
+        paid_date: 'ci.paid_date',
+        created_at: 'ci.created_at',
+    };
+    const sortExpr = SORT_COLUMNS[sort as string] || 'ci.issued_date';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
     const query = `
@@ -47,7 +54,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         ${where}
         ORDER BY
             CASE WHEN ci.is_paid THEN 1 ELSE 0 END,
-            ci.${sortCol} ${sortOrder} NULLS LAST
+            ${sortExpr} ${sortOrder} NULLS LAST
     `;
 
     const result = await pool.query(query, values);
