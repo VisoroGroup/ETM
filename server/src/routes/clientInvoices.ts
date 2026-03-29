@@ -34,7 +34,8 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         idx++;
     }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    conditions.push('ci.deleted_at IS NULL');
+    const where = `WHERE ${conditions.join(' AND ')}`;
     const validSorts = ['issued_date', 'due_date', 'amount', 'client_name', 'paid_date', 'created_at'];
     const sortCol = validSorts.includes(sort as string) ? sort : 'issued_date';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
@@ -65,6 +66,7 @@ router.get('/summary', asyncHandler(async (_req: AuthRequest, res: Response) => 
             COALESCE(SUM(COALESCE(paid_amount, amount)) FILTER (WHERE is_paid = true), 0) AS collected_total,
             COALESCE(SUM(amount), 0) AS grand_total
         FROM client_invoices
+        WHERE deleted_at IS NULL
     `);
 
     res.json({
@@ -81,7 +83,7 @@ router.get('/summary', asyncHandler(async (_req: AuthRequest, res: Response) => 
 // GET /api/client-invoices/clients — distinct client names for autocomplete
 router.get('/clients', asyncHandler(async (_req: AuthRequest, res: Response) => {
     const { rows } = await pool.query(`
-        SELECT DISTINCT client_name FROM client_invoices ORDER BY client_name ASC
+        SELECT DISTINCT client_name FROM client_invoices WHERE deleted_at IS NULL ORDER BY client_name ASC
     `);
     res.json(rows.map(r => r.client_name));
 }));
@@ -123,7 +125,7 @@ router.put('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
             due_date = $6,
             notes = $7,
             updated_at = NOW()
-        WHERE id = $8
+        WHERE id = $8 AND deleted_at IS NULL
         RETURNING *
     `, [client_name, invoice_number, amount, currency, issued_date, due_date || null, notes || null, req.params.id]);
 
@@ -141,7 +143,7 @@ router.put('/:id/mark-paid', asyncHandler(async (req: AuthRequest, res: Response
 
     // Fetch invoice first to validate
     const { rows: [invoice] } = await pool.query(
-        'SELECT id, amount FROM client_invoices WHERE id = $1',
+        'SELECT id, amount FROM client_invoices WHERE id = $1 AND deleted_at IS NULL',
         [req.params.id]
     );
 
@@ -180,7 +182,7 @@ router.put('/:id/mark-paid', asyncHandler(async (req: AuthRequest, res: Response
 router.put('/:id/mark-unpaid', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { rows } = await pool.query(`
         UPDATE client_invoices SET is_paid = false, paid_date = NULL, paid_amount = NULL, updated_at = NOW()
-        WHERE id = $1 RETURNING *
+        WHERE id = $1 AND deleted_at IS NULL RETURNING *
     `, [req.params.id]);
 
     if (rows.length === 0) {
@@ -191,9 +193,12 @@ router.put('/:id/mark-unpaid', asyncHandler(async (req: AuthRequest, res: Respon
     res.json(rows[0]);
 }));
 
-// DELETE /api/client-invoices/:id
+// DELETE /api/client-invoices/:id (soft delete)
 router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { rows } = await pool.query('DELETE FROM client_invoices WHERE id = $1 RETURNING *', [req.params.id]);
+    const { rows } = await pool.query(
+        'UPDATE client_invoices SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id',
+        [req.params.id]
+    );
 
     if (rows.length === 0) {
         res.status(404).json({ error: 'Számla nem található.' });
