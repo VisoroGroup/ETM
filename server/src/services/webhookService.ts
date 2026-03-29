@@ -120,7 +120,8 @@ async function handleRetry(
     errorMessage: string,
     responseStatus: number | null
 ): Promise<void> {
-    if (attempt < 4) {
+    const nextAttempt = attempt + 1;
+    if (nextAttempt <= 4) {
         const delay = RETRY_DELAYS[attempt - 1] || 300_000;
         const nextRetry = new Date(Date.now() + delay);
         await pool.query(
@@ -128,7 +129,7 @@ async function handleRetry(
              SET status = 'retrying', error_message = $1, response_status = $2,
                  next_retry_at = $3, attempt = $4
              WHERE id = $5`,
-            [errorMessage, responseStatus, nextRetry.toISOString(), attempt, deliveryId]
+            [errorMessage, responseStatus, nextRetry.toISOString(), nextAttempt, deliveryId]
         );
         // No setTimeout — the retry processor will pick this up
     } else {
@@ -171,10 +172,10 @@ export function startWebhookRetryProcessor(): void {
 
             for (const row of dueRetries) {
                 const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
-                const nextAttempt = (row.attempt || 1) + 1;
+                const attemptNum = row.attempt || 1;
 
                 // Fire-and-forget each retry
-                sendWebhook(row.id, row.url, row.secret, payload, nextAttempt).catch(err =>
+                sendWebhook(row.id, row.url, row.secret, payload, attemptNum).catch(err =>
                     console.error(`[WEBHOOK] Retry processor: delivery ${row.id} failed:`, err.message)
                 );
             }

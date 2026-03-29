@@ -33,6 +33,9 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
     const [blocatReason, setBlocatReason] = useState('');
     const [saving, setSaving] = useState(false);
 
+    // Track in-flight drag operations to prevent race conditions
+    const [pendingDrags, setPendingDrags] = useState<Set<string>>(new Set());
+
     const grouped: Record<TaskStatus, Task[]> = {
         de_rezolvat: [],
         in_realizare: [],
@@ -51,6 +54,9 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         const task = localTasks.find(t => t.id === taskId);
         if (!task || task.status === newStatus) return;
 
+        // Block if this card already has an in-flight drag
+        if (pendingDrags.has(taskId)) return;
+
         if (newStatus === 'blocat') {
             // Show modal for mandatory reason
             setBlocatReason('');
@@ -61,6 +67,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         // Optimistic update — move card instantly
         const previousStatus = task.status;
         setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+        setPendingDrags(prev => new Set(prev).add(taskId));
 
         try {
             await tasksApi.changeStatus(taskId, newStatus);
@@ -70,6 +77,8 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
             // Revert on failure
             setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: previousStatus } : t));
             showToast(err.response?.data?.error || 'Eroare la schimbarea statusului', 'error');
+        } finally {
+            setPendingDrags(prev => { const next = new Set(prev); next.delete(taskId); return next; });
         }
     }
 
@@ -140,6 +149,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                                                     task={task}
                                                     index={index}
                                                     isDragging={draggingId === task.id}
+                                                    isPending={pendingDrags.has(task.id)}
                                                     onClick={() => onTaskClick(task.id)}
                                                 />
                                             ))}
@@ -206,10 +216,11 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
     );
 }
 
-function KanbanCard({ task, index, isDragging, onClick }: {
+function KanbanCard({ task, index, isDragging, isPending, onClick }: {
     task: Task;
     index: number;
     isDragging: boolean;
+    isPending: boolean;
     onClick: () => void;
 }) {
     const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
@@ -228,6 +239,10 @@ function KanbanCard({ task, index, isDragging, onClick }: {
                             ? 'shadow-2xl shadow-blue-500/20 border-blue-500/50 rotate-1 scale-105'
                             : 'border-navy-700/50 hover:border-navy-600/70 hover:bg-navy-800/90'
                     }`}
+                    style={{
+                        ...provided.draggableProps.style,
+                        ...(isPending && !snapshot.isDragging ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
+                    }}
                 >
                     {/* Status icons */}
                     <div className="flex items-center justify-end mb-1.5">
