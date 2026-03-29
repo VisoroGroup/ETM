@@ -35,33 +35,38 @@ export default function DashboardPage() {
     const { user } = useAuth();
 
     useEffect(() => {
-        loadDashboard();
-    }, []);
+        let cancelled = false;
 
-    async function loadDashboard() {
-        try {
-            const [s, c, tasks, alerts, ms, bn, prefs] = await Promise.all([
-                dashboardApi.stats(),
-                dashboardApi.charts(),
-                tasksApi.list(),
-                dashboardApi.activeAlerts().catch(() => []),
-                dashboardApi.myStats().catch(() => null),
-                dashboardApi.bottlenecks().catch(() => []),
-                dashboardApi.getPreferences().catch(() => []),
-            ]);
-            setStats(s);
-            setCharts(c);
-            setAllTasks(tasks.tasks || tasks);
-            setActiveAlerts(alerts);
-            setMyStats(ms);
-            setBottlenecks(bn);
-            setWidgetLayout(prefs);
-        } catch (err) {
-            console.error('Dashboard load error:', err);
-        } finally {
-            setLoading(false);
+        async function loadDashboard() {
+            try {
+                const [s, c, tasks, alerts, ms, bn, prefs] = await Promise.all([
+                    dashboardApi.stats(),
+                    dashboardApi.charts(),
+                    tasksApi.list(),
+                    dashboardApi.activeAlerts().catch(() => []),
+                    dashboardApi.myStats().catch(() => null),
+                    dashboardApi.bottlenecks().catch(() => []),
+                    dashboardApi.getPreferences().catch(() => []),
+                ]);
+                if (cancelled) return;
+                setStats(s);
+                setCharts(c);
+                setAllTasks(tasks.tasks || tasks);
+                setActiveAlerts(alerts);
+                setMyStats(ms);
+                setBottlenecks(bn);
+                setWidgetLayout(prefs);
+            } catch (err) {
+                if (cancelled) return;
+                console.error('Dashboard load error:', err);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
         }
-    }
+
+        loadDashboard();
+        return () => { cancelled = true; };
+    }, []);
 
     if (loading) {
         return (
