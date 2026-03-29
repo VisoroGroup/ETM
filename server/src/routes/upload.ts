@@ -66,31 +66,44 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
             return;
         }
 
-        // Insert attachment with binary data stored in PostgreSQL
-        const { rows } = await pool.query(
-            `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, task_id, file_name, file_url, file_size, uploaded_by, created_at`,
-            [taskId, file.originalname, '', file.size, file.buffer, file.mimetype, req.user!.id]
-        );
+        // Transaction: INSERT attachment → set file_url → activity log
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
 
-        // Set file_url to point to the DB-serving endpoint
-        const attachmentId = rows[0].id;
-        const fileUrl = `/api/files/attachment/${attachmentId}`;
-        await pool.query('UPDATE task_attachments SET file_url = $1 WHERE id = $2', [fileUrl, attachmentId]);
-        rows[0].file_url = fileUrl;
+            // Insert attachment with binary data
+            const { rows } = await client.query(
+                `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by)
+                 VALUES ($1, $2, '', $3, $4, $5, $6) RETURNING id, task_id, file_name, file_url, file_size, uploaded_by, created_at`,
+                [taskId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id]
+            );
 
-        // Activity log
-        await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'attachment_added', $3)`,
-            [taskId, req.user!.id, JSON.stringify({
-                file_name: file.originalname,
-                file_size: file.size
-            })]
-        );
+            // Set file_url using the generated ID
+            const attachmentId = rows[0].id;
+            const fileUrl = `/api/files/attachment/${attachmentId}`;
+            await client.query('UPDATE task_attachments SET file_url = $1 WHERE id = $2', [fileUrl, attachmentId]);
+            rows[0].file_url = fileUrl;
 
-        rows[0].uploader_name = req.user!.display_name;
-        res.status(201).json(rows[0]);
+            // Activity log
+            await client.query(
+                `INSERT INTO activity_log (task_id, user_id, action_type, details)
+                 VALUES ($1, $2, 'attachment_added', $3)`,
+                [taskId, req.user!.id, JSON.stringify({
+                    file_name: file.originalname,
+                    file_size: file.size
+                })]
+            );
+
+            await client.query('COMMIT');
+
+            rows[0].uploader_name = req.user!.display_name;
+            res.status(201).json(rows[0]);
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
+        }
     } catch (err) {
         console.error('Error uploading file:', err);
         res.status(500).json({ error: 'Eroare la încărcarea fișierului.' });
