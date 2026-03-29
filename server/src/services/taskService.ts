@@ -375,7 +375,7 @@ export async function duplicateTask(id: string, userId: string) {
 
     // Activity log on original task
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'created', $3)`,
+        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_duplicated', $3)`,
         [id, userId, JSON.stringify({ duplicated_to: newId })]
     );
 
