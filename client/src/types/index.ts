@@ -212,7 +212,9 @@ export type PaymentCategory =
     | 'furnizor_servicii'
     | 'furnizor_echipamente'
     | 'marketing'
-    | 'salarii';
+    | 'salarii'
+    | 'incasare_client'
+    | 'alte_venituri';
 
 export type PaymentStatus = 'de_platit' | 'platit';
 
@@ -280,6 +282,8 @@ export const PAYMENT_CATEGORIES: Record<PaymentCategory, { label: string; color:
     furnizor_echipamente: { label: 'Furnizor de echipamente', color: '#0891B2' },
     marketing: { label: 'Marketing / Publicitate', color: '#EA580C' },
     salarii: { label: 'Salarii / Personal', color: '#16A34A' },
+    incasare_client: { label: 'Încasare client', color: '#059669' },
+    alte_venituri: { label: 'Alte venituri', color: '#0D9488' },
 };
 
 export interface WidgetConfig {

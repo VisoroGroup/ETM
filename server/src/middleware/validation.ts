@@ -70,7 +70,7 @@ export const createPaymentSchema = z.object({
     title: z.string().min(1, 'Titlul este obligatoriu').max(200),
     amount: z.union([z.number().positive('Suma trebuie să fie pozitivă'), z.string().min(1)]),
     currency: z.string().max(10).default('RON'),
-    category: z.enum(['stat', 'partener_furnizor', 'furnizor_servicii', 'furnizor_echipamente', 'marketing', 'salarii']),
+    category: z.enum(['stat', 'partener_furnizor', 'furnizor_servicii', 'furnizor_echipamente', 'marketing', 'salarii', 'incasare_client', 'alte_venituri']),
     beneficiary_name: z.string().max(200).nullable().optional(),
     due_date: z.string().min(1, 'Data scadentă este obligatorie'),
     is_recurring: z.boolean().default(false),
