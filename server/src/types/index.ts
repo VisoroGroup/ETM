@@ -203,7 +203,7 @@ export interface EmailLog {
     id: string;
     user_id: string;
     task_ids: string[];
-    email_type: 'daily_summary';
+    email_type: 'daily_summary' | 'payment_summary';
     sent_at: Date;
     status: 'sent' | 'failed';
     error_message: string | null;
