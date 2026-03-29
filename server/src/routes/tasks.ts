@@ -22,8 +22,7 @@ import taskChecklistRoutes from './taskChecklist';
 const router = Router();
 
 // GET /api/tasks — list tasks with filters
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
+router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
         const {
             status,
             department,
@@ -212,11 +211,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             page: parseInt(page as string, 10),
             limit: parseInt(limit as string, 10)
         });
-    } catch (err) {
-        console.error('Error fetching tasks:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea task-urilor.' });
-    }
-});
+}));
 
 // POST /api/tasks — create task
 router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -256,8 +251,7 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
 
 // PUT /api/tasks/:id/status — change status
 router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = req.params;
+    const { id } = req.params;
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
@@ -491,16 +485,11 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
         }
 
         res.json(rows[0]);
-    } catch (err) {
-        console.error('Error changing status:', err);
-        res.status(500).json({ error: 'Eroare la schimbarea statusului.' });
-    }
 }));
 
 // PUT /api/tasks/:id/due-date — change due date (reason mandatory)
 router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = req.params;
+    const { id } = req.params;
         const { due_date, reason } = req.body;
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
@@ -574,10 +563,6 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
         );
 
         res.json(rows[0]);
-    } catch (err) {
-        console.error('Error changing due date:', err);
-        res.status(500).json({ error: 'Eroare la schimbarea datei limită.' });
-    }
 }));
 
 // DELETE /api/tasks/:id — soft delete task

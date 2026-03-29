@@ -235,38 +235,33 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
         }
         next();
     });
-}, async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const file = req.file;
-        if (!file) {
-            res.status(400).json({ error: 'Imaginea este obligatorie.' });
-            return;
-        }
-
-        // Check user exists
-        const { rows: currentUser } = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
-        if (currentUser.length === 0) {
-            res.status(404).json({ error: 'Utilizator negăsit.' });
-            return;
-        }
-
-        // Store avatar binary data in PostgreSQL
-        const avatarUrl = `/api/files/avatar/${id}`;
-
-        const { rows } = await pool.query(
-            `UPDATE users SET avatar_url = $1, avatar_data = $2, avatar_mime = $3, updated_at = NOW()
-             WHERE id = $4
-             RETURNING id, email, display_name, avatar_url, departments, role`,
-            [avatarUrl, file.buffer, file.mimetype, id]
-        );
-
-        res.json(rows[0]);
-    } catch (err) {
-        console.error('Admin avatar upload error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea avatarului.' });
+}, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const file = req.file;
+    if (!file) {
+        res.status(400).json({ error: 'Imaginea este obligatorie.' });
+        return;
     }
-});
+
+    // Check user exists
+    const { rows: currentUser } = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
+    if (currentUser.length === 0) {
+        res.status(404).json({ error: 'Utilizator negăsit.' });
+        return;
+    }
+
+    // Store avatar binary data in PostgreSQL
+    const avatarUrl = `/api/files/avatar/${id}`;
+
+    const { rows } = await pool.query(
+        `UPDATE users SET avatar_url = $1, avatar_data = $2, avatar_mime = $3, updated_at = NOW()
+         WHERE id = $4
+         RETURNING id, email, display_name, avatar_url, departments, role`,
+        [avatarUrl, file.buffer, file.mimetype, id]
+    );
+
+    res.json(rows[0]);
+}));
 
 export default router;
 

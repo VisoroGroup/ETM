@@ -232,7 +232,7 @@ async function runDailyEmailJob() {
                 } else if (phase === 'overdue') {
                     userEntry.overdue.push(taskData);
                     // Webhook: task.overdue (fire-and-forget, deduplicated per task)
-                    const daysOver = daysDiff(today, dueDate);
+                    const daysOver = Math.abs(daysDiff(today, dueDate));
                     dispatchWebhook('task.overdue', {
                         task: { id: task.id, title: task.title, due_date: task.due_date, status: task.status, department_label: task.department_label },
                         days_overdue: daysOver

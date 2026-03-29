@@ -2,14 +2,14 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
+import { asyncHandler } from '../middleware/errorHandler';
 import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
 
 // POST /api/tasks/:id/subtasks
-router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId } = req.params;
+router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId } = req.params;
         const { title, assigned_to, due_date, priority } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -103,17 +103,12 @@ router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response)
             }
         }
 
-        res.status(201).json(rows[0]);
-    } catch (err) {
-        console.error('Error creating subtask:', err);
-        res.status(500).json({ error: 'Eroare la crearea subtask-ului.' });
-    }
-});
+    res.status(201).json(rows[0]);
+}));
 
 // PUT /api/tasks/:id/subtasks/:subtaskId
-router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId, subtaskId } = req.params;
+router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
         const { title, is_completed, assigned_to, due_date, priority } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -279,17 +274,12 @@ router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res:
             }
         }
 
-        res.json(rows[0]);
-    } catch (err) {
-        console.error('Error updating subtask:', err);
-        res.status(500).json({ error: 'Eroare la actualizarea subtask-ului.' });
-    }
-});
+    res.json(rows[0]);
+}));
 
 // PUT /api/tasks/:id/subtasks-reorder
-router.put('/subtasks-reorder', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId } = req.params;
+router.put('/subtasks-reorder', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId } = req.params;
         const { order } = req.body; // Array of { id, order_index }
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -312,17 +302,12 @@ router.put('/subtasks-reorder', authMiddleware, async (req: AuthRequest, res: Re
             WHERE s.id = v.id AND s.task_id = $3
         `, [ids, indices, taskId]);
 
-        res.json({ message: 'Ordinea a fost actualizată.' });
-    } catch (err) {
-        console.error('Error reordering subtasks:', err);
-        res.status(500).json({ error: 'Eroare la reordonarea subtask-urilor.' });
-    }
-});
+    res.json({ message: 'Ordinea a fost actualizată.' });
+}));
 
 // DELETE /api/tasks/:id/subtasks/:subtaskId
-router.delete('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId, subtaskId } = req.params;
+router.delete('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
             res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
@@ -338,10 +323,7 @@ router.delete('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, r
             return;
         }
 
-        res.status(204).send();
-    } catch (err) {
-        res.status(500).json({ error: 'Eroare la ștergerea subtask-ului.' });
-    }
-});
+    res.status(204).send();
+}));
 
 export default router;

@@ -313,6 +313,11 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         let paramIndex = 1;
 
         if (departments) {
+            // Only admin/superadmin can modify departments (prevent scope escalation)
+            if (req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
+                res.status(403).json({ error: 'Doar administratorii pot modifica departamentele.' });
+                return;
+            }
             updates.push(`departments = $${paramIndex++}`);
             values.push(departments);
         }

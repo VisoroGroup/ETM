@@ -3,14 +3,14 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { validateCreateComment } from '../middleware/validation';
+import { asyncHandler } from '../middleware/errorHandler';
 import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail, escapeHtml } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
 
 // GET /api/tasks/:id/comments
-router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId } = req.params;
+router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId } = req.params;
         const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 200);
         const offset = parseInt(req.query.offset as string, 10) || 0;
 
@@ -52,16 +52,12 @@ router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) 
             for (const row of rows) row.reactions = [];
         }
 
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: 'Eroare la incarcarea comentariilor.' });
-    }
-});
+    res.json(rows);
+}));
 
 // POST /api/tasks/:id/comments
-router.post('/comments', authMiddleware, validateCreateComment, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId } = req.params;
+router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId } = req.params;
         const { content, mentions = [], parent_comment_id = null } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -186,17 +182,12 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
         rows[0].author_name = req.user!.display_name;
         rows[0].author_avatar = req.user!.avatar_url;
 
-        res.status(201).json(rows[0]);
-    } catch (err) {
-        console.error('Error creating comment:', err);
-        res.status(500).json({ error: 'Eroare la adăugarea comentariului.' });
-    }
-});
+    res.status(201).json(rows[0]);
+}));
 
 // PUT /api/tasks/:id/comments/:commentId
-router.put('/comments/:commentId', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId, commentId } = req.params;
+router.put('/comments/:commentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, commentId } = req.params;
         const { content } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -228,16 +219,12 @@ router.put('/comments/:commentId', authMiddleware, async (req: AuthRequest, res:
         rows[0].author_name = req.user!.display_name;
         rows[0].author_avatar = req.user!.avatar_url;
 
-        res.json(rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: 'Eroare la editarea comentariului.' });
-    }
-});
+    res.json(rows[0]);
+}));
 
 // DELETE /api/tasks/:id/comments/:commentId
-router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId, commentId } = req.params;
+router.delete('/comments/:commentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, commentId } = req.params;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
             res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
@@ -258,17 +245,13 @@ router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, r
             return;
         }
 
-        await pool.query('DELETE FROM task_comments WHERE id = $1', [commentId]);
-        res.json({ message: 'Comentariul a fost șters.' });
-    } catch (err) {
-        res.status(500).json({ error: 'Eroare la ștergerea comentariului.' });
-    }
-});
+    await pool.query('DELETE FROM task_comments WHERE id = $1', [commentId]);
+    res.json({ message: 'Comentariul a fost șters.' });
+}));
 
 // POST /api/tasks/:id/comments/:commentId/react — toggle reaction
-router.post('/comments/:commentId/react', authMiddleware, async (req: AuthRequest, res: Response) => {
-    try {
-        const { id: taskId, commentId } = req.params;
+router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, commentId } = req.params;
         const reaction = req.body.reaction || '👍';
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -292,12 +275,8 @@ router.post('/comments/:commentId/react', authMiddleware, async (req: AuthReques
                 'INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES ($1, $2, $3)',
                 [commentId, req.user!.id, reaction]
             );
-            res.json({ toggled: 'added' });
-        }
-    } catch (err) {
-        console.error('Reaction error:', err);
-        res.status(500).json({ error: 'Eroare la reactie.' });
+        res.json({ toggled: 'added' });
     }
-});
+}));
 
 export default router;

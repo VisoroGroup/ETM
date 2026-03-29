@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { Plus, FileText, Check, X, Trash2, Search, DollarSign, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { safeLocalStorage } from '../../utils/storage';
+import { useToast } from '../../hooks/useToast';
 
 function formatMoney(val: number, currency = 'RON') {
     return new Intl.NumberFormat('ro-RO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(val);
@@ -13,6 +14,7 @@ function formatMoney(val: number, currency = 'RON') {
 
 export default function ClientInvoicesPage() {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const [darkMode, setDarkMode] = useState(() => {
         const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true';
@@ -137,9 +139,9 @@ export default function ClientInvoicesPage() {
                                 key={inv.id}
                                 invoice={inv}
                                 darkMode={darkMode}
-                                onMarkPaid={id => markPaid.mutate({ id })}
-                                onMarkUnpaid={id => markUnpaid.mutate(id)}
-                                onDelete={id => { if (confirm('Biztosan törlöd?')) deleteInv.mutate(id); }}
+                                onMarkPaid={id => markPaid.mutate({ id }, { onError: () => showToast('Hiba a fizetés jelölésénél', 'error') })}
+                                onMarkUnpaid={id => markUnpaid.mutate(id, { onError: () => showToast('Hiba a visszavonásnál', 'error') })}
+                                onDelete={id => { if (confirm('Biztosan törlöd?')) deleteInv.mutate(id, { onError: () => showToast('Hiba a törlésnél', 'error') }); }}
                             />
                         ))}
                     </div>
@@ -221,13 +223,17 @@ function InvoiceRow({ invoice, darkMode, onMarkPaid, onMarkUnpaid, onDelete }: {
 function InvoiceFormModal({ onClose, darkMode }: { onClose: () => void; darkMode: boolean }) {
     const [form, setForm] = useState({ client_name: '', invoice_number: '', amount: '', currency: 'RON', issued_date: new Date().toISOString().split('T')[0], due_date: '', notes: '' });
     const create = useCreateInvoice();
+    const { showToast } = useToast();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         create.mutate({
             ...form,
             amount: parseFloat(form.amount) as any,
-        }, { onSuccess: () => onClose() });
+        }, {
+            onSuccess: () => onClose(),
+            onError: () => showToast('Hiba a számla mentésénél', 'error'),
+        });
     };
 
     const inputClass = `w-full px-4 py-2.5 rounded-xl border text-sm ${darkMode ? 'bg-navy-900 border-navy-600 text-white placeholder-navy-400' : 'bg-gray-50 border-gray-300'}`;

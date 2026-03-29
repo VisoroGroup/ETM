@@ -138,8 +138,8 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
     }
 
     const { rows } = await pool.query(
-        `DELETE FROM task_dependencies WHERE id = $1 RETURNING *`,
-        [depId]
+        `DELETE FROM task_dependencies WHERE id = $1 AND (blocked_task_id = $2 OR blocking_task_id = $2) RETURNING *`,
+        [depId, taskId]
     );
 
     if (rows.length === 0) {

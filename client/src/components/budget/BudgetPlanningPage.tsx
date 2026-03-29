@@ -165,6 +165,14 @@ export default function BudgetPlanningPage() {
 
     const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+    // Cleanup pending save timers on unmount
+    useEffect(() => {
+        return () => {
+            saveTimers.current.forEach(timer => clearTimeout(timer));
+            saveTimers.current.clear();
+        };
+    }, []);
+
     const handleSave = (catId: string, week: number | null, field: 'planned' | 'actual', value: number) => {
         const key = `${catId}_${week ?? 'total'}_${field}`;
         const prev = saveTimers.current.get(key);
