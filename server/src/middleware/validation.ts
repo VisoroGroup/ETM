@@ -66,7 +66,7 @@ export const validateCreateTemplate = validate(createTemplateSchema);
 
 // --- Payment schemas ---
 
-export const createPaymentSchema = z.object({
+const createPaymentBase = z.object({
     title: z.string().min(1, 'Titlul este obligatoriu').max(200),
     amount: z.union([z.number().positive('Suma trebuie să fie pozitivă'), z.string().min(1)]),
     currency: z.string().max(10).default('RON'),
@@ -78,7 +78,12 @@ export const createPaymentSchema = z.object({
     initial_comment: z.string().max(2000).optional(),
 });
 
-export const updatePaymentSchema = createPaymentSchema.partial();
+export const createPaymentSchema = createPaymentBase.refine(
+    (data) => !data.is_recurring || (data.is_recurring && data.recurring_frequency),
+    { message: 'Frecvența recurenței este obligatorie pentru plăți recurente', path: ['recurring_frequency'] }
+);
+
+export const updatePaymentSchema = createPaymentBase.partial();
 
 export const validateCreatePayment = validate(createPaymentSchema);
 export const validateUpdatePayment = validate(updatePaymentSchema);
