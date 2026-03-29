@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserCircle } from 'lucide-react';
 
 // Predefined gradient pairs for deterministic user colors
@@ -46,20 +46,17 @@ const SIZE_MAP = {
 
 export default function UserAvatar({ name, avatarUrl, size = 'md', className = '' }: UserAvatarProps) {
     const s = SIZE_MAP[size];
+    const [imgFailed, setImgFailed] = useState(false);
 
-    // If we have a real avatar image
-    if (avatarUrl) {
+    // If we have a real avatar image that hasn't failed
+    if (avatarUrl && !imgFailed) {
         return (
             <div className={`${s.container} rounded-full overflow-hidden flex-shrink-0 shadow-md ${className}`}>
                 <img
                     src={avatarUrl}
                     alt={name || 'Avatar'}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                        // Fallback to initials if image fails to load
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).parentElement!.classList.add('avatar-fallback');
-                    }}
+                    onError={() => setImgFailed(true)}
                 />
             </div>
         );
@@ -87,3 +84,4 @@ export default function UserAvatar({ name, avatarUrl, size = 'md', className = '
         </div>
     );
 }
+
