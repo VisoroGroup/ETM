@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, FileDown, Loader2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { safeLocalStorage } from '../../utils/storage';
 
 interface Props {
     isOpen: boolean;
@@ -41,7 +42,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
     async function generate() {
         setGenerating(true);
         const sectionList = Object.entries(sections).filter(([, v]) => v).map(([k]) => k).join(',');
-        const token = localStorage.getItem('token');
+        const token = safeLocalStorage.get('token');
         const url = `${API_BASE}/reports/monthly?month=${month}&format=${format}&sections=${sectionList}`;
 
         try {

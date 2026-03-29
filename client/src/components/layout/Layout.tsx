@@ -9,25 +9,26 @@ import {
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
+import { safeLocalStorage } from '../../utils/storage';
 
 export default function Layout() {
     const { user, logout } = useAuth();
-    const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+    const [collapsed, setCollapsed] = useState(() => safeLocalStorage.get('sidebar-collapsed') === 'true');
     const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('dark-mode');
+        const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true'; // default: dark
     });
     const [showProfile, setShowProfile] = useState(false);
 
     // Persist dark mode
     useEffect(() => {
-        localStorage.setItem('dark-mode', String(darkMode));
+        safeLocalStorage.set('dark-mode', String(darkMode));
         document.documentElement.classList.toggle('dark', darkMode);
     }, [darkMode]);
 
     // Persist sidebar collapsed
     useEffect(() => {
-        localStorage.setItem('sidebar-collapsed', String(collapsed));
+        safeLocalStorage.set('sidebar-collapsed', String(collapsed));
     }, [collapsed]);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';

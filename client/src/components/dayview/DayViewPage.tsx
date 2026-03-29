@@ -8,6 +8,7 @@ import {
     GripVertical, CheckCircle2, Circle, AlertTriangle, Loader2
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
+import { safeLocalStorage } from '../../utils/storage';
 
 interface DaySubtask {
     title: string;
@@ -37,12 +38,12 @@ const STORAGE_KEY = 'dayview-user-order';
 
 function getStoredOrder(): string[] {
     try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        return JSON.parse(safeLocalStorage.get(STORAGE_KEY) || '[]');
     } catch { return []; }
 }
 
 function setStoredOrder(order: string[]) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    safeLocalStorage.set(STORAGE_KEY, JSON.stringify(order));
 }
 
 export default function DayViewPage() {

@@ -3,6 +3,7 @@ import { useBudgetCategories, useBudgetEntries, useBudgetSummary, useUpsertEntry
 import { useAuth } from '../../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { Plus, Trash2, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, Target } from 'lucide-react';
+import { safeLocalStorage } from '../../utils/storage';
 
 const MONTHS = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 const WEEKS = [1, 2, 3, 4, 5];
@@ -120,7 +121,7 @@ function AddCategoryModal({ parentCategory, section, sectionLabel, onClose, dark
 export default function BudgetPlanningPage() {
     const { user } = useAuth();
     const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('dark-mode');
+        const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {

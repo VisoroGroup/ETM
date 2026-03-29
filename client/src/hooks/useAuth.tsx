@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from '../types';
 import { authApi } from '../services/api';
 import axios from 'axios';
+import { safeLocalStorage } from '../utils/storage';
 
 interface AuthContextType {
     user: User | null;
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Exchange the one-time code for a JWT token
             axios.post('/api/auth/exchange', { code: oauthCode })
                 .then(({ data }) => {
-                    localStorage.setItem('visoro_token', data.token);
+                    safeLocalStorage.set('visoro_token', data.token);
                     checkAuth();
                 })
                 .catch((err) => {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function checkAuth() {
         try {
-            const token = localStorage.getItem('visoro_token');
+            const token = safeLocalStorage.get('visoro_token');
             if (token) {
                 const { user } = await authApi.me();
                 setUser(user);
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUsers(allUsers);
             }
         } catch {
-            localStorage.removeItem('visoro_token');
+            safeLocalStorage.remove('visoro_token');
         } finally {
             setLoading(false);
         }
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     function logout() {
-        localStorage.removeItem('visoro_token');
+        safeLocalStorage.remove('visoro_token');
         setUser(null);
         setUsers([]);
     }

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert } from '../types';
+import { safeLocalStorage } from '../utils/storage';
 
 const api = axios.create({
     baseURL: '/api',
@@ -8,7 +9,7 @@ const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('visoro_token');
+    const token = safeLocalStorage.get('visoro_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -20,7 +21,7 @@ api.interceptors.response.use(
     (res) => res,
     (err) => {
         if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
-            localStorage.removeItem('visoro_token');
+            safeLocalStorage.remove('visoro_token');
             window.location.href = '/';
         }
         return Promise.reject(err);

@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { Plus, FileText, Check, X, Trash2, Search, DollarSign, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { safeLocalStorage } from '../../utils/storage';
 
 function formatMoney(val: number, currency = 'RON') {
     return new Intl.NumberFormat('ro-RO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(val);
@@ -13,7 +14,7 @@ function formatMoney(val: number, currency = 'RON') {
 export default function ClientInvoicesPage() {
     const { user } = useAuth();
     const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('dark-mode');
+        const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {

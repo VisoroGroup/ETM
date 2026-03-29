@@ -9,18 +9,19 @@ import PaymentsList from './PaymentsList';
 import PaymentDrawer from './PaymentDrawer';
 import PaymentForm from './PaymentForm';
 import { Plus } from 'lucide-react';
+import { safeLocalStorage } from '../../utils/storage';
 
 export default function PaymentsPage() {
     const { user } = useAuth();
     
     const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('dark-mode');
+        const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true';
     });
 
     useEffect(() => {
         const handleStorage = () => {
-            const saved = localStorage.getItem('dark-mode');
+            const saved = safeLocalStorage.get('dark-mode');
             setDarkMode(saved === null ? true : saved === 'true');
         };
         window.addEventListener('storage', handleStorage);

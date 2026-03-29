@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { Upload, FileSpreadsheet, Check, X, SkipForward, CheckCheck, ArrowRight, Link2, Plus, Zap, ChevronDown, History } from 'lucide-react';
+import { safeLocalStorage } from '../../utils/storage';
 
 const CATEGORIES = [
     { value: 'stat', label: 'Stat (ANAF, taxe)' },
@@ -24,7 +25,7 @@ function formatMoney(val: number) {
 export default function BankImportPage() {
     const { user } = useAuth();
     const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('dark-mode');
+        const saved = safeLocalStorage.get('dark-mode');
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {
