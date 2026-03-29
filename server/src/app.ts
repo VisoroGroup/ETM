@@ -28,6 +28,7 @@ import reportsRoutes from './routes/reports';
 import webhookRoutes from './routes/webhooks';
 import dayViewRoutes from './routes/dayView';
 import externalApiRoutes from './routes/externalApi';
+import filesRoutes from './routes/files';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
@@ -61,10 +62,11 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Global rate limit
 app.use('/api', globalLimiter);
 
-// Static file serving for uploads
-// Avatars are public (browser <img> tags don't send Authorization headers)
+// File serving from PostgreSQL (persistent across deploys)
+app.use('/api/files', filesRoutes);
+
+// Legacy static file serving for any remaining filesystem-based files (fallback)
 app.use('/uploads/avatars', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads', 'avatars')));
-// Other uploads (task attachments) remain auth-protected
 app.use('/uploads', authMiddleware, express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
 
 // Routes (auth + upload get stricter limits)
@@ -210,6 +212,17 @@ app.listen(PORT, async () => {
                 await client.query(`ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS parent_comment_id UUID REFERENCES task_comments(id) ON DELETE CASCADE`);
                 console.log('✅ parent_comment_id column ensured');
             } catch { console.log('ℹ️  parent_comment_id column already exists'); }
+
+            // Step 7: Ensure persistent file storage columns exist
+            try {
+                await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_data BYTEA`);
+                await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_mime VARCHAR(50)`);
+                await client.query(`ALTER TABLE task_attachments ADD COLUMN IF NOT EXISTS file_data BYTEA`);
+                await client.query(`ALTER TABLE task_attachments ADD COLUMN IF NOT EXISTS file_mime VARCHAR(100)`);
+                console.log('✅ persistent file storage columns ensured');
+            } catch (colErr: any) {
+                console.error('⚠️ file storage columns error:', colErr?.message);
+            }
         } finally {
             client.release();
         }

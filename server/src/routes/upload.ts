@@ -1,27 +1,10 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 
 const router = Router();
-
-// Configure multer for file uploads
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
 
 // Allowed file types for upload
 const ALLOWED_MIME_TYPES = [
@@ -40,8 +23,9 @@ const ALLOWED_EXTENSIONS = [
     '.txt', '.csv'
 ];
 
+// Use memory storage — we store in PostgreSQL, not filesystem
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: {
         fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760') // 10MB default
     },
@@ -55,14 +39,12 @@ const upload = multer({
     }
 });
 
-// POST /api/upload/:taskId — upload file to task
+// POST /api/upload/:taskId — upload file to task (stored in PostgreSQL)
 router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) => {
     upload.single('file')(req, res, (err) => {
         if (err instanceof multer.MulterError) {
-            // Multer error (file too large, etc.)
             return res.status(400).json({ error: `Eroare la upload: ${err.message}` });
         } else if (err) {
-            // File filter rejection or other error
             return res.status(400).json({ error: err.message });
         }
         next();
@@ -80,24 +62,27 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
         // Check task exists
         const { rows: taskRows } = await pool.query('SELECT id FROM tasks WHERE id = $1', [taskId]);
         if (taskRows.length === 0) {
-            // Clean up uploaded file
-            fs.unlinkSync(file.path);
             res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
             return;
         }
 
-        const fileUrl = `/uploads/${file.filename}`;
-
+        // Insert attachment with binary data stored in PostgreSQL
         const { rows } = await pool.query(
-            `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, uploaded_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [taskId, file.originalname, fileUrl, file.size, req.user!.id]
+            `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, task_id, file_name, file_url, file_size, uploaded_by, created_at`,
+            [taskId, file.originalname, '', file.size, file.buffer, file.mimetype, req.user!.id]
         );
+
+        // Set file_url to point to the DB-serving endpoint
+        const attachmentId = rows[0].id;
+        const fileUrl = `/api/files/attachment/${attachmentId}`;
+        await pool.query('UPDATE task_attachments SET file_url = $1 WHERE id = $2', [fileUrl, attachmentId]);
+        rows[0].file_url = fileUrl;
 
         // Activity log
         await pool.query(
             `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'attachment_added', $3)`,
+             VALUES ($1, $2, 'attachment_added', $3)`,
             [taskId, req.user!.id, JSON.stringify({
                 file_name: file.originalname,
                 file_size: file.size

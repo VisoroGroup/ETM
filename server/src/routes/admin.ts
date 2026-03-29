@@ -1,7 +1,5 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
@@ -12,23 +10,9 @@ const router = Router();
 router.use(authMiddleware);
 router.use(requireRole('admin'));
 
-// --- Avatar upload setup for admin ---
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
-const avatarDir = path.join(uploadDir, 'avatars');
-if (!fs.existsSync(avatarDir)) {
-    fs.mkdirSync(avatarDir, { recursive: true });
-}
-
-const avatarStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, avatarDir),
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
+// --- Avatar upload setup for admin (memory storage — stored in DB) ---
 const avatarUpload = multer({
-    storage: avatarStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -240,7 +224,7 @@ router.delete('/api-tokens/:id', async (req: AuthRequest, res: Response) => {
 // ADMIN AVATAR UPLOAD
 // ==========================================
 
-// POST /api/admin/users/:id/avatar — upload avatar for any user
+// POST /api/admin/users/:id/avatar — upload avatar for any user (stored in PostgreSQL)
 router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
     avatarUpload.single('avatar')(req, res, (err) => {
         if (err instanceof multer.MulterError) {
@@ -259,25 +243,21 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
             return;
         }
 
-        // Delete old avatar file if exists
-        const { rows: currentUser } = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [id]);
+        // Check user exists
+        const { rows: currentUser } = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
         if (currentUser.length === 0) {
-            fs.unlinkSync(file.path);
             res.status(404).json({ error: 'Utilizator negăsit.' });
             return;
         }
-        if (currentUser[0]?.avatar_url && currentUser[0].avatar_url.startsWith('/uploads/avatars/')) {
-            try {
-                const oldPath = path.join(uploadDir, 'avatars', path.basename(currentUser[0].avatar_url));
-                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-            } catch {}
-        }
 
-        const avatarUrl = `/uploads/avatars/${file.filename}`;
+        // Store avatar binary data in PostgreSQL
+        const avatarUrl = `/api/files/avatar/${id}`;
 
         const { rows } = await pool.query(
-            `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, display_name, avatar_url, departments, role`,
-            [avatarUrl, id]
+            `UPDATE users SET avatar_url = $1, avatar_data = $2, avatar_mime = $3, updated_at = NOW()
+             WHERE id = $4
+             RETURNING id, email, display_name, avatar_url, departments, role`,
+            [avatarUrl, file.buffer, file.mimetype, id]
         );
 
         res.json(rows[0]);
@@ -288,3 +268,4 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
 });
 
 export default router;
+

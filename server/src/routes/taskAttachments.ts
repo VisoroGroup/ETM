@@ -1,8 +1,6 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import fs from 'fs/promises';
-import path from 'path';
 
 const router = Router({ mergeParams: true });
 
@@ -12,7 +10,7 @@ router.delete('/attachments/:attachmentId', authMiddleware, async (req: AuthRequ
         const { attachmentId } = req.params;
 
         const { rows: existing } = await pool.query(
-            'SELECT uploaded_by, file_url FROM task_attachments WHERE id = $1', [attachmentId]
+            'SELECT uploaded_by FROM task_attachments WHERE id = $1', [attachmentId]
         );
 
         if (existing.length === 0) {
@@ -25,16 +23,8 @@ router.delete('/attachments/:attachmentId', authMiddleware, async (req: AuthRequ
             return;
         }
 
+        // Delete from database (file_data is also removed since it's in the same row)
         await pool.query('DELETE FROM task_attachments WHERE id = $1', [attachmentId]);
-
-        // Delete physical file from disk (non-blocking, best-effort)
-        try {
-            const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-            const filePath = path.join(__dirname, '../..', uploadDir, path.basename(existing[0].file_url));
-            await fs.unlink(filePath);
-        } catch (fileErr) {
-            console.warn(`File cleanup failed: ${existing[0].file_url}`, (fileErr as Error).message);
-        }
 
         res.json({ message: 'Fișierul a fost șters.' });
     } catch (err) {

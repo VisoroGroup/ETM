@@ -1,30 +1,14 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 router.use(authMiddleware);
 
-// --- Avatar upload setup ---
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
-const avatarDir = path.join(uploadDir, 'avatars');
-if (!fs.existsSync(avatarDir)) {
-    fs.mkdirSync(avatarDir, { recursive: true });
-}
-
-const avatarStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, avatarDir),
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
+// --- Avatar upload setup (memory storage — we store in DB, not filesystem) ---
 const avatarUpload = multer({
-    storage: avatarStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (_req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -96,7 +80,7 @@ router.patch('/', async (req: AuthRequest, res: Response) => {
     }
 });
 
-// POST /api/profile/avatar — upload avatar image
+// POST /api/profile/avatar — upload avatar image (stored in PostgreSQL)
 router.post('/avatar', (req: AuthRequest, res: Response, next) => {
     avatarUpload.single('avatar')(req, res, (err) => {
         if (err instanceof multer.MulterError) {
@@ -114,20 +98,14 @@ router.post('/avatar', (req: AuthRequest, res: Response, next) => {
             return;
         }
 
-        // Delete old avatar file if exists
-        const { rows: currentUser } = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [req.user!.id]);
-        if (currentUser[0]?.avatar_url && currentUser[0].avatar_url.startsWith('/uploads/avatars/')) {
-            try {
-                const oldPath = path.join(uploadDir, 'avatars', path.basename(currentUser[0].avatar_url));
-                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-            } catch {}
-        }
-
-        const avatarUrl = `/uploads/avatars/${file.filename}`;
+        // Store avatar binary data in PostgreSQL + set URL to file serving endpoint
+        const avatarUrl = `/api/files/avatar/${req.user!.id}`;
 
         const { rows } = await pool.query(
-            `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, display_name, avatar_url, departments, role`,
-            [avatarUrl, req.user!.id]
+            `UPDATE users SET avatar_url = $1, avatar_data = $2, avatar_mime = $3, updated_at = NOW()
+             WHERE id = $4
+             RETURNING id, email, display_name, avatar_url, departments, role`,
+            [avatarUrl, file.buffer, file.mimetype, req.user!.id]
         );
 
         res.json(rows[0]);
@@ -140,16 +118,10 @@ router.post('/avatar', (req: AuthRequest, res: Response, next) => {
 // DELETE /api/profile/avatar — remove avatar
 router.delete('/avatar', async (req: AuthRequest, res: Response) => {
     try {
-        const { rows: currentUser } = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [req.user!.id]);
-        if (currentUser[0]?.avatar_url && currentUser[0].avatar_url.startsWith('/uploads/avatars/')) {
-            try {
-                const oldPath = path.join(uploadDir, 'avatars', path.basename(currentUser[0].avatar_url));
-                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-            } catch {}
-        }
-
         const { rows } = await pool.query(
-            `UPDATE users SET avatar_url = NULL, updated_at = NOW() WHERE id = $1 RETURNING id, email, display_name, avatar_url, departments, role`,
+            `UPDATE users SET avatar_url = NULL, avatar_data = NULL, avatar_mime = NULL, updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, email, display_name, avatar_url, departments, role`,
             [req.user!.id]
         );
 
