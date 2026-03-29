@@ -196,10 +196,18 @@ export default function TaskListPage() {
     async function bulkChangeStatus(status: TaskStatus) {
         setBulkStatusOpen(false);
         let ok = 0;
+        const failed: string[] = [];
         for (const id of selectedIds) {
-            try { await tasksApi.changeStatus(id, status); ok++; } catch {}
+            try { await tasksApi.changeStatus(id, status); ok++; } catch {
+                const t = tasks.find(t => t.id === id);
+                failed.push(t?.title || id);
+            }
         }
-        showToast(`${ok} task → ${STATUSES[status].label}`);
+        if (failed.length > 0) {
+            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+        } else {
+            showToast(`${ok} task → ${STATUSES[status].label}`);
+        }
         setSelectedIds(new Set());
         loadTasks();
     }
@@ -226,10 +234,18 @@ export default function TaskListPage() {
     async function bulkAssign(userId: string | null) {
         setBulkAssignOpen(false);
         let ok = 0;
+        const failed: string[] = [];
         for (const id of selectedIds) {
-            try { await tasksApi.update(id, { assigned_to: userId } as any); ok++; } catch {}
+            try { await tasksApi.update(id, { assigned_to: userId } as any); ok++; } catch {
+                const t = tasks.find(t => t.id === id);
+                failed.push(t?.title || id);
+            }
         }
-        showToast(userId ? `${ok} task asignat` : `${ok} task neasignat`);
+        if (failed.length > 0) {
+            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+        } else {
+            showToast(userId ? `${ok} task asignat` : `${ok} task neasignat`);
+        }
         setSelectedIds(new Set());
         loadTasks();
     }
@@ -248,10 +264,18 @@ export default function TaskListPage() {
     async function bulkChangeDept(dept: Department) {
         setBulkDeptOpen(false);
         let ok = 0;
+        const failed: string[] = [];
         for (const id of selectedIds) {
-            try { await tasksApi.update(id, { department_label: dept } as any); ok++; } catch {}
+            try { await tasksApi.update(id, { department_label: dept } as any); ok++; } catch {
+                const t = tasks.find(t => t.id === id);
+                failed.push(t?.title || id);
+            }
         }
-        showToast(`${ok} task → ${DEPARTMENTS[dept].label}`);
+        if (failed.length > 0) {
+            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+        } else {
+            showToast(`${ok} task → ${DEPARTMENTS[dept].label}`);
+        }
         setSelectedIds(new Set());
         loadTasks();
     }
