@@ -8,6 +8,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
 import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
+import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
 import taskAttachmentRoutes from './taskAttachments';
@@ -81,25 +82,27 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
         // Period filter
         if (period) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayLocal();
             switch (period) {
                 case 'today':
                     conditions.push(`t.due_date = $${paramIndex++}`);
                     values.push(today);
                     break;
                 case 'this_week': {
-                    const endOfWeek = new Date();
-                    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+                    const now = new Date();
+                    const endOfWeek = new Date(now);
+                    endOfWeek.setDate(now.getDate() + (7 - getDayOfWeek(now)));
                     conditions.push(`t.due_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
-                    values.push(today, endOfWeek.toISOString().split('T')[0]);
+                    values.push(today, toLocalDateStr(endOfWeek));
                     paramIndex += 2;
                     break;
                 }
                 case 'this_month': {
-                    const endOfMonth = new Date();
-                    endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
+                    const now = new Date();
+                    const endOfMonth = new Date(now);
+                    endOfMonth.setMonth(now.getMonth() + 1, 0);
                     conditions.push(`t.due_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
-                    values.push(today, endOfMonth.toISOString().split('T')[0]);
+                    values.push(today, toLocalDateStr(endOfMonth));
                     paramIndex += 2;
                     break;
                 }
@@ -345,7 +348,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     await client.query(
                         `INSERT INTO tasks (id, title, description, due_date, created_by, department_label)
                          VALUES ($1, $2, $3, $4, $5, $6)`,
-                        [newTaskId, task.title, task.description, nextDueDate.toISOString().split('T')[0],
+                        [newTaskId, task.title, task.description, toLocalDateStr(nextDueDate),
                             task.created_by, task.department_label]
                     );
 
@@ -367,7 +370,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                     await client.query(
                         `UPDATE recurring_tasks SET template_task_id = $1, next_run_date = $2, updated_at = NOW()
                          WHERE id = $3`,
-                        [newTaskId, nextDueDate.toISOString().split('T')[0], recurring.id]
+                        [newTaskId, toLocalDateStr(nextDueDate), recurring.id]
                     );
 
                     // Activity log for recurring creation
@@ -377,7 +380,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
                         [newTaskId, req.user!.id, JSON.stringify({
                             source_task_id: id,
                             frequency: recurring.frequency,
-                            new_due_date: nextDueDate.toISOString().split('T')[0]
+                            new_due_date: toLocalDateStr(nextDueDate)
                         })]
                     );
 
