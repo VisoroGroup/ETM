@@ -146,12 +146,15 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
 }
 
 async function generateDayViewPDF(res: Response, userData: DayViewUser, date: string) {
-    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('ro-RO', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
+    const dateObj = new Date(date + 'T00:00:00');
+    const formattedDate = isNaN(dateObj.getTime())
+        ? date
+        : dateObj.toLocaleDateString('ro-RO', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition',
@@ -207,7 +210,8 @@ async function generateDayViewPDF(res: Response, userData: DayViewUser, date: st
             // Status + Department + Due date row
             const statusLabel = STATUS_LABELS[task.status] || task.status;
             const deptLabel = DEPT_LABELS[task.department_label] || task.department_label;
-            const dueDate = new Date(task.due_date + 'T00:00:00').toLocaleDateString('ro-RO');
+            const dueDateObj = new Date(task.due_date + 'T00:00:00');
+            const dueDate = isNaN(dueDateObj.getTime()) ? task.due_date : dueDateObj.toLocaleDateString('ro-RO');
 
             doc.fontSize(9).font('Helvetica').fillColor('#486581')
                 .text(`Status: ${statusLabel}  •  Departament: ${deptLabel}  •  Termen: ${dueDate}`, 65, doc.y);
