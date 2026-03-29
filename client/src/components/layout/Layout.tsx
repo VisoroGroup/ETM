@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
@@ -35,10 +35,16 @@ export default function Layout() {
     const isSuperAdmin = user?.role === 'superadmin';
     const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
-    const [financiarOpen, setFinanciarOpen] = useState(() => {
-        const path = window.location.pathname;
-        return path.startsWith('/financiar') || path.startsWith('/budget') || path.startsWith('/client-invoices') || path.startsWith('/bank-import');
-    });
+    const location = useLocation();
+    const isFinanciarRoute = (p: string) =>
+        p.startsWith('/financiar') || p.startsWith('/budget') || p.startsWith('/client-invoices') || p.startsWith('/bank-import');
+
+    const [financiarOpen, setFinanciarOpen] = useState(() => isFinanciarRoute(window.location.pathname));
+
+    // Sync sidebar section with current route
+    useEffect(() => {
+        setFinanciarOpen(isFinanciarRoute(location.pathname));
+    }, [location.pathname]);
 
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
