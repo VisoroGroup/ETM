@@ -139,6 +139,30 @@ router.put('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 router.put('/:id/mark-paid', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { paid_date, paid_amount } = req.body;
 
+    // Fetch invoice first to validate
+    const { rows: [invoice] } = await pool.query(
+        'SELECT id, amount FROM client_invoices WHERE id = $1',
+        [req.params.id]
+    );
+
+    if (!invoice) {
+        res.status(404).json({ error: 'Számla nem található.' });
+        return;
+    }
+
+    // Validate paid_amount if provided
+    if (paid_amount !== undefined && paid_amount !== null) {
+        const pa = Number(paid_amount);
+        if (isNaN(pa) || pa < 0) {
+            res.status(400).json({ error: 'A kifizetett összeg nem lehet negatív.' });
+            return;
+        }
+        if (pa > parseFloat(invoice.amount)) {
+            res.status(400).json({ error: `A kifizetett összeg (${pa}) nem haladhatja meg a számla értékét (${invoice.amount}).` });
+            return;
+        }
+    }
+
     const { rows } = await pool.query(`
         UPDATE client_invoices SET
             is_paid = true,
@@ -147,12 +171,7 @@ router.put('/:id/mark-paid', asyncHandler(async (req: AuthRequest, res: Response
             updated_at = NOW()
         WHERE id = $3
         RETURNING *
-    `, [paid_date || null, paid_amount || null, req.params.id]);
-
-    if (rows.length === 0) {
-        res.status(404).json({ error: 'Számla nem található.' });
-        return;
-    }
+    `, [paid_date || null, paid_amount ?? null, req.params.id]);
 
     res.json(rows[0]);
 }));
