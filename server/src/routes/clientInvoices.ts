@@ -39,17 +39,6 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const sortCol = validSorts.includes(sort as string) ? sort : 'issued_date';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-    const { rows } = await pool.query(`
-        SELECT ci.*, u.display_name AS creator_name
-        FROM client_invoices ci
-        LEFT JOIN users u ON ci.created_by = u.id
-        ORDER BY
-            CASE WHEN ci.is_paid THEN 1 ELSE 0 END,
-            ${sortCol} ${sortOrder}
-    `, []);
-    // NOTE: simplified — filters applied via WHERE in real version
-    // For now returning all + client-side filter since data volume is small
-
     const query = `
         SELECT ci.*, u.display_name AS creator_name
         FROM client_invoices ci
