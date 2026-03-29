@@ -180,7 +180,19 @@ app.listen(PORT, async () => {
             `);
             console.log('✅ comment_reactions table ensured');
 
-            // Step 4: Add parent_comment_id for reply threading
+            // Step 4: Ensure checklist_updated action_type exists
+            try {
+                await client.query(`ALTER TYPE action_type ADD VALUE IF NOT EXISTS 'checklist_updated'`);
+                console.log('✅ checklist_updated action_type ensured');
+            } catch (enumErr: any) {
+                if (enumErr?.message?.includes('already exists')) {
+                    console.log('✅ checklist_updated action_type already exists');
+                } else {
+                    console.error('⚠️ action_type ALTER error:', enumErr?.message);
+                }
+            }
+
+            // Step 5: Add parent_comment_id for reply threading
             try {
                 await client.query(`ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS parent_comment_id UUID REFERENCES task_comments(id) ON DELETE CASCADE`);
                 console.log('✅ parent_comment_id column ensured');

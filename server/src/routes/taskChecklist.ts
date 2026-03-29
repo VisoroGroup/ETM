@@ -51,12 +51,16 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
         [taskId, title.trim(), next_idx, req.user!.id]
     );
 
-    // Activity log (one entry, not per-item)
-    await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-         VALUES ($1, $2, 'checklist_updated', $3)`,
-        [taskId, req.user!.id, JSON.stringify({ action: 'item_added', title: title.trim() })]
-    );
+    // Activity log (non-blocking — don't let enum errors block the actual add)
+    try {
+        await pool.query(
+            `INSERT INTO activity_log (task_id, user_id, action_type, details)
+             VALUES ($1, $2, 'checklist_updated', $3)`,
+            [taskId, req.user!.id, JSON.stringify({ action: 'item_added', title: title.trim() })]
+        );
+    } catch (err) {
+        console.error('[checklist] Activity log failed (enum may be missing):', err);
+    }
 
     res.status(201).json(item);
 }));
