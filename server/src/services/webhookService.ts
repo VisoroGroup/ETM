@@ -96,25 +96,22 @@ async function sendWebhook(
                 [response.status, responseBody.substring(0, 1000), deliveryId]
             );
         } else {
-            await handleRetry(deliveryId, url, secret, payload, attempt,
+            await handleRetry(deliveryId, attempt,
                 `HTTP ${response.status}: ${responseBody.substring(0, 500)}`,
                 response.status
             );
         }
     } catch (err: any) {
-        await handleRetry(deliveryId, url, secret, payload, attempt,
+        await handleRetry(deliveryId, attempt,
             err.name === 'AbortError' ? 'Timeout (10s)' : err.message,
             null
         );
     }
 }
 
-// --- Retry logic ---
+// --- Retry logic (DB-persisted, no setTimeout) ---
 async function handleRetry(
     deliveryId: string,
-    url: string,
-    secret: string | null,
-    payload: WebhookPayload,
     attempt: number,
     errorMessage: string,
     responseStatus: number | null
@@ -125,25 +122,74 @@ async function handleRetry(
         await pool.query(
             `UPDATE webhook_deliveries
              SET status = 'retrying', error_message = $1, response_status = $2,
-                 next_retry_at = $3
-             WHERE id = $4`,
-            [errorMessage, responseStatus, nextRetry.toISOString(), deliveryId]
+                 next_retry_at = $3, attempt = $4
+             WHERE id = $5`,
+            [errorMessage, responseStatus, nextRetry.toISOString(), attempt, deliveryId]
         );
-        // Schedule retry
-        setTimeout(() => {
-            sendWebhook(deliveryId, url, secret, payload, attempt + 1).catch(err =>
-                console.error(`[WEBHOOK] Retry ${attempt + 1} for ${deliveryId} failed:`, err.message)
-            );
-        }, delay);
+        // No setTimeout — the retry processor will pick this up
     } else {
         // Max retries reached — mark as failed
         await pool.query(
             `UPDATE webhook_deliveries
-             SET status = 'failed', error_message = $1, response_status = $2
-             WHERE id = $3`,
-            [errorMessage, responseStatus, deliveryId]
+             SET status = 'failed', error_message = $1, response_status = $2, attempt = $3
+             WHERE id = $4`,
+            [errorMessage, responseStatus, attempt, deliveryId]
         );
         console.warn(`[WEBHOOK] Delivery ${deliveryId} permanently failed after ${attempt} attempts`);
+    }
+}
+
+// --- DB-based retry processor (call from app startup) ---
+let retryInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start polling for webhook retries every 30 seconds.
+ * Picks up deliveries where status = 'retrying' AND next_retry_at <= NOW().
+ * Survives server restarts because retry state is in the database.
+ */
+export function startWebhookRetryProcessor(): void {
+    if (retryInterval) return; // already running
+
+    const POLL_INTERVAL = 30_000; // 30 seconds
+
+    retryInterval = setInterval(async () => {
+        try {
+            // Find deliveries due for retry
+            const { rows: dueRetries } = await pool.query(`
+                SELECT wd.id, wd.payload, wd.attempt,
+                       ws.url, ws.secret
+                FROM webhook_deliveries wd
+                JOIN webhook_subscriptions ws ON ws.id = wd.subscription_id
+                WHERE wd.status = 'retrying' AND wd.next_retry_at <= NOW()
+                ORDER BY wd.next_retry_at ASC
+                LIMIT 10
+            `);
+
+            for (const row of dueRetries) {
+                const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+                const nextAttempt = (row.attempt || 1) + 1;
+
+                // Fire-and-forget each retry
+                sendWebhook(row.id, row.url, row.secret, payload, nextAttempt).catch(err =>
+                    console.error(`[WEBHOOK] Retry processor: delivery ${row.id} failed:`, err.message)
+                );
+            }
+        } catch (err: any) {
+            console.error('[WEBHOOK] Retry processor error:', err.message);
+        }
+    }, POLL_INTERVAL);
+
+    console.log('[WEBHOOK] Retry processor started (30s interval)');
+}
+
+/**
+ * Stop the retry processor (for graceful shutdown).
+ */
+export function stopWebhookRetryProcessor(): void {
+    if (retryInterval) {
+        clearInterval(retryInterval);
+        retryInterval = null;
+        console.log('[WEBHOOK] Retry processor stopped.');
     }
 }
 

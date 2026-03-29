@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import path from 'path';
 import pool from './config/database';
 import { runMigrations } from './database/migrate';
+import { startWebhookRetryProcessor } from './services/webhookService';
 
 // Init Sentry ASAP (before other imports so it can instrument them)
 import { initSentry, sentryErrorHandler } from './config/sentry';
@@ -250,6 +251,9 @@ app.listen(PORT, async () => {
     // Start email scheduler
     startEmailScheduler();
     startPaymentEmailScheduler();
+
+    // Start webhook retry processor (DB-based, survives restarts)
+    startWebhookRetryProcessor();
 });
 
 export default app;
