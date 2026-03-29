@@ -71,7 +71,7 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
             `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message)
              VALUES ($1, $2, 'daily_summary', 'failed', $3)`,
             [req.user!.id, [], err.message || 'Unknown error']
-        ).catch(() => {});
+        ).catch((logErr) => console.error('[EMAIL] Failed to log email error to DB:', logErr.message));
 
         res.status(500).json({
             error: 'Email send error: ' + (err.message || 'Unknown error'),
