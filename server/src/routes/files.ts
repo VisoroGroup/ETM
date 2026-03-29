@@ -1,5 +1,6 @@
 import { Router, Response, Request } from 'express';
 import pool from '../config/database';
+import { AuthRequest, authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
@@ -32,12 +33,13 @@ router.get('/avatar/:userId', async (req: Request, res: Response) => {
 
 /**
  * GET /api/files/attachment/:attachmentId
- * Serve task attachment from PostgreSQL. Requires auth via query token or cookie.
+ * Serve task attachment from PostgreSQL. Requires authentication.
+ * Admins/superadmins can access all; others must be task creator, assignee, or subtask assignee.
  */
-router.get('/attachment/:attachmentId', async (req: Request, res: Response) => {
+router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(
-            'SELECT file_data, file_mime, file_name FROM task_attachments WHERE id = $1',
+            'SELECT file_data, file_mime, file_name, task_id FROM task_attachments WHERE id = $1',
             [req.params.attachmentId]
         );
 
@@ -46,7 +48,25 @@ router.get('/attachment/:attachmentId', async (req: Request, res: Response) => {
             return;
         }
 
-        const { file_data, file_mime, file_name } = rows[0];
+        const { file_data, file_mime, file_name, task_id } = rows[0];
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
+
+        // Admin/superadmin can access all attachments
+        if (userRole !== 'admin' && userRole !== 'superadmin') {
+            // Check if user is task creator, assignee, or subtask assignee
+            const { rows: access } = await pool.query(`
+                SELECT 1 FROM tasks WHERE id = $1 AND deleted_at IS NULL AND (created_by = $2 OR assigned_to = $2)
+                UNION
+                SELECT 1 FROM subtasks WHERE task_id = $1 AND assigned_to = $2 AND deleted_at IS NULL
+            `, [task_id, userId]);
+
+            if (access.length === 0) {
+                res.status(403).json({ error: 'Nincs hozzáférésed ehhez a fájlhoz.' });
+                return;
+            }
+        }
+
         res.set('Content-Type', file_mime || 'application/octet-stream');
         res.set('Content-Disposition', `inline; filename="${encodeURIComponent(file_name)}"`);
         res.set('Cache-Control', 'private, max-age=3600');
