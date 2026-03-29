@@ -40,7 +40,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 due_date: dueDate,
                 department_label: department,
                 assigned_to: assignedTo || null,
-            } as any);
+            });
 
             // Set recurring if needed (non-blocking — task is already created)
             if (isRecurring && task.id) {

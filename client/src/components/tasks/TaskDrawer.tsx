@@ -377,7 +377,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 value={task.assigned_to || ''}
                                 onChange={(e) => {
                                     const val = e.target.value || null;
-                                    td.updateTask.mutate({ assigned_to: val } as any, {
+                                    td.updateTask.mutate({ assigned_to: val }, {
                                         onSuccess: () => { showToast(val ? 'Responsabil setat' : 'Responsabil eliminat'); onUpdate(); },
                                         onError: () => showToast('Eroare', 'error'),
                                     });

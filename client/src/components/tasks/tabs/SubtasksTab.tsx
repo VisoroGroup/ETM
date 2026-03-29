@@ -49,7 +49,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
 
     async function assignSubtask(subtaskId: string, userId: string | null) {
         try {
-            await subtasksApi.update(taskId, subtaskId, { assigned_to: userId } as any);
+            await subtasksApi.update(taskId, subtaskId, { assigned_to: userId });
             onReload();
             onUpdate();
         } catch {
@@ -69,7 +69,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
 
     async function changePriority(subtaskId: string, priority: 'low' | 'medium' | 'high') {
         try {
-            await subtasksApi.update(taskId, subtaskId, { priority } as any);
+            await subtasksApi.update(taskId, subtaskId, { priority });
             onReload();
         } catch {
             showToast('Eroare', 'error');
@@ -78,7 +78,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
 
     async function changeDueDate(subtaskId: string, due_date: string | null) {
         try {
-            await subtasksApi.update(taskId, subtaskId, { due_date } as any);
+            await subtasksApi.update(taskId, subtaskId, { due_date });
             onReload();
         } catch {
             showToast('Eroare', 'error');
@@ -147,7 +147,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                             {/* Priority */}
                                             <select
                                                 value={subtask.priority || 'medium'}
-                                                onChange={e => changePriority(subtask.id, e.target.value as any)}
+                                                onChange={e => changePriority(subtask.id, e.target.value)}
                                                 onClick={e => e.stopPropagation()}
                                                 className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[70px]"
                                             >

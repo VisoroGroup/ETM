@@ -56,7 +56,7 @@ export function useTaskDetail(taskId: string) {
     // Update fields (title, description, department)
     const updateTask = useMutation({
         mutationFn: (data: Partial<Pick<TaskDetail, 'title' | 'description' | 'department_label'>>) =>
-            tasksApi.update(taskId, data as any),
+            tasksApi.update(taskId, data),
         onMutate: async (data) => {
             await queryClient.cancelQueries({ queryKey: TASK_KEY(taskId) });
             const ctx = snapshot();
@@ -133,7 +133,7 @@ export function useTaskDetail(taskId: string) {
     // Update subtask (assign, priority, due_date)
     const updateSubtask = useMutation({
         mutationFn: ({ subtaskId, data }: { subtaskId: string; data: Partial<Subtask> }) =>
-            subtasksApi.update(taskId, subtaskId, data as any),
+            subtasksApi.update(taskId, subtaskId, data),
         onMutate: async ({ subtaskId, data }) => {
             await queryClient.cancelQueries({ queryKey: TASK_KEY(taskId) });
             const ctx = snapshot();

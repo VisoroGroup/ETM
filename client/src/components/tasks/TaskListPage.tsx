@@ -90,7 +90,7 @@ export default function TaskListPage() {
     }, [filters]);
 
     useEffect(() => {
-        const state = location.state as any;
+        const state = location.state;
         if (state?.openTaskId) {
             setSelectedTaskId(state.openTaskId);
             window.history.replaceState({}, document.title);
@@ -236,7 +236,7 @@ export default function TaskListPage() {
         let ok = 0;
         const failed: string[] = [];
         for (const id of selectedIds) {
-            try { await tasksApi.update(id, { assigned_to: userId } as any); ok++; } catch {
+            try { await tasksApi.update(id, { assigned_to: userId }); ok++; } catch {
                 const t = tasks.find(t => t.id === id);
                 failed.push(t?.title || id);
             }
@@ -253,7 +253,7 @@ export default function TaskListPage() {
     async function changeDepartment(taskId: string, dept: Department) {
         setDeptDropdownId(null);
         try {
-            await tasksApi.update(taskId, { department_label: dept } as any);
+            await tasksApi.update(taskId, { department_label: dept });
             setTasks(prev => prev.map(t => t.id === taskId ? { ...t, department_label: dept } : t));
             showToast(`Departament actualizat`);
         } catch {
@@ -266,7 +266,7 @@ export default function TaskListPage() {
         let ok = 0;
         const failed: string[] = [];
         for (const id of selectedIds) {
-            try { await tasksApi.update(id, { department_label: dept } as any); ok++; } catch {
+            try { await tasksApi.update(id, { department_label: dept }); ok++; } catch {
                 const t = tasks.find(t => t.id === id);
                 failed.push(t?.title || id);
             }
