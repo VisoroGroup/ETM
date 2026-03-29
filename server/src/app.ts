@@ -182,17 +182,20 @@ app.listen(PORT, async () => {
             `);
             console.log('✅ comment_reactions table ensured');
 
-            // Step 4: Ensure checklist_updated action_type exists
-            try {
-                await client.query(`ALTER TYPE action_type ADD VALUE IF NOT EXISTS 'checklist_updated'`);
-                console.log('✅ checklist_updated action_type ensured');
-            } catch (enumErr: any) {
-                if (enumErr?.message?.includes('already exists')) {
-                    console.log('✅ checklist_updated action_type already exists');
-                } else {
-                    console.error('⚠️ action_type ALTER error:', enumErr?.message);
-                }
+            // Step 4: Ensure ALL action_type enum values exist
+            const requiredActionTypes = [
+                'checklist_updated', 'description_changed', 'task_deleted',
+                'dependency_added', 'dependency_removed', 'dependency_resolved',
+                'alert_added', 'alert_resolved', 'title_changed',
+                'assigned_to_changed', 'department_changed',
+                'task_created', 'task_duplicated', 'attachment_read'
+            ];
+            for (const val of requiredActionTypes) {
+                try {
+                    await client.query(`ALTER TYPE action_type ADD VALUE IF NOT EXISTS '${val}'`);
+                } catch {}
             }
+            console.log('✅ all action_type enum values ensured');
 
             // Step 5: Ensure quarterly + yearly recurring_frequency exists
             try {

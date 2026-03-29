@@ -75,9 +75,17 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
         conditions.push(`t.status != 'terminat'`);
     }
 
-    // Status filter (comma-separated)
+    // Status filter (comma-separated) — validate against known statuses
     if (status) {
-        const statuses = (status as string).split(',');
+        const validStatuses = ['de_rezolvat', 'in_realizare', 'terminat', 'blocat'];
+        const statuses = (status as string).split(',').filter(s => validStatuses.includes(s));
+        if (statuses.length === 0) {
+            res.status(400).json({
+                error: `Status invalid: "${status}". Valori acceptate: ${validStatuses.join(', ')}`,
+                valid_statuses: validStatuses.map(s => ({ value: s, label: STATUSES[s as TaskStatus]?.label })),
+            });
+            return;
+        }
         conditions.push(`t.status = ANY($${paramIndex++})`);
         values.push(statuses);
     }
@@ -168,6 +176,12 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
         limit: limitNum,
         total_pages: Math.ceil(parseInt(countRows[0].count) / limitNum),
     });
+}));
+
+// GET /api/v1/tasks/summary — redirect to /summary (common MCP mistake)
+// MUST be before /tasks/:id to avoid matching 'summary' as a UUID
+router.get('/tasks/summary', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    res.redirect(307, '/api/v1/summary');
 }));
 
 // ==========================================
@@ -482,17 +496,21 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
             limit
         );
 
-        // Activity log
-        await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'attachment_read', $3)`,
-            [attachment.task_id, req.user!.id, JSON.stringify({
-                attachment_id: attachment.id,
-                filename: attachment.file_name,
-                format,
-                via: 'api_v1'
-            })]
-        );
+        // Activity log (non-blocking)
+        try {
+            await pool.query(
+                `INSERT INTO activity_log (task_id, user_id, action_type, details)
+                 VALUES ($1, $2, 'attachment_read', $3)`,
+                [attachment.task_id, req.user!.id, JSON.stringify({
+                    attachment_id: attachment.id,
+                    filename: attachment.file_name,
+                    format,
+                    via: 'api_v1'
+                })]
+            );
+        } catch (logErr) {
+            console.error('[externalApi] attachment_read log failed:', logErr);
+        }
 
         res.json(result);
     } catch (err: any) {
