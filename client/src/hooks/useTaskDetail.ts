@@ -55,7 +55,7 @@ export function useTaskDetail(taskId: string) {
 
     // Update fields (title, description, department)
     const updateTask = useMutation({
-        mutationFn: (data: Partial<Pick<TaskDetail, 'title' | 'description' | 'department_label'>>) =>
+        mutationFn: (data: Partial<Pick<TaskDetail, 'title' | 'description' | 'department_label' | 'assigned_to'>>) =>
             tasksApi.update(taskId, data),
         onMutate: async (data) => {
             await queryClient.cancelQueries({ queryKey: TASK_KEY(taskId) });

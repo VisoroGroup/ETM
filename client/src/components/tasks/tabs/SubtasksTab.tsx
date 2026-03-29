@@ -147,7 +147,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                             {/* Priority */}
                                             <select
                                                 value={subtask.priority || 'medium'}
-                                                onChange={e => changePriority(subtask.id, e.target.value)}
+                                                onChange={e => changePriority(subtask.id, e.target.value as 'low' | 'medium' | 'high')}
                                                 onClick={e => e.stopPropagation()}
                                                 className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[70px]"
                                             >
