@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue } from '../../utils/helpers';
@@ -24,6 +24,10 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
     const { showToast } = useToast();
     const [draggingId, setDraggingId] = useState<string | null>(null);
 
+    // Local tasks copy for optimistic updates
+    const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
+    useEffect(() => { setLocalTasks(tasks); }, [tasks]);
+
     // Blocat modal state
     const [blocatModal, setBlocatModal] = useState<{ taskId: string; taskTitle: string } | null>(null);
     const [blocatReason, setBlocatReason] = useState('');
@@ -35,7 +39,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         blocat: [],
         terminat: [],
     };
-    for (const t of tasks) {
+    for (const t of localTasks) {
         if (grouped[t.status]) grouped[t.status].push(t);
     }
 
@@ -44,7 +48,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         if (!result.destination) return;
         const newStatus = result.destination.droppableId as TaskStatus;
         const taskId = result.draggableId;
-        const task = tasks.find(t => t.id === taskId);
+        const task = localTasks.find(t => t.id === taskId);
         if (!task || task.status === newStatus) return;
 
         if (newStatus === 'blocat') {
@@ -54,11 +58,17 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
             return;
         }
 
+        // Optimistic update — move card instantly
+        const previousStatus = task.status;
+        setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+
         try {
             await tasksApi.changeStatus(taskId, newStatus);
             showToast(`„${task.title}" → ${STATUSES[newStatus].label}`);
             onUpdate();
         } catch (err: any) {
+            // Revert on failure
+            setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: previousStatus } : t));
             showToast(err.response?.data?.error || 'Eroare la schimbarea statusului', 'error');
         }
     }
