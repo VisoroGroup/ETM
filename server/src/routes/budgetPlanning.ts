@@ -74,6 +74,12 @@ router.post('/categories', asyncHandler(async (req: AuthRequest, res: Response) 
 
 // DELETE /api/budget/categories/:id — delete category (cascades entries)
 router.delete('/categories/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(req.params.id)) {
+        res.status(400).json({ error: 'Érvénytelen kategória ID formátum.' });
+        return;
+    }
+
     const { rows } = await pool.query(
         'DELETE FROM budget_categories WHERE id = $1 RETURNING *',
         [req.params.id]

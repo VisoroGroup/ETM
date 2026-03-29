@@ -18,9 +18,10 @@ export default function ClientInvoicesPage() {
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {
-        const observer = new MutationObserver(() => setDarkMode(document.documentElement.classList.contains('dark')));
+        let mounted = true;
+        const observer = new MutationObserver(() => { if (mounted) setDarkMode(document.documentElement.classList.contains('dark')); });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => observer.disconnect();
+        return () => { mounted = false; observer.disconnect(); };
     }, []);
 
     const [search, setSearch] = useState('');

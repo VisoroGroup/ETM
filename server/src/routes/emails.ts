@@ -46,6 +46,12 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
         const targetEmail = to || req.user!.email;
         const targetName = name || req.user!.display_name;
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (targetEmail && !emailRegex.test(targetEmail)) {
+            res.status(400).json({ error: 'Format de email invalid.' });
+            return;
+        }
+
         if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
             res.status(400).json({
                 error: 'Azure credentials not set. Add AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET and GRAPH_SENDER_EMAIL in Railway Variables.'

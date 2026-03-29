@@ -29,9 +29,10 @@ export default function BankImportPage() {
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {
-        const observer = new MutationObserver(() => setDarkMode(document.documentElement.classList.contains('dark')));
+        let mounted = true;
+        const observer = new MutationObserver(() => { if (mounted) setDarkMode(document.documentElement.classList.contains('dark')); });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => observer.disconnect();
+        return () => { mounted = false; observer.disconnect(); };
     }, []);
 
     const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
@@ -204,9 +205,9 @@ function UploadArea({ darkMode, onUpload, onImportCreated }: {
 function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMode: boolean; onBack: () => void }) {
     const { data, isLoading } = useBankImportDetail(importId);
     const runMatch = useRunMatching();
-    const approveRow = useApproveRow();
-    const assignRow = useAssignRow();
-    const skipRow = useSkipRow();
+    const approveRow = useApproveRow(importId);
+    const assignRow = useAssignRow(importId);
+    const skipRow = useSkipRow(importId);
     const approveAll = useApproveAll();
     const complete = useCompleteImport();
     const [assigningRowId, setAssigningRowId] = useState<string | null>(null);

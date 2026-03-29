@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBudgetCategories, useBudgetEntries, useBudgetSummary, useUpsertEntry, useAddCategory, useDeleteCategory, BudgetCategory, BudgetEntry } from '../../services/budget';
 import { useAuth } from '../../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
@@ -125,9 +125,10 @@ export default function BudgetPlanningPage() {
         return saved === null ? true : saved === 'true';
     });
     useEffect(() => {
-        const observer = new MutationObserver(() => setDarkMode(document.documentElement.classList.contains('dark')));
+        let mounted = true;
+        const observer = new MutationObserver(() => { if (mounted) setDarkMode(document.documentElement.classList.contains('dark')); });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => observer.disconnect();
+        return () => { mounted = false; observer.disconnect(); };
     }, []);
 
     const [year, setYear] = useState(new Date().getFullYear());
@@ -162,16 +163,25 @@ export default function BudgetPlanningPage() {
         return { ...e, planned: parseFloat(e.planned as any) || 0, actual: parseFloat(e.actual as any) || 0 };
     };
 
+    const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
     const handleSave = (catId: string, week: number | null, field: 'planned' | 'actual', value: number) => {
-        const existing = getEntry(catId, week);
-        upsert.mutate({
-            category_id: catId,
-            year,
-            month,
-            week,
-            planned: field === 'planned' ? value : existing.planned,
-            actual: field === 'actual' ? value : existing.actual,
-        });
+        const key = `${catId}_${week ?? 'total'}_${field}`;
+        const prev = saveTimers.current.get(key);
+        if (prev) clearTimeout(prev);
+
+        saveTimers.current.set(key, setTimeout(() => {
+            saveTimers.current.delete(key);
+            const existing = getEntry(catId, week);
+            upsert.mutate({
+                category_id: catId,
+                year,
+                month,
+                week,
+                planned: field === 'planned' ? value : existing.planned,
+                actual: field === 'actual' ? value : existing.actual,
+            });
+        }, 500));
     };
 
     const toggleSection = (section: string) => {

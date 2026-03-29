@@ -18,18 +18,18 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     let idx = 1;
 
     if (client_name) {
-        conditions.push(`client_name ILIKE $${idx++}`);
+        conditions.push(`ci.client_name ILIKE $${idx++}`);
         values.push(`%${client_name}%`);
     }
 
     if (is_paid === 'true') {
-        conditions.push('is_paid = true');
+        conditions.push('ci.is_paid = true');
     } else if (is_paid === 'false') {
-        conditions.push('is_paid = false');
+        conditions.push('ci.is_paid = false');
     }
 
     if (search) {
-        conditions.push(`(client_name ILIKE $${idx} OR invoice_number ILIKE $${idx} OR notes ILIKE $${idx})`);
+        conditions.push(`(ci.client_name ILIKE $${idx} OR ci.invoice_number ILIKE $${idx} OR ci.notes ILIKE $${idx})`);
         values.push(`%${search}%`);
         idx++;
     }

@@ -255,7 +255,7 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
 }));
 
 // PUT /api/tasks/:id/status — change status
-router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: AuthRequest, res: Response) => {
+router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
@@ -495,10 +495,10 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
         console.error('Error changing status:', err);
         res.status(500).json({ error: 'Eroare la schimbarea statusului.' });
     }
-});
+}));
 
 // PUT /api/tasks/:id/due-date — change due date (reason mandatory)
-router.put('/:id/due-date', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { due_date, reason } = req.body;
@@ -578,7 +578,7 @@ router.put('/:id/due-date', authMiddleware, async (req: AuthRequest, res: Respon
         console.error('Error changing due date:', err);
         res.status(500).json({ error: 'Eroare la schimbarea datei limită.' });
     }
-});
+}));
 
 // DELETE /api/tasks/:id — soft delete task
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {

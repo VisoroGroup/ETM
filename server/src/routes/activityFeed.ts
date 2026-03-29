@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 router.use(authMiddleware);
 
 // GET /api/activity-feed — global activity feed with filters and pagination
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
         const {
             user_id,
@@ -123,6 +124,6 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         console.error('Activity feed error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea fluxului de activitate.' });
     }
-});
+}));
 
 export default router;

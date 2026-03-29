@@ -26,7 +26,9 @@ export async function runDailyPaymentEmailJob() {
         return;
     }
 
-    console.log(`💳 Running daily payment email job for ${today.toISOString().split('T')[0]}`);
+    const todayStr = todayLocal();
+
+    console.log(`💳 Running daily payment email job for ${todayStr}`);
 
     try {
         const client = await pool.connect();
@@ -42,13 +44,13 @@ export async function runDailyPaymentEmailJob() {
                   AND pr.actual_sent_date::date <= $1::date
                   AND p.status = 'de_platit'
                   AND p.deleted_at IS NULL
-            `, [today.toISOString()]);
+            `, [todayStr]);
 
             // 2. Get overdue payments for the "every 2 working days" logic
             const { rows: allOverdue } = await client.query(`
                 SELECT * FROM payments 
-                WHERE status = 'de_platit' AND due_date < $1 AND deleted_at IS NULL
-            `, [today.toISOString()]);
+                WHERE status = 'de_platit' AND due_date::date < $1::date AND deleted_at IS NULL
+            `, [todayStr]);
 
             // Track which payments shouldn't be processed twice
             const processedPaymentIds = new Set<string>();
@@ -145,7 +147,7 @@ export async function runDailyPaymentEmailJob() {
                     await client.query(`
                         INSERT INTO payment_reminders (id, payment_id, reminder_type, scheduled_date, actual_sent_date, sent, sent_at)
                         VALUES (gen_random_uuid(), $1, 'overdue', $2, $2, true, NOW())
-                    `, [payment.id, today.toISOString()]);
+                    `, [payment.id, todayStr]);
                 }
             }
 
@@ -166,7 +168,7 @@ export async function runDailyPaymentEmailJob() {
                     (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'platit' AND deleted_at IS NULL AND paid_at >= date_trunc('month', current_date) AND paid_at < (date_trunc('month', current_date) + interval '1 month')) as paid_month
                 FROM payments WHERE status = 'de_platit' AND deleted_at IS NULL
             `);
-            const totalToPayMonth = parseFloat(summaryRows[0]?.to_pay_month ?? '0') || 0 + (parseFloat(summaryRows[0]?.paid_month ?? '0') || 0);
+            const totalToPayMonth = (parseFloat(summaryRows[0]?.to_pay_month ?? '0') || 0) + (parseFloat(summaryRows[0]?.paid_month ?? '0') || 0);
             const paidMonth = parseFloat(summaryRows[0]?.paid_month ?? '0') || 0;
             const remainingMonth = totalToPayMonth - paidMonth;
 

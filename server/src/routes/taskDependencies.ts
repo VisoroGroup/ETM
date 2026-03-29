@@ -43,6 +43,12 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
         return;
     }
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(blocking_task_id) || !uuidRegex.test(blocked_task_id)) {
+        res.status(400).json({ error: 'Invalid task ID format.' });
+        return;
+    }
+
     if (blocking_task_id === blocked_task_id) {
         res.status(400).json({ error: 'Un task nu se poate bloca pe sine.' });
         return;

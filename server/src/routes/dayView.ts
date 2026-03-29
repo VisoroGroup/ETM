@@ -78,71 +78,88 @@ router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandl
 }));
 
 async function getDayViewData(date: string): Promise<DayViewUser[]> {
-    // Get all active users
+    // Batch query 1: all active users
     const { rows: users } = await pool.query(
         `SELECT id, display_name, email, avatar_url FROM users WHERE is_active = true ORDER BY display_name`
     );
 
-    const result: DayViewUser[] = [];
+    // Batch query 2: all tasks due on this date (with assigned user)
+    const { rows: allTasks } = await pool.query(`
+        SELECT t.id, t.title, t.status, t.due_date, t.description, t.department_label, t.assigned_to
+        FROM tasks t
+        WHERE t.deleted_at IS NULL
+          AND t.status != 'terminat'
+          AND t.due_date::date = $1::date
+        ORDER BY
+            CASE t.status
+                WHEN 'blocat' THEN 1
+                WHEN 'in_realizare' THEN 2
+                WHEN 'de_rezolvat' THEN 3
+            END,
+            t.due_date ASC
+    `, [date]);
 
-    for (const user of users) {
-        // Tasks assigned to this user with due_date = date AND not completed
-        const { rows: tasks } = await pool.query(`
-            SELECT t.id, t.title, t.status, t.due_date, t.description, t.department_label
-            FROM tasks t
-            WHERE t.deleted_at IS NULL
-              AND t.status != 'terminat'
-              AND t.assigned_to = $1
-              AND t.due_date::date = $2::date
-            ORDER BY
-                CASE t.status
-                    WHEN 'blocat' THEN 1
-                    WHEN 'in_realizare' THEN 2
-                    WHEN 'de_rezolvat' THEN 3
-                END,
-                t.due_date ASC
-        `, [user.id, date]);
+    // Batch query 3: all subtask-based tasks for this date (user has subtask due, but task not directly assigned)
+    const { rows: subtaskTasks } = await pool.query(`
+        SELECT DISTINCT t.id, t.title, t.status, t.due_date, t.description, t.department_label,
+               s.assigned_to
+        FROM tasks t
+        JOIN subtasks s ON s.task_id = t.id
+        WHERE t.deleted_at IS NULL
+          AND t.status != 'terminat'
+          AND s.is_completed = false
+          AND s.due_date::date = $1::date
+          AND s.deleted_at IS NULL
+        ORDER BY t.title
+    `, [date]);
 
-        // Also get tasks where the user has subtasks due on this date
-        const { rows: subtaskTasks } = await pool.query(`
-            SELECT DISTINCT t.id, t.title, t.status, t.due_date, t.description, t.department_label
-            FROM tasks t
-            JOIN subtasks s ON s.task_id = t.id
-            WHERE t.deleted_at IS NULL
-              AND t.status != 'terminat'
-              AND s.is_completed = false
-              AND s.assigned_to = $1
-              AND s.due_date::date = $2::date
-              AND t.id NOT IN (
-                  SELECT t2.id FROM tasks t2
-                  WHERE t2.deleted_at IS NULL AND t2.assigned_to = $1 AND t2.due_date::date = $2::date
-              )
-            ORDER BY t.title
-        `, [user.id, date]);
-
-        const allTasks = [...tasks, ...subtaskTasks];
-
-        // For each task, get its subtasks
-        for (const task of allTasks) {
-            const { rows: subtasks } = await pool.query(`
-                SELECT title, is_completed, due_date
-                FROM subtasks
-                WHERE task_id = $1
-                ORDER BY order_index
-            `, [task.id]);
-            task.subtasks = subtasks;
+    // Batch query 4: all subtasks for relevant task IDs
+    const allTaskIds = new Set([...allTasks.map(t => t.id), ...subtaskTasks.map(t => t.id)]);
+    const subtaskMap = new Map<string, any[]>();
+    if (allTaskIds.size > 0) {
+        const { rows: subtasks } = await pool.query(`
+            SELECT task_id, title, is_completed, due_date
+            FROM subtasks
+            WHERE task_id = ANY($1::uuid[]) AND deleted_at IS NULL
+            ORDER BY order_index
+        `, [Array.from(allTaskIds)]);
+        for (const s of subtasks) {
+            if (!subtaskMap.has(s.task_id)) subtaskMap.set(s.task_id, []);
+            subtaskMap.get(s.task_id)!.push(s);
         }
-
-        result.push({
-            id: user.id,
-            display_name: user.display_name,
-            email: user.email,
-            avatar_url: user.avatar_url,
-            tasks: allTasks,
-        });
     }
 
-    return result;
+    // Group tasks by user
+    const userTaskMap = new Map<string, any[]>();
+    const directTaskIdsByUser = new Map<string, Set<string>>();
+
+    for (const task of allTasks) {
+        if (!task.assigned_to) continue;
+        if (!userTaskMap.has(task.assigned_to)) userTaskMap.set(task.assigned_to, []);
+        if (!directTaskIdsByUser.has(task.assigned_to)) directTaskIdsByUser.set(task.assigned_to, new Set());
+        const t = { ...task, subtasks: subtaskMap.get(task.id) || [] };
+        userTaskMap.get(task.assigned_to)!.push(t);
+        directTaskIdsByUser.get(task.assigned_to)!.add(task.id);
+    }
+
+    // Add subtask-based tasks (only if not already direct-assigned)
+    for (const task of subtaskTasks) {
+        if (!task.assigned_to) continue;
+        const directIds = directTaskIdsByUser.get(task.assigned_to);
+        if (directIds && directIds.has(task.id)) continue;
+        if (!userTaskMap.has(task.assigned_to)) userTaskMap.set(task.assigned_to, []);
+        const t = { ...task, subtasks: subtaskMap.get(task.id) || [] };
+        userTaskMap.get(task.assigned_to)!.push(t);
+    }
+
+    // Build result
+    return users.map(user => ({
+        id: user.id,
+        display_name: user.display_name,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        tasks: userTaskMap.get(user.id) || [],
+    }));
 }
 
 async function generateDayViewPDF(res: Response, userData: DayViewUser, date: string) {

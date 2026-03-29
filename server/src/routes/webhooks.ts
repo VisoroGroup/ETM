@@ -191,6 +191,14 @@ router.get('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest,
 // POST /api/webhooks — create subscription (admin only)
 router.post('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const parsed = createWebhookSchema.parse(req.body);
+
+    // Async DNS validation — block internal/private IPs
+    const dnsResult = await validateWebhookUrlDns(parsed.url);
+    if (!dnsResult.valid) {
+        res.status(400).json({ error: dnsResult.error || 'URL DNS validation failed.' });
+        return;
+    }
+
     const { rows } = await pool.query(`
         INSERT INTO webhook_subscriptions (url, event_type, secret, description, created_by)
         VALUES ($1, $2, $3, $4, $5)
@@ -206,7 +214,15 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
     const values: any[] = [];
     let idx = 1;
 
-    if (parsed.url !== undefined) { fields.push(`url = $${idx++}`); values.push(parsed.url); }
+    if (parsed.url !== undefined) {
+        // Async DNS validation for URL changes
+        const dnsResult = await validateWebhookUrlDns(parsed.url);
+        if (!dnsResult.valid) {
+            res.status(400).json({ error: dnsResult.error || 'URL DNS validation failed.' });
+            return;
+        }
+        fields.push(`url = $${idx++}`); values.push(parsed.url);
+    }
     if (parsed.event_type !== undefined) { fields.push(`event_type = $${idx++}`); values.push(parsed.event_type); }
     if (parsed.secret !== undefined) { fields.push(`secret = $${idx++}`); values.push(parsed.secret); }
     if (parsed.description !== undefined) { fields.push(`description = $${idx++}`); values.push(parsed.description); }

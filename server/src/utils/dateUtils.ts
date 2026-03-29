@@ -71,8 +71,11 @@ export function subtractWorkingDays(date: Date, days: number): Date {
  */
 export function daysDiff(a: Date, b: Date): number {
     const msPerDay = 86400000;
-    const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
-    const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    // Compare dates in the app timezone to avoid midnight UTC drift
+    const strA = toLocalDateStr(a);
+    const strB = toLocalDateStr(b);
+    const utcA = new Date(strA + 'T00:00:00Z').getTime();
+    const utcB = new Date(strB + 'T00:00:00Z').getTime();
     return Math.floor((utcB - utcA) / msPerDay);
 }
 

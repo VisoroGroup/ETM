@@ -244,44 +244,56 @@ router.put('/rows/:rowId/assign', asyncHandler(async (req: AuthRequest, res: Res
         return;
     }
 
-    if (payment_id) {
-        // Link to existing payment
-        await pool.query(`
-            UPDATE bank_statement_rows SET
-                matched_payment_id = $1, match_status = 'matched', match_confidence = 100, match_reason = 'Manuális párosítás',
-                category_suggestion = $2, approved = true, approved_by = $3, approved_at = NOW()
-            WHERE id = $4
-        `, [payment_id, category || null, req.user!.id, req.params.rowId]);
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
 
-        // Mark payment as paid
-        await pool.query(`
-            UPDATE payments SET status = 'platit', paid_at = COALESCE($1, NOW()), paid_by = $2, updated_at = NOW()
-            WHERE id = $3 AND status != 'platit'
-        `, [row.transaction_date, req.user!.id, payment_id]);
-    } else {
-        // Create new payment from transaction
-        const amount = row.debit ? parseFloat(row.debit) : parseFloat(row.credit);
-        const isIncome = !row.debit && row.credit;
-        const paymentTitle = title || row.counterparty || row.description?.substring(0, 100) || 'Importált tétel';
+        if (payment_id) {
+            // Link to existing payment
+            await client.query(`
+                UPDATE bank_statement_rows SET
+                    matched_payment_id = $1, match_status = 'matched', match_confidence = 100, match_reason = 'Manuális párosítás',
+                    category_suggestion = $2, approved = true, approved_by = $3, approved_at = NOW()
+                WHERE id = $4
+            `, [payment_id, category || null, req.user!.id, req.params.rowId]);
 
-        const newPaymentId = uuidv4();
-        await pool.query(`
-            INSERT INTO payments (id, title, amount, currency, category, beneficiary_name, due_date, status, paid_at, paid_by, created_by)
-            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE), 'platit', COALESCE($7, NOW()), $8, $8)
-        `, [
-            newPaymentId, paymentTitle, amount, row.currency || 'RON',
-            category || (isIncome ? 'incasare_client' : 'partener_furnizor'),
-            row.counterparty || null,
-            row.transaction_date,
-            req.user!.id,
-        ]);
+            // Mark payment as paid
+            await client.query(`
+                UPDATE payments SET status = 'platit', paid_at = COALESCE($1, NOW()), paid_by = $2, updated_at = NOW()
+                WHERE id = $3 AND status != 'platit'
+            `, [row.transaction_date, req.user!.id, payment_id]);
+        } else {
+            // Create new payment from transaction
+            const amount = row.debit ? parseFloat(row.debit) : parseFloat(row.credit);
+            const isIncome = !row.debit && row.credit;
+            const paymentTitle = title || row.counterparty || row.description?.substring(0, 100) || 'Importált tétel';
 
-        await pool.query(`
-            UPDATE bank_statement_rows SET
-                matched_payment_id = $1, match_status = 'created', match_confidence = 100, match_reason = 'Manuálisan létrehozva',
-                category_suggestion = $2, approved = true, approved_by = $3, approved_at = NOW()
-            WHERE id = $4
-        `, [newPaymentId, category, req.user!.id, req.params.rowId]);
+            const newPaymentId = uuidv4();
+            await client.query(`
+                INSERT INTO payments (id, title, amount, currency, category, beneficiary_name, due_date, status, paid_at, paid_by, created_by)
+                VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE), 'platit', COALESCE($7, NOW()), $8, $8)
+            `, [
+                newPaymentId, paymentTitle, amount, row.currency || 'RON',
+                category || (isIncome ? 'incasare_client' : 'partener_furnizor'),
+                row.counterparty || null,
+                row.transaction_date,
+                req.user!.id,
+            ]);
+
+            await client.query(`
+                UPDATE bank_statement_rows SET
+                    matched_payment_id = $1, match_status = 'created', match_confidence = 100, match_reason = 'Manuálisan létrehozva',
+                    category_suggestion = $2, approved = true, approved_by = $3, approved_at = NOW()
+                WHERE id = $4
+            `, [newPaymentId, category, req.user!.id, req.params.rowId]);
+        }
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
 
     res.json({ message: 'Sor feldolgozva.' });

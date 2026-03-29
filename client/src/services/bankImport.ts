@@ -94,7 +94,7 @@ export function useRunMatching() {
     });
 }
 
-export function useApproveRow() {
+export function useApproveRow(importId: string | null) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async (rowId: string) => {
@@ -102,12 +102,12 @@ export function useApproveRow() {
             return data;
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['bank-import-detail'] });
+            if (importId) qc.invalidateQueries({ queryKey: ['bank-import-detail', importId] });
         },
     });
 }
 
-export function useAssignRow() {
+export function useAssignRow(importId: string | null) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async ({ rowId, ...body }: { rowId: string; category?: string; title?: string; payment_id?: string }) => {
@@ -115,12 +115,12 @@ export function useAssignRow() {
             return data;
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['bank-import-detail'] });
+            if (importId) qc.invalidateQueries({ queryKey: ['bank-import-detail', importId] });
         },
     });
 }
 
-export function useSkipRow() {
+export function useSkipRow(importId: string | null) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: async (rowId: string) => {
@@ -128,7 +128,7 @@ export function useSkipRow() {
             return data;
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['bank-import-detail'] });
+            if (importId) qc.invalidateQueries({ queryKey: ['bank-import-detail', importId] });
         },
     });
 }
