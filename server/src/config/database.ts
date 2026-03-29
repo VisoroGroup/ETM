@@ -18,19 +18,26 @@ function getSslConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
     const caCert = process.env.DATABASE_CA_CERT;
     const dbUrl = process.env.DATABASE_URL || '';
     const isProduction = process.env.NODE_ENV === 'production';
+    const isRailway = dbUrl.includes('railway') || !!process.env.RAILWAY_ENVIRONMENT;
 
     if (caCert) {
-        // CA certificate provided — most secure option
+        // CA certificate provided — most secure option, works everywhere
         return { rejectUnauthorized: true, ca: caCert };
     }
 
-    if (isProduction || dbUrl.includes('railway.app')) {
-        // Production: always verify certificates
-        // If Railway or hosting provider uses valid certs, this works out of the box.
-        // Set DATABASE_SSL_REJECT=false ONLY if you absolutely must (self-signed staging certs).
+    if (isRailway) {
+        // Railway PostgreSQL uses self-signed certificates and does not
+        // provide a CA cert. rejectUnauthorized: false is required here.
+        // This is safe within Railway's private network.
+        return { rejectUnauthorized: false };
+    }
+
+    if (isProduction) {
+        // Non-Railway production: verify certificates strictly.
+        // Set DATABASE_SSL_REJECT=false only for staging with self-signed certs.
         const allowInsecure = process.env.DATABASE_SSL_REJECT === 'false';
         if (allowInsecure) {
-            console.warn('⚠️  DATABASE_SSL_REJECT=false — SSL cert verification DISABLED. Do NOT use in production!');
+            console.warn('⚠️  DATABASE_SSL_REJECT=false — SSL cert verification DISABLED.');
         }
         return { rejectUnauthorized: !allowInsecure };
     }
