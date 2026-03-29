@@ -32,27 +32,19 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
             case 'yearly': nextRunDate.setFullYear(nextRunDate.getFullYear() + 1); break;
         }
 
-        // Check if recurring already exists
-        const { rows: existing } = await pool.query(
-            'SELECT id FROM recurring_tasks WHERE template_task_id = $1', [taskId]
-        );
-
-        let result;
-        if (existing.length > 0) {
-            const { rows } = await pool.query(
-                `UPDATE recurring_tasks SET frequency = $1, next_run_date = $2, is_active = true, workdays_only = $3, updated_at = NOW()
-         WHERE template_task_id = $4 RETURNING *`,
-                [frequency, nextRunDate.toISOString().split('T')[0], workdays_only, taskId]
-            );
-            result = rows[0];
-        } else {
-            const { rows } = await pool.query(
-                `INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, workdays_only, created_by)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-                [taskId, frequency, nextRunDate.toISOString().split('T')[0], workdays_only, req.user!.id]
-            );
-            result = rows[0];
-        }
+        // Atomic upsert — no race condition between concurrent requests
+        const { rows } = await pool.query(`
+            INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, workdays_only, created_by)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (template_task_id) DO UPDATE SET
+                frequency = EXCLUDED.frequency,
+                next_run_date = EXCLUDED.next_run_date,
+                is_active = true,
+                workdays_only = EXCLUDED.workdays_only,
+                updated_at = NOW()
+            RETURNING *
+        `, [taskId, frequency, nextRunDate.toISOString().split('T')[0], workdays_only, req.user!.id]);
+        const result = rows[0];
 
         // Activity log
         await pool.query(
