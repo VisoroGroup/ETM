@@ -30,6 +30,8 @@ import dayViewRoutes from './routes/dayView';
 import externalApiRoutes from './routes/externalApi';
 import filesRoutes from './routes/files';
 import budgetRoutes from './routes/budgetPlanning';
+import clientInvoiceRoutes from './routes/clientInvoices';
+import bankImportRoutes from './routes/bankImport';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
@@ -87,6 +89,8 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/day-view', dayViewRoutes);
 app.use('/api/budget', budgetRoutes);
+app.use('/api/client-invoices', clientInvoiceRoutes);
+app.use('/api/bank-import', bankImportRoutes);
 app.use('/api/v1', externalApiRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {

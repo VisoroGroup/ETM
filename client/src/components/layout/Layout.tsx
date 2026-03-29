@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
-    PieChart, ChevronDown
+    PieChart, ChevronDown, FileText, Download
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -36,7 +36,7 @@ export default function Layout() {
 
     const [financiarOpen, setFinanciarOpen] = useState(() => {
         const path = window.location.pathname;
-        return path.startsWith('/financiar') || path.startsWith('/budget');
+        return path.startsWith('/financiar') || path.startsWith('/budget') || path.startsWith('/client-invoices') || path.startsWith('/bank-import');
     });
 
     const navItems = [
@@ -53,6 +53,8 @@ export default function Layout() {
     const financiarSubItems = [
         ...(isSuperAdmin ? [{ to: '/budget', icon: PieChart, label: 'Budget Tervezés' }] : []),
         ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Plăți' }] : []),
+        ...(isSuperAdmin ? [{ to: '/client-invoices', icon: FileText, label: 'Ügyfélszámlák' }] : []),
+        ...(isSuperAdmin ? [{ to: '/bank-import', icon: Download, label: 'Bank Import' }] : []),
     ];
 
 
