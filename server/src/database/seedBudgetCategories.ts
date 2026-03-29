@@ -167,7 +167,7 @@ export async function seedBudgetCategories(): Promise<void> {
     try {
         // Check if categories already exist
         const { rows } = await client.query('SELECT COUNT(*) FROM budget_categories');
-        if (parseInt(rows[0].count) > 0) {
+        if (parseInt(rows[0].count, 10) > 0) {
             console.log('ℹ️  Budget categories already seeded, skipping');
             return;
         }

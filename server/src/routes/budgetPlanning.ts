@@ -50,7 +50,7 @@ router.post('/categories', asyncHandler(async (req: AuthRequest, res: Response) 
     const orderQuery = parent_id
         ? await pool.query('SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM budget_categories WHERE parent_id = $1', [parent_id])
         : await pool.query('SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM budget_categories WHERE parent_id IS NULL');
-    const nextOrder = parseInt(orderQuery.rows[0].next);
+    const nextOrder = parseInt(orderQuery.rows[0].next, 10);
 
     // If parent exists, inherit section info from parent
     let finalSection = section;
@@ -115,8 +115,8 @@ router.put('/categories/:id', asyncHandler(async (req: AuthRequest, res: Respons
 // GET /api/budget/entries?year=2025&month=4 — get a month's data (all weeks)
 // GET /api/budget/entries?year=2025 — get a full year overview
 router.get('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const month = req.query.month ? parseInt(req.query.month as string) : null;
+    const year = parseInt(req.query.year as string, 10) || new Date().getFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string, 10) : null;
 
     let query: string;
     let params: any[];
@@ -177,7 +177,7 @@ router.put('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
     }
 
     // Validate month range
-    const m = parseInt(month);
+    const m = parseInt(month, 10);
     if (isNaN(m) || m < 1 || m > 12) {
         res.status(400).json({ error: 'A hónap 1-12 közötti szám kell legyen.' });
         return;
@@ -185,7 +185,7 @@ router.put('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     // Validate week range if provided
     if (week !== null && week !== undefined) {
-        const w = parseInt(week);
+        const w = parseInt(week, 10);
         if (isNaN(w) || w < 1 || w > 5) {
             res.status(400).json({ error: 'A hét 1-5 közötti szám kell legyen.' });
             return;
@@ -227,7 +227,7 @@ router.put('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // GET /api/budget/cash-balance?year=2025
 router.get('/cash-balance', asyncHandler(async (req: AuthRequest, res: Response) => {
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const year = parseInt(req.query.year as string, 10) || new Date().getFullYear();
 
     const { rows } = await pool.query(
         'SELECT * FROM cash_balance WHERE year = $1 ORDER BY month ASC, week ASC NULLS LAST',
@@ -267,8 +267,8 @@ router.put('/cash-balance', asyncHandler(async (req: AuthRequest, res: Response)
 
 // GET /api/budget/summary?year=2025&month=4 — aggregated overview
 router.get('/summary', asyncHandler(async (req: AuthRequest, res: Response) => {
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const month = req.query.month ? parseInt(req.query.month as string) : null;
+    const year = parseInt(req.query.year as string, 10) || new Date().getFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string, 10) : null;
 
     const entryConditions = ['e.year = $1'];
     const cashConditions = ['year = $1'];

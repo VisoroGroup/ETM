@@ -138,8 +138,8 @@ router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: Au
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    values.push(Math.min(parseInt(limit as string) || 50, 100));
-    values.push(parseInt(offset as string) || 0);
+    values.push(Math.min(parseInt(limit as string, 10) || 50, 100));
+    values.push(parseInt(offset as string, 10) || 0);
 
     const { rows } = await pool.query(`
         SELECT wd.*, ws.url, ws.description as subscription_description

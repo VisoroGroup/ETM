@@ -224,7 +224,7 @@ export default function BudgetPlanningPage() {
                         {/* Year selector */}
                         <select
                             value={year}
-                            onChange={e => setYear(parseInt(e.target.value))}
+                            onChange={e => setYear(parseInt(e.target.value, 10))}
                             className={`px-3 py-2 rounded-xl text-sm font-medium border ${
                                 darkMode ? 'bg-navy-800 border-navy-600 text-white' : 'bg-white border-gray-300'
                             }`}

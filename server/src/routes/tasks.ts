@@ -146,7 +146,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         }
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-        const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+        const offset = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
 
         // Main query with aggregates
         const query = `
@@ -196,7 +196,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-        values.push(parseInt(limit as string), offset);
+        values.push(parseInt(limit as string, 10), offset);
 
         const { rows } = await pool.query(query, values);
 
@@ -207,9 +207,9 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
         res.json({
             tasks: rows,
-            total: parseInt(countRows[0].count),
-            page: parseInt(page as string),
-            limit: parseInt(limit as string)
+            total: parseInt(countRows[0].count, 10),
+            page: parseInt(page as string, 10),
+            limit: parseInt(limit as string, 10)
         });
     } catch (err) {
         console.error('Error fetching tasks:', err);

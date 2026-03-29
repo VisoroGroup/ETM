@@ -66,11 +66,11 @@ router.get('/stats', authMiddleware, async (req: AuthRequest, res: Response) => 
         );
 
         res.json({
-            active: parseInt(active[0].count),
-            overdue: parseInt(overdue[0].count),
-            blocked: parseInt(blocked[0].count),
-            completed_this_month: parseInt(completed[0].count),
-            total: parseInt(total[0].count)
+            active: parseInt(active[0].count, 10),
+            overdue: parseInt(overdue[0].count, 10),
+            blocked: parseInt(blocked[0].count, 10),
+            completed_this_month: parseInt(completed[0].count, 10),
+            total: parseInt(total[0].count, 10)
         });
     } catch (err) {
         console.error('Dashboard stats error:', err);
@@ -121,7 +121,7 @@ router.get('/charts', authMiddleware, async (req: AuthRequest, res: Response) =>
         const weeks = weekRows.map((row, i) => ({
             week_start: typeof row.week_start === 'string' ? row.week_start : row.week_start.toISOString().split('T')[0],
             week_end: typeof row.week_end === 'string' ? row.week_end : row.week_end.toISOString().split('T')[0],
-            count: parseInt(row.count),
+            count: parseInt(row.count, 10),
             label: `Săpt. ${i + 1}`
         }));
 
@@ -233,10 +233,10 @@ router.get('/my-stats', authMiddleware, async (req: AuthRequest, res: Response) 
         );
 
         res.json({
-            my_active: parseInt(myActive[0].count),
-            my_overdue: parseInt(myOverdue[0].count),
-            my_pending_subtasks: parseInt(mySubtasks[0].count),
-            my_completed_this_month: parseInt(myCompleted[0].count),
+            my_active: parseInt(myActive[0].count, 10),
+            my_overdue: parseInt(myOverdue[0].count, 10),
+            my_pending_subtasks: parseInt(mySubtasks[0].count, 10),
+            my_completed_this_month: parseInt(myCompleted[0].count, 10),
             upcoming_tasks: upcoming,
         });
     } catch (err) {

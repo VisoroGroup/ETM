@@ -122,8 +122,8 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const pageNum = Math.max(1, parseInt(page as string) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 50));
     const offset = (pageNum - 1) * limitNum;
 
     const query = `
@@ -171,10 +171,10 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
 
     res.json({
         tasks,
-        total: parseInt(countRows[0].count),
+        total: parseInt(countRows[0].count, 10),
         page: pageNum,
         limit: limitNum,
-        total_pages: Math.ceil(parseInt(countRows[0].count) / limitNum),
+        total_pages: Math.ceil(parseInt(countRows[0].count, 10) / limitNum),
     });
 }));
 
@@ -456,8 +456,8 @@ router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest
 router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
     const { attachmentId } = req.params;
     const format = (req.query.format as string) === 'base64' ? 'base64' : 'text';
-    const offset = parseInt(req.query.offset as string) || 0;
-    const limit = Math.min(100000, Math.max(1, parseInt(req.query.limit as string) || 100000));
+    const offset = parseInt(req.query.offset as string, 10) || 0;
+    const limit = Math.min(100000, Math.max(1, parseInt(req.query.limit as string, 10) || 100000));
 
     // Look up attachment
     const { rows } = await pool.query(

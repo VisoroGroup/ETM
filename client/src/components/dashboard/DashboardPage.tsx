@@ -78,13 +78,13 @@ export default function DashboardPage() {
 
     const statusChartData = charts?.status_distribution.map(d => ({
         name: STATUSES[d.status]?.label || d.status,
-        value: parseInt(d.count),
+        value: parseInt(d.count, 10),
         color: STATUSES[d.status]?.color || '#999'
     })) || [];
 
     const deptChartData = charts?.department_distribution.map(d => ({
         name: DEPARTMENTS[d.department_label]?.label || d.department_label,
-        value: parseInt(d.count),
+        value: parseInt(d.count, 10),
         color: DEPARTMENTS[d.department_label]?.color || '#999'
     })) || [];
 
@@ -513,7 +513,7 @@ export default function DashboardPage() {
                                         <div className="flex items-center gap-1.5 text-orange-400">
                                             <Link2 className="w-3.5 h-3.5" />
                                             <span className="text-xs font-bold">{task.blocks_count}</span>
-                                            <span className="text-[10px] text-navy-400">blocat{parseInt(task.blocks_count) !== 1 ? 'e' : ''}</span>
+                                            <span className="text-[10px] text-navy-400">blocat{parseInt(task.blocks_count, 10) !== 1 ? 'e' : ''}</span>
                                         </div>
                                     </div>
                                 ))}

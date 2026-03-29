@@ -141,6 +141,6 @@ export function formatDateRo(date: Date | string): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(d).split('-');
-    return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+    return `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
 }
 

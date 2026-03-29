@@ -27,7 +27,7 @@ const ALLOWED_EXTENSIONS = [
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760') // 10MB default
+        fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10) // 10MB default
     },
     fileFilter: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();

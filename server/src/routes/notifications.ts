@@ -32,7 +32,7 @@ router.get('/unread-count', async (req: AuthRequest, res: Response) => {
             `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`,
             [req.user!.id]
         );
-        res.json({ count: parseInt(count) });
+        res.json({ count: parseInt(count, 10) });
     } catch (err) {
         res.status(500).json({ error: 'Eroare.' });
     }
