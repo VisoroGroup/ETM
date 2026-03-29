@@ -17,7 +17,7 @@ export function initSentry() {
         ],
         // Performance tracing — 10% in production
         tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-        profilesSampleRate: 0.1,
+        profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
     });
 
     console.log('✅ Sentry initialized');
