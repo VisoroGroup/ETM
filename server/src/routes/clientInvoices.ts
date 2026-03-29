@@ -61,7 +61,8 @@ router.get('/summary', asyncHandler(async (_req: AuthRequest, res: Response) => 
             COUNT(*) FILTER (WHERE is_paid = true)::int AS paid_count,
             COUNT(*) FILTER (WHERE is_paid = false)::int AS unpaid_count,
             COALESCE(SUM(amount) FILTER (WHERE is_paid = false), 0) AS unpaid_total,
-            COALESCE(SUM(COALESCE(paid_amount, amount)) FILTER (WHERE is_paid = true), 0) AS paid_total,
+            COALESCE(SUM(amount) FILTER (WHERE is_paid = true), 0) AS paid_total,
+            COALESCE(SUM(COALESCE(paid_amount, amount)) FILTER (WHERE is_paid = true), 0) AS collected_total,
             COALESCE(SUM(amount), 0) AS grand_total
         FROM client_invoices
     `);
@@ -72,6 +73,7 @@ router.get('/summary', asyncHandler(async (_req: AuthRequest, res: Response) => 
         unpaid_count: stats.unpaid_count,
         unpaid_total: parseFloat(stats.unpaid_total),
         paid_total: parseFloat(stats.paid_total),
+        collected_total: parseFloat(stats.collected_total),
         grand_total: parseFloat(stats.grand_total),
     });
 }));

@@ -24,6 +24,7 @@ export interface InvoiceSummary {
     unpaid_count: number;
     unpaid_total: number;
     paid_total: number;
+    collected_total: number;
     grand_total: number;
 }
 
