@@ -19,6 +19,7 @@ import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 import { exportToCSV } from '../../utils/exportUtils';
 import UserAvatar from '../ui/UserAvatar';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export default function TaskListPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -26,6 +27,7 @@ export default function TaskListPage() {
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState<TaskFilters>({});
     const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebouncedValue(searchText, 300);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
@@ -129,6 +131,15 @@ export default function TaskListPage() {
             setLoading(false);
         }
     }, [filters, showToast]);
+
+    // Auto-sync debounced search to filters
+    useEffect(() => {
+        setFilters(prev => {
+            const newSearch = debouncedSearch || undefined;
+            if (prev.search === newSearch) return prev;
+            return { ...prev, search: newSearch };
+        });
+    }, [debouncedSearch]);
 
     function handleSearch() {
         setFilters(prev => ({ ...prev, search: searchText || undefined }));
