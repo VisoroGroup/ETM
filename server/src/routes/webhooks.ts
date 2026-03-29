@@ -4,6 +4,86 @@ import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { testWebhook } from '../services/webhookService';
 import { z } from 'zod';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const dnsResolve = promisify(dns.resolve4);
+
+/**
+ * Validate webhook URL against SSRF attacks.
+ * Blocks private IPs, loopback, link-local, and metadata endpoints.
+ * Requires HTTPS in production.
+ */
+function validateWebhookUrl(urlStr: string): { valid: boolean; error?: string } {
+    let parsed: URL;
+    try {
+        parsed = new URL(urlStr);
+    } catch {
+        return { valid: false, error: 'URL formátum érvénytelen.' };
+    }
+
+    // Protocol check
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && parsed.protocol !== 'https:') {
+        return { valid: false, error: 'Production-ben csak HTTPS webhook URL engedélyezett.' };
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { valid: false, error: 'Csak HTTP/HTTPS protokoll engedélyezett.' };
+    }
+
+    // Block localhost / loopback hostnames
+    const hostname = parsed.hostname.toLowerCase();
+    const blockedHostnames = ['localhost', '127.0.0.1', '::1', '0.0.0.0', '[::1]'];
+    if (blockedHostnames.includes(hostname)) {
+        return { valid: false, error: 'Localhost/loopback webhook URL nem engedélyezett.' };
+    }
+
+    // Block private/reserved IP ranges
+    const ipMatch = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipMatch) {
+        const [, a, b] = ipMatch.map(Number);
+        if (
+            a === 10 ||                          // 10.0.0.0/8
+            a === 127 ||                         // 127.0.0.0/8
+            (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+            (a === 192 && b === 168) ||           // 192.168.0.0/16
+            (a === 169 && b === 254) ||           // 169.254.0.0/16 (link-local, AWS metadata)
+            a === 0                               // 0.0.0.0/8
+        ) {
+            return { valid: false, error: 'Privát/belső IP cím nem engedélyezett webhook URL-ként.' };
+        }
+    }
+
+    return { valid: true };
+}
+
+/** Async DNS resolution check — verifies resolved IPs are not private */
+async function validateWebhookUrlDns(urlStr: string): Promise<{ valid: boolean; error?: string }> {
+    const syncResult = validateWebhookUrl(urlStr);
+    if (!syncResult.valid) return syncResult;
+
+    const hostname = new URL(urlStr).hostname;
+    // Skip DNS check for raw IPs (already checked above)
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return { valid: true };
+
+    try {
+        const addresses = await dnsResolve(hostname);
+        for (const ip of addresses) {
+            const [a, b] = ip.split('.').map(Number);
+            if (
+                a === 10 || a === 127 || a === 0 ||
+                (a === 172 && b >= 16 && b <= 31) ||
+                (a === 192 && b === 168) ||
+                (a === 169 && b === 254)
+            ) {
+                return { valid: false, error: `A domain (${hostname}) belső IP-re oldódik fel (${ip}).` };
+            }
+        }
+    } catch {
+        // DNS resolution failed — allow it (could be temporary, will fail at delivery)
+    }
+    return { valid: true };
+}
 
 const router = Router();
 
@@ -22,15 +102,20 @@ const VALID_EVENTS = [
     'payment.due_soon', 'payment.overdue', 'payment.paid'
 ] as const;
 
+const safeUrl = z.string().url('URL invalid').max(2048).refine(
+    (url) => validateWebhookUrl(url).valid,
+    (url) => ({ message: validateWebhookUrl(url).error || 'URL érvénytelen.' })
+);
+
 const createWebhookSchema = z.object({
-    url: z.string().url('URL invalid').max(2048),
+    url: safeUrl,
     event_type: z.enum(VALID_EVENTS),
     secret: z.string().max(500).optional(),
     description: z.string().max(500).optional()
 });
 
 const updateWebhookSchema = z.object({
-    url: z.string().url('URL invalid').max(2048).optional(),
+    url: safeUrl.optional(),
     event_type: z.enum(VALID_EVENTS).optional(),
     secret: z.string().max(500).nullable().optional(),
     description: z.string().max(500).nullable().optional(),
