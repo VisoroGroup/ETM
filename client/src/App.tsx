@@ -14,6 +14,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ActivityFeedPage from './components/activity/ActivityFeedPage';
 import DayViewPage from './components/dayview/DayViewPage';
 import CompletedTasksPage from './components/tasks/CompletedTasksPage';
+import BudgetPlanningPage from './components/budget/BudgetPlanningPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/budget" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><BudgetPlanningPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

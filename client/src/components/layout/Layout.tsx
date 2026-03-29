@@ -3,7 +3,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2
+    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
+    PieChart, ChevronDown
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -33,16 +34,25 @@ export default function Layout() {
     const isSuperAdmin = user?.role === 'superadmin';
     const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
+    const [financiarOpen, setFinanciarOpen] = useState(() => {
+        const path = window.location.pathname;
+        return path.startsWith('/financiar') || path.startsWith('/budget');
+    });
+
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
         { to: '/activitate', icon: Activity, label: 'Activitate' },
         { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
-        ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Financiar' }] : []),
         ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Napi nézet' }] : []),
         ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
         ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
         { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
+    ];
+
+    const financiarSubItems = [
+        ...(isSuperAdmin ? [{ to: '/budget', icon: PieChart, label: 'Budget Tervezés' }] : []),
+        ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Plăți' }] : []),
     ];
 
 
@@ -90,6 +100,48 @@ export default function Layout() {
                             {!collapsed && <span>{label}</span>}
                         </NavLink>
                     ))}
+
+                    {/* Financiar expandable submenu */}
+                    {financiarSubItems.length > 0 && (
+                        <>
+                            <button
+                                onClick={() => setFinanciarOpen(!financiarOpen)}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
+                                    financiarOpen
+                                        ? darkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50/50'
+                                        : darkMode ? 'text-navy-300 hover:bg-navy-800 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                }`}
+                            >
+                                <Banknote className="w-5 h-5 flex-shrink-0" />
+                                {!collapsed && (
+                                    <>
+                                        <span className="flex-1 text-left">Financiar</span>
+                                        <ChevronDown className={`w-4 h-4 transition-transform ${financiarOpen ? 'rotate-180' : ''}`} />
+                                    </>
+                                )}
+                            </button>
+                            {financiarOpen && !collapsed && (
+                                <div className="ml-4 space-y-0.5 border-l-2 border-navy-700/30 pl-2">
+                                    {financiarSubItems.map(({ to, icon: Icon, label }) => (
+                                        <NavLink
+                                            key={to}
+                                            to={to}
+                                            className={({ isActive }) =>
+                                                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                                    isActive
+                                                        ? darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                        : darkMode ? 'text-navy-400 hover:bg-navy-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                                                }`
+                                            }
+                                        >
+                                            <Icon className="w-4 h-4 flex-shrink-0" />
+                                            <span>{label}</span>
+                                        </NavLink>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </nav>
 
                 {/* Bottom section */}
