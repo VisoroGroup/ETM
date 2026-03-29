@@ -189,43 +189,74 @@ export async function updateTask(
     data: { title?: string; description?: string; department_label?: string; assigned_to?: string },
     userId: string
 ) {
-    // Fetch old task for audit comparison
-    const { rows: oldRows } = await pool.query('SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
-    if (oldRows.length === 0) return undefined;
-    const oldTask = oldRows[0];
+    // Use transaction with FOR UPDATE to prevent concurrent update races
+    const client = await pool.connect();
+    let oldTask: any;
+    let updatedTask: any;
+    try {
+        await client.query('BEGIN');
 
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
+        const { rows: oldRows } = await client.query(
+            'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]
+        );
+        if (oldRows.length === 0) {
+            await client.query('ROLLBACK');
+            client.release();
+            return undefined;
+        }
+        oldTask = oldRows[0];
 
-    if (data.title !== undefined) {
-        updates.push(`title = $${paramIndex++}`);
-        values.push(data.title);
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (data.title !== undefined) {
+            updates.push(`title = $${paramIndex++}`);
+            values.push(data.title);
+        }
+        if (data.description !== undefined) {
+            updates.push(`description = $${paramIndex++}`);
+            values.push(data.description);
+        }
+        if (data.department_label !== undefined) {
+            updates.push(`department_label = $${paramIndex++}`);
+            values.push(data.department_label);
+        }
+        if (data.assigned_to !== undefined) {
+            updates.push(`assigned_to = $${paramIndex++}`);
+            values.push(data.assigned_to || null);
+        }
+
+        if (updates.length === 0) {
+            await client.query('ROLLBACK');
+            client.release();
+            return null; // Nothing to update
+        }
+
+        updates.push('updated_at = NOW()');
+        values.push(id);
+
+        const { rows } = await client.query(
+            `UPDATE tasks SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+            values
+        );
+
+        if (rows.length === 0) {
+            await client.query('ROLLBACK');
+            client.release();
+            return undefined;
+        }
+        updatedTask = rows[0];
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
-    if (data.description !== undefined) {
-        updates.push(`description = $${paramIndex++}`);
-        values.push(data.description);
-    }
-    if (data.department_label !== undefined) {
-        updates.push(`department_label = $${paramIndex++}`);
-        values.push(data.department_label);
-    }
-    if (data.assigned_to !== undefined) {
-        updates.push(`assigned_to = $${paramIndex++}`);
-        values.push(data.assigned_to || null);
-    }
 
-    if (updates.length === 0) return null; // Nothing to update
-
-    updates.push('updated_at = NOW()');
-    values.push(id);
-
-    const { rows } = await pool.query(
-        `UPDATE tasks SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-        values
-    );
-
-    if (rows.length === 0) return undefined;
+    const rows = [updatedTask];
 
     // --- Audit logging: log each field change separately ---
     if (data.title !== undefined && data.title !== oldTask.title) {

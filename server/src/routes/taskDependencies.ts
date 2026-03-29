@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router({ mergeParams: true });
@@ -8,6 +9,11 @@ const router = Router({ mergeParams: true });
 // GET /api/tasks/:id/dependencies — both directions
 router.get('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
+
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        return;
+    }
 
     const { rows } = await pool.query(`
         SELECT td.*,
@@ -39,6 +45,13 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 
     if (blocking_task_id === blocked_task_id) {
         res.status(400).json({ error: 'Un task nu se poate bloca pe sine.' });
+        return;
+    }
+
+    // Check access to both tasks
+    if (!await checkTaskAccess(blocking_task_id, req.user!.id, req.user!.role) ||
+        !await checkTaskAccess(blocked_task_id, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
         return;
     }
 
@@ -111,7 +124,12 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 
 // DELETE /api/tasks/:id/dependencies/:depId — remove dependency
 router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { depId } = req.params;
+    const { id: taskId, depId } = req.params;
+
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        return;
+    }
 
     const { rows } = await pool.query(
         `DELETE FROM task_dependencies WHERE id = $1 RETURNING *`,

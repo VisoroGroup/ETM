@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
 import { validateCreateTask, validateUpdateTask, validateChangeStatus } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
+import { checkTaskAccess } from '../middleware/taskAccess';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
 import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
@@ -230,6 +231,12 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
         res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
         return;
     }
+
+    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        return;
+    }
+
     res.json(task);
 }));
 
@@ -252,6 +259,11 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, async (req: Auth
     try {
         const { id } = req.params;
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
+
+        if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         if (!status) {
             res.status(400).json({ error: 'Statusul este obligatoriu.' });
@@ -490,6 +502,11 @@ router.put('/:id/due-date', authMiddleware, async (req: AuthRequest, res: Respon
     try {
         const { id } = req.params;
         const { due_date, reason } = req.body;
+
+        if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         if (!due_date) {
             res.status(400).json({ error: 'Data limită este obligatorie.' });

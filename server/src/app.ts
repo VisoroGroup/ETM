@@ -102,7 +102,7 @@ app.get('/api/health', async (_req, res) => {
     } catch {}
     const mem = process.memoryUsage();
     const status = dbOk ? 'ok' : 'degraded';
-    res.status(200).json({
+    res.status(dbOk ? 200 : 503).json({
         status,
         timestamp: new Date().toISOString(),
         uptime: Math.floor(process.uptime()),
@@ -137,7 +137,7 @@ if (process.env.SENTRY_DSN) {
 }
 
 // Start server
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     console.log(`🚀 Visoro Task Manager API running on port ${PORT}`);
     console.log(`📌 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Auth bypass: ${process.env.DEV_AUTH_BYPASS === 'true' ? 'ENABLED' : 'DISABLED'}`);
@@ -255,5 +255,27 @@ app.listen(PORT, async () => {
     // Start webhook retry processor (DB-based, survives restarts)
     startWebhookRetryProcessor();
 });
+
+// Graceful shutdown — close server and DB pool on termination signals
+const shutdown = async (signal: string) => {
+    console.log(`\n🛑 ${signal} received — shutting down gracefully...`);
+    server.close(() => {
+        console.log('✅ HTTP server closed');
+    });
+    try {
+        await pool.end();
+        console.log('✅ Database pool closed');
+    } catch (err) {
+        console.error('⚠️  Error closing database pool:', err);
+    }
+    // Force exit after 10 seconds if connections don't close
+    setTimeout(() => {
+        console.error('⚠️  Forced shutdown after timeout');
+        process.exit(1);
+    }, 10000).unref();
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export default app;

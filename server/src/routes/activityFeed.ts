@@ -21,32 +21,26 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         const limitNum = Math.min(Math.max(1, parseInt(limit as string, 10) || 50), 100);
         const offset = (pageNum - 1) * limitNum;
 
-        // Build shared parameter list
-        const params: any[] = [];
+        // Build task activity query with its own params
+        const taskConditions: string[] = [];
+        const allParams: any[] = [];
         let idx = 1;
 
-        // --- Task activity conditions ---
-        const taskConditions: string[] = [];
         if (user_id) {
-            taskConditions.push(`a.user_id = $${idx}`);
-            // We'll reuse the same param index for both queries if applicable
+            taskConditions.push(`a.user_id = $${idx++}`);
+            allParams.push(user_id);
         }
         if (department) {
-            taskConditions.push(`t.department_label = $${idx + (user_id ? 1 : 0)}`);
+            taskConditions.push(`t.department_label = $${idx++}`);
+            allParams.push(department);
         }
         if (action_type) {
-            const actionIdx = idx + (user_id ? 1 : 0) + (department ? 1 : 0);
-            taskConditions.push(`a.action_type = $${actionIdx}`);
+            taskConditions.push(`a.action_type = $${idx++}`);
+            allParams.push(action_type);
         }
-
-        // For consistent param indexing across UNION, build params once
-        if (user_id) { params.push(user_id); idx++; }
-        if (department) { params.push(department); idx++; }
-        if (action_type) { params.push(action_type); idx++; }
 
         const taskWhere = taskConditions.length > 0 ? 'WHERE ' + taskConditions.join(' AND ') : '';
 
-        // Task activity SELECT
         const taskSelect = `
             SELECT 
                 a.id, a.task_id, a.user_id, a.action_type, a.details, a.created_at,
@@ -59,19 +53,13 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             ${taskWhere}
         `;
 
-        // --- Payment activity (admin only, no department filter) ---
+        // Payment activity (admin only, no department filter)
         let unionQuery: string;
 
         if (isAdmin && !department) {
             const payConditions: string[] = ['p.deleted_at IS NULL'];
-            if (user_id) payConditions.push(`pa.user_id = $1`);
-            if (action_type) {
-                const actionParamIdx = user_id ? 2 : 1;
-                // action_type param is already in params at that index
-                // but we need to map it correctly
-                const atIdx = params.indexOf(action_type as string) + 1;
-                payConditions.push(`pa.action_type = $${atIdx}`);
-            }
+            if (user_id) payConditions.push(`pa.user_id = $${allParams.indexOf(user_id as string) + 1}`);
+            if (action_type) payConditions.push(`pa.action_type = $${allParams.indexOf(action_type as string) + 1}`);
             const payWhere = 'WHERE ' + payConditions.join(' AND ');
 
             const paySelect = `
@@ -91,12 +79,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             unionQuery = taskSelect;
         }
 
-        // Add LIMIT/OFFSET params
+        // LIMIT/OFFSET with clean index tracking
         const limitIdx = idx++;
-        const offsetIdx = idx;
-        params.push(limitNum, offset);
+        const offsetIdx = idx++;
+        allParams.push(limitNum, offset);
 
-        // Final paginated query
         const dataQuery = `
             SELECT * FROM (${unionQuery}) AS combined
             ORDER BY created_at DESC
@@ -108,8 +95,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         `;
 
         const [dataResult, countResult] = await Promise.all([
-            pool.query(dataQuery, params),
-            pool.query(countQuery, params.slice(0, -2)) // count doesn't use LIMIT/OFFSET
+            pool.query(dataQuery, allParams),
+            pool.query(countQuery, allParams.slice(0, -2))
         ]);
 
         res.json({

@@ -64,9 +64,9 @@ router.patch('/', async (req: AuthRequest, res: Response) => {
             // Validate avatar_url: only allow our internal paths or null/empty
             if (avatar_url) {
                 const urlStr = String(avatar_url).trim();
-                const isInternalPath = urlStr.startsWith('/api/files/avatar/');
-                if (!isInternalPath) {
-                    res.status(400).json({ error: 'Csak belső avatar URL engedélyezett (/api/files/avatar/...).' });
+                const isValidAvatarPath = /^\/api\/files\/avatar\/[a-f0-9\-]{36}$/i.test(urlStr);
+                if (!isValidAvatarPath) {
+                    res.status(400).json({ error: 'Csak belső avatar URL engedélyezett (/api/files/avatar/{uuid}).' });
                     return;
                 }
             }

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 
 const router = Router({ mergeParams: true });
 
@@ -8,6 +9,11 @@ const router = Router({ mergeParams: true });
 router.get('/alerts', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
         const { rows } = await pool.query(
             `SELECT a.*,
                uc.display_name AS creator_name, uc.avatar_url AS creator_avatar,
@@ -30,6 +36,11 @@ router.post('/alerts', authMiddleware, async (req: AuthRequest, res: Response) =
     try {
         const { id: taskId } = req.params;
         const { content } = req.body;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         if (!content || content.trim() === '') {
             res.status(400).json({ error: 'Conținutul alertei este obligatoriu.' });
@@ -62,7 +73,12 @@ router.post('/alerts', authMiddleware, async (req: AuthRequest, res: Response) =
 // PUT /api/tasks/:id/alerts/:alertId/resolve
 router.put('/alerts/:alertId/resolve', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { alertId } = req.params;
+        const { id: taskId, alertId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         const { rows: existing } = await pool.query(
             'SELECT * FROM task_alerts WHERE id = $1', [alertId]
@@ -96,7 +112,12 @@ router.put('/alerts/:alertId/resolve', authMiddleware, async (req: AuthRequest, 
 // DELETE /api/tasks/:id/alerts/:alertId
 router.delete('/alerts/:alertId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        const { alertId } = req.params;
+        const { id: taskId, alertId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         const { rows: existing } = await pool.query(
             'SELECT created_by FROM task_alerts WHERE id = $1', [alertId]

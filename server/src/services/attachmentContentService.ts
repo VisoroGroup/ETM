@@ -59,7 +59,13 @@ export interface ContentResult {
  * Resolve the absolute filesystem path for an attachment
  */
 export function resolveFilePath(fileUrl: string): string {
-    return path.join(UPLOAD_DIR, path.basename(fileUrl));
+    const basename = path.basename(fileUrl);
+    const resolved = path.resolve(UPLOAD_DIR, basename);
+    const uploadRoot = path.resolve(UPLOAD_DIR);
+    if (!resolved.startsWith(uploadRoot + path.sep) && resolved !== uploadRoot) {
+        throw new Error('Invalid file path — directory traversal attempt');
+    }
+    return resolved;
 }
 
 /**

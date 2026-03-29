@@ -27,6 +27,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         return;
     }
 
+    // Limit config size to prevent abuse
+    const configStr = JSON.stringify(filter_config);
+    if (configStr.length > 10000) {
+        res.status(400).json({ error: 'Filter config too large (max 10KB).' });
+        return;
+    }
+
     try {
         // Check count limit
         const { rows: [{ count }] } = await pool.query(

@@ -67,7 +67,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // DELETE /api/templates/:id — delete template
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-        await pool.query('UPDATE task_templates SET deleted_at = NOW() WHERE id = $1', [req.params.id]);
+        const { rows } = await pool.query(
+            `UPDATE task_templates SET deleted_at = NOW()
+             WHERE id = $1 AND (created_by = $2 OR $3 = ANY(ARRAY['admin', 'superadmin']))
+             AND deleted_at IS NULL
+             RETURNING id`,
+            [req.params.id, req.user!.id, req.user!.role]
+        );
+        if (rows.length === 0) {
+            res.status(404).json({ error: 'Sablon nem található vagy nincs jogosultságod.' });
+            return;
+        }
         res.status(204).send();
     } catch (err: any) {
         res.status(500).json({ error: err.message });

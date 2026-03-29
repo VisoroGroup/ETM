@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { validateCreateComment } from '../middleware/validation';
-import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
+import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail, escapeHtml } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
 
@@ -10,13 +10,17 @@ const router = Router({ mergeParams: true });
 router.get('/comments', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
+        const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 200);
+        const offset = parseInt(req.query.offset as string, 10) || 0;
+
         const { rows } = await pool.query(
             `SELECT c.*, u.display_name AS author_name, u.avatar_url AS author_avatar
        FROM task_comments c
        JOIN users u ON c.author_id = u.id
        WHERE c.task_id = $1
-       ORDER BY c.created_at ASC`,
-            [taskId]
+       ORDER BY c.created_at ASC
+       LIMIT $2 OFFSET $3`,
+            [taskId, limit, offset]
         );
 
         // Fetch reactions for all comments in one query
@@ -57,6 +61,29 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
         if (!content || content.trim() === '') {
             res.status(400).json({ error: 'Conținutul comentariului este obligatoriu.' });
             return;
+        }
+
+        // Validate mentions are valid UUIDs
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (mentions && Array.isArray(mentions)) {
+            for (const mid of mentions) {
+                if (!uuidRegex.test(mid)) {
+                    res.status(400).json({ error: 'Invalid mention ID format.' });
+                    return;
+                }
+            }
+        }
+
+        // Validate parent_comment_id belongs to this task
+        if (parent_comment_id) {
+            const { rows: parentCheck } = await pool.query(
+                'SELECT 1 FROM task_comments WHERE id = $1 AND task_id = $2',
+                [parent_comment_id, taskId]
+            );
+            if (parentCheck.length === 0) {
+                res.status(400).json({ error: 'Parent comment not found in this task.' });
+                return;
+            }
         }
 
         const { rows } = await pool.query(
@@ -121,7 +148,7 @@ router.post('/comments', authMiddleware, validateCreateComment, async (req: Auth
                             bodyLines: [
                                 `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> te-a menționat într-un comentariu la sarcina:</p>`,
                                 `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0;">
-                                    <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"</p>
+                                    <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}"</p>
                                 </div>`,
                             ],
                             taskId,

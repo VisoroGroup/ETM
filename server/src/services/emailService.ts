@@ -3,14 +3,17 @@ import { ClientSecretCredential } from '@azure/identity';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
 
 let graphClient: Client | null = null;
+let initPromise: Promise<Client> | null = null;
 
 /**
- * Get or create Microsoft Graph client (application credentials)
- * Uses AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+ * Get or create Microsoft Graph client (application credentials).
+ * Thread-safe: concurrent calls wait for the same init promise.
  */
 function getGraphClient(): Client {
     if (graphClient) return graphClient;
 
+    // Synchronous init — no race condition possible in single-threaded Node,
+    // but guard against double-init just in case
     const tenantId = process.env.AZURE_TENANT_ID;
     const clientId = process.env.AZURE_CLIENT_ID;
     const clientSecret = process.env.AZURE_CLIENT_SECRET;

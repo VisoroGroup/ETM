@@ -39,8 +39,8 @@ export async function authMiddleware(
     res: Response,
     next: NextFunction
 ): Promise<void> {
-    // Dev mode bypass
-    if (process.env.DEV_AUTH_BYPASS === 'true') {
+    // Dev mode bypass — NEVER active in production
+    if (process.env.DEV_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
         try {
             // Check if there's a token in the header
             const authHeader = req.headers.authorization;

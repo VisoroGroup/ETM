@@ -89,8 +89,10 @@ function parseDate(val: any): Date | null {
         for (const fmt of formats) {
             const m = val.match(fmt);
             if (m) {
-                if (fmt === formats[0]) return new Date(+m[1], +m[2] - 1, +m[3]);
-                return new Date(+m[3], +m[2] - 1, +m[1]);
+                const d = fmt === formats[0]
+                    ? new Date(+m[1], +m[2] - 1, +m[3])
+                    : new Date(+m[3], +m[2] - 1, +m[1]);
+                if (!isNaN(d.getTime())) return d;
             }
         }
         const parsed = new Date(val);
@@ -132,6 +134,11 @@ export function parseExcelBuffer(buffer: Buffer, customMapping?: Partial<ColumnM
 
     if (data.length < 2) {
         return { transactions: [], detectedColumns: {}, sheetName, totalRows: data.length, parsedRows: 0, errors: ['Túl kevés sor az Excel-ben.'] };
+    }
+
+    const MAX_ROWS = 10000;
+    if (data.length > MAX_ROWS) {
+        return { transactions: [], detectedColumns: {}, sheetName, totalRows: data.length, parsedRows: 0, errors: [`A fájl túl sok sort tartalmaz (${data.length}, max: ${MAX_ROWS}).`] };
     }
 
     // Find header row (first row with enough non-empty cells)

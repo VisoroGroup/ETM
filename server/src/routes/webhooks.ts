@@ -54,6 +54,22 @@ function validateWebhookUrl(urlStr: string): { valid: boolean; error?: string } 
         }
     }
 
+    // Block IPv6 private/loopback addresses (mapped, link-local, etc.)
+    const v6Lower = hostname.replace(/^\[|\]$/g, '');
+    if (
+        v6Lower.startsWith('::ffff:127.') ||
+        v6Lower.startsWith('::ffff:10.') ||
+        v6Lower.startsWith('::ffff:192.168.') ||
+        /^::ffff:172\.(1[6-9]|2\d|3[01])\./.test(v6Lower) ||
+        v6Lower.startsWith('fe80:') ||
+        v6Lower.startsWith('fc') ||
+        v6Lower.startsWith('fd') ||
+        v6Lower === '::' ||
+        v6Lower === '::1'
+    ) {
+        return { valid: false, error: 'IPv6 privát/loopback cím nem engedélyezett webhook URL-ként.' };
+    }
+
     return { valid: true };
 }
 
@@ -141,13 +157,15 @@ router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: Au
     values.push(Math.min(parseInt(limit as string, 10) || 50, 100));
     values.push(parseInt(offset as string, 10) || 0);
 
+    const limitIdx = idx++;
+    const offsetIdx = idx++;
     const { rows } = await pool.query(`
         SELECT wd.*, ws.url, ws.description as subscription_description
         FROM webhook_deliveries wd
         JOIN webhook_subscriptions ws ON ws.id = wd.subscription_id
         ${where}
         ORDER BY wd.created_at DESC
-        LIMIT $${idx++} OFFSET $${idx}
+        LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `, values);
 
     res.json(rows);

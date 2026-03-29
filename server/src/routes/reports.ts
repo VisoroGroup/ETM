@@ -21,7 +21,12 @@ router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHan
         return;
     }
 
-    const sections = (sectionsStr as string).split(',');
+    const validSections = ['tasks', 'departments', 'users', 'payments'];
+    const sections = (sectionsStr as string).split(',').filter((s: string) => validSections.includes(s));
+    if (sections.length === 0) {
+        res.status(400).json({ error: 'Invalid sections parameter. Valid: tasks, departments, users, payments.' });
+        return;
+    }
     const [year, m] = month.split('-').map(Number);
     const startDate = new Date(year, m - 1, 1);
     const endDate = new Date(year, m, 1);

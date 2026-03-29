@@ -8,7 +8,7 @@ const APP_URL = process.env.CLIENT_URL || 'https://etm-production-62a7.up.railwa
 /**
  * Escape HTML special characters to prevent XSS in emails.
  */
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
     return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

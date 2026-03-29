@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 
 const router = Router();
 
@@ -63,6 +64,12 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
         const { rows: taskRows } = await pool.query('SELECT id FROM tasks WHERE id = $1', [taskId]);
         if (taskRows.length === 0) {
             res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+            return;
+        }
+
+        // Check task access
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
             return;
         }
 

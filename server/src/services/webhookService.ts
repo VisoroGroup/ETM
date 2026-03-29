@@ -77,13 +77,17 @@ async function sendWebhook(
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT);
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body,
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
+        let response: globalThis.Response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body,
+                signal: controller.signal
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         const responseBody = await response.text().catch(() => '');
 

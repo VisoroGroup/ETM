@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 
 const router = Router({ mergeParams: true });
 
@@ -9,6 +10,11 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
     try {
         const { id: taskId } = req.params;
         const { frequency, workdays_only = false } = req.body;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         if (!frequency || !['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'].includes(frequency)) {
             res.status(400).json({ error: 'Frecvența este obligatorie (daily, weekly, biweekly, monthly, quarterly, yearly).' });
@@ -22,6 +28,11 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
             return;
         }
 
+        if (!taskRows[0].due_date) {
+            res.status(400).json({ error: 'Task-ul must have a due date to enable recurrence.' });
+            return;
+        }
+
         let nextRunDate = new Date(taskRows[0].due_date);
         switch (frequency) {
             case 'daily': nextRunDate.setDate(nextRunDate.getDate() + 1); break;
@@ -30,6 +41,11 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
             case 'monthly': nextRunDate.setMonth(nextRunDate.getMonth() + 1); break;
             case 'quarterly': nextRunDate.setMonth(nextRunDate.getMonth() + 3); break;
             case 'yearly': nextRunDate.setFullYear(nextRunDate.getFullYear() + 1); break;
+        }
+
+        if (isNaN(nextRunDate.getTime())) {
+            res.status(400).json({ error: 'Invalid next run date calculation.' });
+            return;
         }
 
         // Atomic upsert — no race condition between concurrent requests
@@ -64,6 +80,11 @@ router.post('/recurring', authMiddleware, async (req: AuthRequest, res: Response
 router.delete('/recurring', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
         await pool.query(
             `UPDATE recurring_tasks SET is_active = false, updated_at = NOW()
        WHERE template_task_id = $1`,

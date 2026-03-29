@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { checkTaskAccess } from '../middleware/taskAccess';
 import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
@@ -11,22 +12,23 @@ router.post('/subtasks', authMiddleware, async (req: AuthRequest, res: Response)
         const { id: taskId } = req.params;
         const { title, assigned_to, due_date, priority } = req.body;
 
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
+
         if (!title) {
             res.status(400).json({ error: 'Titlul subtask-ului este obligatoriu.' });
             return;
         }
 
-        // Get max order_index
-        const { rows: maxRows } = await pool.query(
-            'SELECT COALESCE(MAX(order_index), -1) AS max_index FROM subtasks WHERE task_id = $1',
-            [taskId]
-        );
-        const orderIndex = maxRows[0].max_index + 1;
-
+        // Atomic order_index: single query avoids race condition with concurrent inserts
         const { rows } = await pool.query(
             `INSERT INTO subtasks (task_id, title, assigned_to, order_index, due_date, priority)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [taskId, title, assigned_to || null, orderIndex, due_date || null, priority || 'medium']
+       VALUES ($1, $2, $3,
+               COALESCE((SELECT MAX(order_index) FROM subtasks WHERE task_id = $1 AND deleted_at IS NULL), -1) + 1,
+               $4, $5) RETURNING *`,
+            [taskId, title, assigned_to || null, due_date || null, priority || 'medium']
         );
 
         // Activity log
@@ -113,6 +115,11 @@ router.put('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res:
     try {
         const { id: taskId, subtaskId } = req.params;
         const { title, is_completed, assigned_to, due_date, priority } = req.body;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
 
         const updates: string[] = [];
         const values: any[] = [];
@@ -285,6 +292,11 @@ router.put('/subtasks-reorder', authMiddleware, async (req: AuthRequest, res: Re
         const { id: taskId } = req.params;
         const { order } = req.body; // Array of { id, order_index }
 
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
+
         if (!order || !Array.isArray(order)) {
             res.status(400).json({ error: 'Ordinea este obligatorie.' });
             return;
@@ -311,6 +323,11 @@ router.put('/subtasks-reorder', authMiddleware, async (req: AuthRequest, res: Re
 router.delete('/subtasks/:subtaskId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const { id: taskId, subtaskId } = req.params;
+
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            return;
+        }
         const { rows } = await pool.query(
             'UPDATE subtasks SET deleted_at = NOW() WHERE id = $1 AND task_id = $2 AND deleted_at IS NULL RETURNING *',
             [subtaskId, taskId]

@@ -18,12 +18,23 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { DEPARTMENTS, STATUSES, TaskStatus } from '../types';
 import * as taskService from '../services/taskService';
 import { getAttachmentContent, getMimeType } from '../services/attachmentContentService';
+import { checkTaskAccess } from '../middleware/taskAccess';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 
 const router = Router();
 
-// All /api/v1 routes use API token auth
+// Per-token rate limiting — 100 requests per minute
+const apiRateLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 100,
+    keyGenerator: (req: any) => req.apiToken?.id || req.ip,
+    message: { error: 'Rate limit exceeded. Max 100 requests per minute.' },
+});
+
+// All /api/v1 routes use API token auth + rate limiting
 router.use(apiTokenAuth);
+router.use(apiRateLimiter);
 
 // ==========================================
 // GET /api/v1/projects — list departments as "projects"
@@ -483,6 +494,12 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
     );
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Sarcina părinte a fost ștearsă.' });
+        return;
+    }
+
+    // Check task access for the API token user
+    if (!await checkTaskAccess(attachment.task_id, req.user!.id, req.user!.role)) {
+        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
         return;
     }
 

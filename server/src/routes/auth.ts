@@ -179,8 +179,8 @@ router.post('/exchange', async (req: Request, res: Response): Promise<void> => {
 // POST /api/auth/login — validate Microsoft token or dev login
 router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        // Dev mode — login with microsoft_id or email
-        if (process.env.DEV_AUTH_BYPASS === 'true') {
+        // Dev mode — login with microsoft_id or email (NEVER in production)
+        if (process.env.DEV_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
             const { microsoft_id, email } = req.body;
 
             let user;
@@ -202,7 +202,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
                     display_name: req.body.display_name || 'Dev User',
                     avatar_url: null,
                     departments: req.body.departments || ['departament_1'],
-                    role: req.body.role || 'user'
+                    role: (['user', 'manager', 'admin'].includes(req.body.role) ? req.body.role : 'user')
                 };
 
                 const { rows } = await pool.query(
