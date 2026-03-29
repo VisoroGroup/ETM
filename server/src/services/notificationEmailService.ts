@@ -134,39 +134,21 @@ export async function getTaskStakeholders(
     taskId: string,
     excludeUserId: string
 ): Promise<StakeholderUser[]> {
-    // Get task creator + assignee
-    const { rows: taskRows } = await pool.query(
-        `SELECT created_by, assigned_to FROM tasks WHERE id = $1 AND deleted_at IS NULL`,
-        [taskId]
+    const { rows } = await pool.query(
+        `SELECT DISTINCT u.id, u.email, u.display_name
+         FROM users u
+         WHERE u.is_active = true
+           AND u.id != $2
+           AND u.id IN (
+             SELECT created_by FROM tasks WHERE id = $1 AND deleted_at IS NULL
+             UNION
+             SELECT assigned_to FROM tasks WHERE id = $1 AND assigned_to IS NOT NULL AND deleted_at IS NULL
+             UNION
+             SELECT assigned_to FROM subtasks WHERE task_id = $1 AND assigned_to IS NOT NULL AND deleted_at IS NULL
+           )`,
+        [taskId, excludeUserId]
     );
-    if (taskRows.length === 0) return [];
-
-    const userIds = new Set<string>();
-    if (taskRows[0].created_by) userIds.add(taskRows[0].created_by);
-    if (taskRows[0].assigned_to) userIds.add(taskRows[0].assigned_to);
-
-    // Get subtask assignees (only non-deleted subtasks)
-    const { rows: subtaskRows } = await pool.query(
-        `SELECT DISTINCT assigned_to FROM subtasks
-         WHERE task_id = $1 AND assigned_to IS NOT NULL AND deleted_at IS NULL`,
-        [taskId]
-    );
-    for (const row of subtaskRows) {
-        userIds.add(row.assigned_to);
-    }
-
-    // Remove the actor
-    userIds.delete(excludeUserId);
-
-    if (userIds.size === 0) return [];
-
-    // Fetch user details
-    const { rows: users } = await pool.query(
-        `SELECT id, email, display_name FROM users WHERE id = ANY($1) AND is_active = true`,
-        [Array.from(userIds)]
-    );
-
-    return users;
+    return rows;
 }
 
 /**
