@@ -156,7 +156,9 @@ export default function BudgetPlanningPage() {
 
     const getEntry = (catId: string, week: number | null): BudgetEntry => {
         const key = `${catId}_${week ?? 'total'}`;
-        return entryMap.get(key) || { category_id: catId, year, month, week, planned: 0, actual: 0, currency: 'RON' };
+        const e = entryMap.get(key);
+        if (!e) return { category_id: catId, year, month, week, planned: 0, actual: 0, currency: 'RON' };
+        return { ...e, planned: parseFloat(e.planned as any) || 0, actual: parseFloat(e.actual as any) || 0 };
     };
 
     const handleSave = (catId: string, week: number | null, field: 'planned' | 'actual', value: number) => {
