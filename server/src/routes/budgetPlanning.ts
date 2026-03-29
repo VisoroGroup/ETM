@@ -163,30 +163,62 @@ router.get('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
 router.put('/entries', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { category_id, year, month, week, planned, actual, currency, notes } = req.body;
 
+    // Validate required fields
     if (!category_id || !year || !month) {
         res.status(400).json({ error: 'category_id, year és month kötelező.' });
         return;
     }
 
-    const { rows } = await pool.query(`
-        INSERT INTO budget_entries (category_id, year, month, week, planned, actual, currency, notes, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (category_id, year, month, week)
-        DO UPDATE SET
-            planned = COALESCE($5, budget_entries.planned),
-            actual = COALESCE($6, budget_entries.actual),
-            currency = COALESCE($7, budget_entries.currency),
-            notes = COALESCE($8, budget_entries.notes),
-            updated_by = $9,
-            updated_at = NOW()
-        RETURNING *
-    `, [
-        category_id, year, month, week || null,
-        planned ?? 0, actual ?? 0, currency || 'RON', notes || null,
-        req.user!.id,
-    ]);
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(category_id)) {
+        res.status(400).json({ error: 'Érvénytelen category_id formátum.' });
+        return;
+    }
 
-    res.json(rows[0]);
+    // Validate month range
+    const m = parseInt(month);
+    if (isNaN(m) || m < 1 || m > 12) {
+        res.status(400).json({ error: 'A hónap 1-12 közötti szám kell legyen.' });
+        return;
+    }
+
+    // Validate week range if provided
+    if (week !== null && week !== undefined) {
+        const w = parseInt(week);
+        if (isNaN(w) || w < 1 || w > 5) {
+            res.status(400).json({ error: 'A hét 1-5 közötti szám kell legyen.' });
+            return;
+        }
+    }
+
+    try {
+        const { rows } = await pool.query(`
+            INSERT INTO budget_entries (category_id, year, month, week, planned, actual, currency, notes, updated_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (category_id, year, month, week)
+            DO UPDATE SET
+                planned = COALESCE($5, budget_entries.planned),
+                actual = COALESCE($6, budget_entries.actual),
+                currency = COALESCE($7, budget_entries.currency),
+                notes = COALESCE($8, budget_entries.notes),
+                updated_by = $9,
+                updated_at = NOW()
+            RETURNING *
+        `, [
+            category_id, year, m, week || null,
+            planned ?? 0, actual ?? 0, currency || 'RON', notes || null,
+            req.user!.id,
+        ]);
+
+        res.json(rows[0]);
+    } catch (err: any) {
+        if (err?.code === '23503') {
+            res.status(400).json({ error: 'Kategória nem található.' });
+            return;
+        }
+        throw err;
+    }
 }));
 
 // ==========================================
