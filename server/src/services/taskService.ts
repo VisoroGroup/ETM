@@ -179,6 +179,44 @@ export async function createTask(
         actor: { id: userId }
     }).catch(err => console.error('[WEBHOOK] task.created dispatch error:', err.message));
 
+    // Notify assigned user (if different from creator)
+    if (assigned_to && assigned_to !== userId) {
+        const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
+        const creatorName = creator[0]?.display_name || 'Cineva';
+
+        // In-app notification
+        await pool.query(
+            `INSERT INTO notifications (user_id, task_id, type, message, created_by)
+             VALUES ($1, $2, 'task_assigned', $3, $4)`,
+            [assigned_to, taskId, `${creatorName} ți-a atribuit o sarcină nouă: "${title}"`, userId]
+        );
+
+        // Email notification (fire-and-forget)
+        (async () => {
+            try {
+                const stakeholders = await getSpecificStakeholders([assigned_to], userId);
+                for (const user of stakeholders) {
+                    const htmlBody = buildNotificationHtml({
+                        recipientName: user.display_name,
+                        subtitle: 'Sarcină nouă atribuită',
+                        bodyLines: [
+                            `<p style="color: #555; font-size: 14px;"><strong>${creatorName}</strong> ți-a atribuit o sarcină nouă:</p>`,
+                        ],
+                        taskId,
+                        taskTitle: title,
+                    });
+                    sendNotificationEmail({
+                        userId: user.id, userEmail: user.email, userName: user.display_name,
+                        taskId, subject: `[ETM] Sarcină nouă atribuită — ${title}`,
+                        htmlBody, emailType: 'task_created_assigned',
+                    }).catch(err => console.error('[task_created_assigned] Email error:', err));
+                }
+            } catch (err) {
+                console.error('[task_created_assigned] Email notification error:', err);
+            }
+        })();
+    }
+
     return rows[0];
 }
 
