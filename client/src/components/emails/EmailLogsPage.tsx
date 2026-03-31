@@ -26,7 +26,7 @@ export default function EmailLogsPage() {
     const load = async () => {
         setLoading(true);
         try {
-            const data = user?.role === 'admin' || user?.role === 'manager'
+            const data = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager'
                 ? await emailApi.logs()
                 : await emailApi.myLogs();
             setLogs(data);
@@ -128,7 +128,7 @@ export default function EmailLogsPage() {
             <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-x-auto">
                 <div className="px-4 py-3 border-b border-navy-700/50">
                     <h2 className="text-sm font-semibold">
-                        {user?.role === 'admin' || user?.role === 'manager' ? 'Toate emailurile' : 'Emailurile mele'}
+                        {user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager' ? 'Toate emailurile' : 'Emailurile mele'}
                     </h2>
                 </div>
 
@@ -146,7 +146,7 @@ export default function EmailLogsPage() {
                         <thead>
                             <tr className="border-b border-navy-700/50">
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Status</th>
-                                {(user?.role === 'admin' || user?.role === 'manager') && (
+                                {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager') && (
                                     <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
                                 )}
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Tip</th>
@@ -164,7 +164,7 @@ export default function EmailLogsPage() {
                                             : <span className="flex items-center gap-1.5 text-red-400 text-xs"><XCircle className="w-3.5 h-3.5" />Eșuat</span>
                                         }
                                     </td>
-                                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                                    {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager') && (
                                         <td className="px-4 py-3">
                                             <p className="text-xs font-medium">{log.display_name}</p>
                                             <p className="text-navy-400 text-[10px]">{log.user_email}</p>

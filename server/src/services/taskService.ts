@@ -384,7 +384,7 @@ export async function softDeleteTask(id: string, userId: string, userRole: strin
 
     const isCreator = rows[0].created_by === userId;
     const isAssignee = rows[0].assigned_to === userId;
-    const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
+    const isAdminOrManager = userRole === 'superadmin' || userRole === 'admin' || userRole === 'manager';
 
     if (!isCreator && !isAssignee && !isAdminOrManager) {
         return { error: 'forbidden' as const };

@@ -15,7 +15,7 @@ function userScopeFilter(
     tableAlias: string = 't',
     startParamIndex: number = 1
 ): { clause: string; values: any[]; nextParamIndex: number } {
-    if (user.role === 'admin' || user.role === 'manager') {
+    if (user.role === 'superadmin' || user.role === 'admin' || user.role === 'manager') {
         return { clause: '', values: [], nextParamIndex: startParamIndex };
     }
     const p = startParamIndex;
