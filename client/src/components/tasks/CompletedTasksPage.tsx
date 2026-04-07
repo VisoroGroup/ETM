@@ -45,10 +45,10 @@ export default function CompletedTasksPage() {
             const key = task.assignee_name || '__neasignat__';
             let group = map.get(key);
             if (!group) {
-                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar, tasks: [] };
+                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar ?? undefined, tasks: [] };
                 map.set(key, group);
             }
-            group.tasks.push(task);
+            group!.tasks.push(task);
         }
         const sorted = Array.from(map.values()).sort((a, b) => {
             if (a.name === 'Neasignat') return 1;

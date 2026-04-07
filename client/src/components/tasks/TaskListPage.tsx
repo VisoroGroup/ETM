@@ -56,10 +56,10 @@ export default function TaskListPage() {
             const key = task.assignee_name || '__neasignat__';
             let group = map.get(key);
             if (!group) {
-                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar, tasks: [] };
+                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar ?? undefined, tasks: [] };
                 map.set(key, group);
             }
-            group.tasks.push(task);
+            group!.tasks.push(task);
         }
         // Sort groups alphabetically, Neasignat at end
         const sorted = Array.from(map.values()).sort((a, b) => {
