@@ -48,6 +48,43 @@ export default function TaskListPage() {
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
 
+    // Group tasks by assignee, sorted by due_date within each group
+    const groupedTasks = useMemo(() => {
+        const groups: { name: string; avatar?: string; tasks: Task[] }[] = [];
+        const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
+        for (const task of tasks) {
+            const key = task.assignee_name || '__neasignat__';
+            let group = map.get(key);
+            if (!group) {
+                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar, tasks: [] };
+                map.set(key, group);
+            }
+            group.tasks.push(task);
+        }
+        // Sort groups alphabetically, Neasignat at end
+        const sorted = Array.from(map.values()).sort((a, b) => {
+            if (a.name === 'Neasignat') return 1;
+            if (b.name === 'Neasignat') return -1;
+            return a.name.localeCompare(b.name);
+        });
+        // Sort tasks within each group by due_date
+        for (const g of sorted) {
+            g.tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+        }
+        return sorted;
+    }, [tasks]);
+
+    // Status-based card background colors
+    const statusCardStyle = (status: TaskStatus) => {
+        switch (status) {
+            case 'de_rezolvat': return 'bg-blue-500/8 border-blue-500/20';
+            case 'in_realizare': return 'bg-yellow-500/8 border-yellow-500/20';
+            case 'terminat': return 'bg-emerald-500/8 border-emerald-500/20';
+            case 'blocat': return 'bg-red-500/8 border-red-500/20';
+            default: return '';
+        }
+    };
+
     // Keyboard shortcuts
     const shortcuts = useMemo(() => ({
         '/': () => searchRef.current?.focus(),
@@ -121,11 +158,17 @@ export default function TaskListPage() {
     }, [location]);
 
     const loadTasks = useCallback(async () => {
+        const scrollY = window.scrollY;
+        const isInitialLoad = tasks.length === 0;
         try {
-            setLoading(true);
+            if (isInitialLoad) setLoading(true);
             const result = await tasksApi.list({ ...filters, exclude_status: 'terminat' });
             setTasks(result.tasks);
             setTotal(result.total);
+            // Restore scroll position after DOM update (only on reload, not initial)
+            if (!isInitialLoad) {
+                requestAnimationFrame(() => window.scrollTo(0, scrollY));
+            }
         } catch (err) {
             showToast('Eroare la încărcarea task-urilor', 'error');
         } finally {
@@ -524,288 +567,289 @@ export default function TaskListPage() {
             ) : (
                 <>
                     {/* ===== MOBILE CARD LAYOUT (<md) ===== */}
-                    <div className="md:hidden space-y-2">
-                        {tasks.map((task, index) => {
-                            const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
-                            const isChecked = selectedIds.has(task.id);
-                            return (
-                                <div
-                                    key={task.id}
-                                    onClick={() => setSelectedTaskId(task.id)}
-                                    className={`bg-navy-900/30 border border-navy-700/50 rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${
-                                        isChecked ? 'border-l-4 border-l-blue-500 bg-blue-500/5' :
-                                        dueStat === 'overdue' ? 'border-l-4 border-l-red-500 bg-red-500/5' :
-                                        dueStat === 'today' ? 'border-l-4 border-l-yellow-500 bg-yellow-500/5' : ''
-                                    }`}
-                                    style={{ animationDelay: `${index * 30}ms` }}
-                                >
-                                    {/* Top row: checkbox + title */}
-                                    <div className="flex items-start gap-3">
-                                        <div
-                                            className="mt-0.5 flex-shrink-0"
-                                            onClick={e => { e.stopPropagation(); toggleId(task.id); }}
-                                        >
-                                            {isChecked
-                                                ? <CheckSquare className="w-5 h-5 text-blue-400" />
-                                                : <Square className="w-5 h-5 text-navy-600" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold leading-snug">{task.title}</p>
-                                            {task.status === 'blocat' && task.blocked_reason && (
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
-                                                    <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Bottom row: status + date + subtasks + dept */}
-                                    <div className="flex items-center gap-2 mt-3 flex-wrap">
-                                        {/* Status badge */}
-                                        <span
-                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
-                                            style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
-                                        >
-                                            {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
-                                            {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
-                                            {STATUSES[task.status]?.label}
-                                        </span>
-
-                                        {/* Due date */}
-                                        <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                                            dueStat === 'overdue' ? 'text-red-400' :
-                                            dueStat === 'today' ? 'text-yellow-400' :
-                                            dueStat === 'tomorrow' ? 'text-orange-400' :
-                                            dueStat === 'soon' ? 'text-amber-400' :
-                                            'text-navy-400'
-                                        }`}>
-                                            <Calendar className="w-3 h-3" />
-                                            {formatDate(task.due_date)}
-                                            {dueStat === 'overdue' && (
-                                                <span className="text-red-400/70 ml-1">Depășit cu {getDaysOverdue(task.due_date)}z</span>
-                                            )}
-                                        </span>
-
-                                        {/* Subtask progress */}
-                                        {(task.subtask_total ?? 0) > 0 && (
-                                            <span className="text-[10px] text-navy-400 flex items-center gap-1">
-                                                {task.subtask_completed}/{task.subtask_total}
-                                                <div className="w-10 h-1 bg-navy-700 rounded-full">
-                                                    <div
-                                                        className="h-full bg-blue-400 rounded-full"
-                                                        style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
-                                                    />
-                                                </div>
-                                            </span>
-                                        )}
-
-                                        {/* Department */}
-                                        {task.department_label && DEPARTMENTS[task.department_label] && (
-                                            <span
-                                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border"
-                                                style={{ background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }}
-                                            >
-                                                {DEPARTMENTS[task.department_label].label}
-                                            </span>
-                                        )}
-
-                                        {/* Recurring / dependency icons */}
-                                        {task.is_recurring && (
-                                            <RefreshCw className="w-3 h-3 text-cyan-400" />
-                                        )}
-                                        {(task.dependency_count ?? 0) > 0 && (
-                                            <span className="text-[10px] text-orange-400 flex items-center gap-0.5">
-                                                <Link2 className="w-3 h-3" /> {task.dependency_count}
-                                            </span>
-                                        )}
-                                    </div>
+                    <div className="md:hidden space-y-4">
+                        {groupedTasks.map(group => (
+                            <div key={group.name}>
+                                {/* Assignee group header */}
+                                <div className="flex items-center gap-2.5 mb-2 px-1">
+                                    <UserAvatar name={group.name} avatarUrl={group.avatar} size="sm" />
+                                    <span className="text-sm font-bold text-white">{group.name}</span>
+                                    <span className="text-[10px] text-navy-500 font-medium">({group.tasks.length})</span>
                                 </div>
-                            );
-                        })}
+                                <div className="space-y-2">
+                                    {group.tasks.map((task, index) => {
+                                        const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                                        const isChecked = selectedIds.has(task.id);
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                onClick={() => setSelectedTaskId(task.id)}
+                                                className={`border rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${statusCardStyle(task.status)} ${
+                                                    isChecked ? 'border-l-4 !border-l-blue-500 !bg-blue-500/5' :
+                                                    dueStat === 'overdue' ? 'border-l-4 !border-l-red-500' :
+                                                    dueStat === 'today' ? 'border-l-4 !border-l-yellow-500' : ''
+                                                }`}
+                                                style={{ animationDelay: `${index * 30}ms` }}
+                                            >
+                                                {/* Top row: checkbox + title */}
+                                                <div className="flex items-start gap-3">
+                                                    <div
+                                                        className="mt-0.5 flex-shrink-0"
+                                                        onClick={e => { e.stopPropagation(); toggleId(task.id); }}
+                                                    >
+                                                        {isChecked
+                                                            ? <CheckSquare className="w-5 h-5 text-blue-400" />
+                                                            : <Square className="w-5 h-5 text-navy-600" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold leading-snug">{task.title}</p>
+                                                        {task.status === 'blocat' && task.blocked_reason && (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <Ban className="w-3 h-3 text-red-400 flex-shrink-0" />
+                                                                <p className="text-[11px] text-red-400 truncate">{task.blocked_reason}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom row: status + date + subtasks + dept */}
+                                                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                                    <span
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                                                        style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
+                                                    >
+                                                        {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
+                                                        {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                                        {STATUSES[task.status]?.label}
+                                                    </span>
+
+                                                    <span className={`text-[10px] font-medium flex items-center gap-1 ${
+                                                        dueStat === 'overdue' ? 'text-red-400' :
+                                                        dueStat === 'today' ? 'text-yellow-400' :
+                                                        dueStat === 'tomorrow' ? 'text-orange-400' :
+                                                        dueStat === 'soon' ? 'text-amber-400' :
+                                                        'text-navy-400'
+                                                    }`}>
+                                                        <Calendar className="w-3 h-3" />
+                                                        {formatDate(task.due_date)}
+                                                        {dueStat === 'overdue' && (
+                                                            <span className="text-red-400/70 ml-1">Depășit cu {getDaysOverdue(task.due_date)}z</span>
+                                                        )}
+                                                    </span>
+
+                                                    {(task.subtask_total ?? 0) > 0 && (
+                                                        <span className="text-[10px] text-navy-400 flex items-center gap-1">
+                                                            {task.subtask_completed}/{task.subtask_total}
+                                                            <div className="w-10 h-1 bg-navy-700 rounded-full">
+                                                                <div
+                                                                    className="h-full bg-blue-400 rounded-full"
+                                                                    style={{ width: `${((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100}%` }}
+                                                                />
+                                                            </div>
+                                                        </span>
+                                                    )}
+
+                                                    {task.department_label && DEPARTMENTS[task.department_label] && (
+                                                        <span
+                                                            className="px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                                                            style={{ background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }}
+                                                        >
+                                                            {DEPARTMENTS[task.department_label].label}
+                                                        </span>
+                                                    )}
+
+                                                    {task.is_recurring && (
+                                                        <RefreshCw className="w-3 h-3 text-cyan-400" />
+                                                    )}
+                                                    {(task.dependency_count ?? 0) > 0 && (
+                                                        <span className="text-[10px] text-orange-400 flex items-center gap-0.5">
+                                                            <Link2 className="w-3 h-3" /> {task.dependency_count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
                     {/* ===== DESKTOP TABLE LAYOUT (md+) ===== */}
-                    <div className="hidden md:block bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden shadow-2xl">
-                        {/* Table header */}
-                        <div className="grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-3.5 bg-navy-800/40 text-[11px] uppercase tracking-wider font-semibold text-navy-400 border-b border-navy-700/50 items-center">
-                            {/* Select all checkbox */}
-                            <div className="flex items-center justify-center cursor-pointer" onClick={toggleAll}>
-                                {allSelected
-                                    ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
-                                    : someSelected
-                                        ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
-                                        : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
-                            </div>
-                            <div>Detalii Sarcină</div>
-                            <div>Responsabil</div>
-                            <div>Termen & Status</div>
-                            <div>Departament</div>
-                        </div>
-
-                        {/* Task rows */}
-                        {tasks.map((task, index) => {
-                            const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
-                            const isChecked = selectedIds.has(task.id);
-                            return (
-                                <div
-                                    key={task.id}
-                                    onClick={() => setSelectedTaskId(task.id)}
-                                    className={`grid grid-cols-[32px_1fr_200px_160px_140px] gap-4 px-5 py-4 border-b border-navy-800/80 cursor-pointer transition-colors items-start group hover:bg-navy-800/30 ${
-                                        isChecked ? 'bg-blue-500/5 border-l-2 border-l-blue-500' :
-                                        dueStat === 'overdue' ? 'bg-red-500/5 border-l-2 border-l-red-500' :
-                                        dueStat === 'today' ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''
-                                    }`}
-                                    style={{ animationDelay: `${index * 30}ms` }}
-                                >
-                                    {/* Row checkbox */}
-                                    <div
-                                        className="flex items-center justify-center mt-1"
-                                        onClick={e => { e.stopPropagation(); toggleId(task.id); }}
-                                    >
-                                        {isChecked
-                                            ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
-                                            : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400 cursor-pointer" />}
-                                    </div>
-
-                                    {/* Task Info */}
-                                    <div className="flex flex-col gap-1.5 pr-6 min-w-0">
-                                        <h3 className="text-[14px] font-semibold text-white leading-snug group-hover:text-blue-400 transition-colors truncate">
-                                            {task.title}
-                                        </h3>
-                                        
-                                        {task.description && (
-                                            <p className="text-[12px] text-navy-300 line-clamp-2 leading-relaxed font-normal">
-                                                {task.description}
-                                            </p>
-                                        )}
-                                        
-                                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            {task.status === 'blocat' && task.blocked_reason && (
-                                                <span className="text-[10px] font-medium text-red-400 flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-800/30">
-                                                    <Ban className="w-3 h-3" /> <span className="truncate max-w-[150px]">{task.blocked_reason}</span>
-                                                </span>
-                                            )}
-                                            
-                                            {(task.subtask_total ?? 0) > 0 && (
-                                                <span className="text-[10px] font-medium text-navy-300 flex items-center gap-1.5 bg-navy-800/60 px-2 py-1 rounded border border-navy-700/50">
-                                                    <span className={`w-3 h-3 rounded-[3px] ${task.subtask_completed === task.subtask_total ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-blue-500/20 border-blue-500/50'} border flex items-center justify-center`}>
-                                                        {task.subtask_completed === task.subtask_total && <CheckSquare className="w-2 h-2 text-emerald-400" />}
-                                                    </span>
-                                                    {task.subtask_completed}/{task.subtask_total} Subtasks
-                                                </span>
-                                            )}
-                                            
-                                            {task.is_recurring && (
-                                                <span className="text-[10px] font-medium text-cyan-400 flex items-center gap-1 bg-cyan-900/20 px-2 py-1 rounded border border-cyan-800/30">
-                                                    <RefreshCw className="w-3 h-3" /> Recurent
-                                                </span>
-                                            )}
-                                            
-                                            {(task.dependency_count ?? 0) > 0 && (
-                                                <span className="text-[10px] font-medium text-orange-400 flex items-center gap-1 bg-orange-900/20 px-2 py-1 rounded border border-orange-800/30">
-                                                    <Link2 className="w-3 h-3" /> Blocat de {task.dependency_count}
-                                                </span>
-                                            )}
-                                            
-                                            {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
-                                                <span className="text-[10px] font-medium text-amber-400 flex items-center gap-1 bg-amber-900/20 px-2 py-1 rounded border border-amber-800/30">
-                                                    <Link2 className="w-3 h-3" /> Blochează {task.blocks_count}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Responsabil */}
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                        <UserAvatar
-                                            name={task.assignee_name}
-                                            avatarUrl={task.assignee_avatar}
-                                            size="lg"
-                                        />
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[9px] text-navy-400 uppercase tracking-widest font-semibold mb-0.5">Responsabil</span>
-                                            <span className={`text-[13px] font-semibold truncate ${task.assignee_name ? 'text-white' : 'text-navy-500'}`}>
-                                                {task.assignee_name || 'Neasignat'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Termen & Status */}
-                                    <div className="flex flex-col gap-2 items-start mt-0.5">
-                                        <div>
-                                            <div className={`flex items-center gap-1.5 ${
-                                                dueStat === 'overdue' ? 'text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md' :
-                                                dueStat === 'today' ? 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-md' :
-                                                dueStat === 'tomorrow' ? 'text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md' :
-                                                dueStat === 'soon' ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md' :
-                                                'text-navy-300 px-1 py-1'
-                                            }`}>
-                                                <Calendar className="w-3.5 h-3.5" />
-                                                <span className="text-[11px] font-semibold">{formatDate(task.due_date)}</span>
-                                            </div>
-                                            {dueStat === 'overdue' && (
-                                                <span className="text-[9px] text-red-400/80 font-medium ml-1 block mt-1">
-                                                    Depășit cu {getDaysOverdue(task.due_date)}z
-                                                </span>
-                                            )}
-                                        </div>
-                                        
-                                        <span
-                                            className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
-                                            style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
-                                        >
-                                            {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
-                                            {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
-                                            {STATUSES[task.status]?.label}
-                                        </span>
-                                    </div>
-
-                                    {/* Departament & Activity */}
-                                    <div className="flex flex-col gap-2 items-start mt-0.5 relative" onClick={e => e.stopPropagation()}>
-                                        <button
-                                            onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
-                                            className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1.5 transition-opacity hover:opacity-80"
-                                            style={task.department_label && DEPARTMENTS[task.department_label]
-                                                ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
-                                                : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
-                                            }
-                                        >
-                                            <span className="truncate">
-                                                {task.department_label && DEPARTMENTS[task.department_label]
-                                                    ? DEPARTMENTS[task.department_label].label
-                                                    : 'Fără departament'
-                                                }
-                                            </span>
-                                            <ChevronDown className="w-3 h-3 flex-shrink-0 opacity-60" />
-                                        </button>
-                                        {deptDropdownId === task.id && (
-                                            <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
-                                                {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
-                                                    <button
-                                                        key={dept}
-                                                        onClick={() => changeDepartment(task.id, dept)}
-                                                        className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700 font-medium"
-                                                        style={{ color: DEPARTMENTS[dept].color }}
-                                                    >
-                                                        <span
-                                                            className="w-2 h-2 rounded-full flex-shrink-0"
-                                                            style={{ background: DEPARTMENTS[dept].color }}
-                                                        />
-                                                        {DEPARTMENTS[dept].label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        
-                                        <div className="text-[10px] text-navy-500 font-medium flex items-center gap-1 mt-1">
-                                            <Clock className="w-3 h-3" />
-                                            {task.last_activity ? timeAgo(task.last_activity) : '—'}
-                                        </div>
-                                    </div>
+                    <div className="hidden md:block space-y-6">
+                        {groupedTasks.map(group => (
+                            <div key={group.name} className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden shadow-2xl">
+                                {/* Assignee group header */}
+                                <div className="flex items-center gap-3 px-5 py-3 bg-navy-800/60 border-b border-navy-700/50">
+                                    <UserAvatar name={group.name} avatarUrl={group.avatar} size="md" />
+                                    <span className="text-sm font-bold text-white">{group.name}</span>
+                                    <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} task{group.tasks.length !== 1 ? '-uri' : ''}</span>
                                 </div>
-                            );
-                        })}
+
+                                {/* Table header */}
+                                <div className="grid grid-cols-[32px_1fr_160px_140px] gap-4 px-5 py-2.5 bg-navy-800/30 text-[11px] uppercase tracking-wider font-semibold text-navy-400 border-b border-navy-700/50 items-center">
+                                    <div className="flex items-center justify-center cursor-pointer" onClick={toggleAll}>
+                                        {allSelected
+                                            ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
+                                            : someSelected
+                                                ? <CheckSquare className="w-4 h-4 text-blue-400/50 cursor-pointer" />
+                                                : <Square className="w-4 h-4 text-navy-600 cursor-pointer hover:text-navy-400" />}
+                                    </div>
+                                    <div>Detalii Sarcină</div>
+                                    <div>Termen & Status</div>
+                                    <div>Departament</div>
+                                </div>
+
+                                {/* Task rows */}
+                                {group.tasks.map((task, index) => {
+                                    const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                                    const isChecked = selectedIds.has(task.id);
+                                    return (
+                                        <div
+                                            key={task.id}
+                                            onClick={() => setSelectedTaskId(task.id)}
+                                            className={`grid grid-cols-[32px_1fr_160px_140px] gap-4 px-5 py-4 border-b border-navy-800/80 cursor-pointer transition-colors items-start group hover:bg-navy-800/30 ${statusCardStyle(task.status)} ${
+                                                isChecked ? '!bg-blue-500/5 border-l-2 !border-l-blue-500' :
+                                                dueStat === 'overdue' ? 'border-l-2 !border-l-red-500' :
+                                                dueStat === 'today' ? 'border-l-2 !border-l-yellow-500' : ''
+                                            }`}
+                                            style={{ animationDelay: `${index * 30}ms` }}
+                                        >
+                                            {/* Row checkbox */}
+                                            <div
+                                                className="flex items-center justify-center mt-1"
+                                                onClick={e => { e.stopPropagation(); toggleId(task.id); }}
+                                            >
+                                                {isChecked
+                                                    ? <CheckSquare className="w-4 h-4 text-blue-400 cursor-pointer" />
+                                                    : <Square className="w-4 h-4 text-navy-600 hover:text-navy-400 cursor-pointer" />}
+                                            </div>
+
+                                            {/* Task Info */}
+                                            <div className="flex flex-col gap-1.5 pr-6 min-w-0">
+                                                <h3 className="text-[14px] font-semibold text-white leading-snug group-hover:text-blue-400 transition-colors truncate">
+                                                    {task.title}
+                                                </h3>
+
+                                                {task.description && (
+                                                    <p className="text-[12px] text-navy-300 line-clamp-2 leading-relaxed font-normal">
+                                                        {task.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                    {task.status === 'blocat' && task.blocked_reason && (
+                                                        <span className="text-[10px] font-medium text-red-400 flex items-center gap-1 bg-red-900/20 px-2 py-1 rounded border border-red-800/30">
+                                                            <Ban className="w-3 h-3" /> <span className="truncate max-w-[150px]">{task.blocked_reason}</span>
+                                                        </span>
+                                                    )}
+
+                                                    {(task.subtask_total ?? 0) > 0 && (
+                                                        <span className="text-[10px] font-medium text-navy-300 flex items-center gap-1.5 bg-navy-800/60 px-2 py-1 rounded border border-navy-700/50">
+                                                            <span className={`w-3 h-3 rounded-[3px] ${task.subtask_completed === task.subtask_total ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-blue-500/20 border-blue-500/50'} border flex items-center justify-center`}>
+                                                                {task.subtask_completed === task.subtask_total && <CheckSquare className="w-2 h-2 text-emerald-400" />}
+                                                            </span>
+                                                            {task.subtask_completed}/{task.subtask_total} Subtasks
+                                                        </span>
+                                                    )}
+
+                                                    {task.is_recurring && (
+                                                        <span className="text-[10px] font-medium text-cyan-400 flex items-center gap-1 bg-cyan-900/20 px-2 py-1 rounded border border-cyan-800/30">
+                                                            <RefreshCw className="w-3 h-3" /> Recurent
+                                                        </span>
+                                                    )}
+
+                                                    {(task.dependency_count ?? 0) > 0 && (
+                                                        <span className="text-[10px] font-medium text-orange-400 flex items-center gap-1 bg-orange-900/20 px-2 py-1 rounded border border-orange-800/30">
+                                                            <Link2 className="w-3 h-3" /> Blocat de {task.dependency_count}
+                                                        </span>
+                                                    )}
+
+                                                    {(task.blocks_count ?? 0) > 0 && !(task.dependency_count ?? 0) && (
+                                                        <span className="text-[10px] font-medium text-amber-400 flex items-center gap-1 bg-amber-900/20 px-2 py-1 rounded border border-amber-800/30">
+                                                            <Link2 className="w-3 h-3" /> Blochează {task.blocks_count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Termen & Status */}
+                                            <div className="flex flex-col gap-2 items-start mt-0.5">
+                                                <div>
+                                                    <div className={`flex items-center gap-1.5 ${
+                                                        dueStat === 'overdue' ? 'text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md' :
+                                                        dueStat === 'today' ? 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-md' :
+                                                        dueStat === 'tomorrow' ? 'text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md' :
+                                                        dueStat === 'soon' ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md' :
+                                                        'text-navy-300 px-1 py-1'
+                                                    }`}>
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                        <span className="text-[11px] font-semibold">{formatDate(task.due_date)}</span>
+                                                    </div>
+                                                    {dueStat === 'overdue' && (
+                                                        <span className="text-[9px] text-red-400/80 font-medium ml-1 block mt-1">
+                                                            Depășit cu {getDaysOverdue(task.due_date)}z
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <span
+                                                    className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
+                                                    style={{ background: STATUSES[task.status]?.bg, color: STATUSES[task.status]?.color, borderColor: STATUSES[task.status]?.border }}
+                                                >
+                                                    {task.status === 'blocat' && <Ban className="w-2.5 h-2.5" />}
+                                                    {task.status === 'terminat' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                                    {STATUSES[task.status]?.label}
+                                                </span>
+                                            </div>
+
+                                            {/* Departament & Activity */}
+                                            <div className="flex flex-col gap-2 items-start mt-0.5 relative" onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => setDeptDropdownId(deptDropdownId === task.id ? null : task.id)}
+                                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1.5 transition-opacity hover:opacity-80"
+                                                    style={task.department_label && DEPARTMENTS[task.department_label]
+                                                        ? { background: DEPARTMENTS[task.department_label].bg, color: DEPARTMENTS[task.department_label].color, borderColor: DEPARTMENTS[task.department_label].border }
+                                                        : { background: 'rgba(255,255,255,0.05)', color: '#64748b', borderColor: 'rgba(255,255,255,0.1)' }
+                                                    }
+                                                >
+                                                    <span className="truncate">
+                                                        {task.department_label && DEPARTMENTS[task.department_label]
+                                                            ? DEPARTMENTS[task.department_label].label
+                                                            : 'Fără departament'
+                                                        }
+                                                    </span>
+                                                    <ChevronDown className="w-3 h-3 flex-shrink-0 opacity-60" />
+                                                </button>
+                                                {deptDropdownId === task.id && (
+                                                    <div className="absolute top-8 left-0 z-50 bg-navy-800 border border-navy-700 rounded-xl shadow-2xl py-1 min-w-[160px] animate-slide-up">
+                                                        {(Object.keys(DEPARTMENTS) as Department[]).map(dept => (
+                                                            <button
+                                                                key={dept}
+                                                                onClick={() => changeDepartment(task.id, dept)}
+                                                                className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-navy-700 font-medium"
+                                                                style={{ color: DEPARTMENTS[dept].color }}
+                                                            >
+                                                                <span
+                                                                    className="w-2 h-2 rounded-full flex-shrink-0"
+                                                                    style={{ background: DEPARTMENTS[dept].color }}
+                                                                />
+                                                                {DEPARTMENTS[dept].label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="text-[10px] text-navy-500 font-medium flex items-center gap-1 mt-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    {task.last_activity ? timeAgo(task.last_activity) : '—'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
                 </>
             )}
