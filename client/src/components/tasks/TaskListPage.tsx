@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { tasksApi, savedFiltersApi } from '../../services/api';
+import { tasksApi, savedFiltersApi, userPreferencesApi } from '../../services/api';
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,7 +13,7 @@ import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
     LayoutList, LayoutGrid, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag,
-    Bookmark, BookmarkPlus, Link2
+    Bookmark, BookmarkPlus, Link2, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
@@ -48,31 +48,75 @@ export default function TaskListPage() {
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
 
-    // Group tasks by assignee, sorted by due_date within each group
-    const groupedTasks = useMemo(() => {
-        const groups: { name: string; avatar?: string; tasks: Task[] }[] = [];
+    // Collapsible groups & custom order
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [savedGroupOrder, setSavedGroupOrder] = useState<string[]>([]);
+
+    // Load user preferences on mount
+    useEffect(() => {
+        userPreferencesApi.get().then((prefs: any) => {
+            if (prefs?.task_group_order) setSavedGroupOrder(prefs.task_group_order);
+        }).catch(() => {});
+    }, []);
+
+    function toggleGroup(name: string) {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            next.has(name) ? next.delete(name) : next.add(name);
+            return next;
+        });
+    }
+
+    function moveGroup(name: string, direction: 'up' | 'down') {
+        setGroupedTasksOrder(prev => {
+            const names = prev.map(g => g.name);
+            const idx = names.indexOf(name);
+            if (idx < 0) return prev;
+            const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (swapIdx < 0 || swapIdx >= names.length) return prev;
+            const newOrder = [...prev];
+            [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+            // Save to server
+            const newNames = newOrder.map(g => g.name);
+            setSavedGroupOrder(newNames);
+            userPreferencesApi.save({ task_group_order: newNames }).catch(() => {});
+            return newOrder;
+        });
+    }
+
+    // Group tasks by assignee, respect saved order
+    const [groupedTasksOrder, setGroupedTasksOrder] = useState<{ name: string; avatar?: string; tasks: Task[] }[]>([]);
+
+    useEffect(() => {
         const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
         for (const task of tasks) {
-            const key = task.assignee_name || '__neasignat__';
+            const key = task.assignee_name || 'Neasignat';
             let group = map.get(key);
             if (!group) {
-                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar ?? undefined, tasks: [] };
+                group = { name: key, avatar: task.assignee_avatar ?? undefined, tasks: [] };
                 map.set(key, group);
             }
             group!.tasks.push(task);
         }
-        // Sort groups alphabetically, Neasignat at end
-        const sorted = Array.from(map.values()).sort((a, b) => {
+        // Sort tasks within each group by due_date
+        for (const g of map.values()) {
+            g.tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+        }
+        // Apply saved order
+        const ordered: typeof groupedTasksOrder = [];
+        for (const name of savedGroupOrder) {
+            const g = map.get(name);
+            if (g) { ordered.push(g); map.delete(name); }
+        }
+        // Append remaining groups alphabetically (Neasignat last)
+        const remaining = Array.from(map.values()).sort((a, b) => {
             if (a.name === 'Neasignat') return 1;
             if (b.name === 'Neasignat') return -1;
             return a.name.localeCompare(b.name);
         });
-        // Sort tasks within each group by due_date
-        for (const g of sorted) {
-            g.tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-        }
-        return sorted;
-    }, [tasks]);
+        ordered.push(...remaining);
+        setGroupedTasksOrder(ordered);
+    }, [tasks, savedGroupOrder]);
 
     // Status-based card background colors
     const statusCardStyle = (status: TaskStatus) => {
@@ -568,15 +612,19 @@ export default function TaskListPage() {
                 <>
                     {/* ===== MOBILE CARD LAYOUT (<md) ===== */}
                     <div className="md:hidden space-y-4">
-                        {groupedTasks.map(group => (
+                        {groupedTasksOrder.map((group, groupIndex) => (
                             <div key={group.name}>
-                                {/* Assignee group header */}
-                                <div className="flex items-center gap-2.5 mb-2 px-1">
+                                {/* Assignee group header — collapsible */}
+                                <div
+                                    className="flex items-center gap-2.5 mb-2 px-1 cursor-pointer select-none"
+                                    onClick={() => toggleGroup(group.name)}
+                                >
+                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="sm" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
                                     <span className="text-[10px] text-navy-500 font-medium">({group.tasks.length})</span>
                                 </div>
-                                <div className="space-y-2">
+                                {expandedGroups.has(group.name) && <div className="space-y-2">
                                     {group.tasks.map((task, index) => {
                                         const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
                                         const isChecked = selectedIds.has(task.id);
@@ -670,23 +718,46 @@ export default function TaskListPage() {
                                             </div>
                                         );
                                     })}
-                                </div>
+                                </div>}
                             </div>
                         ))}
                     </div>
 
                     {/* ===== DESKTOP TABLE LAYOUT (md+) ===== */}
                     <div className="hidden md:block space-y-6">
-                        {groupedTasks.map(group => (
+                        {groupedTasksOrder.map((group, groupIndex) => (
                             <div key={group.name} className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden shadow-2xl">
-                                {/* Assignee group header */}
-                                <div className="flex items-center gap-3 px-5 py-3 bg-navy-800/60 border-b border-navy-700/50">
+                                {/* Assignee group header — collapsible + reorder */}
+                                <div
+                                    className="flex items-center gap-3 px-5 py-3 bg-navy-800/60 border-b border-navy-700/50 cursor-pointer select-none hover:bg-navy-800/80 transition-colors"
+                                    onClick={() => toggleGroup(group.name)}
+                                >
+                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform flex-shrink-0 ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="md" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
                                     <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} task{group.tasks.length !== 1 ? '-uri' : ''}</span>
+                                    <div className="ml-auto flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => moveGroup(group.name, 'up')}
+                                            disabled={groupIndex === 0}
+                                            className="p-1 rounded hover:bg-navy-700/50 text-navy-500 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                            title="Mutare sus"
+                                        >
+                                            <ArrowUp className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => moveGroup(group.name, 'down')}
+                                            disabled={groupIndex === groupedTasksOrder.length - 1}
+                                            className="p-1 rounded hover:bg-navy-700/50 text-navy-500 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                            title="Mutare jos"
+                                        >
+                                            <ArrowDown className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* Table header */}
+                                {/* Table header + rows — only if expanded */}
+                                {expandedGroups.has(group.name) && <>
                                 <div className="grid grid-cols-[32px_1fr_160px_140px] gap-4 px-5 py-2.5 bg-navy-800/30 text-[11px] uppercase tracking-wider font-semibold text-navy-400 border-b border-navy-700/50 items-center">
                                     <div className="flex items-center justify-center cursor-pointer" onClick={toggleAll}>
                                         {allSelected
@@ -848,6 +919,7 @@ export default function TaskListPage() {
                                         </div>
                                     );
                                 })}
+                                </>}
                             </div>
                         ))}
                     </div>

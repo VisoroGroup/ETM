@@ -87,6 +87,12 @@ export const attachmentsApi = {
         api.delete(`/tasks/${taskId}/attachments/${attachmentId}`).then(r => r.data),
 };
 
+// User Preferences
+export const userPreferencesApi = {
+    get: () => api.get('/user-preferences').then(r => r.data),
+    save: (prefs: Record<string, any>) => api.put('/user-preferences', prefs).then(r => r.data),
+};
+
 // Dashboard
 export const dashboardApi = {
     stats: () => api.get<DashboardStats>('/dashboard/stats').then(r => r.data),

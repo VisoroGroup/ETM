@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { tasksApi } from '../../services/api';
+import { tasksApi, userPreferencesApi } from '../../services/api';
 import { Task, STATUSES, DEPARTMENTS } from '../../types';
 import { formatDate, timeAgo } from '../../utils/helpers';
 import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import {
-    Search, CheckCircle2, RotateCcw, Calendar, Loader2, Archive
+    Search, CheckCircle2, RotateCcw, Calendar, Loader2, Archive, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
 
@@ -38,28 +38,67 @@ export default function CompletedTasksPage() {
 
     useEffect(() => { loadTasks(); }, [loadTasks]);
 
-    // Group completed tasks by assignee
-    const groupedTasks = useMemo(() => {
+    // Collapsible groups & custom order
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [savedGroupOrder, setSavedGroupOrder] = useState<string[]>([]);
+    const [groupedTasksOrder, setGroupedTasksOrder] = useState<{ name: string; avatar?: string; tasks: Task[] }[]>([]);
+
+    useEffect(() => {
+        userPreferencesApi.get().then((prefs: any) => {
+            if (prefs?.task_group_order) setSavedGroupOrder(prefs.task_group_order);
+        }).catch(() => {});
+    }, []);
+
+    function toggleGroup(name: string) {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            next.has(name) ? next.delete(name) : next.add(name);
+            return next;
+        });
+    }
+
+    function moveGroup(name: string, direction: 'up' | 'down') {
+        setGroupedTasksOrder(prev => {
+            const idx = prev.findIndex(g => g.name === name);
+            if (idx < 0) return prev;
+            const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+            const newOrder = [...prev];
+            [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+            const newNames = newOrder.map(g => g.name);
+            setSavedGroupOrder(newNames);
+            userPreferencesApi.save({ task_group_order: newNames }).catch(() => {});
+            return newOrder;
+        });
+    }
+
+    useEffect(() => {
         const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
         for (const task of tasks) {
-            const key = task.assignee_name || '__neasignat__';
+            const key = task.assignee_name || 'Neasignat';
             let group = map.get(key);
             if (!group) {
-                group = { name: task.assignee_name || 'Neasignat', avatar: task.assignee_avatar ?? undefined, tasks: [] };
+                group = { name: key, avatar: task.assignee_avatar ?? undefined, tasks: [] };
                 map.set(key, group);
             }
             group!.tasks.push(task);
         }
-        const sorted = Array.from(map.values()).sort((a, b) => {
+        for (const g of map.values()) {
+            g.tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+        }
+        const ordered: { name: string; avatar?: string; tasks: Task[] }[] = [];
+        for (const name of savedGroupOrder) {
+            const g = map.get(name);
+            if (g) { ordered.push(g); map.delete(name); }
+        }
+        const remaining = Array.from(map.values()).sort((a, b) => {
             if (a.name === 'Neasignat') return 1;
             if (b.name === 'Neasignat') return -1;
             return a.name.localeCompare(b.name);
         });
-        for (const g of sorted) {
-            g.tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-        }
-        return sorted;
-    }, [tasks]);
+        ordered.push(...remaining);
+        setGroupedTasksOrder(ordered);
+    }, [tasks, savedGroupOrder]);
 
     function handleSearch() {
         setSearchQuery(searchText);
@@ -134,14 +173,18 @@ export default function CompletedTasksPage() {
                 <>
                     {/* Mobile cards — grouped by assignee */}
                     <div className="md:hidden space-y-4">
-                        {groupedTasks.map(group => (
+                        {groupedTasksOrder.map((group, groupIndex) => (
                             <div key={group.name}>
-                                <div className="flex items-center gap-2.5 mb-2 px-1">
+                                <div
+                                    className="flex items-center gap-2.5 mb-2 px-1 cursor-pointer select-none"
+                                    onClick={() => toggleGroup(group.name)}
+                                >
+                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="sm" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
                                     <span className="text-[10px] text-navy-500 font-medium">({group.tasks.length})</span>
                                 </div>
-                                <div className="space-y-2">
+                                {expandedGroups.has(group.name) && <div className="space-y-2">
                                     {group.tasks.map(task => (
                                         <div
                                             key={task.id}
@@ -180,23 +223,44 @@ export default function CompletedTasksPage() {
                                             </div>
                                         </div>
                                     ))}
-                                </div>
+                                </div>}
                             </div>
                         ))}
                     </div>
 
                     {/* Desktop table — grouped by assignee */}
                     <div className="hidden md:block space-y-6">
-                        {groupedTasks.map(group => (
+                        {groupedTasksOrder.map((group, groupIndex) => (
                             <div key={group.name} className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
-                                {/* Assignee group header */}
-                                <div className="flex items-center gap-3 px-4 py-3 bg-navy-800/60 border-b border-navy-700/50">
+                                {/* Assignee group header — collapsible + reorder */}
+                                <div
+                                    className="flex items-center gap-3 px-4 py-3 bg-navy-800/60 border-b border-navy-700/50 cursor-pointer select-none hover:bg-navy-800/80 transition-colors"
+                                    onClick={() => toggleGroup(group.name)}
+                                >
+                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform flex-shrink-0 ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="md" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
                                     <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} task{group.tasks.length !== 1 ? '-uri' : ''}</span>
+                                    <div className="ml-auto flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => moveGroup(group.name, 'up')}
+                                            disabled={groupIndex === 0}
+                                            className="p-1 rounded hover:bg-navy-700/50 text-navy-500 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <ArrowUp className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => moveGroup(group.name, 'down')}
+                                            disabled={groupIndex === groupedTasksOrder.length - 1}
+                                            className="p-1 rounded hover:bg-navy-700/50 text-navy-500 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <ArrowDown className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* Header */}
+                                {/* Header + rows — only if expanded */}
+                                {expandedGroups.has(group.name) && <>
                                 <div className="grid grid-cols-[1fr_120px_140px_100px_120px] gap-3 px-4 py-2.5 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
                                     <span>Titlu</span>
                                     <span>Data limită</span>
@@ -261,6 +325,7 @@ export default function CompletedTasksPage() {
                                         </div>
                                     </div>
                                 ))}
+                                </>}
                             </div>
                         ))}
                     </div>
