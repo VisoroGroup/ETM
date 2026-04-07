@@ -100,6 +100,52 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     }
 }));
 
+// POST /api/admin/users — create a new user manually (no Microsoft SSO needed)
+router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { email, display_name, role, departments } = req.body;
+
+    if (!email || !display_name) {
+        res.status(400).json({ error: 'Email și nume sunt obligatorii.' });
+        return;
+    }
+
+    const allowed_roles = ['admin', 'manager', 'user'];
+    const userRole = role && allowed_roles.includes(role) ? role : 'user';
+
+    // Check if email already exists (including deactivated)
+    const { rows: existing } = await pool.query(
+        'SELECT id, is_active FROM users WHERE LOWER(email) = LOWER($1)',
+        [email]
+    );
+    if (existing.length > 0) {
+        if (!existing[0].is_active) {
+            // Reactivate
+            const { rows } = await pool.query(
+                `UPDATE users SET is_active = true, display_name = $2, role = $3, departments = $4, updated_at = NOW()
+                 WHERE id = $1 RETURNING *`,
+                [existing[0].id, display_name, userRole, departments || []]
+            );
+            res.status(200).json(rows[0]);
+            return;
+        }
+        res.status(409).json({ error: 'Un utilizator cu acest email există deja.' });
+        return;
+    }
+
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO users (id, microsoft_id, email, display_name, role, departments)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+             RETURNING *`,
+            [`pending-${Date.now()}`, email, display_name, userRole, departments || []]
+        );
+        res.status(201).json(rows[0]);
+    } catch (err) {
+        console.error('Admin create user error:', err);
+        res.status(500).json({ error: 'Eroare la crearea utilizatorului.' });
+    }
+}));
+
 // DELETE /api/admin/users/:id — deactivate (soft delete via role change, not actual delete)
 router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;

@@ -167,6 +167,8 @@ export const savedFiltersApi = {
 // Admin
 export const adminApi = {
     users: () => api.get('/admin/users').then(r => r.data),
+    createUser: (data: { email: string; display_name: string; role?: string; departments?: string[] }) =>
+        api.post('/admin/users', data).then(r => r.data),
     updateUser: (id: string, data: { role?: string; department?: string }) =>
         api.patch(`/admin/users/${id}`, data).then(r => r.data),
     deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),
