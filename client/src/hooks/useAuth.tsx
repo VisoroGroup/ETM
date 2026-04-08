@@ -48,6 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 });
         } else if (oauthError) {
             console.error('OAuth error:', oauthError);
+            if (oauthError === 'user_deactivated') {
+                alert('Contul tău a fost dezactivat. Contactează administratorul.');
+            }
             window.history.replaceState({}, '', '/');
             setLoading(false);
         } else {

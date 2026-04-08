@@ -93,9 +93,11 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         const msUser = await graphResponse.json() as MsGraphUser;
         const email = msUser.mail || msUser.userPrincipalName;
 
-        // First try to find pre-seeded user by email (for Mia, Alisa, Emo etc.)
+        // First try to find pre-seeded user by email (only active users!)
         // If found, link their microsoft_id. Otherwise upsert by microsoft_id.
-        const existing = await pool.query('SELECT * FROM users WHERE email ILIKE $1', [email]);
+        const existing = await pool.query(
+            'SELECT * FROM users WHERE email ILIKE $1 AND is_active = true', [email]
+        );
 
         let user;
         if (existing.rows.length > 0 && existing.rows[0].microsoft_id?.startsWith('pending-')) {
@@ -110,19 +112,39 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
                 [msUser.id, msUser.displayName, existing.rows[0].id]
             );
             user = rows[0];
+        } else if (existing.rows.length > 0) {
+            // Active user already linked — update microsoft_id if needed and refresh info
+            const { rows } = await pool.query(
+                `UPDATE users SET
+                    microsoft_id = $1,
+                    display_name = $2,
+                    updated_at = NOW()
+                 WHERE id = $3
+                 RETURNING *`,
+                [msUser.id, msUser.displayName, existing.rows[0].id]
+            );
+            user = rows[0];
         } else {
-            // Normal upsert by microsoft_id
+            // No active user found by email — upsert by microsoft_id
             const { rows } = await pool.query(
                 `INSERT INTO users (id, microsoft_id, email, display_name)
                  VALUES ($1, $2, $3, $4)
                  ON CONFLICT (microsoft_id) DO UPDATE SET
                    email = EXCLUDED.email,
                    display_name = EXCLUDED.display_name,
+                   is_active = true,
                    updated_at = NOW()
                  RETURNING *`,
                 [uuidv4(), msUser.id, email, msUser.displayName]
             );
             user = rows[0];
+        }
+
+        // Safety check: reject deactivated users
+        if (!user || !user.is_active) {
+            console.warn(`Login blocked for deactivated user: ${email}`);
+            res.redirect(`${clientUrl}/?error=user_deactivated`);
+            return;
         }
 
         const token = generateToken(user);
