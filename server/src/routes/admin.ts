@@ -44,7 +44,7 @@ router.get('/users', asyncHandler(async (_req: AuthRequest, res: Response) => {
 // PATCH /api/admin/users/:id — update user role and/or departments
 router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { role, departments } = req.body;
+    const { role, departments, email } = req.body;
 
     const allowed_roles = ['admin', 'manager', 'user'];
     const allowed_departments = ['departament_1', 'departament_2', 'departament_3', 'departament_4', 'departament_5', 'departament_6', 'departament_7'];
@@ -67,6 +67,11 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         }
     }
 
+    if (email && (typeof email !== 'string' || !email.includes('@'))) {
+        res.status(400).json({ error: 'Email invalid.' });
+        return;
+    }
+
     try {
         const setParts: string[] = [];
         const values: any[] = [];
@@ -74,6 +79,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
 
         if (role) { setParts.push(`role = $${idx++}`); values.push(role); }
         if (departments) { setParts.push(`departments = $${idx++}`); values.push(departments); }
+        if (email) { setParts.push(`email = $${idx++}`); values.push(email); }
 
         if (setParts.length === 0) {
             res.status(400).json({ error: 'Nimic de actualizat.' });
