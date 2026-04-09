@@ -611,20 +611,20 @@ export default function TaskListPage() {
             ) : (
                 <>
                     {/* ===== MOBILE CARD LAYOUT (<md) ===== */}
-                    <div className="md:hidden space-y-4">
+                    <div className="md:hidden space-y-3">
                         {groupedTasksOrder.map((group, groupIndex) => (
-                            <div key={group.name}>
-                                {/* Assignee group header — collapsible */}
+                            <div key={group.name} className="bg-navy-900/30 border border-navy-700/50 rounded-xl overflow-hidden">
+                                {/* Assignee group header — collapsible (matches desktop style) */}
                                 <div
-                                    className="flex items-center gap-2.5 mb-2 px-1 cursor-pointer select-none"
+                                    className="flex items-center gap-2.5 px-3 py-2.5 bg-navy-800/60 border-b border-navy-700/50 cursor-pointer select-none active:bg-navy-800/80 transition-colors"
                                     onClick={() => toggleGroup(group.name)}
                                 >
-                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
+                                    <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform flex-shrink-0 ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="sm" />
-                                    <span className="text-sm font-bold text-white">{group.name}</span>
-                                    <span className="text-[10px] text-navy-500 font-medium">({group.tasks.length})</span>
+                                    <span className="text-sm font-bold text-white truncate">{group.name}</span>
+                                    <span className="text-[10px] text-navy-400 font-medium whitespace-nowrap ml-auto">{group.tasks.length} task{group.tasks.length !== 1 ? '-uri' : ''}</span>
                                 </div>
-                                {expandedGroups.has(group.name) && <div className="space-y-2">
+                                {expandedGroups.has(group.name) && <div className="divide-y divide-navy-800/60">
                                     {group.tasks.map((task, index) => {
                                         const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
                                         const isChecked = selectedIds.has(task.id);
@@ -632,12 +632,11 @@ export default function TaskListPage() {
                                             <div
                                                 key={task.id}
                                                 onClick={() => setSelectedTaskId(task.id)}
-                                                className={`border rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${statusCardStyle(task.status)} ${
+                                                className={`px-3 py-3 cursor-pointer transition-all active:bg-navy-800/40 ${statusCardStyle(task.status)} ${
                                                     isChecked ? 'border-l-4 !border-l-blue-500 !bg-blue-500/5' :
                                                     dueStat === 'overdue' ? 'border-l-4 !border-l-red-500' :
                                                     dueStat === 'today' ? 'border-l-4 !border-l-yellow-500' : ''
                                                 }`}
-                                                style={{ animationDelay: `${index * 30}ms` }}
                                             >
                                                 {/* Top row: checkbox + title */}
                                                 <div className="flex items-start gap-3">
