@@ -9,6 +9,7 @@ import { checkTaskAccess } from '../middleware/taskAccess';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
 import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
+import { getCompletionReportRecipients, buildCompletionReportHtml } from '../services/taskCompletionReportService';
 import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
@@ -467,6 +468,31 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     console.error('[status_changed] Email notification error:', err);
                 }
             })();
+
+            // COMPLETION REPORT: send detailed summary email when task is completed
+            if (status === 'terminat') {
+                (async () => {
+                    try {
+                        const recipients = await getCompletionReportRecipients(id, req.user!.id);
+                        if (recipients.length > 0) {
+                            const reportHtml = await buildCompletionReportHtml(id);
+                            for (const recipient of recipients) {
+                                sendNotificationEmail({
+                                    userId: recipient.id,
+                                    userEmail: recipient.email,
+                                    userName: recipient.display_name,
+                                    taskId: id,
+                                    subject: `[ETM] Raport finalizare — ${taskTitle}`,
+                                    htmlBody: reportHtml,
+                                    emailType: 'completion_report',
+                                }).catch(err => console.error('[completion_report] Email error:', err));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[completion_report] Error:', err);
+                    }
+                })();
+            }
         }
 
         // Webhook: task.status_changed

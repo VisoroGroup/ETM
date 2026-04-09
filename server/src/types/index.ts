@@ -52,6 +52,7 @@ export interface User {
     avatar_url: string | null;
     departments: Department[];
     role: UserRole;
+    reports_to: string[];
     created_at: Date;
     updated_at: Date;
 }
