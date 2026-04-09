@@ -93,11 +93,15 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         const msUser = await graphResponse.json() as MsGraphUser;
         const email = msUser.mail || msUser.userPrincipalName;
 
+        console.log(`[SSO DEBUG] Microsoft returned: email="${email}", mail="${msUser.mail}", upn="${msUser.userPrincipalName}", displayName="${msUser.displayName}", id="${msUser.id}"`);
+
         // First try to find pre-seeded user by email (only active users!)
         // If found, link their microsoft_id. Otherwise upsert by microsoft_id.
         const existing = await pool.query(
             'SELECT * FROM users WHERE email ILIKE $1 AND is_active = true', [email]
         );
+
+        console.log(`[SSO DEBUG] DB lookup for "${email}": found ${existing.rows.length} user(s)${existing.rows.length > 0 ? `, id=${existing.rows[0].id}, ms_id=${existing.rows[0].microsoft_id}, db_email=${existing.rows[0].email}` : ''}`);
 
         let user;
         if (existing.rows.length > 0 && existing.rows[0].microsoft_id?.startsWith('pending-')) {
