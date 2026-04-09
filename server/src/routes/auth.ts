@@ -106,6 +106,12 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         let user;
         if (existing.rows.length > 0 && existing.rows[0].microsoft_id?.startsWith('pending-')) {
             // Pre-seeded user — link their Microsoft account
+            // First: clear any conflicting microsoft_id on deactivated users
+            await pool.query(
+                `UPDATE users SET microsoft_id = 'CLEARED-' || microsoft_id
+                 WHERE microsoft_id = $1 AND id != $2`,
+                [msUser.id, existing.rows[0].id]
+            );
             const { rows } = await pool.query(
                 `UPDATE users SET
                     microsoft_id = $1,
@@ -116,8 +122,15 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
                 [msUser.id, msUser.displayName, existing.rows[0].id]
             );
             user = rows[0];
+            console.log(`[SSO] Linked pending user ${existing.rows[0].id} to Microsoft ID ${msUser.id}`);
         } else if (existing.rows.length > 0) {
             // Active user already linked — update microsoft_id if needed and refresh info
+            // First: clear any conflicting microsoft_id on other users
+            await pool.query(
+                `UPDATE users SET microsoft_id = 'CLEARED-' || microsoft_id
+                 WHERE microsoft_id = $1 AND id != $2`,
+                [msUser.id, existing.rows[0].id]
+            );
             const { rows } = await pool.query(
                 `UPDATE users SET
                     microsoft_id = $1,
