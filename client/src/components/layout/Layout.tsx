@@ -205,7 +205,7 @@ export default function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 min-h-screen`} style={{ overflowX: 'clip' }}>
+            <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 min-h-screen overflow-x-hidden`}>
                 <Outlet />
             </main>
 
