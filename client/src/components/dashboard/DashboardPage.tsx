@@ -133,7 +133,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6 animate-fade-in overflow-x-hidden max-w-full">
             {/* Header + Controls */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
                             {activeAlerts.map((alert) => (
                                 <div
                                     key={alert.id}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
+                                    className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
                                 >
                                     <div
                                         onClick={() => navigate('/tasks', { state: { openTaskId: alert.task_id } })}
@@ -245,7 +245,7 @@ export default function DashboardPage() {
                                             } catch {}
                                         }}
                                         title="Marchează rezolvat"
-                                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+                                        className="hidden md:flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
                                     >
                                         <CheckCircle2 className="w-3.5 h-3.5" />
                                         Rezolvat
