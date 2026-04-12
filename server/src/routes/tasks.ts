@@ -157,6 +157,9 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         u.avatar_url AS creator_avatar,
         au.display_name AS assignee_name,
         au.avatar_url AS assignee_avatar,
+        ap.name AS assigned_post_name,
+        aps.name AS assigned_section_name,
+        apd.name AS assigned_department_name,
         COALESCE(sub.total, 0) AS subtask_total,
         COALESCE(sub.completed, 0) AS subtask_completed,
         al.last_activity,
@@ -169,6 +172,9 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
       FROM tasks t
       JOIN users u ON t.created_by = u.id
       LEFT JOIN users au ON t.assigned_to = au.id
+      LEFT JOIN posts ap ON t.assigned_post_id = ap.id
+      LEFT JOIN sections aps ON ap.section_id = aps.id
+      LEFT JOIN departments apd ON aps.department_id = apd.id
       LEFT JOIN (
         SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
         FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id

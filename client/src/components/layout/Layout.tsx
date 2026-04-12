@@ -10,6 +10,7 @@ import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
+import CompanyGoalBanner from './CompanyGoalBanner';
 
 export default function Layout() {
     const { user, logout } = useAuth();
@@ -206,6 +207,7 @@ export default function Layout() {
 
             {/* Main content */}
             <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 min-h-screen overflow-x-hidden`}>
+                <CompanyGoalBanner darkMode={darkMode} />
                 <Outlet />
             </main>
 

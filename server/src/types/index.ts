@@ -65,11 +65,16 @@ export interface Task {
     due_date: string;
     created_by: string;
     assigned_to: string | null;
+    assigned_post_id: string | null;
     department_label: Department;
     created_at: Date;
     updated_at: Date;
     dependency_count?: number;
     blocks_count?: number;
+    // Post-related fields (populated via JOIN)
+    assigned_post_name?: string;
+    assigned_section_name?: string;
+    assigned_department_name?: string;
 }
 
 export interface TaskDependency {
@@ -228,6 +233,86 @@ export const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
     terminat: { label: 'Terminat', color: '#10B981' },
     blocat: { label: 'Blocat', color: '#EF4444' },
 };
+
+// --- ORG STRUCTURE TYPES (Department → Section → Post) ---
+
+export type PolicyScope = 'COMPANY' | 'DEPARTMENT' | 'POST';
+
+export interface OrgDepartment {
+    id: string;
+    name: string;
+    sort_order: number;
+    color: string;
+    head_user_id: string | null;
+    head_user_name?: string;
+    pfv: string | null;
+    statistic_name: string | null;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+    sections?: OrgSection[];
+    policy_count?: number;
+}
+
+export interface OrgSection {
+    id: string;
+    name: string;
+    department_id: string;
+    head_user_id: string | null;
+    head_user_name?: string;
+    pfv: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+    posts?: OrgPost[];
+    department_name?: string;
+}
+
+export interface OrgPost {
+    id: string;
+    name: string;
+    section_id: string;
+    user_id: string | null;
+    user_name?: string;
+    user_email?: string;
+    user_avatar?: string | null;
+    description: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+    section_name?: string;
+    department_name?: string;
+    department_id?: string;
+    task_count?: number;
+    policy_count?: number;
+}
+
+export interface Policy {
+    id: string;
+    directive_number: number | null;
+    title: string;
+    date: string;
+    content_html: string;
+    scope: PolicyScope;
+    created_by_id: string | null;
+    creator_name?: string;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+    departments?: { id: string; name: string }[];
+    posts?: { id: string; name: string }[];
+}
+
+export interface Setting {
+    id: string;
+    key: string;
+    value: string;
+    updated_by: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
 
 // --- PAYMENT MODULE TYPES ---
 

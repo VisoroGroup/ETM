@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert } from '../types';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy } from '../types';
 import { safeLocalStorage } from '../utils/storage';
 
 const api = axios.create({
@@ -253,6 +253,49 @@ export const dayViewApi = {
         link.click();
         URL.revokeObjectURL(url);
     },
+};
+
+// Org Structure (Departments → Sections → Posts)
+export const departmentsApi = {
+    list: () => api.get<{ departments: OrgDepartment[]; company_policy_count: number }>('/departments').then(r => r.data),
+    get: (id: string) => api.get<OrgDepartment>(`/departments/${id}`).then(r => r.data),
+    create: (data: Partial<OrgDepartment>) => api.post<OrgDepartment>('/departments', data).then(r => r.data),
+    update: (id: string, data: Partial<OrgDepartment>) => api.put<OrgDepartment>(`/departments/${id}`, data).then(r => r.data),
+    delete: (id: string) => api.delete(`/departments/${id}`).then(r => r.data),
+};
+
+export const sectionsApi = {
+    list: (departmentId: string) => api.get<OrgSection[]>(`/departments/${departmentId}/sections`).then(r => r.data),
+    create: (departmentId: string, data: Partial<OrgSection>) => api.post<OrgSection>(`/departments/${departmentId}/sections`, data).then(r => r.data),
+    update: (id: string, data: Partial<OrgSection>) => api.put<OrgSection>(`/departments/sections/${id}`, data).then(r => r.data),
+    delete: (id: string) => api.delete(`/departments/sections/${id}`).then(r => r.data),
+};
+
+export const postsApi = {
+    list: (sectionId: string) => api.get<OrgPost[]>(`/departments/sections/${sectionId}/posts`).then(r => r.data),
+    get: (id: string) => api.get<OrgPost>(`/departments/posts/${id}`).then(r => r.data),
+    create: (sectionId: string, data: Partial<OrgPost>) => api.post<OrgPost>(`/departments/sections/${sectionId}/posts`, data).then(r => r.data),
+    update: (id: string, data: Partial<OrgPost>) => api.put<OrgPost>(`/departments/posts/${id}`, data).then(r => r.data),
+    delete: (id: string) => api.delete(`/departments/posts/${id}`).then(r => r.data),
+};
+
+// Policies (Directives)
+export const policiesApi = {
+    list: (params?: { scope?: string; department_id?: string; post_id?: string }) =>
+        api.get<Policy[]>('/policies', { params }).then(r => r.data),
+    get: (id: string) => api.get<Policy>(`/policies/${id}`).then(r => r.data),
+    upload: (formData: FormData) =>
+        api.post<Policy>('/policies/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(r => r.data),
+    update: (id: string, data: Partial<Policy>) => api.put<Policy>(`/policies/${id}`, data).then(r => r.data),
+    delete: (id: string) => api.delete(`/policies/${id}`).then(r => r.data),
+};
+
+// Company Settings
+export const settingsApi = {
+    getCompanyGoal: () => api.get<{ goal: string }>('/settings/company-goal').then(r => r.data),
+    updateCompanyGoal: (goal: string) => api.put<{ goal: string }>('/settings/company-goal', { goal }).then(r => r.data),
 };
 
 export { api };

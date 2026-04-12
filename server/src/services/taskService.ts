@@ -10,6 +10,9 @@ export async function getTaskById(id: string) {
     const { rows: taskRows } = await pool.query(
         `SELECT t.*, u.display_name AS creator_name, u.avatar_url AS creator_avatar,
         au.display_name AS assignee_name, au.avatar_url AS assignee_avatar, au.email AS assignee_email,
+        ap.name AS assigned_post_name,
+        aps.name AS assigned_section_name,
+        apd.name AS assigned_department_name,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         rt.frequency AS recurring_frequency,
         (SELECT tsc.reason FROM task_status_changes tsc
@@ -18,6 +21,9 @@ export async function getTaskById(id: string) {
        FROM tasks t
        JOIN users u ON t.created_by = u.id
        LEFT JOIN users au ON t.assigned_to = au.id
+       LEFT JOIN posts ap ON t.assigned_post_id = ap.id
+       LEFT JOIN sections aps ON ap.section_id = aps.id
+       LEFT JOIN departments apd ON aps.department_id = apd.id
        LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
        WHERE t.id = $1 AND t.deleted_at IS NULL`,
         [id]
@@ -153,17 +159,26 @@ export async function getTaskById(id: string) {
 // ------- POST / — create task -------
 
 export async function createTask(
-    data: { title: string; description?: string; due_date: string; department_label: string; assigned_to?: string },
+    data: { title: string; description?: string; due_date: string; department_label: string; assigned_to?: string; assigned_post_id?: string },
     userId: string
 ) {
-    const { title, description, due_date, department_label, assigned_to } = data;
+    const { title, description, due_date, department_label, assigned_post_id } = data;
+    let { assigned_to } = data;
     const taskId = uuidv4();
 
+    // If assigned_post_id is provided, auto-resolve the user from the post
+    if (assigned_post_id && !assigned_to) {
+        const { rows: postRows } = await pool.query('SELECT user_id FROM posts WHERE id = $1', [assigned_post_id]);
+        if (postRows.length > 0 && postRows[0].user_id) {
+            assigned_to = postRows[0].user_id;
+        }
+    }
+
     const { rows } = await pool.query(
-        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label, assigned_to)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label, assigned_to, assigned_post_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-        [taskId, title, description || null, due_date, userId, department_label, assigned_to || null]
+        [taskId, title, description || null, due_date, userId, department_label, assigned_to || null, assigned_post_id || null]
     );
 
     // Activity log
@@ -224,7 +239,7 @@ export async function createTask(
 
 export async function updateTask(
     id: string,
-    data: { title?: string; description?: string; department_label?: string; assigned_to?: string },
+    data: { title?: string; description?: string; department_label?: string; assigned_to?: string; assigned_post_id?: string },
     userId: string
 ) {
     // Use transaction with FOR UPDATE to prevent concurrent update races
@@ -262,6 +277,19 @@ export async function updateTask(
         if (data.assigned_to !== undefined) {
             updates.push(`assigned_to = $${paramIndex++}`);
             values.push(data.assigned_to || null);
+        }
+        if (data.assigned_post_id !== undefined) {
+            updates.push(`assigned_post_id = $${paramIndex++}`);
+            values.push(data.assigned_post_id || null);
+
+            // Auto-resolve assigned_to from post user if not explicitly provided
+            if (data.assigned_to === undefined && data.assigned_post_id) {
+                const { rows: postRows } = await client.query('SELECT user_id FROM posts WHERE id = $1', [data.assigned_post_id]);
+                if (postRows.length > 0 && postRows[0].user_id) {
+                    updates.push(`assigned_to = $${paramIndex++}`);
+                    values.push(postRows[0].user_id);
+                }
+            }
         }
 
         if (updates.length === 0) {
