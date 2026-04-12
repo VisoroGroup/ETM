@@ -217,10 +217,10 @@ export interface EmailLog {
 
 // Department config
 export const DEPARTMENTS: Record<Department, { label: string; color: string }> = {
-    departament_1: { label: 'Comunicare si HR', color: '#3B82F6' },
-    departament_2: { label: 'Vanzari', color: '#10B981' },
+    departament_1: { label: 'Comunicare și HR', color: '#3B82F6' },
+    departament_2: { label: 'Vânzări', color: '#10B981' },
     departament_3: { label: 'Financiar', color: '#F59E0B' },
-    departament_4: { label: 'Productie', color: '#EF4444' },
+    departament_4: { label: 'Producție', color: '#EF4444' },
     departament_5: { label: 'Calitate', color: '#8B5CF6' },
     departament_6: { label: 'Extindere', color: '#EC4899' },
     departament_7: { label: 'Administrativ', color: '#06B6D4' },

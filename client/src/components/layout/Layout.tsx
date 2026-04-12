@@ -52,17 +52,17 @@ export default function Layout() {
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
         { to: '/activitate', icon: Activity, label: 'Activitate' },
         { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
-        ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Napi nézet' }] : []),
-        ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
-        ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Email Logs' }] : []),
+        ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
+        ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
+        ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
         { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
     ];
 
     const financiarSubItems = [
-        ...(isSuperAdmin ? [{ to: '/budget', icon: PieChart, label: 'Budget Tervezés' }] : []),
+        ...(isSuperAdmin ? [{ to: '/budget', icon: PieChart, label: 'Planificare buget' }] : []),
         ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Plăți' }] : []),
-        ...(isSuperAdmin ? [{ to: '/client-invoices', icon: FileText, label: 'Ügyfélszámlák' }] : []),
-        ...(isSuperAdmin ? [{ to: '/bank-import', icon: Download, label: 'Bank Import' }] : []),
+        ...(isSuperAdmin ? [{ to: '/client-invoices', icon: FileText, label: 'Facturi clienți' }] : []),
+        ...(isSuperAdmin ? [{ to: '/bank-import', icon: Download, label: 'Import bancar' }] : []),
     ];
 
 

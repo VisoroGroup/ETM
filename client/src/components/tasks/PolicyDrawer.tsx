@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { X, FileText, ChevronRight, ArrowLeft, Upload, Building2, Users, UserCircle } from 'lucide-react';
 import { Policy, PolicyScope } from '../../types';
 import { policiesApi } from '../../services/api';
@@ -108,7 +109,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                         </div>
                         <div
                             className="px-5 py-4 policy-html-content"
-                            dangerouslySetInnerHTML={{ __html: selectedPolicy.content_html }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedPolicy.content_html) }}
                         />
                     </div>
                 ) : (

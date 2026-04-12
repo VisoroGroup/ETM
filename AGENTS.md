@@ -7,6 +7,12 @@
 - Robert describes what he wants in plain language (often Hungarian); Claude builds it
 - There is no code review process, no CI/CD pipeline, no test suite unless explicitly created
 
+## Language
+
+- Always communicate with Robert in Hungarian. All questions, explanations, summaries, and status updates must be in Hungarian.
+- Code itself (variable names, comments, commit messages) should remain in English.
+- If a technical term has no clear Hungarian equivalent, use the English term but explain it simply in Hungarian.
+
 ## First Step on Any Project
 
 Before starting any work, examine the full project structure, config files (package.json, requirements.txt, or equivalent), database schema, and existing code patterns. Do not assume any framework, language, or architecture — verify everything first by reading the codebase.
@@ -46,6 +52,25 @@ Before starting any work, examine the full project structure, config files (pack
 - When something breaks, explain the problem in plain language first, then fix it
 - Do not silently swallow errors — surface them clearly
 - If a fix requires changing multiple files, list all changes before making them
+
+## Large Changes — Mandatory Step-by-Step Execution
+
+Robert often requests large, multi-part changes. These MUST be broken into small, sequential steps:
+
+1. First, present a numbered plan of all steps in Hungarian. Wait for Robert's approval before starting.
+2. Execute one step at a time. After each step, verify it works and confirm that nothing else broke.
+3. After each step, report to Robert: "Kesz az X. lepes. Teszteltem, mukodik. A tobbi funkcio is rendben. Kovetkezo lepes: Y. Mehetek?"
+4. If anything breaks during a step, STOP. Fix it before proceeding. Do not stack changes on top of broken code.
+5. Never combine multiple unrelated changes into one step — each step should do exactly one thing.
+
+## Regression Prevention
+
+Since existing features sometimes break after changes:
+
+- Before starting any change, make a mental inventory of all features that COULD be affected.
+- After completing the change, manually check each of those features.
+- Pay special attention to: navigation/routing, form submissions, data display/listing, filtering, login/authentication if present, and any feature that shares code or database tables with the changed area.
+- If you discover a regression, fix it immediately and report it to Robert: what broke, why, and how you fixed it.
 
 ## Quality and Verification
 

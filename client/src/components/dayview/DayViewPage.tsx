@@ -121,7 +121,7 @@ export default function DayViewPage() {
                         <CalendarClock className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold">Napi nézet</h1>
+                        <h1 className="text-xl font-bold">Vedere zilnică</h1>
                         <p className="text-sm text-navy-400 capitalize">{formattedDate}</p>
                     </div>
                 </div>
@@ -136,7 +136,7 @@ export default function DayViewPage() {
                         }}
                         className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
                     >
-                        ← Tegnap
+                        ← Ieri
                     </button>
                     <input
                         type="date"
@@ -148,7 +148,7 @@ export default function DayViewPage() {
                         onClick={() => setDate(new Date().toISOString().split('T')[0])}
                         className="px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
                     >
-                        Ma
+                        Azi
                     </button>
                     <button
                         onClick={() => {
@@ -158,7 +158,7 @@ export default function DayViewPage() {
                         }}
                         className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
                     >
-                        Holnap →
+                        Mâine →
                     </button>
                 </div>
             </div>
@@ -167,13 +167,13 @@ export default function DayViewPage() {
             {!isLoading && (
                 <div className="mb-6 flex gap-3 flex-wrap">
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-navy-800 text-navy-300">
-                        {sortedUsers.length} munkatárs
+                        {sortedUsers.length} colegi
                     </span>
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400">
-                        {totalTasks} feladat összesen
+                        {totalTasks} sarcini în total
                     </span>
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
-                        {sortedUsers.filter(u => u.tasks.length === 0).length} szabad
+                        {sortedUsers.filter(u => u.tasks.length === 0).length} liberi
                     </span>
                 </div>
             )}
@@ -189,7 +189,7 @@ export default function DayViewPage() {
             {error && (
                 <div className="text-center py-12">
                     <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                    <p className="text-red-400 text-sm">Hiba történt az adatok betöltésekor.</p>
+                    <p className="text-red-400 text-sm">A apărut o eroare la încărcarea datelor.</p>
                 </div>
             )}
 
@@ -213,19 +213,10 @@ export default function DayViewPage() {
                                             >
                                                 {/* User header */}
                                                 <div className="flex items-center gap-3 px-4 py-3">
-                                                    {/* Drag handle */}
                                                     <div {...provided.dragHandleProps} className="cursor-grab text-navy-600 hover:text-navy-400">
                                                         <GripVertical className="w-4 h-4" />
                                                     </div>
-
-                                                    {/* Avatar */}
-                                                    <UserAvatar
-                                                        name={user.display_name}
-                                                        avatarUrl={user.avatar_url}
-                                                        size="sm"
-                                                    />
-
-                                                    {/* Name + task count */}
+                                                    <UserAvatar name={user.display_name} avatarUrl={user.avatar_url} size="sm" />
                                                     <button
                                                         onClick={() => toggleCollapse(user.id)}
                                                         className="flex items-center gap-2 flex-1 text-left"
@@ -236,21 +227,19 @@ export default function DayViewPage() {
                                                                 ? 'bg-green-500/15 text-green-400'
                                                                 : 'bg-blue-500/15 text-blue-400'
                                                         }`}>
-                                                            {user.tasks.length === 0 ? 'Szabad' : `${user.tasks.length} feladat`}
+                                                            {user.tasks.length === 0 ? 'Liber' : `${user.tasks.length} ${user.tasks.length === 1 ? 'sarcină' : 'sarcini'}`}
                                                         </span>
                                                         {collapsed[user.id]
                                                             ? <ChevronRight className="w-4 h-4 text-navy-500" />
                                                             : <ChevronDown className="w-4 h-4 text-navy-500" />
                                                         }
                                                     </button>
-
-                                                    {/* PDF export button */}
                                                     {user.tasks.length > 0 && (
                                                         <button
                                                             onClick={() => handleDownloadPdf(user.id)}
                                                             disabled={downloading === user.id}
                                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors disabled:opacity-50"
-                                                            title="PDF letöltés"
+                                                            title="Descarcă PDF"
                                                         >
                                                             {downloading === user.id
                                                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -270,16 +259,13 @@ export default function DayViewPage() {
                                                                 className={`px-5 py-3 ${ti < user.tasks.length - 1 ? 'border-b border-navy-800/50' : ''} hover:bg-navy-800/30 transition-colors`}
                                                             >
                                                                 <div className="flex items-start gap-3">
-                                                                    {/* Status indicator */}
                                                                     <div className="mt-0.5">
                                                                         {task.status === 'terminat'
                                                                             ? <CheckCircle2 className="w-4 h-4 text-green-400" />
                                                                             : <Circle className="w-4 h-4 text-navy-500" />
                                                                         }
                                                                     </div>
-
                                                                     <div className="flex-1 min-w-0">
-                                                                        {/* Title row */}
                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                             <span className="text-sm font-medium">{task.title}</span>
                                                                             <span
@@ -304,19 +290,13 @@ export default function DayViewPage() {
                                                                                 </span>
                                                                             )}
                                                                         </div>
-
-                                                                        {/* Description preview */}
                                                                         {task.description && (
-                                                                            <p className="text-xs text-navy-400 mt-1 line-clamp-2">
-                                                                                {task.description}
-                                                                            </p>
+                                                                            <p className="text-xs text-navy-400 mt-1 line-clamp-2">{task.description}</p>
                                                                         )}
-
-                                                                        {/* Subtasks */}
                                                                         {task.subtasks.length > 0 && (
                                                                             <div className="mt-2 space-y-1">
                                                                                 <span className="text-[10px] text-navy-500 font-medium">
-                                                                                    Subtask-uri ({task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length})
+                                                                                    Subsarcini ({task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length})
                                                                                 </span>
                                                                                 {task.subtasks.slice(0, 5).map((sub, si) => (
                                                                                     <div key={si} className="flex items-center gap-1.5 text-xs">
@@ -331,7 +311,7 @@ export default function DayViewPage() {
                                                                                 ))}
                                                                                 {task.subtasks.length > 5 && (
                                                                                     <span className="text-[10px] text-navy-500">
-                                                                                        +{task.subtasks.length - 5} további...
+                                                                                        +{task.subtasks.length - 5} în plus...
                                                                                     </span>
                                                                                 )}
                                                                             </div>
@@ -346,7 +326,7 @@ export default function DayViewPage() {
                                                 {/* Empty state */}
                                                 {!collapsed[user.id] && user.tasks.length === 0 && (
                                                     <div className="border-t border-navy-700/40 px-5 py-4 text-center">
-                                                        <p className="text-xs text-navy-500">Nincs feladat erre a napra</p>
+                                                        <p className="text-xs text-navy-500">Nicio sarcină pentru această zi</p>
                                                     </div>
                                                 )}
                                             </div>

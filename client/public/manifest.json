@@ -1,6 +1,6 @@
 {
   "name": "Sarcinator Visoro",
-  "short_name": "Visoro ETM",
+  "short_name": "Sarcinator",
   "description": "Aplicație de gestionare a sarcinilor pentru Visoro Global SRL",
   "start_url": "/",
   "display": "standalone",

@@ -411,7 +411,7 @@ export default function TaskListPage() {
                         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
                     >
                         <Plus className="w-4 h-4" />
-                        Task nou
+                        Sarcină nouă
                     </button>
                 </div>
             </div>

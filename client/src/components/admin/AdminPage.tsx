@@ -156,7 +156,7 @@ export default function AdminPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <Shield className="w-6 h-6 text-blue-400" />
-                    <h1 className="text-xl font-bold">Admin Panel</h1>
+                    <h1 className="text-xl font-bold">Panou administrare</h1>
                 </div>
                 <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm transition-colors">
                     <RefreshCw className="w-4 h-4" />
@@ -195,7 +195,7 @@ export default function AdminPage() {
                         onClick={() => setShowCreateUser(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium transition-colors"
                     >
-                        <Plus className="w-3.5 h-3.5" /> Kolléga hozzáadása
+                        <Plus className="w-3.5 h-3.5" /> Adaugă coleg
                     </button>
                 </div>
 
@@ -363,7 +363,7 @@ export default function AdminPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowCreateUser(false)}>
                     <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-lg font-bold text-white">Kolléga hozzáadása</h3>
+                            <h3 className="text-lg font-bold text-white">Adaugă coleg</h3>
                             <button onClick={() => setShowCreateUser(false)} className="text-navy-400 hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
@@ -371,12 +371,12 @@ export default function AdminPage() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Név *</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Nume *</label>
                                 <input
                                     type="text"
                                     value={newUser.display_name}
                                     onChange={e => setNewUser(prev => ({ ...prev, display_name: e.target.value }))}
-                                    placeholder="Vezetéknév Keresztnév"
+                                    placeholder="Nume Prenume"
                                     className="w-full px-3 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                 />
                             </div>
@@ -391,7 +391,7 @@ export default function AdminPage() {
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Szerepkör</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Rol</label>
                                 <select
                                     value={newUser.role}
                                     onChange={e => setNewUser(prev => ({ ...prev, role: e.target.value }))}
@@ -403,7 +403,7 @@ export default function AdminPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Departamentek</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Departamente</label>
                                 <div className="flex flex-wrap gap-2">
                                     {DEPT_KEYS.map(dept => {
                                         const active = newUser.departments.includes(dept);
@@ -437,14 +437,14 @@ export default function AdminPage() {
                                 onClick={() => setShowCreateUser(false)}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-navy-700 hover:bg-navy-600 text-navy-300 transition-colors"
                             >
-                                Mégsem
+                                Anulează
                             </button>
                             <button
                                 onClick={createUser}
                                 disabled={creating}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-400 text-white transition-colors disabled:opacity-50"
                             >
-                                {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Hozzáadás'}
+                                {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Adaugă'}
                             </button>
                         </div>
                     </div>

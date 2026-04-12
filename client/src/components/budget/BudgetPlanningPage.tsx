@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { Plus, Trash2, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, Target } from 'lucide-react';
 import { safeLocalStorage } from '../../utils/storage';
 
-const MONTHS = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
+const MONTHS = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
 const WEEKS = [1, 2, 3, 4, 5];
 
 function formatMoney(val: number, short = false): string {
@@ -89,28 +89,28 @@ function AddCategoryModal({ parentCategory, section, sectionLabel, onClose, dark
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl ${darkMode ? 'bg-navy-800 text-white' : 'bg-white text-gray-900'}`}>
                 <h3 className="text-lg font-bold mb-4">
-                    {parentCategory ? `Al-tétel hozzáadása: ${parentCategory.name}` : `Új kategória: ${sectionLabel}`}
+                    {parentCategory ? `Adaugă subcategorie: ${parentCategory.name}` : `Categorie nouă: ${sectionLabel}`}
                 </h3>
                 <input
                     autoFocus
                     value={name}
                     onChange={e => setName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-                    placeholder="Kategória neve..."
+                    placeholder="Numele categoriei..."
                     className={`w-full px-4 py-3 rounded-xl border text-sm ${
                         darkMode ? 'bg-navy-900 border-navy-600 text-white placeholder-navy-400' : 'bg-gray-50 border-gray-300 text-gray-900'
                     }`}
                 />
                 <div className="flex gap-2 mt-4 justify-end">
                     <button onClick={onClose} className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'text-navy-300 hover:bg-navy-700' : 'text-gray-500 hover:bg-gray-100'}`}>
-                        Mégsem
+                        Anulează
                     </button>
                     <button
                         onClick={handleAdd}
                         disabled={!name.trim() || addCat.isPending}
                         className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
                     >
-                        {addCat.isPending ? 'Mentés...' : 'Hozzáadás'}
+                        {addCat.isPending ? 'Se salvează...' : 'Adaugă'}
                     </button>
                 </div>
             </div>
@@ -234,8 +234,8 @@ export default function BudgetPlanningPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Budget Tervezés</h1>
-                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Pénzügyi tervezés és nyomkövetés — {year}</p>
+                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Planificare buget</h1>
+                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Planificare financiară și monitorizare — {year}</p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -257,10 +257,10 @@ export default function BudgetPlanningPage() {
                 {/* Summary cards */}
                 {summary && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                        <SummaryCard icon={TrendingUp} label="Bevétel (megvalósított)" value={summary.revenue_actual} planned={summary.revenue_planned} positive darkMode={darkMode} />
-                        <SummaryCard icon={TrendingDown} label="Kiadás (megvalósított)" value={summary.expense_actual} planned={summary.expense_planned} positive={false} darkMode={darkMode} />
-                        <SummaryCard icon={Target} label="Eredmény" value={summary.result_actual} planned={summary.result_planned} positive={summary.result_actual >= 0} darkMode={darkMode} />
-                        <SummaryCard icon={Wallet} label="Kassza" value={summary.cash_balance ?? 0} darkMode={darkMode} />
+                        <SummaryCard icon={TrendingUp} label="Venituri (realizat)" value={summary.revenue_actual} planned={summary.revenue_planned} positive darkMode={darkMode} />
+                        <SummaryCard icon={TrendingDown} label="Cheltuieli (realizat)" value={summary.expense_actual} planned={summary.expense_planned} positive={false} darkMode={darkMode} />
+                        <SummaryCard icon={Target} label="Rezultat" value={summary.result_actual} planned={summary.result_planned} positive={summary.result_actual >= 0} darkMode={darkMode} />
+                        <SummaryCard icon={Wallet} label="Casă" value={summary.cash_balance ?? 0} darkMode={darkMode} />
                     </div>
                 )}
 
@@ -287,27 +287,27 @@ export default function BudgetPlanningPage() {
                         <thead>
                             <tr className={`${darkMode ? 'bg-navy-800/80' : 'bg-gray-50'}`}>
                                 <th className={`text-left px-3 py-2.5 font-semibold sticky left-0 z-10 w-64 ${darkMode ? 'bg-navy-800/95' : 'bg-gray-50'}`}>
-                                    Kategória
+                                    Categorie
                                 </th>
                                 {WEEKS.map(w => (
                                     <th key={w} colSpan={2} className={`text-center px-1 py-2.5 font-semibold border-l ${darkMode ? 'border-navy-700' : 'border-gray-200'}`}>
-                                        Hét {w}
+                                        Săpt {w}
                                     </th>
                                 ))}
                                 <th colSpan={2} className={`text-center px-1 py-2.5 font-bold border-l-2 ${darkMode ? 'border-blue-500/50' : 'border-blue-300'}`}>
-                                    {MONTHS[month - 1]} Összesen
+                                    {MONTHS[month - 1]} Total
                                 </th>
                             </tr>
                             <tr className={`text-[10px] uppercase tracking-wider ${darkMode ? 'text-navy-400 bg-navy-800/40' : 'text-gray-400 bg-gray-50/50'}`}>
                                 <th className={`sticky left-0 z-10 ${darkMode ? 'bg-navy-800/95' : 'bg-gray-50'}`}></th>
                                 {WEEKS.map(w => (
                                     <React.Fragment key={w}>
-                                        <th className={`px-1 py-1 border-l ${darkMode ? 'border-navy-700' : 'border-gray-200'}`}>Terv</th>
-                                        <th className="px-1 py-1">Megv.</th>
+                                        <th className={`px-1 py-1 border-l ${darkMode ? 'border-navy-700' : 'border-gray-200'}`}>Plan</th>
+                                        <th className="px-1 py-1">Real.</th>
                                     </React.Fragment>
                                 ))}
-                                <th className={`px-1 py-1 border-l-2 ${darkMode ? 'border-blue-500/50' : 'border-blue-300'}`}>Terv</th>
-                                <th className="px-1 py-1">Megv.</th>
+                                <th className={`px-1 py-1 border-l-2 ${darkMode ? 'border-blue-500/50' : 'border-blue-300'}`}>Plan</th>
+                                <th className="px-1 py-1">Real.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -339,7 +339,7 @@ export default function BudgetPlanningPage() {
                                                         <button
                                                             onClick={() => setAddCategoryTarget({ section: sectionKey, sectionLabel: label })}
                                                             className={`ml-auto p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-500/20 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}
-                                                            title="Új kategória"
+                                                            title="Categorie nouă"
                                                         >
                                                             <Plus className="w-3 h-3" />
                                                         </button>
@@ -386,16 +386,16 @@ export default function BudgetPlanningPage() {
                                                                     <button
                                                                         onClick={() => setAddCategoryTarget({ parent: cat, section: cat.section, sectionLabel: cat.section_label })}
                                                                         className={`ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 transition-all ${darkMode ? 'text-navy-500 hover:text-blue-400' : 'text-gray-300 hover:text-blue-500'}`}
-                                                                        title="Al-tétel hozzáadása"
+                                                                        title="Adaugă subcategorie"
                                                                     >
                                                                         <Plus className="w-3 h-3" />
                                                                     </button>
                                                                 )}
                                                                 {!cat.children?.length && (
                                                                     <button
-                                                                        onClick={() => { if (confirm(`Biztosan törlöd: "${cat.name}"?`)) deleteCat.mutate(cat.id); }}
+                                                                        onClick={() => { if (confirm(`Sigur dorești să ștergi: "${cat.name}"?`)) deleteCat.mutate(cat.id); }}
                                                                         className={`ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 transition-all ${darkMode ? 'text-navy-600 hover:text-red-400' : 'text-gray-300 hover:text-red-500'}`}
-                                                                        title="Törlés"
+                                                                        title="Șterge"
                                                                     >
                                                                         <Trash2 className="w-3 h-3" />
                                                                     </button>
@@ -443,9 +443,9 @@ export default function BudgetPlanningPage() {
                                                             <div className="flex items-center gap-1">
                                                                 <span className={`text-xs ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>{child.name}</span>
                                                                 <button
-                                                                    onClick={() => { if (confirm(`Biztosan törlöd: "${child.name}"?`)) deleteCat.mutate(child.id); }}
+                                                                    onClick={() => { if (confirm(`Sigur dorești să ștergi: "${child.name}"?`)) deleteCat.mutate(child.id); }}
                                                                     className={`ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 transition-all ${darkMode ? 'text-navy-600 hover:text-red-400' : 'text-gray-300 hover:text-red-500'}`}
-                                                                    title="Törlés"
+                                                                    title="Șterge"
                                                                 >
                                                                     <Trash2 className="w-2.5 h-2.5" />
                                                                 </button>
@@ -514,7 +514,7 @@ function SummaryCard({ icon: Icon, label, value, planned, positive, darkMode }: 
             </div>
             {planned !== undefined && (
                 <div className={`text-[10px] mt-1 ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {diff >= 0 ? '+' : ''}{formatMoney(diff)} vs tervezett ({formatMoney(planned)})
+                    {diff >= 0 ? '+' : ''}{formatMoney(diff)} vs planificat ({formatMoney(planned)})
                 </div>
             )}
         </div>

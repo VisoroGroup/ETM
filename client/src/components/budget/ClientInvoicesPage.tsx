@@ -47,14 +47,14 @@ export default function ClientInvoicesPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Ügyfélszámlák</h1>
-                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Kiállított számlák és befizetések nyilvántartása</p>
+                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Facturi clienți</h1>
+                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Evidența facturilor emise și a încasărilor</p>
                     </div>
                     <button
                         onClick={() => setShowForm(true)}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white shadow-lg transition-all hover:-translate-y-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/25"
                     >
-                        <Plus className="w-5 h-5" /> Új Számla
+                        <Plus className="w-5 h-5" /> Factură nouă
                     </button>
                 </div>
 
@@ -64,30 +64,30 @@ export default function ClientInvoicesPage() {
                         <div className={`p-4 rounded-xl border ${darkMode ? 'bg-navy-800/50 border-navy-700' : 'bg-white border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="p-1.5 rounded-lg bg-blue-500/10"><FileText className="w-4 h-4 text-blue-400" /></div>
-                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Összesen</span>
+                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Total</span>
                             </div>
                             <div className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{summary.total}</div>
                         </div>
                         <div className={`p-4 rounded-xl border ${darkMode ? 'bg-navy-800/50 border-navy-700' : 'bg-white border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="p-1.5 rounded-lg bg-amber-500/10"><Clock className="w-4 h-4 text-amber-400" /></div>
-                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Kifizetetlen</span>
+                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Neachitate</span>
                             </div>
                             <div className="text-xl font-bold text-amber-400">{formatMoney(summary.unpaid_total)}</div>
-                            <div className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{summary.unpaid_count} számla</div>
+                            <div className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{summary.unpaid_count} facturi</div>
                         </div>
                         <div className={`p-4 rounded-xl border ${darkMode ? 'bg-navy-800/50 border-navy-700' : 'bg-white border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="p-1.5 rounded-lg bg-emerald-500/10"><CheckCircle2 className="w-4 h-4 text-emerald-400" /></div>
-                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Kifizetett</span>
+                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Achitate</span>
                             </div>
                             <div className="text-xl font-bold text-emerald-400">{formatMoney(summary.paid_total)}</div>
-                            <div className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{summary.paid_count} számla</div>
+                            <div className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{summary.paid_count} facturi</div>
                         </div>
                         <div className={`p-4 rounded-xl border ${darkMode ? 'bg-navy-800/50 border-navy-700' : 'bg-white border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="p-1.5 rounded-lg bg-purple-500/10"><DollarSign className="w-4 h-4 text-purple-400" /></div>
-                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Teljes érték</span>
+                                <span className={`text-[11px] font-medium ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Valoare totală</span>
                             </div>
                             <div className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{formatMoney(summary.grand_total)}</div>
                         </div>
@@ -101,7 +101,7 @@ export default function ClientInvoicesPage() {
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Keresés ügyfél, számlaszám..."
+                            placeholder="Caută client, număr factură..."
                             className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${
                                 darkMode ? 'bg-navy-800 border-navy-600 text-white placeholder-navy-400' : 'bg-white border-gray-300 placeholder-gray-400'
                             }`}
@@ -118,7 +118,7 @@ export default function ClientInvoicesPage() {
                                         : darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-500 hover:bg-gray-100'
                                 }`}
                             >
-                                {f === 'all' ? 'Összes' : f === 'unpaid' ? 'Kifizetetlen' : 'Kifizetett'}
+                                {f === 'all' ? 'Toate' : f === 'unpaid' ? 'Neachitate' : 'Achitate'}
                             </button>
                         ))}
                     </div>
@@ -130,7 +130,7 @@ export default function ClientInvoicesPage() {
                 ) : invoices.length === 0 ? (
                     <div className={`p-10 text-center rounded-xl border ${darkMode ? 'border-navy-700 bg-navy-800/30' : 'border-gray-200 bg-white'}`}>
                         <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                        <h3 className="text-lg font-medium">Nincs számla</h3>
+                        <h3 className="text-lg font-medium">Nicio factură</h3>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -139,9 +139,9 @@ export default function ClientInvoicesPage() {
                                 key={inv.id}
                                 invoice={inv}
                                 darkMode={darkMode}
-                                onMarkPaid={id => markPaid.mutate({ id }, { onError: () => showToast('Hiba a fizetés jelölésénél', 'error') })}
-                                onMarkUnpaid={id => markUnpaid.mutate(id, { onError: () => showToast('Hiba a visszavonásnál', 'error') })}
-                                onDelete={id => { if (confirm('Biztosan törlöd?')) deleteInv.mutate(id, { onError: () => showToast('Hiba a törlésnél', 'error') }); }}
+                                onMarkPaid={id => markPaid.mutate({ id }, { onError: () => showToast('Eroare la marcarea plății', 'error') })}
+                                onMarkUnpaid={id => markUnpaid.mutate(id, { onError: () => showToast('Eroare la anulare', 'error') })}
+                                onDelete={id => { if (confirm('Sigur dorești să ștergi?')) deleteInv.mutate(id, { onError: () => showToast('Eroare la ștergere', 'error') }); }}
                             />
                         ))}
                     </div>
@@ -186,9 +186,9 @@ function InvoiceRow({ invoice, darkMode, onMarkPaid, onMarkUnpaid, onDelete }: {
                     )}
                 </div>
                 <div className={`text-xs space-x-3 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
-                    <span>Kiállítva: {format(new Date(invoice.issued_date), 'dd MMM yyyy', { locale: ro })}</span>
-                    {invoice.due_date && <span>• Esedékes: {format(new Date(invoice.due_date), 'dd MMM yyyy', { locale: ro })}</span>}
-                    {invoice.is_paid && invoice.paid_date && <span className="text-emerald-400">• Fizetve: {format(new Date(invoice.paid_date), 'dd MMM yyyy', { locale: ro })}</span>}
+                    <span>Emis: {format(new Date(invoice.issued_date), 'dd MMM yyyy', { locale: ro })}</span>
+                    {invoice.due_date && <span>• Scadent: {format(new Date(invoice.due_date), 'dd MMM yyyy', { locale: ro })}</span>}
+                    {invoice.is_paid && invoice.paid_date && <span className="text-emerald-400">• Achitat: {format(new Date(invoice.paid_date), 'dd MMM yyyy', { locale: ro })}</span>}
                 </div>
                 {invoice.notes && <p className={`text-xs mt-1 ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>{invoice.notes}</p>}
             </div>
@@ -203,15 +203,15 @@ function InvoiceRow({ invoice, darkMode, onMarkPaid, onMarkUnpaid, onDelete }: {
 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {invoice.is_paid ? (
-                        <button onClick={() => onMarkUnpaid(invoice.id)} className="p-1.5 rounded-lg hover:bg-amber-500/10 text-amber-400" title="Visszavonás">
+                        <button onClick={() => onMarkUnpaid(invoice.id)} className="p-1.5 rounded-lg hover:bg-amber-500/10 text-amber-400" title="Anulează">
                             <X className="w-4 h-4" />
                         </button>
                     ) : (
-                        <button onClick={() => onMarkPaid(invoice.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400" title="Fizetve">
+                        <button onClick={() => onMarkPaid(invoice.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400" title="Achitat">
                             <Check className="w-4 h-4" />
                         </button>
                     )}
-                    <button onClick={() => onDelete(invoice.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400" title="Törlés">
+                    <button onClick={() => onDelete(invoice.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400" title="Șterge">
                         <Trash2 className="w-4 h-4" />
                     </button>
                 </div>
@@ -232,7 +232,7 @@ function InvoiceFormModal({ onClose, darkMode }: { onClose: () => void; darkMode
             amount: parseFloat(form.amount) as any,
         }, {
             onSuccess: () => onClose(),
-            onError: () => showToast('Hiba a számla mentésénél', 'error'),
+            onError: () => showToast('Eroare la salvarea facturii', 'error'),
         });
     };
 
@@ -241,20 +241,20 @@ function InvoiceFormModal({ onClose, darkMode }: { onClose: () => void; darkMode
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <form onSubmit={handleSubmit} className={`rounded-2xl p-6 w-full max-w-lg shadow-2xl ${darkMode ? 'bg-navy-800 text-white' : 'bg-white text-gray-900'}`}>
-                <h3 className="text-lg font-bold mb-4">Új Ügyfélszámla</h3>
+                <h3 className="text-lg font-bold mb-4">Factură nouă client</h3>
 
                 <div className="space-y-3">
                     <div>
-                        <label className="text-xs font-medium mb-1 block">Ügyfél neve *</label>
-                        <input required value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Pl. Client SRL" className={inputClass} />
+                        <label className="text-xs font-medium mb-1 block">Numele clientului *</label>
+                        <input required value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Ex. Client SRL" className={inputClass} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-medium mb-1 block">Számla szám</label>
+                            <label className="text-xs font-medium mb-1 block">Număr factură</label>
                             <input value={form.invoice_number} onChange={e => setForm(f => ({ ...f, invoice_number: e.target.value }))} placeholder="FAC-2025-001" className={inputClass} />
                         </div>
                         <div>
-                            <label className="text-xs font-medium mb-1 block">Pénznem</label>
+                            <label className="text-xs font-medium mb-1 block">Monedă</label>
                             <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} className={inputClass}>
                                 <option value="RON">RON</option>
                                 <option value="EUR">EUR</option>
@@ -263,31 +263,31 @@ function InvoiceFormModal({ onClose, darkMode }: { onClose: () => void; darkMode
                         </div>
                     </div>
                     <div>
-                        <label className="text-xs font-medium mb-1 block">Összeg *</label>
+                        <label className="text-xs font-medium mb-1 block">Sumă *</label>
                         <input required type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className={inputClass} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-medium mb-1 block">Kiállítás dátuma *</label>
+                            <label className="text-xs font-medium mb-1 block">Data emiterii *</label>
                             <input required type="date" value={form.issued_date} onChange={e => setForm(f => ({ ...f, issued_date: e.target.value }))} className={inputClass} />
                         </div>
                         <div>
-                            <label className="text-xs font-medium mb-1 block">Fizetési határidő</label>
+                            <label className="text-xs font-medium mb-1 block">Termen de plată</label>
                             <input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} className={inputClass} />
                         </div>
                     </div>
                     <div>
-                        <label className="text-xs font-medium mb-1 block">Megjegyzés</label>
+                        <label className="text-xs font-medium mb-1 block">Observații</label>
                         <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={inputClass} />
                     </div>
                 </div>
 
                 <div className="flex gap-2 mt-5 justify-end">
                     <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'text-navy-300 hover:bg-navy-700' : 'text-gray-500 hover:bg-gray-100'}`}>
-                        Mégsem
+                        Anulează
                     </button>
                     <button type="submit" disabled={create.isPending} className="px-5 py-2 rounded-lg text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
-                        {create.isPending ? 'Mentés...' : 'Számla mentése'}
+                        {create.isPending ? 'Se salvează...' : 'Salvează factura'}
                     </button>
                 </div>
             </form>

@@ -14,8 +14,8 @@ const CATEGORIES = [
     { value: 'furnizor_echipamente', label: 'Furnizor de echipamente' },
     { value: 'marketing', label: 'Marketing' },
     { value: 'salarii', label: 'Salarii' },
-    { value: 'incasare_client', label: '↗ Bevétel (ügyfél)' },
-    { value: 'alte_venituri', label: '↗ Egyéb bevétel' },
+    { value: 'incasare_client', label: '↗ Încasare client' },
+    { value: 'alte_venituri', label: '↗ Alte venituri' },
 ];
 
 function formatMoney(val: number) {
@@ -49,8 +49,8 @@ export default function BankImportPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Bank Import</h1>
-                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Banki kivonat feltöltés és automatikus párosítás</p>
+                        <h1 className="text-2xl md:text-3xl font-bold font-outfit tracking-tight">Import bancar</h1>
+                        <p className={`mt-1 text-sm ${darkMode ? 'text-navy-300' : 'text-gray-500'}`}>Încărcare extras bancar și potrivire automată</p>
                     </div>
                     <button
                         onClick={() => setShowHistory(!showHistory)}
@@ -58,7 +58,7 @@ export default function BankImportPage() {
                             darkMode ? 'bg-navy-800 text-navy-300 hover:bg-navy-700' : 'bg-white text-gray-600 hover:bg-gray-100'
                         } border ${darkMode ? 'border-navy-600' : 'border-gray-300'}`}
                     >
-                        <History className="w-4 h-4" /> Előzmények ({imports.length})
+                        <History className="w-4 h-4" /> Istoric ({imports.length})
                     </button>
                 </div>
 
@@ -70,7 +70,7 @@ export default function BankImportPage() {
                 {/* Import history */}
                 {showHistory && !selectedImportId && (
                     <div className="mb-6">
-                        <h2 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Import előzmények</h2>
+                        <h2 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Istoric importuri</h2>
                         <div className="space-y-2">
                             {imports.map(imp => (
                                 <div
@@ -96,7 +96,7 @@ export default function BankImportPage() {
                                                 : imp.status === 'reviewing' ? 'bg-amber-500/10 text-amber-400'
                                                 : 'bg-blue-500/10 text-blue-400'
                                             }`}>{imp.status}</span>
-                                            <span>{imp.total_transactions} tranzakció</span>
+                                            <span>{imp.total_transactions} tranzacții</span>
                                             <ArrowRight className="w-4 h-4 text-navy-500" />
                                         </div>
                                     </div>
@@ -182,20 +182,20 @@ function UploadArea({ darkMode, onUpload, onImportCreated }: {
                         <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
                             <FileSpreadsheet className="w-6 h-6 text-blue-400 animate-spin" />
                         </div>
-                        <p className="font-medium">Feldolgozás...</p>
+                        <p className="font-medium">Se procesează...</p>
                     </div>
                 ) : (
                     <>
                         <Upload className={`w-12 h-12 mx-auto mb-4 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`} />
-                        <p className="font-medium text-lg mb-1">Húzd ide a banki kivonatot</p>
-                        <p className={`text-sm ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>vagy kattints a feltöltéshez (.xlsx, .xls, .csv)</p>
+                        <p className="font-medium text-lg mb-1">Trage aici extrasul bancar</p>
+                        <p className={`text-sm ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>sau click pentru a încărca (.xlsx, .xls, .csv)</p>
                     </>
                 )}
             </div>
 
             {onUpload.isError && (
                 <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                    Hiba: {(onUpload.error as any)?.response?.data?.error || 'Ismeretlen hiba'}
+                    Eroare: {(onUpload.error as any)?.response?.data?.error || 'Eroare necunoscută'}
                 </div>
             )}
         </div>
@@ -228,7 +228,7 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
                     <div>
                         <h2 className="font-bold text-lg">{imp.file_name}</h2>
                         <div className={`text-xs ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
-                            {imp.bank_account_name} • {imp.currency} • {rows.length} tranzakció
+                            {imp.bank_account_name} • {imp.currency} • {rows.length} tranzacții
                             {imp.period_start && ` • ${format(new Date(imp.period_start), 'dd MMM', { locale: ro })} – ${format(new Date(imp.period_end), 'dd MMM yyyy', { locale: ro })}`}
                         </div>
                     </div>
@@ -241,7 +241,7 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
                             disabled={runMatch.isPending}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50"
                         >
-                            <Zap className="w-4 h-4" /> {runMatch.isPending ? 'Párosítás...' : 'Automatikus párosítás'}
+                            <Zap className="w-4 h-4" /> {runMatch.isPending ? 'Se potrivește...' : 'Potrivire automată'}
                         </button>
                     )}
                     {unapproved.length > 0 && (
