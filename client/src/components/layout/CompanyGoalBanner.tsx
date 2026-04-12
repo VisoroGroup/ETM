@@ -69,7 +69,7 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
                             className={`ml-1 p-1 rounded opacity-40 hover:opacity-100 transition-opacity ${
                                 darkMode ? 'hover:bg-navy-700' : 'hover:bg-blue-100'
                             }`}
-                            title="Editare obiectiv"
+                            title="Editare obiectivul companiei"
                         >
                             <Pencil className="w-3 h-3" />
                         </button>

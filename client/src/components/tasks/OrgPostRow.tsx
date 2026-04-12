@@ -107,7 +107,7 @@ export default function OrgPostRow({
                             </span>
                         </>
                     ) : (
-                        <span className={`text-xs italic ${darkMode ? 'text-navy-600' : 'text-gray-300'}`}>Vacant</span>
+                        <span className={`text-xs italic ${darkMode ? 'text-navy-600' : 'text-gray-300'}`}>Neocupat</span>
                     )}
                 </div>
 
@@ -117,7 +117,7 @@ export default function OrgPostRow({
                         ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
                         : darkMode ? 'bg-navy-800 text-navy-600' : 'bg-gray-100 text-gray-400'
                 }`}>
-                    {taskCount} task
+                    {taskCount} {taskCount === 1 ? 'sarcină' : 'sarcini'}
                 </span>
 
                 {/* Policy count */}
@@ -172,7 +172,7 @@ export default function OrgPostRow({
                                             backgroundColor: statusConfig?.color + '20',
                                             color: statusConfig?.color,
                                         }}
-                                        title="Schimbă statusul"
+                                        title="Schimbă statutul"
                                     >
                                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusConfig?.color }} />
                                         {statusConfig?.label}

@@ -63,7 +63,7 @@ export default function OrgDepartmentAccordion({
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                             darkMode ? 'bg-navy-700 text-navy-300' : 'bg-gray-100 text-gray-500'
                         }`}>
-                            {deptTaskCount} sarcini
+                            {deptTaskCount} {deptTaskCount === 1 ? 'sarcină' : 'sarcini'}
                         </span>
                     </div>
                     <p className={`text-xs mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>

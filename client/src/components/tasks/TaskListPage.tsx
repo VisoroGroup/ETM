@@ -231,7 +231,7 @@ export default function TaskListPage() {
                 requestAnimationFrame(() => window.scrollTo(0, scrollY));
             }
         } catch (err) {
-            showToast('Eroare la încărcarea task-urilor', 'error');
+            showToast('Eroare la încărcarea sarcinilor', 'error');
         } finally {
             setLoading(false);
         }
@@ -330,7 +330,7 @@ export default function TaskListPage() {
         if (fail > 0) {
             showToast(`${ok} șters, ${fail} eșuat: ${lastError}`, 'error');
         } else {
-            showToast(`${ok} task-uri șterse`);
+            showToast(`${ok} sarcini șterse`);
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -390,7 +390,7 @@ export default function TaskListPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold">Sarcini</h1>
-                    <p className="text-navy-400 text-sm mt-1">{total} task-uri</p>
+                    <p className="text-navy-400 text-sm mt-1">{total} sarcini</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     {/* Lista view label */}
@@ -597,13 +597,13 @@ export default function TaskListPage() {
             ) : tasks.length === 0 && orgDepartments.length === 0 ? (
                 <div className="text-center py-20">
                     <ListTodo className="w-16 h-16 text-navy-700 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-navy-400 mb-1">Niciun task găsit</h3>
+                    <h3 className="text-lg font-medium text-navy-400 mb-1">Nicio sarcină găsită</h3>
                     <p className="text-sm text-navy-500 mb-4">Creează primul tău task sau schimbă filtrele.</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm transition-colors"
                     >
-                        <Plus className="w-4 h-4 inline mr-1" /> Creează task
+                        <Plus className="w-4 h-4 inline mr-1" /> Creează sarcină
                     </button>
                 </div>
             ) : orgDepartments.length > 0 ? (
@@ -770,7 +770,7 @@ export default function TaskListPage() {
                             </div>
                         </div>
                         <p className="text-sm text-navy-300 mb-6">
-                            Ești sigur că vrei să ștergi <strong className="text-white">{selectedIds.size} task-uri</strong>?
+                            Ești sigur că vrei să ștergi <strong className="text-white">{selectedIds.size} sarcini</strong>?
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -806,7 +806,7 @@ export default function TaskListPage() {
                     onCreated={() => {
                         setShowCreateModal(false);
                         loadTasks();
-                        showToast('Task creat cu succes!');
+                        showToast('Sarcină creată cu succes!');
                     }}
                 />
             )}

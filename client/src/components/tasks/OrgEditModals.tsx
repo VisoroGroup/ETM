@@ -80,7 +80,7 @@ export function DepartmentEditModal({ department, onClose, onSaved }: { departme
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur dorești să dezactivezi acest departament?')) return;
+        if (!confirm('Sigur doriți să dezactivați acest departament?')) return;
         try { await departmentsApi.delete(department.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -130,7 +130,7 @@ export function SectionEditModal({ section, onClose, onSaved }: { section: OrgSe
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur dorești să dezactivezi această secțiune?')) return;
+        if (!confirm('Sigur doriți să dezactivați această secțiune?')) return;
         try { await sectionsApi.delete(section.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -172,7 +172,7 @@ export function PostEditModal({ post, onClose, onSaved }: { post: OrgPost; onClo
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur dorești să dezactivezi acest post?')) return;
+        if (!confirm('Sigur doriți să dezactivați acest post?')) return;
         try { await postsApi.delete(post.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -180,18 +180,18 @@ export function PostEditModal({ post, onClose, onSaved }: { post: OrgPost; onClo
         <ModalWrapper title={`Editare post: ${post.name}`} onClose={onClose}>
             <InputField label="Nume post" value={name} onChange={setName} />
             <div>
-                <label className="text-xs font-medium text-navy-400 mb-1 block">User asignat</label>
+                <label className="text-xs font-medium text-navy-400 mb-1 block">Responsabil post</label>
                 <select value={userId} onChange={e => setUserId(e.target.value)} className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50">
-                    <option value="">— Vacant —</option>
+                    <option value="">— Neocupat —</option>
                     {users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
                 </select>
                 {userId !== (post.user_id || '') && userId && post.user_id && (
                     <p className="text-[10px] text-amber-400 mt-1">
-                        Atenție: schimbarea userului va actualiza responsabilul pe toate taskurile active ale acestui post!
+                        Atenție: schimbarea responsabilului va actualiza persoana asignată pe toate sarcinile active ale acestui post!
                     </p>
                 )}
             </div>
-            <InputField label="Descriere" value={description} onChange={setDescription} multiline placeholder="Ce presupune acest post..." />
+            <InputField label="Descriere" value={description} onChange={setDescription} multiline placeholder="Ce presupune acest post, care sunt responsabilitățile..." />
             <ActionButtons saving={saving} onSave={handleSave} onDelete={handleDelete} onClose={onClose} />
         </ModalWrapper>
     );

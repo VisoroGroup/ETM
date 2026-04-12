@@ -60,7 +60,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!title.trim() || !dueDate) {
-            setError('Titlul și data limită sunt obligatorii.');
+            setError('Titlul și termenul limită sunt obligatorii.');
             return;
         }
 
@@ -82,7 +82,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     await recurringApi.set(task.id, frequency, workdaysOnly);
                 } catch (recurErr) {
                     console.error('Recurring setup failed:', recurErr);
-                    setError('Task-ul a fost creat, dar recurența nu a putut fi setată. Poți seta recurența din detalii.');
+                    setError('Sarcina a fost creată, dar recurența nu a putut fi setată. Puteți seta recurența din detalii.');
                     setSaving(false);
                     // Still refresh the list so user sees the new task
                     onCreated();
@@ -92,7 +92,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
             onCreated();
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la crearea task-ului.');
+            setError(err.response?.data?.error || 'Eroare la crearea sarcinii.');
         } finally {
             setSaving(false);
         }
@@ -102,7 +102,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
-                    <h2 className="text-lg font-bold">Task nou</h2>
+                    <h2 className="text-lg font-bold">Sarcină nouă</h2>
                     <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
@@ -191,7 +191,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         {selectedSectionId && availablePosts.length > 0 && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (responsabil)
+                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (persoana responsabilă)
                                 </label>
                                 <select
                                     value={assignedPostId}
@@ -201,7 +201,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     <option value="">— Alege postul —</option>
                                     {availablePosts.map(p => (
                                         <option key={p.id} value={p.id}>
-                                            {p.name}{p.user_name ? ` → ${p.user_name}` : ' (vacant)'}
+                                            {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
                                         </option>
                                     ))}
                                 </select>
@@ -224,7 +224,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 className="w-4 h-4 rounded border-navy-600 bg-navy-800 text-blue-500 focus:ring-blue-500"
                             />
                             <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-                            <span className="text-sm">Task recurent</span>
+                            <span className="text-sm">Sarcină recurentă</span>
                         </label>
                         {isRecurring && (
                             <div className="mt-3 ml-6">
@@ -266,7 +266,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             disabled={saving}
                             className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 transition-all"
                         >
-                            {saving ? 'Se creează...' : 'Creează task'}
+                            {saving ? 'Se creează...' : 'Creează sarcina'}
                         </button>
                     </div>
                 </form>
