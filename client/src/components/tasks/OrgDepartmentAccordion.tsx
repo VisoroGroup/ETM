@@ -11,12 +11,14 @@ interface Props {
     defaultExpanded?: boolean;
     isSuperAdmin?: boolean;
     onEditDepartment?: (dept: OrgDepartment) => void;
+    onEditSection?: (section: OrgSection) => void;
+    onEditPost?: (post: OrgPost) => void;
     onPolicyClick?: (scope: string, id?: string) => void;
 }
 
 export default function OrgDepartmentAccordion({
     department, tasks, onTaskClick, darkMode, defaultExpanded = false,
-    isSuperAdmin, onEditDepartment, onPolicyClick
+    isSuperAdmin, onEditDepartment, onEditSection, onEditPost, onPolicyClick
 }: Props) {
     const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -102,6 +104,8 @@ export default function OrgDepartmentAccordion({
                             darkMode={darkMode}
                             isSuperAdmin={isSuperAdmin}
                             departmentColor={department.color}
+                            onEditSection={onEditSection}
+                            onEditPost={onEditPost}
                         />
                     ))}
 
@@ -124,7 +128,7 @@ export default function OrgDepartmentAccordion({
 
 // --- Section block within a department ---
 function OrgSectionBlock({
-    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor
+    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor, onEditSection, onEditPost
 }: {
     section: OrgSection;
     tasks: Task[];
@@ -132,6 +136,8 @@ function OrgSectionBlock({
     darkMode: boolean;
     isSuperAdmin?: boolean;
     departmentColor: string;
+    onEditSection?: (section: OrgSection) => void;
+    onEditPost?: (post: OrgPost) => void;
 }) {
     const [expanded, setExpanded] = useState(true);
 
@@ -151,6 +157,14 @@ function OrgSectionBlock({
                         {section.head_user_name}
                     </span>
                 )}
+                {isSuperAdmin && onEditSection && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEditSection(section); }}
+                        className="p-1 rounded text-navy-600 hover:text-navy-300 hover:bg-navy-700 transition-colors"
+                    >
+                        <Settings className="w-3 h-3" />
+                    </button>
+                )}
                 {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
 
@@ -163,6 +177,7 @@ function OrgSectionBlock({
                     onTaskClick={onTaskClick}
                     darkMode={darkMode}
                     isSuperAdmin={isSuperAdmin}
+                    onEditPost={onEditPost}
                 />
             ))}
 

@@ -9,6 +9,7 @@ import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import OrgDepartmentAccordion from './OrgDepartmentAccordion';
 import PolicyDrawer from './PolicyDrawer';
+import { DepartmentEditModal, SectionEditModal, PostEditModal } from './OrgEditModals';
 import { SkeletonTaskList } from '../ui/Skeleton';
 import {
     Search, Filter, Plus, X, Loader2,
@@ -35,6 +36,9 @@ export default function TaskListPage() {
     const [orgDepartments, setOrgDepartments] = useState<OrgDepartment[]>([]);
     const [companyPolicyCount, setCompanyPolicyCount] = useState(0);
     const [policyDrawer, setPolicyDrawer] = useState<{ open: boolean; scope?: 'COMPANY' | 'DEPARTMENT' | 'POST'; departmentId?: string; postId?: string; title?: string }>({ open: false });
+    const [editDept, setEditDept] = useState<any>(null);
+    const [editSection, setEditSection] = useState<any>(null);
+    const [editPost, setEditPost] = useState<any>(null);
     // Bulk selection
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
@@ -627,6 +631,9 @@ export default function TaskListPage() {
                             darkMode={true}
                             defaultExpanded={idx === 0}
                             isSuperAdmin={user?.role === 'superadmin'}
+                            onEditDepartment={(d) => setEditDept(d)}
+                            onEditSection={(s) => setEditSection(s)}
+                            onEditPost={(p) => setEditPost(p)}
                             onPolicyClick={(scope, id) => setPolicyDrawer({
                                 open: true,
                                 scope: scope as any,
@@ -813,6 +820,44 @@ export default function TaskListPage() {
                 title={policyDrawer.title}
                 darkMode={true}
             />
+
+            {/* Superadmin Edit Modals */}
+            {editDept && (
+                <DepartmentEditModal
+                    department={editDept}
+                    onClose={() => setEditDept(null)}
+                    onSaved={() => {
+                        departmentsApi.list().then(data => {
+                            setOrgDepartments(data.departments || []);
+                            setCompanyPolicyCount(data.company_policy_count || 0);
+                        });
+                        loadTasks();
+                    }}
+                />
+            )}
+            {editSection && (
+                <SectionEditModal
+                    section={editSection}
+                    onClose={() => setEditSection(null)}
+                    onSaved={() => {
+                        departmentsApi.list().then(data => {
+                            setOrgDepartments(data.departments || []);
+                        });
+                    }}
+                />
+            )}
+            {editPost && (
+                <PostEditModal
+                    post={editPost}
+                    onClose={() => setEditPost(null)}
+                    onSaved={() => {
+                        departmentsApi.list().then(data => {
+                            setOrgDepartments(data.departments || []);
+                        });
+                        loadTasks();
+                    }}
+                />
+            )}
         </div>
     );
 }
