@@ -13,7 +13,7 @@ router.use(authMiddleware);
 // ============================================================
 
 // GET /api/departments — list all departments with sections and posts
-router.get('/', asyncHandler(async (_req: AuthRequest, res: Response) => {
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     // Departments
     const { rows: departments } = await pool.query(`
         SELECT d.*, u.display_name as head_user_name
@@ -33,7 +33,22 @@ router.get('/', asyncHandler(async (_req: AuthRequest, res: Response) => {
         ORDER BY s.sort_order ASC
     `);
 
-    // Posts with user info and task counts
+    // Posts with user info and task counts (filtered by user role)
+    const isRegularUser = req.user?.role === 'user';
+    const userId = req.user?.id;
+
+    // Task count subquery: admins/superadmins see all, regular users see only their own
+    const taskCountSubquery = isRegularUser
+        ? `SELECT assigned_post_id, COUNT(*)::int as task_count
+           FROM tasks
+           WHERE deleted_at IS NULL AND status != 'terminat'
+             AND (created_by = $1 OR assigned_to = $1 OR EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = tasks.id AND st.assigned_to = $1))
+           GROUP BY assigned_post_id`
+        : `SELECT assigned_post_id, COUNT(*)::int as task_count
+           FROM tasks
+           WHERE deleted_at IS NULL AND status != 'terminat'
+           GROUP BY assigned_post_id`;
+
     const { rows: posts } = await pool.query(`
         SELECT p.*,
             u.display_name as user_name,
@@ -48,12 +63,7 @@ router.get('/', asyncHandler(async (_req: AuthRequest, res: Response) => {
         LEFT JOIN users u ON p.user_id = u.id
         JOIN sections s ON p.section_id = s.id
         JOIN departments d ON s.department_id = d.id
-        LEFT JOIN (
-            SELECT assigned_post_id, COUNT(*)::int as task_count
-            FROM tasks
-            WHERE deleted_at IS NULL AND status != 'terminat'
-            GROUP BY assigned_post_id
-        ) tc ON tc.assigned_post_id = p.id
+        LEFT JOIN (${taskCountSubquery}) tc ON tc.assigned_post_id = p.id
         LEFT JOIN (
             SELECT pp.post_id, COUNT(*)::int as policy_count
             FROM policy_posts pp
@@ -62,7 +72,7 @@ router.get('/', asyncHandler(async (_req: AuthRequest, res: Response) => {
         ) pc ON pc.post_id = p.id
         WHERE p.is_active = true AND s.is_active = true AND d.is_active = true
         ORDER BY p.sort_order ASC
-    `);
+    `, isRegularUser ? [userId] : []);
 
     // Department-level policy counts
     const { rows: deptPolicyCounts } = await pool.query(`
