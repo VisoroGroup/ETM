@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { tasksApi, authApi } from '../../services/api';
-import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User } from '../../types';
-import { X, Calendar, Tag, FileText, RefreshCw, UserCircle } from 'lucide-react';
+import { tasksApi, authApi, departmentsApi } from '../../services/api';
+import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User, OrgDepartment, OrgSection, OrgPost } from '../../types';
+import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase } from 'lucide-react';
 
 interface Props {
     onClose: () => void;
@@ -14,6 +14,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [dueDate, setDueDate] = useState('');
     const [department, setDepartment] = useState<Department>('departament_1');
     const [assignedTo, setAssignedTo] = useState<string>('');
+    const [assignedPostId, setAssignedPostId] = useState<string>('');
     const [isRecurring, setIsRecurring] = useState(false);
     const [frequency, setFrequency] = useState<RecurringFrequency>('weekly');
     const [workdaysOnly, setWorkdaysOnly] = useState(false);
@@ -21,9 +22,40 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [error, setError] = useState('');
     const [users, setUsers] = useState<User[]>([]);
 
+    // Org structure state
+    const [orgDepts, setOrgDepts] = useState<OrgDepartment[]>([]);
+    const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+    const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+
     useEffect(() => {
         authApi.users().then(setUsers).catch(() => {});
+        departmentsApi.list().then(data => setOrgDepts(data.departments || [])).catch(() => {});
     }, []);
+
+    // When department changes, reset section and post
+    const selectedDept = orgDepts.find(d => d.id === selectedDeptId);
+    const availableSections = selectedDept?.sections || [];
+    const selectedSection = availableSections.find(s => s.id === selectedSectionId);
+    const availablePosts = selectedSection?.posts || [];
+    const selectedPost = availablePosts.find(p => p.id === assignedPostId);
+
+    // Auto-map org department to old department_label enum for backward compatibility
+    const deptNameToEnum: Record<string, Department> = {
+        '7 - Administrativ': 'departament_7',
+        '1 - HR - Comunicare': 'departament_1',
+        '2 - Vânzări': 'departament_2',
+        '3 - Financiar': 'departament_3',
+        '4 - Producție': 'departament_4',
+        '5 - Calitate și calificare': 'departament_5',
+        '6 - Extindere': 'departament_6',
+    };
+
+    useEffect(() => {
+        if (selectedDept) {
+            const enumVal = deptNameToEnum[selectedDept.name];
+            if (enumVal) setDepartment(enumVal);
+        }
+    }, [selectedDeptId]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -40,7 +72,8 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 due_date: dueDate,
                 department_label: department,
                 assigned_to: assignedTo || null,
-            });
+                assigned_post_id: assignedPostId || null,
+            } as any);
 
             // Set recurring if needed (non-blocking — task is already created)
             if (isRecurring && task.id) {
@@ -106,50 +139,79 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                <Calendar className="w-3.5 h-3.5 inline mr-1" /> Data limită *
-                            </label>
-                            <input
-                                type="date"
-                                value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                                className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
-                            />
-                        </div>
+                    {/* Date */}
+                    <div>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                            <Calendar className="w-3.5 h-3.5 inline mr-1" /> Data limită *
+                        </label>
+                        <input
+                            type="date"
+                            value={dueDate}
+                            onChange={e => setDueDate(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                        />
+                    </div>
 
+                    {/* Org structure: Department → Section → Post */}
+                    <div className="space-y-3">
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                <Tag className="w-3.5 h-3.5 inline mr-1" /> Departament *
+                                <Building2 className="w-3.5 h-3.5 inline mr-1" /> Departament *
                             </label>
                             <select
-                                value={department}
-                                onChange={e => setDepartment(e.target.value as Department)}
+                                value={selectedDeptId}
+                                onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setAssignedPostId(''); }}
                                 className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                             >
-                                {(Object.keys(DEPARTMENTS) as Department[]).map(d => (
-                                    <option key={d} value={d}>{DEPARTMENTS[d].label}</option>
+                                <option value="">— Alege departamentul —</option>
+                                {orgDepts.map(d => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
                             </select>
                         </div>
-                    </div>
 
-                    {/* Assignee */}
-                    <div>
-                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                            <UserCircle className="w-3.5 h-3.5 inline mr-1" /> Responsabil
-                        </label>
-                        <select
-                            value={assignedTo}
-                            onChange={e => setAssignedTo(e.target.value)}
-                            className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
-                        >
-                            <option value="">— Neasignat —</option>
-                            {users.map(u => (
-                                <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
-                            ))}
-                        </select>
+                        {selectedDeptId && availableSections.length > 0 && (
+                            <div>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Secțiune
+                                </label>
+                                <select
+                                    value={selectedSectionId}
+                                    onChange={e => { setSelectedSectionId(e.target.value); setAssignedPostId(''); }}
+                                    className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                                >
+                                    <option value="">— Alege secțiunea —</option>
+                                    {availableSections.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {selectedSectionId && availablePosts.length > 0 && (
+                            <div>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (responsabil)
+                                </label>
+                                <select
+                                    value={assignedPostId}
+                                    onChange={e => setAssignedPostId(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                                >
+                                    <option value="">— Alege postul —</option>
+                                    {availablePosts.map(p => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name}{p.user_name ? ` → ${p.user_name}` : ' (vacant)'}
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedPost?.user_name && (
+                                    <p className="text-[10px] text-navy-400 mt-1">
+                                        Responsabil automat: <span className="text-blue-400">{selectedPost.user_name}</span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Recurring */}

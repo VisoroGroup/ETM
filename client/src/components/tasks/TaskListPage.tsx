@@ -8,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import OrgDepartmentAccordion from './OrgDepartmentAccordion';
+import PolicyDrawer from './PolicyDrawer';
 import { SkeletonTaskList } from '../ui/Skeleton';
 import {
     Search, Filter, Plus, X, Loader2,
@@ -33,6 +34,7 @@ export default function TaskListPage() {
     const [showFilters, setShowFilters] = useState(false);
     const [orgDepartments, setOrgDepartments] = useState<OrgDepartment[]>([]);
     const [companyPolicyCount, setCompanyPolicyCount] = useState(0);
+    const [policyDrawer, setPolicyDrawer] = useState<{ open: boolean; scope?: 'COMPANY' | 'DEPARTMENT' | 'POST'; departmentId?: string; postId?: string; title?: string }>({ open: false });
     // Bulk selection
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
@@ -607,7 +609,12 @@ export default function TaskListPage() {
                     {companyPolicyCount > 0 && (
                         <div className="flex items-center justify-between px-4 py-2 rounded-lg border border-navy-700/30 bg-navy-800/20">
                             <span className="text-sm text-navy-300">Directive la nivel de companie ({companyPolicyCount})</span>
-                            <button className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Deschide</button>
+                            <button
+                                onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: 'Directive la nivel de companie' })}
+                                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                                Deschide
+                            </button>
                         </div>
                     )}
 
@@ -620,6 +627,13 @@ export default function TaskListPage() {
                             darkMode={true}
                             defaultExpanded={idx === 0}
                             isSuperAdmin={user?.role === 'superadmin'}
+                            onPolicyClick={(scope, id) => setPolicyDrawer({
+                                open: true,
+                                scope: scope as any,
+                                departmentId: scope === 'DEPARTMENT' ? id : undefined,
+                                postId: scope === 'POST' ? id : undefined,
+                                title: `Directive — ${dept.name}`
+                            })}
                         />
                     ))}
                 </div>
@@ -788,6 +802,17 @@ export default function TaskListPage() {
                     }}
                 />
             )}
+
+            {/* Policy Drawer */}
+            <PolicyDrawer
+                open={policyDrawer.open}
+                onClose={() => setPolicyDrawer({ open: false })}
+                scope={policyDrawer.scope}
+                departmentId={policyDrawer.departmentId}
+                postId={policyDrawer.postId}
+                title={policyDrawer.title}
+                darkMode={true}
+            />
         </div>
     );
 }
