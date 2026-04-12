@@ -75,12 +75,17 @@ export default function OrgPostRow({
                     )}
                 </div>
 
-                {/* Post name */}
-                <span className="font-medium text-left truncate min-w-[100px]">{post.name}</span>
+                {/* Post name — fixed width, bold */}
+                <span className="font-semibold text-left truncate min-w-[140px] max-w-[200px]">{post.name}</span>
 
-                {/* Post description — full text, not truncated */}
+                {/* Separator dot */}
                 {post.description && (
-                    <span className={`hidden md:inline text-[10px] flex-1 text-left ${
+                    <span className={`hidden md:inline ${darkMode ? 'text-navy-600' : 'text-gray-300'}`}>·</span>
+                )}
+
+                {/* Post description — smaller, dimmer, fills remaining space */}
+                {post.description && (
+                    <span className={`hidden md:inline text-[10px] flex-1 text-left leading-tight ${
                         darkMode ? 'text-navy-500' : 'text-gray-400'
                     }`}>
                         {post.description}
