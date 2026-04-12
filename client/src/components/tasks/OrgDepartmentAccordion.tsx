@@ -32,7 +32,7 @@ export default function OrgDepartmentAccordion({
 
     return (
         <div
-            className="rounded-xl overflow-hidden border transition-all"
+            className="rounded-xl border transition-all"
             style={{
                 borderColor: department.color + '30',
                 background: darkMode

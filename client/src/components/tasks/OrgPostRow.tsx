@@ -138,9 +138,9 @@ export default function OrgPostRow({
 
             {/* Expanded task list */}
             {expanded && tasks.length > 0 && (
-                <div className={`ml-10 mr-4 mb-1 rounded-lg overflow-hidden border ${
+                <div className={`ml-10 mr-4 mb-1 rounded-lg border ${
                     darkMode ? 'border-navy-700/30 bg-navy-800/20' : 'border-gray-100 bg-gray-50/50'
-                }`}>
+                }`} style={{ overflow: 'visible' }}>
                     {tasks.map((task) => {
                         const dueDateStatus = getDueDateStatus(task.due_date);
                         const statusConfig = STATUSES[task.status];
@@ -175,9 +175,9 @@ export default function OrgPostRow({
 
                                     {/* Status dropdown */}
                                     {showDropdown && (
-                                        <div className={`absolute top-full left-0 mt-1 z-30 rounded-lg shadow-xl border py-1 min-w-[140px] ${
+                                        <div className={`absolute top-full left-0 mt-1 rounded-lg shadow-2xl border py-1 min-w-[140px] ${
                                             darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'
-                                        }`}>
+                                        }`} style={{ zIndex: 9999 }}>
                                             {STATUS_ORDER.map(s => {
                                                 const sc = STATUSES[s];
                                                 const isActive = task.status === s;
