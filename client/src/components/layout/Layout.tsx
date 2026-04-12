@@ -69,15 +69,15 @@ export default function Layout() {
     return (
         <div className={`min-h-screen flex overflow-x-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
             {/* Sidebar — hidden on mobile, visible md+ */}
-            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900/80 border-navy-700/50' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
+            <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900 border-navy-800' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
                 {/* Logo */}
-                <div className={`h-16 flex items-center ${collapsed ? 'justify-center px-2' : 'px-5'} border-b ${darkMode ? 'border-navy-700/50' : 'border-gray-200'}`}>
-                    <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 shadow-lg">
+                <div className={`h-16 flex items-center ${collapsed ? 'justify-center px-2' : 'px-5'} border-b ${darkMode ? 'border-navy-800' : 'border-gray-200'}`}>
+                    <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
                         <img src="/visoro-logo.png" alt="Visoro" className="w-full h-full object-cover" />
                     </div>
                     {!collapsed && (
                         <div className="ml-3 overflow-hidden flex-1">
-                            <h1 className="text-sm font-bold truncate">Sarcinator Visoro</h1>
+                            <h1 className="text-base font-bold truncate tracking-tight">Sarcinator Visoro</h1>
                             <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>Visoro Global SRL</p>
                         </div>
                     )}
@@ -155,7 +155,7 @@ export default function Layout() {
                 </nav>
 
                 {/* Bottom section */}
-                <div className={`p-3 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-200'} space-y-1`}>
+                <div className={`p-3 border-t ${darkMode ? 'border-navy-800' : 'border-gray-200'} space-y-1`}>
 
                     {/* Dark mode toggle */}
                     <button

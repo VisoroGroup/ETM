@@ -393,12 +393,6 @@ export default function TaskListPage() {
                     <p className="text-navy-400 text-sm mt-1">{total} sarcini</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    {/* Lista view label */}
-                    <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-1">
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500 text-white shadow">
-                            <LayoutList className="w-3.5 h-3.5" /> Listă
-                        </span>
-                    </div>
                     <button
                         onClick={() => exportToCSV(tasks)}
                         className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
