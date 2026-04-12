@@ -29,7 +29,7 @@ export default function LoginPage() {
                                 className="w-full h-full object-contain rounded-full"
                             />
                         </div>
-                        <h1 className="text-2xl font-bold text-white mb-1">Visoro Task Manager</h1>
+                        <h1 className="text-2xl font-bold text-white mb-1">Sarcinator Visoro</h1>
                         <p className="text-navy-300 text-sm">Visoro Global SRL</p>
                     </div>
 

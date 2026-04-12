@@ -38,8 +38,8 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
     return (
         <div className={`relative px-4 py-2.5 text-center text-xs leading-relaxed border-b ${
             darkMode
-                ? 'bg-gradient-to-r from-navy-900/60 via-blue-900/30 to-navy-900/60 border-navy-700/40 text-navy-300'
-                : 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-blue-100 text-gray-600'
+                ? 'bg-gradient-to-r from-navy-900/80 via-blue-900/40 to-navy-900/80 border-navy-600/50 text-white/90'
+                : 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-blue-100 text-gray-700'
         }`}>
             {editing ? (
                 <div className="flex items-center gap-2 max-w-4xl mx-auto">

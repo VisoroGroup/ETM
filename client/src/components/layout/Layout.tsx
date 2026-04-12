@@ -77,7 +77,7 @@ export default function Layout() {
                     </div>
                     {!collapsed && (
                         <div className="ml-3 overflow-hidden flex-1">
-                            <h1 className="text-sm font-bold truncate">Visoro Task Manager</h1>
+                            <h1 className="text-sm font-bold truncate">Sarcinator Visoro</h1>
                             <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>Visoro Global SRL</p>
                         </div>
                     )}

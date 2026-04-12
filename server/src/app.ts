@@ -146,7 +146,7 @@ if (process.env.SENTRY_DSN) {
 
 // Start server
 const server = app.listen(PORT, async () => {
-    console.log(`🚀 Visoro Task Manager API running on port ${PORT}`);
+    console.log(`🚀 Sarcinator Visoro API running on port ${PORT}`);
     console.log(`📌 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Auth bypass: ${process.env.DEV_AUTH_BYPASS === 'true' ? 'ENABLED' : 'DISABLED'}`);
 

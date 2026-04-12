@@ -80,7 +80,7 @@ export function DepartmentEditModal({ department, onClose, onSaved }: { departme
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur doriți să dezactivați acest departament?')) return;
+        if (!confirm('Sigur dorești să dezactivezi acest departament?')) return;
         try { await departmentsApi.delete(department.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -130,7 +130,7 @@ export function SectionEditModal({ section, onClose, onSaved }: { section: OrgSe
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur doriți să dezactivați această secțiune?')) return;
+        if (!confirm('Sigur dorești să dezactivezi această secțiune?')) return;
         try { await sectionsApi.delete(section.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -172,7 +172,7 @@ export function PostEditModal({ post, onClose, onSaved }: { post: OrgPost; onClo
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur doriți să dezactivați acest post?')) return;
+        if (!confirm('Sigur dorești să dezactivezi acest post?')) return;
         try { await postsApi.delete(post.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
@@ -187,7 +187,7 @@ export function PostEditModal({ post, onClose, onSaved }: { post: OrgPost; onClo
                 </select>
                 {userId !== (post.user_id || '') && userId && post.user_id && (
                     <p className="text-[10px] text-amber-400 mt-1">
-                        Atenție: schimbarea responsabilului va actualiza persoana asignată pe toate sarcinile active ale acestui post!
+                        Atenție: schimbarea responsabilului va actualiza persoana asignată pe toate sarcinile active ale acestui post! Ești sigur?
                     </p>
                 )}
             </div>

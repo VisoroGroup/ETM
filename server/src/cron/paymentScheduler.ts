@@ -230,7 +230,7 @@ export async function runDailyPaymentEmailJob() {
                 <p style="margin: 4px 0; font-size: 15px; color: #DC2626;">⏳ RĂMAS: <strong>${formatMoney(remainingMonth)}</strong></p>
               </div>
               <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px;">
-                Această notificare a fost generată automat de Visoro Task Manager.
+                Această notificare a fost generată automat de Sarcinator Visoro.
               </p>
               </div>
             </div>

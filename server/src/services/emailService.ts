@@ -118,11 +118,11 @@ export async function sendEmail(params: {
 export async function sendTestEmail(toEmail: string, toName: string): Promise<void> {
     await sendEmail({
         to: toEmail,
-        subject: '[Visoro Task Manager] Test email — configurare Graph API',
+        subject: '[Sarcinator Visoro] Test email — configurare Graph API',
         htmlBody: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
                 <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                    <h1 style="margin: 0; font-size: 20px;">Visoro Task Manager</h1>
+                    <h1 style="margin: 0; font-size: 20px;">Sarcinator Visoro</h1>
                     <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">Test email configurare</p>
                 </div>
                 <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
@@ -133,7 +133,7 @@ export async function sendTestEmail(toEmail: string, toName: string): Promise<vo
                     <p style="color: #666; font-size: 14px;">Vei primi zilnic (Luni-Vineri, ora 07:00) un sumar cu task-urile tale active.</p>
                     <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
                     <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-                        Această notificare a fost generată automat de Visoro Task Manager.
+                        Această notificare a fost generată automat de Sarcinator Visoro.
                     </p>
                 </div>
             </div>

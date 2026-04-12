@@ -82,7 +82,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     await recurringApi.set(task.id, frequency, workdaysOnly);
                 } catch (recurErr) {
                     console.error('Recurring setup failed:', recurErr);
-                    setError('Sarcina a fost creată, dar recurența nu a putut fi setată. Puteți seta recurența din detalii.');
+                    setError('Sarcina a fost creată, dar recurența nu a putut fi setată. Poți seta recurența din detalii.');
                     setSaving(false);
                     // Still refresh the list so user sees the new task
                     onCreated();
