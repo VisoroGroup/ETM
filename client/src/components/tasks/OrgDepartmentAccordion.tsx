@@ -14,11 +14,12 @@ interface Props {
     onEditSection?: (section: OrgSection) => void;
     onEditPost?: (post: OrgPost) => void;
     onPolicyClick?: (scope: string, id?: string) => void;
+    onTaskStatusChange?: () => void;
 }
 
 export default function OrgDepartmentAccordion({
     department, tasks, onTaskClick, darkMode, defaultExpanded = false,
-    isSuperAdmin, onEditDepartment, onEditSection, onEditPost, onPolicyClick
+    isSuperAdmin, onEditDepartment, onEditSection, onEditPost, onPolicyClick, onTaskStatusChange
 }: Props) {
     const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -30,15 +31,24 @@ export default function OrgDepartmentAccordion({
     ).length;
 
     return (
-        <div className={`rounded-xl overflow-hidden border transition-all ${
-            darkMode ? 'border-navy-700/50 bg-navy-900/40' : 'border-gray-200 bg-white'
-        }`}>
+        <div
+            className="rounded-xl overflow-hidden border transition-all"
+            style={{
+                borderColor: department.color + '30',
+                background: darkMode
+                    ? `linear-gradient(135deg, ${department.color}08 0%, ${department.color}03 100%)`
+                    : `linear-gradient(135deg, ${department.color}10 0%, ${department.color}05 100%)`,
+            }}
+        >
             {/* Department Header */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
-                    darkMode ? 'hover:bg-navy-800/50' : 'hover:bg-gray-50'
-                }`}
+                className="w-full flex items-center gap-3 px-4 py-3 transition-all hover:brightness-110"
+                style={{
+                    background: darkMode
+                        ? `linear-gradient(90deg, ${department.color}15 0%, transparent 100%)`
+                        : `linear-gradient(90deg, ${department.color}20 0%, transparent 100%)`,
+                }}
             >
                 {/* Color indicator */}
                 <div
@@ -106,6 +116,7 @@ export default function OrgDepartmentAccordion({
                             departmentColor={department.color}
                             onEditSection={onEditSection}
                             onEditPost={onEditPost}
+                            onTaskStatusChange={onTaskStatusChange}
                         />
                     ))}
 
@@ -128,7 +139,7 @@ export default function OrgDepartmentAccordion({
 
 // --- Section block within a department ---
 function OrgSectionBlock({
-    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor, onEditSection, onEditPost
+    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor, onEditSection, onEditPost, onTaskStatusChange
 }: {
     section: OrgSection;
     tasks: Task[];
@@ -138,6 +149,7 @@ function OrgSectionBlock({
     departmentColor: string;
     onEditSection?: (section: OrgSection) => void;
     onEditPost?: (post: OrgPost) => void;
+    onTaskStatusChange?: () => void;
 }) {
     const [expanded, setExpanded] = useState(true);
 
@@ -146,11 +158,13 @@ function OrgSectionBlock({
             {/* Section header */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className={`w-full flex items-center gap-2 px-5 py-2 text-xs font-medium transition-all ${
-                    darkMode ? 'text-navy-300 hover:bg-navy-800/30 bg-navy-800/10' : 'text-gray-600 hover:bg-gray-50 bg-gray-25'
-                }`}
+                className="w-full flex items-center gap-2 px-5 py-2 text-xs font-medium transition-all"
+                style={{
+                    color: darkMode ? departmentColor + 'CC' : departmentColor,
+                    background: darkMode ? departmentColor + '08' : departmentColor + '0A',
+                }}
             >
-                <div className="w-1 h-5 rounded-full opacity-40" style={{ backgroundColor: departmentColor }} />
+                <div className="w-1 h-5 rounded-full opacity-60" style={{ backgroundColor: departmentColor }} />
                 <span className="flex-1 text-left uppercase tracking-wider">{section.name}</span>
                 {section.head_user_name && (
                     <span className={`text-xs font-normal ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
@@ -178,6 +192,7 @@ function OrgSectionBlock({
                     darkMode={darkMode}
                     isSuperAdmin={isSuperAdmin}
                     onEditPost={onEditPost}
+                    onTaskStatusChange={onTaskStatusChange}
                 />
             ))}
 

@@ -634,6 +634,7 @@ export default function TaskListPage() {
                             onEditDepartment={(d) => setEditDept(d)}
                             onEditSection={(s) => setEditSection(s)}
                             onEditPost={(p) => setEditPost(p)}
+                            onTaskStatusChange={loadTasks}
                             onPolicyClick={(scope, id) => setPolicyDrawer({
                                 open: true,
                                 scope: scope as any,
