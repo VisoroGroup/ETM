@@ -36,7 +36,7 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
     if (loading || !goal) return null;
 
     return (
-        <div className={`relative px-4 py-2.5 text-center text-xs leading-relaxed border-b ${
+        <div className={`relative px-6 py-3.5 text-center text-sm leading-relaxed border-b ${
             darkMode
                 ? 'bg-gradient-to-r from-navy-900/80 via-blue-900/40 to-navy-900/80 border-navy-600/50 text-white/90'
                 : 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-blue-100 text-gray-700'
@@ -49,7 +49,7 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
                         className={`flex-1 text-xs rounded-md px-3 py-1.5 resize-none ${
                             darkMode ? 'bg-navy-800 border-navy-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                         } border focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                        rows={2}
+                        rows={3}
                         autoFocus
                     />
                     <button onClick={handleSave} className="p-1.5 rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30">
