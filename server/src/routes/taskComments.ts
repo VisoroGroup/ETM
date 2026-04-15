@@ -109,7 +109,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
             })]
         );
 
-        // NOTIFICATIONS: notify mentioned users + task creator
+        // NOTIFICATIONS: notify mentioned users + task creator + task assignee
         try {
             const notifyUsers = new Set<string>();
 
@@ -120,10 +120,15 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                 }
             }
 
-            // Notify task creator if they didn't write the comment
-            const { rows: taskRows } = await pool.query('SELECT created_by, title FROM tasks WHERE id = $1', [taskId]);
-            if (taskRows.length > 0 && taskRows[0].created_by !== req.user!.id) {
-                notifyUsers.add(taskRows[0].created_by);
+            // Notify task creator and assignee if they didn't write the comment
+            const { rows: taskRows } = await pool.query('SELECT created_by, assigned_to, title FROM tasks WHERE id = $1', [taskId]);
+            if (taskRows.length > 0) {
+                if (taskRows[0].created_by !== req.user!.id) {
+                    notifyUsers.add(taskRows[0].created_by);
+                }
+                if (taskRows[0].assigned_to && taskRows[0].assigned_to !== req.user!.id) {
+                    notifyUsers.add(taskRows[0].assigned_to);
+                }
             }
 
             const taskTitle = taskRows[0]?.title || 'Sarcină';
@@ -137,41 +142,41 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                         isMention ? 'mention' : 'comment',
                         isMention
                             ? `${req.user!.display_name} te-a menționat într-un comentariu`
-                            : `${req.user!.display_name} a adăugat un comentariu la o sarcină a ta`,
+                            : `${req.user!.display_name} a adăugat un comentariu la sarcina: "${taskTitle}"`,
                         req.user!.id]
                 );
             }
 
-            // Send EMAIL to mentioned users (centralized via notificationEmailService)
-            if (mentions && mentions.length > 0) {
-                const mentionedIds = mentions.filter((mid: string) => mid !== req.user!.id);
-                if (mentionedIds.length > 0) {
-                    const stakeholders = await getSpecificStakeholders(mentionedIds, req.user!.id);
+            // Send EMAIL to ALL notified users (creator + assignee + mentions)
+            const allNotifyIds = Array.from(notifyUsers);
+            if (allNotifyIds.length > 0) {
+                const stakeholders = await getSpecificStakeholders(allNotifyIds, req.user!.id);
+                for (const su of stakeholders) {
+                    const isMention = mentions && mentions.includes(su.id);
+                    const htmlBody = buildNotificationHtml({
+                        recipientName: su.display_name,
+                        subtitle: isMention ? 'Mențiune nouă' : 'Comentariu nou',
+                        bodyLines: [
+                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ${
+                                isMention ? 'te-a menționat într-un comentariu' : 'a adăugat un comentariu'
+                            } la sarcina:</p>`,
+                            `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0;">
+                                <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}"</p>
+                            </div>`,
+                        ],
+                        taskId,
+                        taskTitle,
+                    });
 
-                    for (const mu of stakeholders) {
-                        const htmlBody = buildNotificationHtml({
-                            recipientName: mu.display_name,
-                            subtitle: 'Mențiune nouă',
-                            bodyLines: [
-                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> te-a menționat într-un comentariu la sarcina:</p>`,
-                                `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0;">
-                                    <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}"</p>
-                                </div>`,
-                            ],
-                            taskId,
-                            taskTitle,
-                        });
-
-                        sendNotificationEmail({
-                            userId: mu.id,
-                            userEmail: mu.email,
-                            userName: mu.display_name,
-                            taskId,
-                            subject: `[ETM] ${req.user!.display_name} te-a menționat — ${taskTitle}`,
-                            htmlBody,
-                            emailType: 'mention',
-                        }).catch(err => console.error('[MENTION] Email error:', err));
-                    }
+                    sendNotificationEmail({
+                        userId: su.id,
+                        userEmail: su.email,
+                        userName: su.display_name,
+                        taskId,
+                        subject: `[ETM] ${isMention ? 'Mențiune' : 'Comentariu nou'} — ${taskTitle}`,
+                        htmlBody,
+                        emailType: isMention ? 'mention' : 'comment',
+                    }).catch(err => console.error(`[${isMention ? 'MENTION' : 'COMMENT'}] Email error:`, err));
                 }
             }
         } catch (notifErr) {
@@ -275,8 +280,49 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                 'INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES ($1, $2, $3)',
                 [commentId, req.user!.id, reaction]
             );
-        res.json({ toggled: 'added' });
-    }
+
+            // Notify comment author about the reaction
+            try {
+                const { rows: commentRows } = await pool.query(
+                    'SELECT tc.author_id, t.title as task_title FROM task_comments tc JOIN tasks t ON tc.task_id = t.id WHERE tc.id = $1',
+                    [commentId]
+                );
+                if (commentRows.length > 0 && commentRows[0].author_id !== req.user!.id) {
+                    const authorId = commentRows[0].author_id;
+                    const taskTitle = commentRows[0].task_title;
+
+                    // In-app notification
+                    await pool.query(
+                        `INSERT INTO notifications (user_id, task_id, type, message, created_by)
+                         VALUES ($1, $2, 'comment', $3, $4)`,
+                        [authorId, taskId, `${req.user!.display_name} a reacționat ${reaction} la comentariul tău`, req.user!.id]
+                    );
+
+                    // Email notification
+                    const stakeholders = await getSpecificStakeholders([authorId], req.user!.id);
+                    for (const su of stakeholders) {
+                        const htmlBody = buildNotificationHtml({
+                            recipientName: su.display_name,
+                            subtitle: 'Reacție nouă',
+                            bodyLines: [
+                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a reacționat ${reaction} la comentariul tău la sarcina:</p>`,
+                            ],
+                            taskId,
+                            taskTitle,
+                        });
+                        sendNotificationEmail({
+                            userId: su.id, userEmail: su.email, userName: su.display_name,
+                            taskId, subject: `[ETM] Reacție ${reaction} — ${taskTitle}`,
+                            htmlBody, emailType: 'reaction',
+                        }).catch(err => console.error('[REACTION] Email error:', err));
+                    }
+                }
+            } catch (err) {
+                console.error('[REACTION] Notification error:', err);
+            }
+
+            res.json({ toggled: 'added' });
+        }
 }));
 
 export default router;

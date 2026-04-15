@@ -171,6 +171,9 @@ export async function createTask(
         const { rows: postRows } = await pool.query('SELECT user_id FROM posts WHERE id = $1', [assigned_post_id]);
         if (postRows.length > 0 && postRows[0].user_id) {
             assigned_to = postRows[0].user_id;
+            console.log(`📧 [task_create] Auto-resolved post ${assigned_post_id} → user ${assigned_to}`);
+        } else {
+            console.warn(`📧 [task_create] Post ${assigned_post_id} has no user_id assigned`);
         }
     }
 
@@ -195,6 +198,7 @@ export async function createTask(
     }).catch(err => console.error('[WEBHOOK] task.created dispatch error:', err.message));
 
     // Notify assigned user (if different from creator)
+    console.log(`📧 [task_create] Task "${title}" — assigned_to=${assigned_to || 'null'}, creator=${userId}, post=${assigned_post_id || 'null'}`);
     if (assigned_to && assigned_to !== userId) {
         const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
         const creatorName = creator[0]?.display_name || 'Cineva';
