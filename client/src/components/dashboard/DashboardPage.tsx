@@ -133,6 +133,16 @@ export default function DashboardPage() {
         });
     };
 
+    // Fixed column width classes for consistent alignment across all tables
+    const COL = {
+        title: 'w-[35%]',
+        dept: 'w-[14%]',
+        subdept: 'w-[13%]',
+        post: 'w-[16%]',
+        date: 'w-[12%]',
+        status: 'w-[10%]',
+    };
+
     // Render a task row for the flat list
     const renderTaskRow = (task: Task, showAssignee = false) => {
         const daysOverdue = getDaysOverdue(task.due_date);
@@ -147,26 +157,26 @@ export default function DashboardPage() {
                     isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
                 }`}
             >
-                <td className="px-4 py-2.5">
+                <td className={`px-4 py-2.5 ${COL.title}`}>
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
-                        <span className="font-medium text-white text-sm truncate max-w-[300px]">{task.title}</span>
+                        <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
                     <div className="md:hidden mt-1 text-[10px] text-navy-400">
                         {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                         {task.assigned_section_name && ` · ${task.assigned_section_name}`}
                     </div>
                 </td>
-                <td className="px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell">
+                <td className={`px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell truncate ${COL.dept}`}>
                     {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                 </td>
-                <td className="px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell">
+                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.subdept}`}>
                     {task.assigned_section_name || '—'}
                 </td>
-                <td className="px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell">
+                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.post}`}>
                     {showAssignee ? (task.assignee_name || '—') : (task.assigned_post_name || '—')}
                 </td>
-                <td className="px-4 py-2.5 whitespace-nowrap">
+                <td className={`px-4 py-2.5 whitespace-nowrap ${COL.date}`}>
                     <span className={`text-xs font-medium ${
                         isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                     }`}>
@@ -174,7 +184,7 @@ export default function DashboardPage() {
                         {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}z)</span>}
                     </span>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className={`px-4 py-2.5 ${COL.status}`}>
                     <span
                         className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
                         style={{
@@ -226,15 +236,15 @@ export default function DashboardPage() {
                                         <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
                                     </button>
                                     {!isCollapsed && (
-                                        <table className="w-full text-sm">
+                                        <table className="w-full text-sm table-fixed">
                                             <thead>
                                                 <tr className="bg-navy-800/20">
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Sarcină</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell">Departament</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Subdepartament</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">{fourthColHeader}</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Termen</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Status</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>Sarcină</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>Departament</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.subdept}`}>Subdepartament</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{fourthColHeader}</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>Termen</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody>

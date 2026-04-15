@@ -609,15 +609,15 @@ export default function TaskListPage() {
             ) : filters.my_tasks === 'true' ? (
                 /* ===== MY TASKS — FLAT LIST VIEW ===== */
                 <div className="border border-navy-700/50 rounded-xl overflow-hidden">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm table-fixed">
                         <thead>
                             <tr className="bg-navy-800/80">
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Sarcină</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell">Departament</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Subdepartament</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Post</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Termen</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Status</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[35%]">Sarcină</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell w-[14%]">Departament</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[13%]">Subdepartament</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[16%]">Post</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[12%]">Termen</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[10%]">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -635,27 +635,26 @@ export default function TaskListPage() {
                                             isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
                                         }`}
                                     >
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 w-[35%]">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
-                                                <span className="font-medium text-white truncate max-w-[300px]">{task.title}</span>
+                                                <span className="font-medium text-white truncate">{task.title}</span>
                                             </div>
-                                            {/* Mobile: show dept below title */}
                                             <div className="md:hidden mt-1 text-[10px] text-navy-400">
                                                 {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                                                 {task.assigned_section_name && ` · ${task.assigned_section_name}`}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-navy-300 text-xs hidden md:table-cell">
+                                        <td className="px-4 py-3 text-navy-300 text-xs hidden md:table-cell w-[14%] truncate">
                                             {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell">
+                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell w-[13%] truncate">
                                             {task.assigned_section_name || '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell">
+                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell w-[16%] truncate">
                                             {task.assigned_post_name || '—'}
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
+                                        <td className="px-4 py-3 whitespace-nowrap w-[12%]">
                                             <span className={`text-xs font-medium ${
                                                 isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                                             }`}>
