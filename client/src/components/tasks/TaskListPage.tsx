@@ -585,20 +585,100 @@ export default function TaskListPage() {
                 )}
             </div>
 
-            {/* Task List — Org Structure Accordion */}
+            {/* Task List — My Tasks flat list OR Org Structure Accordion */}
             {loading ? (
                 <SkeletonTaskList rows={6} />
-            ) : tasks.length === 0 && orgDepartments.length === 0 ? (
+            ) : tasks.length === 0 && (filters.my_tasks === 'true' || orgDepartments.length === 0) ? (
                 <div className="text-center py-20">
                     <ListTodo className="w-16 h-16 text-navy-700 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-navy-400 mb-1">Nicio sarcină găsită</h3>
-                    <p className="text-sm text-navy-500 mb-4">Creează primul tău task sau schimbă filtrele.</p>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm transition-colors"
-                    >
-                        <Plus className="w-4 h-4 inline mr-1" /> Creează sarcină
-                    </button>
+                    <h3 className="text-lg font-medium text-navy-400 mb-1">
+                        {filters.my_tasks === 'true' ? 'Nu ai sarcini active' : 'Nicio sarcină găsită'}
+                    </h3>
+                    <p className="text-sm text-navy-500 mb-4">
+                        {filters.my_tasks === 'true' ? 'Sarcinile tale vor apărea aici.' : 'Creează primul tău task sau schimbă filtrele.'}
+                    </p>
+                    {filters.my_tasks !== 'true' && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm transition-colors"
+                        >
+                            <Plus className="w-4 h-4 inline mr-1" /> Creează sarcină
+                        </button>
+                    )}
+                </div>
+            ) : filters.my_tasks === 'true' ? (
+                /* ===== MY TASKS — FLAT LIST VIEW ===== */
+                <div className="border border-navy-700/50 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-navy-800/80">
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Sarcină</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell">Departament</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Secțiune</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Post</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Termen</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tasks.map(task => {
+                                const dueDateStatus = getDueDateStatus(task.due_date);
+                                const daysOverdue = getDaysOverdue(task.due_date);
+                                const daysUntil = getDaysUntil(task.due_date);
+                                const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
+                                const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
+                                return (
+                                    <tr
+                                        key={task.id}
+                                        onClick={() => setSelectedTaskId(task.id)}
+                                        className={`border-t border-navy-700/30 cursor-pointer transition-colors hover:bg-navy-800/40 ${
+                                            isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
+                                        }`}
+                                    >
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
+                                                <span className="font-medium text-white truncate max-w-[300px]">{task.title}</span>
+                                            </div>
+                                            {/* Mobile: show dept below title */}
+                                            <div className="md:hidden mt-1 text-[10px] text-navy-400">
+                                                {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                                                {task.assigned_section_name && ` · ${task.assigned_section_name}`}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-navy-300 text-xs hidden md:table-cell">
+                                            {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell">
+                                            {task.assigned_section_name || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell">
+                                            {task.assigned_post_name || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`text-xs font-medium ${
+                                                isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
+                                            }`}>
+                                                {formatDate(task.due_date)}
+                                                {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}z)</span>}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span
+                                                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                                                style={{
+                                                    backgroundColor: `${STATUSES[task.status]?.color}20`,
+                                                    color: STATUSES[task.status]?.color
+                                                }}
+                                            >
+                                                {STATUSES[task.status]?.label}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             ) : orgDepartments.length > 0 ? (
                 /* ===== ORG STRUCTURE ACCORDION VIEW ===== */
