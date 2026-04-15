@@ -192,12 +192,16 @@ UPDATE api_tokens SET created_by = (
     SELECT id FROM users WHERE LOWER(email) = 'emoke.ledenyi@visoro-global.ro' AND microsoft_id LIKE 'pending-%'
 );
 
--- Webhooks: created_by
-UPDATE webhooks SET created_by = (
-    SELECT id FROM users WHERE LOWER(email) = 'ledenyi.emoke@visoro-global.ro' AND is_active = true LIMIT 1
-) WHERE created_by IN (
-    SELECT id FROM users WHERE LOWER(email) = 'emoke.ledenyi@visoro-global.ro' AND microsoft_id LIKE 'pending-%'
-);
+-- Webhooks: created_by (table may not exist)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'webhooks') THEN
+    UPDATE webhooks SET created_by = (
+      SELECT id FROM users WHERE LOWER(email) = 'ledenyi.emoke@visoro-global.ro' AND is_active = true LIMIT 1
+    ) WHERE created_by IN (
+      SELECT id FROM users WHERE LOWER(email) = 'emoke.ledenyi@visoro-global.ro' AND microsoft_id LIKE 'pending-%'
+    );
+  END IF;
+END $$;
 
 -- Step 2: Deactivate and rename User A (the pending- one)
 UPDATE users
