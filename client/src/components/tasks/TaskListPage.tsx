@@ -15,7 +15,7 @@ import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
     LayoutList, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag,
-    Bookmark, BookmarkPlus, Link2, ChevronRight, ArrowUp, ArrowDown
+    Bookmark, BookmarkPlus, Link2, ChevronRight, ArrowUp, ArrowDown, FileText
 } from 'lucide-react';
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
@@ -682,18 +682,19 @@ export default function TaskListPage() {
             ) : orgDepartments.length > 0 ? (
                 /* ===== ORG STRUCTURE ACCORDION VIEW ===== */
                 <div className="space-y-3">
-                    {/* Company-level policies link */}
-                    {companyPolicyCount > 0 && (
-                        <div className="flex items-center justify-between px-4 py-2 rounded-lg border border-navy-700/30 bg-navy-800/20">
-                            <span className="text-sm text-navy-300">Directive la nivel de companie ({companyPolicyCount})</span>
-                            <button
-                                onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: 'Directive la nivel de companie' })}
-                                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                            >
-                                Deschide
-                            </button>
-                        </div>
-                    )}
+                    {/* Company-level policies link — always visible */}
+                    <div className="flex items-center justify-between px-4 py-2 rounded-lg border border-navy-700/30 bg-navy-800/20">
+                        <span className="text-sm text-navy-300 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-400" />
+                            Directive la nivel de companie {companyPolicyCount > 0 && `(${companyPolicyCount})`}
+                        </span>
+                        <button
+                            onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: 'Directive la nivel de companie' })}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                            Deschide
+                        </button>
+                    </div>
 
                     {orgDepartments.map((dept, idx) => (
                         <OrgDepartmentAccordion

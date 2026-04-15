@@ -13,6 +13,7 @@ interface Props {
     darkMode: boolean;
     isSuperAdmin?: boolean;
     onEditPost?: (post: OrgPost) => void;
+    onPolicyClick?: (scope: string, id: string) => void;
 }
 
 // Status cycle order for quick change
@@ -29,7 +30,7 @@ function getDateColorClass(dueDateStatus: string, darkMode: boolean): string {
 }
 
 export default function OrgPostRow({
-    post, tasks, onTaskClick, onTaskStatusChange, darkMode, isSuperAdmin, onEditPost
+    post, tasks, onTaskClick, onTaskStatusChange, darkMode, isSuperAdmin, onEditPost, onPolicyClick
 }: Props) {
     const [expanded, setExpanded] = useState(false);
     const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
@@ -120,13 +121,19 @@ export default function OrgPostRow({
                     {taskCount} {taskCount === 1 ? 'sarcină' : 'sarcini'}
                 </span>
 
-                {/* Policy count */}
-                {policyCount > 0 && (
-                    <span className={`text-[10px] flex items-center gap-0.5 ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
-                        <FileText className="w-3 h-3" />
-                        {policyCount}
-                    </span>
-                )}
+                {/* Policy count — always visible, clickable */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onPolicyClick?.('POST', post.id); }}
+                    className={`text-[10px] flex items-center gap-0.5 hover:text-blue-400 transition-colors ${
+                        policyCount > 0
+                            ? darkMode ? 'text-blue-400' : 'text-blue-500'
+                            : darkMode ? 'text-navy-600 hover:text-navy-400' : 'text-gray-300 hover:text-gray-500'
+                    }`}
+                    title={`${policyCount} directiv${policyCount === 1 ? 'ă' : 'e'}`}
+                >
+                    <FileText className="w-3 h-3" />
+                    {policyCount > 0 ? policyCount : ''}
+                </button>
 
                 {/* Settings gear (superadmin) */}
                 {isSuperAdmin && (

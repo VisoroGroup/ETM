@@ -71,18 +71,18 @@ export default function OrgDepartmentAccordion({
                     </p>
                 </div>
 
-                {/* Policy count */}
-                {(department.policy_count || 0) > 0 && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onPolicyClick?.('DEPARTMENT', department.id); }}
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ${
-                            darkMode ? 'text-navy-400 hover:bg-navy-700 hover:text-navy-200' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                        }`}
-                    >
-                        <FileText className="w-3.5 h-3.5" />
-                        {department.policy_count} dir.
-                    </button>
-                )}
+                {/* Policy count — always visible */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onPolicyClick?.('DEPARTMENT', department.id); }}
+                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ${
+                        (department.policy_count || 0) > 0
+                            ? darkMode ? 'text-blue-400 hover:bg-navy-700 hover:text-blue-300' : 'text-blue-500 hover:bg-gray-100'
+                            : darkMode ? 'text-navy-600 hover:bg-navy-700 hover:text-navy-400' : 'text-gray-300 hover:bg-gray-100'
+                    }`}
+                >
+                    <FileText className="w-3.5 h-3.5" />
+                    {(department.policy_count || 0) > 0 ? `${department.policy_count} dir.` : 'dir.'}
+                </button>
 
                 {/* Edit button (superadmin) */}
                 {isSuperAdmin && (
@@ -193,6 +193,7 @@ function OrgSectionBlock({
                     isSuperAdmin={isSuperAdmin}
                     onEditPost={onEditPost}
                     onTaskStatusChange={onTaskStatusChange}
+                    onPolicyClick={onPolicyClick}
                 />
             ))}
 
