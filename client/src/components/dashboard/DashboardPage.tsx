@@ -12,6 +12,7 @@ import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
 import ReportModal from './ReportModal';
 import DashboardCustomizer from './DashboardCustomizer';
+import TaskDrawer from '../tasks/TaskDrawer';
 import type { WidgetConfig } from '../../types';
 
 export default function DashboardPage() {
@@ -25,6 +26,7 @@ export default function DashboardPage() {
     const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
     const [showCustomizer, setShowCustomizer] = useState(false);
     const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -140,7 +142,7 @@ export default function DashboardPage() {
         return (
             <tr
                 key={task.id}
-                onClick={() => navigate('/tasks', { state: { openTaskId: task.id } })}
+                onClick={() => setSelectedTaskId(task.id)}
                 className={`border-t border-navy-700/30 cursor-pointer transition-colors hover:bg-navy-800/40 ${
                     isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
                 }`}
@@ -324,7 +326,7 @@ export default function DashboardPage() {
                                     className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
                                 >
                                     <div
-                                        onClick={() => navigate('/tasks', { state: { openTaskId: alert.task_id } })}
+                                        onClick={() => setSelectedTaskId(alert.task_id)}
                                         className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:translate-x-1 transition-transform"
                                     >
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-md">
@@ -414,6 +416,16 @@ export default function DashboardPage() {
             )}
             {showReport && <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />}
             {showCustomizer && <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />}
+            {selectedTaskId && (
+                <TaskDrawer
+                    taskId={selectedTaskId}
+                    onClose={() => setSelectedTaskId(null)}
+                    onUpdate={() => {
+                        // Reload tasks after update
+                        tasksApi.list().then(res => setAllTasks(res.tasks || res)).catch(() => {});
+                    }}
+                />
+            )}
         </div>
     );
 }
