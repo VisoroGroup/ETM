@@ -253,12 +253,12 @@ WHERE d.sort_order = 3 AND s.sort_order = 1
 AND NOT EXISTS (SELECT 1 FROM posts p WHERE p.name = 'Campanii de promovare' AND p.section_id = s.id AND p.is_active = true);
 
 INSERT INTO posts (name, section_id, user_id, description, sort_order)
-SELECT 'Bază de date clineți', s.id,
+SELECT 'Bază de date clienți', s.id,
   (SELECT id FROM users WHERE LOWER(email) LIKE '%maria.vaszi%' AND is_active = true LIMIT 1),
   'Întreținerea la perfecțiune a bazei de date de clienți existenți (denumire client, adresă, număr de telefon de la oamenii de legatură, zile de naștere). Se ocupă să țină baza de date cu clienții foarte vie.', 3
 FROM sections s JOIN departments d ON s.department_id = d.id
 WHERE d.sort_order = 3 AND s.sort_order = 1
-AND NOT EXISTS (SELECT 1 FROM posts p WHERE p.name = 'Bază de date clineți' AND p.section_id = s.id AND p.is_active = true);
+AND NOT EXISTS (SELECT 1 FROM posts p WHERE p.name = 'Bază de date clienți' AND p.section_id = s.id AND p.is_active = true);
 
 INSERT INTO posts (name, section_id, user_id, description, sort_order)
 SELECT 'Arhivă design', s.id,
