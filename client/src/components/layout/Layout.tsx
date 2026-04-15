@@ -67,7 +67,7 @@ export default function Layout() {
 
 
     return (
-        <div className={`min-h-screen flex overflow-x-hidden overflow-y-auto ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+        <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
             {/* Sidebar — hidden on mobile, visible md+ */}
             <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900 border-navy-800' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
                 {/* Logo */}
@@ -206,7 +206,7 @@ export default function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 min-h-screen overflow-x-hidden`}>
+            <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 overflow-y-auto overflow-x-hidden`}>
                 <CompanyGoalBanner darkMode={darkMode} />
                 <Outlet />
             </main>

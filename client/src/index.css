@@ -34,15 +34,10 @@
   }
 }
 
-html, body {
+html, body, #root {
   max-width: 100%;
-  overflow-x: hidden;
-}
-
-/* Prevent any child from exceeding viewport width on mobile */
-#root {
-  max-width: 100%;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
