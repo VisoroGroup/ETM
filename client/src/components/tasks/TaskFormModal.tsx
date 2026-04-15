@@ -173,14 +173,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         {selectedDeptId && availableSections.length > 0 && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Secțiune
+                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Subdepartament
                                 </label>
                                 <select
                                     value={selectedSectionId}
                                     onChange={e => { setSelectedSectionId(e.target.value); setAssignedPostId(''); }}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
-                                    <option value="">— Alege secțiunea —</option>
+                                    <option value="">— Alege subdepartamentul —</option>
                                     {availableSections.map(s => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}

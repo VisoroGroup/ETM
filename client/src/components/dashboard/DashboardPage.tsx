@@ -231,7 +231,7 @@ export default function DashboardPage() {
                                                 <tr className="bg-navy-800/20">
                                                     <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Sarcină</th>
                                                     <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell">Departament</th>
-                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Secțiune</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Subdepartament</th>
                                                     <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">{fourthColHeader}</th>
                                                     <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Termen</th>
                                                     <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Status</th>

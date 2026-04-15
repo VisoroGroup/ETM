@@ -207,7 +207,7 @@ router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req:
     const department_id = req.params.id;
     const { name, head_user_id, pfv } = req.body;
     if (!name) {
-        res.status(400).json({ error: 'Numele secțiunii este obligatoriu.' });
+        res.status(400).json({ error: 'Numele subdepartamentului este obligatoriu.' });
         return;
     }
 
@@ -241,7 +241,7 @@ router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: 
     `, [name, head_user_id || null, pfv || null, sort_order, id]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Secțiunea nu a fost găsită.' });
+        res.status(404).json({ error: 'Subdepartamentul nu a fost găsit.' });
         return;
     }
     res.json(rows[0]);
@@ -255,10 +255,10 @@ router.delete('/sections/:id', requireRole('superadmin'), asyncHandler(async (re
     `, [id]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Secțiunea nu a fost găsită.' });
+        res.status(404).json({ error: 'Subdepartamentul nu a fost găsit.' });
         return;
     }
-    res.json({ message: 'Secțiunea a fost dezactivată.' });
+    res.json({ message: 'Subdepartamentul a fost dezactivat.' });
 }));
 
 // ============================================================

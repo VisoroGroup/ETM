@@ -130,15 +130,15 @@ export function SectionEditModal({ section, onClose, onSaved }: { section: OrgSe
     };
 
     const handleDelete = async () => {
-        if (!confirm('Sigur dorești să dezactivezi această secțiune?')) return;
+        if (!confirm('Sigur dorești să dezactivezi acest subdepartament?')) return;
         try { await sectionsApi.delete(section.id); onSaved(); onClose(); } catch (err) { console.error(err); }
     };
 
     return (
-        <ModalWrapper title={`Editare secțiune: ${section.name}`} onClose={onClose}>
+        <ModalWrapper title={`Editare subdepartament: ${section.name}`} onClose={onClose}>
             <InputField label="Nume" value={name} onChange={setName} />
             <div>
-                <label className="text-xs font-medium text-navy-400 mb-1 block">Responsabil secțiune</label>
+                <label className="text-xs font-medium text-navy-400 mb-1 block">Responsabil subdepartament</label>
                 <select value={headUserId} onChange={e => setHeadUserId(e.target.value)} className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50">
                     <option value="">— Nimeni —</option>
                     {users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}

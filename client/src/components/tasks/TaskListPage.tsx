@@ -614,7 +614,7 @@ export default function TaskListPage() {
                             <tr className="bg-navy-800/80">
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Sarcină</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell">Departament</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Secțiune</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Subdepartament</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell">Post</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Termen</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs">Status</th>
