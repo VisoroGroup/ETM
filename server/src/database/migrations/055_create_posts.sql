@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_posts_section_id ON posts(section_id);
-CREATE INDEX idx_posts_user_id ON posts(user_id);
-CREATE INDEX idx_posts_is_active ON posts(is_active);
+CREATE INDEX IF NOT EXISTS idx_posts_section_id ON posts(section_id);
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_is_active ON posts(is_active);
 
 -- Helper aliases for readability:
 -- dept(N) = department with sort_order=N
@@ -136,7 +136,7 @@ INSERT INTO posts (name, section_id, user_id, description, sort_order) VALUES
   ('Comunicare externă',
     (SELECT s.id FROM sections s JOIN departments d ON s.department_id = d.id WHERE d.sort_order = 2 AND s.sort_order = 2),
     (SELECT id FROM users WHERE LOWER(email) LIKE '%maria.vaszi%' AND is_active = true LIMIT 1),
-    'Ține legătura cu clienții și partenerii firmei, se asigură că toate comunicările noastre exterioare să decurgă perfect. Trimitere: contracte; acte adiționale; comunicare stadiu contract.',
+    'Ține legătura cu clienții și partenerii firmei, se asigură că toate comunicările noastre exterioare să decurgă perfect. Trimitere: contracte, acte adiționale, comunicare stadiu contract.',
     1),
   ('Comunicare internă',
     (SELECT s.id FROM sections s JOIN departments d ON s.department_id = d.id WHERE d.sort_order = 2 AND s.sort_order = 2),
