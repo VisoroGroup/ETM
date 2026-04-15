@@ -51,13 +51,38 @@ export async function runMigrations() {
             console.log(`🔄 Running migration: ${file}`);
 
             // Strip SQL comment lines from the file, then split into individual statements
+            // Uses a proper parser that respects quoted strings (semicolons inside '' are not delimiters)
             const cleanedSql = sql.split('\n')
                 .filter(line => !line.trim().startsWith('--'))
                 .join('\n');
 
-            const statements = cleanedSql.split(';')
-                .map(s => s.trim())
-                .filter(s => s.length > 0);
+            const statements: string[] = [];
+            let current = '';
+            let inString = false;
+            for (let ci = 0; ci < cleanedSql.length; ci++) {
+                const ch = cleanedSql[ci];
+                if (ch === "'" && !inString) {
+                    inString = true;
+                    current += ch;
+                } else if (ch === "'" && inString) {
+                    // Handle escaped quotes ''
+                    if (ci + 1 < cleanedSql.length && cleanedSql[ci + 1] === "'") {
+                        current += "''";
+                        ci++;
+                    } else {
+                        inString = false;
+                        current += ch;
+                    }
+                } else if (ch === ';' && !inString) {
+                    const trimmed = current.trim();
+                    if (trimmed.length > 0) statements.push(trimmed);
+                    current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            const lastTrimmed = current.trim();
+            if (lastTrimmed.length > 0) statements.push(lastTrimmed);
 
             console.log(`   📝 ${statements.length} statement(s) to execute`);
 

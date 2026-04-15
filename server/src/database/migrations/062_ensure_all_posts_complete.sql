@@ -177,7 +177,7 @@ AND NOT EXISTS (SELECT 1 FROM posts p WHERE p.name = 'Control regulament' AND p.
 INSERT INTO posts (name, section_id, user_id, description, sort_order)
 SELECT 'Comunicare externă', s.id,
   (SELECT id FROM users WHERE LOWER(email) LIKE '%maria.vaszi%' AND is_active = true LIMIT 1),
-  'Ține legătura cu clienții și partenerii firmei, se asigură că toate comunicările noastre exterioare să decurgă perfect. Trimitere: contracte; acte adiționale; comunicare stadiu contract.', 1
+  'Ține legătura cu clienții și partenerii firmei, se asigură că toate comunicările noastre exterioare să decurgă perfect. Trimitere: contracte, acte adiționale, comunicare stadiu contract.', 1
 FROM sections s JOIN departments d ON s.department_id = d.id
 WHERE d.sort_order = 2 AND s.sort_order = 2
 AND NOT EXISTS (SELECT 1 FROM posts p WHERE p.name = 'Comunicare externă' AND p.section_id = s.id AND p.is_active = true);
