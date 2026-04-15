@@ -191,7 +191,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                             className={`px-4 py-3 border-b last:border-0 cursor-pointer transition-colors ${
                                                 n.is_read
                                                     ? darkMode ? 'border-navy-700 hover:bg-navy-700/40' : 'border-gray-50 hover:bg-gray-50'
-                                                    : darkMode ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15' : 'bg-amber-50 border-amber-100 hover:bg-amber-100/50'
+                                                    : darkMode ? 'bg-amber-500/20 border-l-3 border-l-amber-400 border-b-amber-500/30 hover:bg-amber-500/25' : 'bg-amber-100 border-l-3 border-l-amber-400 border-b-amber-200 hover:bg-amber-200/50'
                                             }`}
                                         >
                                             <p className={`text-xs ${n.is_read ? 'font-normal' : 'font-semibold'}`}>{n.message}</p>
@@ -213,7 +213,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                 return (
                                     <div key={key} className={`border-b last:border-0 ${
                                         group.hasUnread
-                                            ? darkMode ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-100'
+                                            ? darkMode ? 'bg-amber-500/20 border-l-3 border-l-amber-400 border-b-amber-500/30' : 'bg-amber-100 border-l-3 border-l-amber-400 border-b-amber-200'
                                             : darkMode ? 'border-navy-700' : 'border-gray-50'
                                     }`}>
                                         {/* Group header */}
@@ -273,7 +273,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         className={`px-4 py-2 cursor-pointer transition-colors border-t ${
                                                             n.is_read
                                                                 ? darkMode ? 'border-navy-700/50 hover:bg-navy-700/30' : 'border-gray-100 hover:bg-gray-50'
-                                                                : darkMode ? 'border-amber-500/10 bg-amber-500/5 hover:bg-amber-500/10' : 'border-amber-100 bg-amber-50/50 hover:bg-amber-50'
+                                                                : darkMode ? 'border-amber-500/20 bg-amber-500/15 hover:bg-amber-500/20' : 'border-amber-200 bg-amber-100/80 hover:bg-amber-100'
                                                         }`}
                                                     >
                                                         <p className={`text-[11px] ${n.is_read ? 'font-normal text-navy-300' : 'font-medium'}`}>{n.message}</p>
