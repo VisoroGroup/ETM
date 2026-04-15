@@ -344,6 +344,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             )}
                         </div>
 
+                        {/* Org structure: Department / Subdepartament / Post */}
+                        <OrgAssignmentEditor task={task} onUpdate={onUpdate} />
+
                         {/* Subtask progress */}
                         {totalSubtasks > 0 && (
                             <div className="mt-3">
@@ -611,5 +614,142 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                 </div>
             )}
         </>
+    );
+}
+
+// ─── Org Assignment Editor (Department / Subdepartament / Post) ──────────────
+
+function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: () => void }) {
+    const [editing, setEditing] = useState(false);
+    const [orgDepts, setOrgDepts] = useState<any[]>([]);
+    const [selectedDeptId, setSelectedDeptId] = useState('');
+    const [selectedSectionId, setSelectedSectionId] = useState('');
+    const [selectedPostId, setSelectedPostId] = useState('');
+    const [saving, setSaving] = useState(false);
+    const { showToast } = useToast();
+
+    useEffect(() => {
+        if (!editing) return;
+        import('../../services/api').then(({ departmentsApi }) => {
+            departmentsApi.list().then(data => {
+                const depts = data.departments || [];
+                setOrgDepts(depts);
+                // Pre-select current values
+                if (task.assigned_post_id) {
+                    for (const dept of depts) {
+                        for (const sec of (dept.sections || [])) {
+                            for (const post of (sec.posts || [])) {
+                                if (post.id === task.assigned_post_id) {
+                                    setSelectedDeptId(dept.id);
+                                    setSelectedSectionId(sec.id);
+                                    setSelectedPostId(post.id);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }, [editing]);
+
+    const selectedDept = orgDepts.find(d => d.id === selectedDeptId);
+    const availableSections = selectedDept?.sections || [];
+    const selectedSection = availableSections.find((s: any) => s.id === selectedSectionId);
+    const availablePosts = selectedSection?.posts || [];
+
+    // Map dept to old enum
+    const deptNameToEnum: Record<string, Department> = {
+        '7 - Administrativ': 'departament_7',
+        '1 - HR - Comunicare': 'departament_1',
+        '2 - Vânzări': 'departament_2',
+        '3 - Financiar': 'departament_3',
+        '4 - Producție': 'departament_4',
+        '5 - Calitate și calificare': 'departament_5',
+        '6 - Extindere': 'departament_6',
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const updates: any = {};
+            if (selectedDeptId && selectedDept) {
+                const enumVal = deptNameToEnum[selectedDept.name];
+                if (enumVal) updates.department_label = enumVal;
+            }
+            if (selectedPostId) {
+                updates.assigned_post_id = selectedPostId;
+                // Resolve user from post
+                const post = availablePosts.find((p: any) => p.id === selectedPostId);
+                if (post?.user_id) updates.assigned_to = post.user_id;
+            } else {
+                updates.assigned_post_id = null;
+            }
+            await tasksApi.update(task.id, updates);
+            showToast('Organizare actualizată!');
+            setEditing(false);
+            onUpdate();
+        } catch {
+            showToast('Eroare la actualizare.', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!editing) {
+        return (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {task.assigned_department_name && (
+                    <span className="text-[10px] px-2 py-1 rounded bg-navy-800/50 text-navy-400">
+                        {task.assigned_department_name}
+                    </span>
+                )}
+                {task.assigned_section_name && (
+                    <span className="text-[10px] px-2 py-1 rounded bg-navy-800/50 text-navy-400">
+                        {task.assigned_section_name}
+                    </span>
+                )}
+                {task.assigned_post_name && (
+                    <span className="text-[10px] px-2 py-1 rounded bg-navy-800/50 text-navy-400">
+                        {task.assigned_post_name}
+                    </span>
+                )}
+                <button
+                    onClick={() => setEditing(true)}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                    Schimbă
+                </button>
+            </div>
+        );
+    }
+
+    const selectCls = "w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50";
+
+    return (
+        <div className="mt-3 p-3 bg-navy-800/30 rounded-lg border border-navy-700/30 space-y-2">
+            <select value={selectedDeptId} onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setSelectedPostId(''); }} className={selectCls}>
+                <option value="">— Departament —</option>
+                {orgDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            {selectedDeptId && availableSections.length > 0 && (
+                <select value={selectedSectionId} onChange={e => { setSelectedSectionId(e.target.value); setSelectedPostId(''); }} className={selectCls}>
+                    <option value="">— Subdepartament —</option>
+                    {availableSections.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+            )}
+            {selectedSectionId && availablePosts.length > 0 && (
+                <select value={selectedPostId} onChange={e => setSelectedPostId(e.target.value)} className={selectCls}>
+                    <option value="">— Post —</option>
+                    {availablePosts.map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.user_name ? ` → ${p.user_name}` : ''}</option>)}
+                </select>
+            )}
+            <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs text-navy-400 hover:text-white">Anulează</button>
+                <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 text-xs bg-blue-500 hover:bg-blue-400 text-white rounded-lg disabled:opacity-50">
+                    {saving ? 'Se salvează...' : 'Salvează'}
+                </button>
+            </div>
+        </div>
     );
 }
