@@ -104,7 +104,7 @@ export default function DashboardPage() {
 
     const statCards = [
         {
-            label: 'Task-uri active', value: stats?.active || 0,
+            label: 'Sarcini active', value: stats?.active || 0,
             icon: Activity, color: 'from-blue-500 to-blue-600', textColor: 'text-blue-400',
             onClick: () => navigate('/tasks')
         },
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                     <div className="bg-navy-900/50 border border-yellow-500/30 rounded-xl p-3 md:p-4">
                         <div className="flex items-center gap-1.5 mb-1">
                             <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-yellow-400">Subtask-uri rămase</span>
+                            <span className="text-[10px] md:text-xs font-medium text-yellow-400">Subsarcini rămase</span>
                         </div>
                         <p className="text-xl md:text-2xl font-bold">{myStats.my_pending_subtasks}</p>
                     </div>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                         {/* Department Distribution - Bar */}
                         {isVisible('dept_chart') && (
                         <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
-                            <h3 className="text-sm font-semibold mb-4">Task-uri pe departament</h3>
+                            <h3 className="text-sm font-semibold mb-4">Sarcini pe departament</h3>
                             {deptChartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <BarChart data={deptChartData}>
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-semibold flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-orange-400" />
-                                Task-uri urgente
+                                Sarcini urgente
                                 {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                             </h3>
                             <button
@@ -479,7 +479,7 @@ export default function DashboardPage() {
                             <div className="text-center py-8">
                                 <CheckCircle2 className="w-10 h-10 text-green-400/50 mx-auto mb-2" />
                                 <p className="text-navy-500 text-sm">
-                                    {myTasksOnly ? 'Niciun task urgent personal!' : 'Niciun task urgent!'}
+                                    {myTasksOnly ? 'Nicio sarcină urgentă personală!' : 'Nicio sarcină urgentă!'}
                                 </p>
                             </div>
                         )}

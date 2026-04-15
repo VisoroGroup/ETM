@@ -30,7 +30,7 @@ export default function CompletedTasksPage() {
             setTasks(result.tasks);
             setTotal(result.total);
         } catch {
-            showToast('Eroare la încărcarea task-urilor', 'error');
+            showToast('Eroare la încărcarea sarcinilor', 'error');
         } finally {
             setLoading(false);
         }
@@ -108,7 +108,7 @@ export default function CompletedTasksPage() {
         setReactivatingId(taskId);
         try {
             await tasksApi.changeStatus(taskId, 'de_rezolvat');
-            showToast('Task reactivat!');
+            showToast('Sarcină reactivată!');
             setTasks(prev => prev.filter(t => t.id !== taskId));
             setTotal(prev => prev - 1);
         } catch {
@@ -127,8 +127,8 @@ export default function CompletedTasksPage() {
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold">Taskuri Terminate</h1>
-                        <p className="text-navy-400 text-sm">{total} task-uri finalizate</p>
+                        <h1 className="text-2xl font-bold">Sarcini terminate</h1>
+                        <p className="text-navy-400 text-sm">{total} sarcini finalizate</p>
                     </div>
                 </div>
             </div>
@@ -142,7 +142,7 @@ export default function CompletedTasksPage() {
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        placeholder="Caută în taskuri terminate..."
+                        placeholder="Caută în sarcinile terminate..."
                         className="w-full pl-10 pr-4 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                     />
                 </div>
@@ -163,10 +163,10 @@ export default function CompletedTasksPage() {
                 <div className="text-center py-20">
                     <Archive className="w-16 h-16 text-navy-700 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-navy-400 mb-1">
-                        {searchQuery ? 'Niciun rezultat' : 'Niciun task terminat'}
+                        {searchQuery ? 'Niciun rezultat' : 'Nicio sarcină terminată'}
                     </h3>
                     <p className="text-sm text-navy-500">
-                        {searchQuery ? 'Încearcă cu alți termeni de căutare.' : 'Taskurile completate vor apărea aici.'}
+                        {searchQuery ? 'Încearcă cu alți termeni de căutare.' : 'Sarcinile completate vor apărea aici.'}
                     </p>
                 </div>
             ) : (
@@ -240,7 +240,7 @@ export default function CompletedTasksPage() {
                                     <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform flex-shrink-0 ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="md" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
-                                    <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} task{group.tasks.length !== 1 ? '-uri' : ''}</span>
+                                    <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} {group.tasks.length !== 1 ? 'sarcini' : 'sarcină'}</span>
                                     <div className="ml-auto flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                         <button
                                             onClick={() => moveGroup(group.name, 'up')}

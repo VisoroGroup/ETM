@@ -65,7 +65,7 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <Mail className="w-6 h-6 text-blue-400" />
-                    <h1 className="text-xl font-bold">Email Logs</h1>
+                    <h1 className="text-xl font-bold">Jurnal emailuri</h1>
                 </div>
                 <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm transition-colors">
                     <RefreshCw className="w-4 h-4" />
@@ -150,7 +150,7 @@ export default function EmailLogsPage() {
                                     <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
                                 )}
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Tip</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Taskuri</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Sarcini</th>
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Data</th>
                                 <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Eroare</th>
                             </tr>

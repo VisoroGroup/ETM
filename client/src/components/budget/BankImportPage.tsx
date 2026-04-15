@@ -250,7 +250,7 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
                             disabled={approveAll.isPending}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50"
                         >
-                            <CheckCheck className="w-4 h-4" /> Összes jóváhagyása ({unapproved.length})
+                            <CheckCheck className="w-4 h-4" /> Aprobă toate ({unapproved.length})
                         </button>
                     )}
                     {imp.status !== 'completed' && unmatched.length === 0 && (
@@ -259,7 +259,7 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
                             disabled={complete.isPending}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
                         >
-                            <Check className="w-4 h-4" /> Véglegesítés
+                            <Check className="w-4 h-4" /> Finalizare
                         </button>
                     )}
                 </div>
@@ -268,10 +268,10 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
             {/* Stats */}
             <div className="grid grid-cols-4 gap-2 mb-4">
                 {[
-                    { label: 'Összes', val: rows.length, color: 'text-blue-400' },
-                    { label: 'Párosított', val: matched.length, color: 'text-emerald-400' },
-                    { label: 'Feldolgozatlan', val: unmatched.length, color: 'text-amber-400' },
-                    { label: 'Kihagyott', val: rows.filter(r => r.match_status === 'skipped').length, color: 'text-navy-400' },
+                    { label: 'Total', val: rows.length, color: 'text-blue-400' },
+                    { label: 'Potrivite', val: matched.length, color: 'text-emerald-400' },
+                    { label: 'Neprocesate', val: unmatched.length, color: 'text-amber-400' },
+                    { label: 'Sărite', val: rows.filter(r => r.match_status === 'skipped').length, color: 'text-navy-400' },
                 ].map(s => (
                     <div key={s.label} className={`p-3 rounded-xl border text-center ${darkMode ? 'bg-navy-800/50 border-navy-700' : 'bg-white border-gray-200'}`}>
                         <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
@@ -285,11 +285,11 @@ function ImportReview({ importId, darkMode, onBack }: { importId: string; darkMo
                 <table className="w-full text-xs">
                     <thead>
                         <tr className={`${darkMode ? 'bg-navy-800' : 'bg-gray-50'}`}>
-                            <th className="text-left px-3 py-2.5 font-semibold">Dátum</th>
-                            <th className="text-left px-3 py-2.5 font-semibold">Leírás / Partner</th>
-                            <th className="text-right px-3 py-2.5 font-semibold">Összeg</th>
-                            <th className="text-left px-3 py-2.5 font-semibold">Párosítás</th>
-                            <th className="text-center px-3 py-2.5 font-semibold w-32">Akció</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Data</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Descriere / Partener</th>
+                            <th className="text-right px-3 py-2.5 font-semibold">Sumă</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Potrivire</th>
+                            <th className="text-center px-3 py-2.5 font-semibold w-32">Acțiune</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -362,24 +362,24 @@ function TransactionRow({ row, darkMode, onApprove, onSkip, onAssign }: {
                         }`}>{row.match_confidence}%</span>
                     </div>
                 )}
-                {row.match_status === 'created' && <span className="text-blue-400 font-medium">✨ Létrehozva</span>}
-                {row.match_status === 'skipped' && <span className={`${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>⏭ Kihagyva</span>}
-                {row.match_status === 'unmatched' && <span className="text-amber-400">⚠ Nincs párosítás</span>}
+                {row.match_status === 'created' && <span className="text-blue-400 font-medium">✨ Creat</span>}
+                {row.match_status === 'skipped' && <span className={`${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>⏭ Sărit</span>}
+                {row.match_status === 'unmatched' && <span className="text-amber-400">⚠ Fără potrivire</span>}
             </td>
             <td className="px-3 py-2.5 text-center">
                 {!row.approved && row.match_status !== 'skipped' && (
                     <div className="flex items-center justify-center gap-1">
                         {row.match_status === 'matched' && (
-                            <button onClick={onApprove} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400" title="Jóváhagyás">
+                            <button onClick={onApprove} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400" title="Aprobă">
                                 <Check className="w-4 h-4" />
                             </button>
                         )}
                         {row.match_status === 'unmatched' && (
-                            <button onClick={onAssign} className="p-1.5 rounded-lg hover:bg-blue-500/10 text-blue-400" title="Besorolás">
+                            <button onClick={onAssign} className="p-1.5 rounded-lg hover:bg-blue-500/10 text-blue-400" title="Clasifică">
                                 <Plus className="w-4 h-4" />
                             </button>
                         )}
-                        <button onClick={onSkip} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400/60" title="Kihagyás">
+                        <button onClick={onSkip} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400/60" title="Sări">
                             <SkipForward className="w-4 h-4" />
                         </button>
                     </div>
@@ -401,20 +401,20 @@ function AssignModal({ row, darkMode, onClose, onAssign }: {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl ${darkMode ? 'bg-navy-800 text-white' : 'bg-white text-gray-900'}`}>
-                <h3 className="text-lg font-bold mb-1">Tranzakció besorolása</h3>
+                <h3 className="text-lg font-bold mb-1">Clasificare tranzacție</h3>
                 <p className={`text-xs mb-4 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
                     {row.debit ? '-' : '+'}{formatMoney(row.debit || row.credit || 0)} {row.currency} — {row.counterparty || row.description?.substring(0, 50)}
                 </p>
 
                 <div className="space-y-3">
                     <div>
-                        <label className="text-xs font-medium mb-1 block">Megnevezés</label>
+                        <label className="text-xs font-medium mb-1 block">Denumire</label>
                         <input value={title} onChange={e => setTitle(e.target.value)}
                             className={`w-full px-4 py-2.5 rounded-xl border text-sm ${darkMode ? 'bg-navy-900 border-navy-600 text-white' : 'bg-gray-50 border-gray-300'}`}
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-medium mb-1 block">Kategória</label>
+                        <label className="text-xs font-medium mb-1 block">Categorie</label>
                         <select value={category} onChange={e => setCategory(e.target.value)}
                             className={`w-full px-4 py-2.5 rounded-xl border text-sm ${darkMode ? 'bg-navy-900 border-navy-600 text-white' : 'bg-gray-50 border-gray-300'}`}>
                             {CATEGORIES.map(c => (
@@ -426,13 +426,13 @@ function AssignModal({ row, darkMode, onClose, onAssign }: {
 
                 <div className="flex gap-2 mt-5 justify-end">
                     <button onClick={onClose} className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'text-navy-300 hover:bg-navy-700' : 'text-gray-500 hover:bg-gray-100'}`}>
-                        Mégsem
+                        Anulează
                     </button>
                     <button
                         onClick={() => onAssign(category, title)}
                         className="px-5 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600"
                     >
-                        Mentés + Új fizetés létrehozás
+                        Salvează + Crează plată nouă
                     </button>
                 </div>
             </div>
