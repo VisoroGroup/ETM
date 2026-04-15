@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardApi, tasksApi, alertsApi } from '../../services/api';
-import { DashboardStats, DashboardCharts, Task, STATUSES, DEPARTMENTS } from '../../types';
+import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-    PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-    LineChart, Line, ResponsiveContainer, CartesianGrid
-} from 'recharts';
-import {
-    TrendingUp, AlertTriangle, Ban, CheckCircle2, Activity,
-    Clock, ChevronRight, Loader2, CalendarDays, List, User, Bell, Link2, FileDown, Settings
+    AlertTriangle, Ban, CheckCircle2, Activity,
+    Clock, ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
@@ -23,14 +19,12 @@ export default function DashboardPage() {
     const [charts, setCharts] = useState<DashboardCharts | null>(null);
     const [loading, setLoading] = useState(true);
     const [showCalendar, setShowCalendar] = useState(false);
-    const [myTasksOnly, setMyTasksOnly] = useState(false);
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
-    const [myStats, setMyStats] = useState<any>(null);
-    const [bottlenecks, setBottlenecks] = useState<any[]>([]);
     const [showReport, setShowReport] = useState(false);
     const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
     const [showCustomizer, setShowCustomizer] = useState(false);
+    const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -39,13 +33,11 @@ export default function DashboardPage() {
 
         async function loadDashboard() {
             try {
-                const [s, c, tasks, alerts, ms, bn, prefs] = await Promise.all([
+                const [s, c, tasks, alerts, prefs] = await Promise.all([
                     dashboardApi.stats(),
                     dashboardApi.charts(),
                     tasksApi.list(),
                     dashboardApi.activeAlerts().catch(() => []),
-                    dashboardApi.myStats().catch(() => null),
-                    dashboardApi.bottlenecks().catch(() => []),
                     dashboardApi.getPreferences().catch(() => []),
                 ]);
                 if (cancelled) return;
@@ -53,8 +45,6 @@ export default function DashboardPage() {
                 setCharts(c);
                 setAllTasks(tasks.tasks || tasks);
                 setActiveAlerts(alerts);
-                setMyStats(ms);
-                setBottlenecks(bn);
                 setWidgetLayout(prefs);
             } catch (err) {
                 if (cancelled) return;
@@ -76,31 +66,8 @@ export default function DashboardPage() {
         );
     }
 
-    const statusChartData = charts?.status_distribution.map(d => ({
-        name: STATUSES[d.status]?.label || d.status,
-        value: parseInt(d.count, 10),
-        color: STATUSES[d.status]?.color || '#999'
-    })) || [];
-
-    const deptChartData = charts?.department_distribution.map(d => ({
-        name: DEPARTMENTS[d.department_label]?.label || d.department_label,
-        value: parseInt(d.count, 10),
-        color: DEPARTMENTS[d.department_label]?.color || '#999'
-    })) || [];
-
-    const trendData = charts?.completion_trend || [];
-
-    // Filter tasks for "sarcinile mele"
-    const filteredTasks = myTasksOnly
-        ? allTasks.filter(t => t.created_by === user?.id)
-        : allTasks;
-
-    // Urgente tasks (overdue + due soon) from filtered list
-    const urgentFilteredTasks = charts?.urgent_tasks
-        ? myTasksOnly
-            ? charts.urgent_tasks.filter(t => t.created_by === user?.id)
-            : charts.urgent_tasks
-        : [];
+    // Urgent tasks from charts
+    const urgentTasks = charts?.urgent_tasks || [];
 
     const statCards = [
         {
@@ -127,9 +94,162 @@ export default function DashboardPage() {
 
     // Widget visibility helper
     const isVisible = (widgetId: string) => {
-        if (widgetLayout.length === 0) return true; // no prefs = show all
+        if (widgetLayout.length === 0) return true;
         const w = widgetLayout.find(w => w.widget_id === widgetId);
         return w ? w.visible : true;
+    };
+
+    // MY TASKS: tasks assigned to current user (I'm responsible)
+    const myAssignedTasks = allTasks.filter(t => t.assigned_to === user?.id && t.status !== 'terminat');
+
+    // CREATED BY ME: tasks I created but someone else is responsible
+    const myCreatedTasks = allTasks.filter(t => t.created_by === user?.id && t.assigned_to !== user?.id && t.status !== 'terminat');
+
+    // Group tasks by status
+    const statusOrder: TaskStatus[] = ['de_rezolvat', 'in_realizare', 'blocat', 'terminat'];
+    const groupByStatus = (tasks: Task[]) => {
+        const groups: { status: TaskStatus; label: string; color: string; tasks: Task[] }[] = [];
+        for (const s of statusOrder) {
+            const matching = tasks.filter(t => t.status === s);
+            if (matching.length > 0) {
+                // Sort by due date (soonest first)
+                matching.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+                groups.push({
+                    status: s,
+                    label: STATUSES[s]?.label || s,
+                    color: STATUSES[s]?.color || '#999',
+                    tasks: matching
+                });
+            }
+        }
+        return groups;
+    };
+
+    const toggleStatusCollapse = (key: string) => {
+        setCollapsedStatuses(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    // Render a task row for the flat list
+    const renderTaskRow = (task: Task, showAssignee = false) => {
+        const daysOverdue = getDaysOverdue(task.due_date);
+        const daysUntil = getDaysUntil(task.due_date);
+        const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
+        const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
+        return (
+            <tr
+                key={task.id}
+                onClick={() => navigate('/tasks', { state: { openTaskId: task.id } })}
+                className={`border-t border-navy-700/30 cursor-pointer transition-colors hover:bg-navy-800/40 ${
+                    isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
+                }`}
+            >
+                <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
+                        <span className="font-medium text-white text-sm truncate max-w-[300px]">{task.title}</span>
+                    </div>
+                    <div className="md:hidden mt-1 text-[10px] text-navy-400">
+                        {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                        {task.assigned_section_name && ` · ${task.assigned_section_name}`}
+                    </div>
+                </td>
+                <td className="px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell">
+                    {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                </td>
+                <td className="px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell">
+                    {task.assigned_section_name || '—'}
+                </td>
+                <td className="px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell">
+                    {showAssignee ? (task.assignee_name || '—') : (task.assigned_post_name || '—')}
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                    <span className={`text-xs font-medium ${
+                        isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
+                    }`}>
+                        {formatDate(task.due_date)}
+                        {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}z)</span>}
+                    </span>
+                </td>
+                <td className="px-4 py-2.5">
+                    <span
+                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                        style={{
+                            backgroundColor: `${STATUSES[task.status]?.color}20`,
+                            color: STATUSES[task.status]?.color
+                        }}
+                    >
+                        {STATUSES[task.status]?.label}
+                    </span>
+                </td>
+            </tr>
+        );
+    };
+
+    // Render a grouped task section
+    const renderTaskSection = (title: string, icon: React.ReactNode, tasks: Task[], sectionKey: string, showAssignee = false) => {
+        const groups = groupByStatus(tasks);
+        const fourthColHeader = showAssignee ? 'Responsabil' : 'Post';
+
+        return (
+            <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-navy-700/50 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                        {icon}
+                        {title}
+                        <span className="text-xs text-navy-400 font-normal ml-1">({tasks.length})</span>
+                    </h3>
+                </div>
+
+                {tasks.length === 0 ? (
+                    <div className="text-center py-8">
+                        <CheckCircle2 className="w-8 h-8 text-green-400/30 mx-auto mb-2" />
+                        <p className="text-navy-500 text-sm">Nicio sarcină</p>
+                    </div>
+                ) : (
+                    <div>
+                        {groups.map(group => {
+                            const collapseKey = `${sectionKey}_${group.status}`;
+                            const isCollapsed = collapsedStatuses.has(collapseKey);
+                            return (
+                                <div key={group.status}>
+                                    <button
+                                        onClick={() => toggleStatusCollapse(collapseKey)}
+                                        className="w-full flex items-center gap-2 px-5 py-2.5 bg-navy-800/30 hover:bg-navy-800/50 transition-colors border-t border-navy-700/30"
+                                    >
+                                        <ChevronRight className={`w-3.5 h-3.5 text-navy-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                                        <span className="text-xs font-semibold" style={{ color: group.color }}>{group.label}</span>
+                                        <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
+                                    </button>
+                                    {!isCollapsed && (
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="bg-navy-800/20">
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Sarcină</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell">Departament</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Secțiune</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">{fourthColHeader}</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Termen</th>
+                                                    <th className="text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.tasks.map(task => renderTaskRow(task, showAssignee))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -141,19 +261,6 @@ export default function DashboardPage() {
                     <p className="text-navy-400 text-sm mt-1">Bine ai venit! Iată o privire de ansamblu.</p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                    {/* Sarcinile mele filter */}
-                    <button
-                        onClick={() => setMyTasksOnly(v => !v)}
-                        className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all border ${
-                            myTasksOnly
-                                ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
-                                : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:text-white hover:border-navy-600'
-                        }`}
-                    >
-                        <User className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Sarcinile</span> mele
-                    </button>
-
                     {/* Report button — admin/manager only */}
                     {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && (
                         <button
@@ -201,7 +308,6 @@ export default function DashboardPage() {
             {/* "În Atenție" — Active alerts panel */}
             {isVisible('active_alerts') && activeAlerts.length > 0 && (
                 <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-4 md:p-5 shadow-lg shadow-red-500/5 animate-slide-up overflow-hidden">
-                    {/* Pulsating glow */}
                     <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
                     <div className="relative">
                         <div className="flex items-center justify-between mb-3">
@@ -235,7 +341,6 @@ export default function DashboardPage() {
                                             <span className="text-[10px] text-navy-500 mt-1 inline-block">de {alert.creator_name} · {timeAgo(alert.created_at)}</span>
                                         </div>
                                     </div>
-                                    {/* Resolve button */}
                                     <button
                                         onClick={async (e) => {
                                             e.stopPropagation();
@@ -283,140 +388,17 @@ export default function DashboardPage() {
             </div>
             )}
 
-            {/* My personal stats */}
-            {isVisible('my_stats') && myStats && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                    <div className="bg-navy-900/50 border border-cyan-500/30 rounded-xl p-3 md:p-4">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-cyan-400">Asignate mie</span>
-                        </div>
-                        <p className="text-xl md:text-2xl font-bold">{myStats.my_active}</p>
-                    </div>
-                    <div className="bg-navy-900/50 border border-red-500/30 rounded-xl p-3 md:p-4">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-red-400">Depășite (ale mele)</span>
-                        </div>
-                        <p className="text-xl md:text-2xl font-bold">{myStats.my_overdue}</p>
-                    </div>
-                    <div className="bg-navy-900/50 border border-yellow-500/30 rounded-xl p-3 md:p-4">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-yellow-400">Subsarcini rămase</span>
-                        </div>
-                        <p className="text-xl md:text-2xl font-bold">{myStats.my_pending_subtasks}</p>
-                    </div>
-                    <div className="bg-navy-900/50 border border-green-500/30 rounded-xl p-3 md:p-4">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-400" />
-                            <span className="text-[10px] md:text-xs font-medium text-green-400">Finalizate (ale mele)</span>
-                        </div>
-                        <p className="text-xl md:text-2xl font-bold">{myStats.my_completed_this_month}</p>
-                    </div>
-                </div>
-            )}
-
             {/* Calendar mode */}
             {showCalendar && isVisible('calendar') ? (
                 <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                     <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-blue-400" />
                         Vedere calendar — termene limită
-                        {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                     </h3>
                     <CalendarView />
                 </div>
             ) : (
                 <>
-                    {/* Charts Row */}
-                    {(isVisible('status_chart') || isVisible('dept_chart') || isVisible('trend_chart')) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                        {/* Status Distribution - Donut */}
-                        {isVisible('status_chart') && (
-                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-4 md:p-5">
-                            <h3 className="text-xs md:text-sm font-semibold mb-3 md:mb-4">Distribuție pe statusuri</h3>
-                            {statusChartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <PieChart>
-                                        <Pie
-                                            data={statusChartData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={50}
-                                            outerRadius={80}
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            {statusChartData.map((d, i) => (
-                                                <Cell key={i} fill={d.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-[200px] flex items-center justify-center text-navy-500 text-sm">Nicio dată</div>
-                            )}
-                            <div className="flex flex-wrap gap-3 mt-2">
-                                {statusChartData.map((d, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 text-xs">
-                                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
-                                        <span className="text-navy-300">{d.name}: {d.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        )}
-
-                        {/* Department Distribution - Bar */}
-                        {isVisible('dept_chart') && (
-                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
-                            <h3 className="text-sm font-semibold mb-4">Sarcini pe departament</h3>
-                            {deptChartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={deptChartData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-stroke)" />
-                                        <XAxis dataKey="name" tick={{ fill: '#829ab1', fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
-                                        <YAxis tick={{ fill: '#829ab1', fontSize: 11 }} />
-                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }} />
-                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                            {deptChartData.map((d, i) => (
-                                                <Cell key={i} fill={d.color} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-[200px] flex items-center justify-center text-navy-500 text-sm">Nicio dată</div>
-                            )}
-                        </div>
-                        )}
-
-                        {/* Completion Trend - Line */}
-                        {isVisible('trend_chart') && (
-                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
-                            <h3 className="text-sm font-semibold mb-4">Trend finalizare (4 săptămâni)</h3>
-                            {trendData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={trendData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-stroke)" />
-                                        <XAxis dataKey="label" tick={{ fill: '#829ab1', fontSize: 11 }} />
-                                        <YAxis tick={{ fill: '#829ab1', fontSize: 11 }} allowDecimals={false} />
-                                        <Tooltip contentStyle={{ background: 'var(--chart-tooltip-bg)', border: 'none', borderRadius: 'var(--chart-tooltip-radius)', color: 'var(--chart-tooltip-color)', fontSize: '12px' }} />
-                                        <Line type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6', r: 4 }} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-[200px] flex items-center justify-center text-navy-500 text-sm">Nicio dată</div>
-                            )}
-                        </div>
-                        )}
-                    </div>
-                    )}
-
                     {/* Urgent Tasks */}
                     {isVisible('urgent_tasks') && (
                     <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
@@ -424,7 +406,6 @@ export default function DashboardPage() {
                             <h3 className="text-sm font-semibold flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-orange-400" />
                                 Sarcini urgente
-                                {myTasksOnly && <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">Personale</span>}
                             </h3>
                             <button
                                 onClick={() => navigate('/tasks')}
@@ -434,9 +415,9 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        {urgentFilteredTasks.length > 0 ? (
+                        {urgentTasks.length > 0 ? (
                             <div className="space-y-2">
-                                {urgentFilteredTasks.map((task) => {
+                                {urgentTasks.map((task) => {
                                     const dueStat = getDueDateStatus(task.due_date);
                                     return (
                                         <div
@@ -478,47 +459,27 @@ export default function DashboardPage() {
                         ) : (
                             <div className="text-center py-8">
                                 <CheckCircle2 className="w-10 h-10 text-green-400/50 mx-auto mb-2" />
-                                <p className="text-navy-500 text-sm">
-                                    {myTasksOnly ? 'Nicio sarcină urgentă personală!' : 'Nicio sarcină urgentă!'}
-                                </p>
+                                <p className="text-navy-500 text-sm">Nicio sarcină urgentă!</p>
                             </div>
                         )}
                     </div>
                     )}
 
-                    {/* Bottleneck Tasks */}
-                    {isVisible('bottlenecks') && bottlenecks.length > 0 && (
-                        <div className="bg-navy-900/50 border border-orange-500/30 rounded-xl p-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold flex items-center gap-2">
-                                    <Link2 className="w-4 h-4 text-orange-400" />
-                                    Blocaje critice
-                                </h3>
-                            </div>
-                            <div className="space-y-2">
-                                {bottlenecks.map((task: any) => (
-                                    <div
-                                        key={task.id}
-                                        onClick={() => navigate('/tasks', { state: { openTaskId: task.id } })}
-                                        className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all hover:bg-navy-800/50 border-l-2 border-orange-500 bg-orange-500/5"
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{task.title}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                {task.assignee_name && (
-                                                    <span className="text-[10px] text-navy-400">{task.assignee_name}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-orange-400">
-                                            <Link2 className="w-3.5 h-3.5" />
-                                            <span className="text-xs font-bold">{task.blocks_count}</span>
-                                            <span className="text-[10px] text-navy-400">blocat{parseInt(task.blocks_count, 10) !== 1 ? 'e' : ''}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                    {/* MY ASSIGNED TASKS — grouped by status */}
+                    {renderTaskSection(
+                        'Sarcinile mele',
+                        <UserCircle className="w-4 h-4 text-cyan-400" />,
+                        myAssignedTasks,
+                        'assigned'
+                    )}
+
+                    {/* TASKS I CREATED (assigned to others) — grouped by status */}
+                    {renderTaskSection(
+                        'Create de mine',
+                        <Briefcase className="w-4 h-4 text-purple-400" />,
+                        myCreatedTasks,
+                        'created',
+                        true // show assignee name instead of post
                     )}
                 </>
             )}
