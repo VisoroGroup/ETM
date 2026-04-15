@@ -122,14 +122,14 @@ export default function OrgDepartmentAccordion({
                     ))}
 
                     {/* Department PFV & Statistic */}
-                    <div className={`px-4 py-2.5 text-xs border-t ${
-                        darkMode ? 'border-navy-700/30 text-navy-400' : 'border-gray-100 text-gray-500'
+                    <div className={`px-5 py-3 text-xs border-t ${
+                        darkMode ? 'border-navy-700/30 text-navy-400/80' : 'border-gray-100 text-gray-500'
                     }`}>
                         {department.pfv && (
-                            <p><span className="font-medium">PFV:</span> {department.pfv}</p>
+                            <p className="leading-relaxed"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>PFV:</span> {department.pfv}</p>
                         )}
                         {department.statistic_name && (
-                            <p className="mt-0.5"><span className="font-medium">Statistică:</span> {department.statistic_name}</p>
+                            <p className="mt-1"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>Statistică:</span> {department.statistic_name}</p>
                         )}
                     </div>
                 </div>
@@ -160,14 +160,14 @@ function OrgSectionBlock({
             {/* Section header */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="w-full flex items-center gap-2 px-5 py-2 text-xs font-medium transition-all"
+                className="w-full flex items-center gap-2 px-5 py-2.5 text-xs font-semibold transition-all"
                 style={{
-                    color: darkMode ? departmentColor + 'CC' : departmentColor,
-                    background: darkMode ? departmentColor + '08' : departmentColor + '0A',
+                    color: darkMode ? departmentColor + 'DD' : departmentColor,
+                    background: darkMode ? departmentColor + '0A' : departmentColor + '0C',
                 }}
             >
-                <div className="w-1 h-5 rounded-full opacity-60" style={{ backgroundColor: departmentColor }} />
-                <span className="flex-1 text-left uppercase tracking-wider">{section.name}</span>
+                <div className="w-1 h-5 rounded-full opacity-70" style={{ backgroundColor: departmentColor }} />
+                <span className="flex-1 text-left uppercase tracking-[0.12em] text-[11px]">{section.name}</span>
                 {section.head_user_name && (
                     <span className={`text-xs font-normal ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
                         {section.head_user_name}
@@ -201,8 +201,8 @@ function OrgSectionBlock({
 
             {/* Section PFV */}
             {expanded && section.pfv && (
-                <div className={`px-6 py-1 text-[10px] italic ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
-                    PFV: {section.pfv}
+                <div className={`px-6 py-1.5 text-[10px] italic ${darkMode ? 'text-navy-400/70' : 'text-gray-400'}`}>
+                    <span className={`font-medium not-italic ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>PFV:</span> {section.pfv}
                 </div>
             )}
         </div>
