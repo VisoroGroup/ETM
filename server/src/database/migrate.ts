@@ -58,22 +58,54 @@ export async function runMigrations() {
 
             const statements: string[] = [];
             let current = '';
-            let inString = false;
+            let inSingleQuote = false;
+            let inDollarQuote = false;
+            let dollarTag = '';
             for (let ci = 0; ci < cleanedSql.length; ci++) {
                 const ch = cleanedSql[ci];
-                if (ch === "'" && !inString) {
-                    inString = true;
+
+                // Handle $$ or $tag$ dollar-quoted strings (PL/pgSQL)
+                if (ch === '$' && !inSingleQuote) {
+                    // Look for dollar-quote tag: $$ or $tag$
+                    const rest = cleanedSql.substring(ci);
+                    const match = rest.match(/^(\$[a-zA-Z0-9_]*\$)/);
+                    if (match) {
+                        const tag = match[1];
+                        if (inDollarQuote && tag === dollarTag) {
+                            // Closing dollar quote
+                            inDollarQuote = false;
+                            current += tag;
+                            ci += tag.length - 1;
+                            continue;
+                        } else if (!inDollarQuote) {
+                            // Opening dollar quote
+                            inDollarQuote = true;
+                            dollarTag = tag;
+                            current += tag;
+                            ci += tag.length - 1;
+                            continue;
+                        }
+                    }
+                }
+
+                if (inDollarQuote) {
                     current += ch;
-                } else if (ch === "'" && inString) {
+                    continue;
+                }
+
+                if (ch === "'" && !inSingleQuote) {
+                    inSingleQuote = true;
+                    current += ch;
+                } else if (ch === "'" && inSingleQuote) {
                     // Handle escaped quotes ''
                     if (ci + 1 < cleanedSql.length && cleanedSql[ci + 1] === "'") {
                         current += "''";
                         ci++;
                     } else {
-                        inString = false;
+                        inSingleQuote = false;
                         current += ch;
                     }
-                } else if (ch === ';' && !inString) {
+                } else if (ch === ';' && !inSingleQuote) {
                     const trimmed = current.trim();
                     if (trimmed.length > 0) statements.push(trimmed);
                     current = '';
