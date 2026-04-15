@@ -313,8 +313,8 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
             setDepts(data.departments || []);
             const posts: any[] = [];
             for (const dept of (data.departments || [])) {
-                for (const sec of dept.sections) {
-                    for (const post of sec.posts) {
+                for (const sec of (dept.sections || [])) {
+                    for (const post of (sec.posts || [])) {
                         posts.push({ ...post, deptName: dept.name, secName: sec.name });
                     }
                 }
@@ -352,7 +352,7 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
                     content_html: htmlContent,
                     department_ids: formScope === 'DEPARTMENT' ? selectedDeptIds : [],
                     post_ids: formScope === 'POST' ? selectedPostIds : [],
-                });
+                } as any);
             } else {
                 // Create new — use FormData for file upload
                 const formData = new FormData();

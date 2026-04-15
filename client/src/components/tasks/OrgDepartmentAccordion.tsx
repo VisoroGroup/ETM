@@ -117,6 +117,7 @@ export default function OrgDepartmentAccordion({
                             onEditSection={onEditSection}
                             onEditPost={onEditPost}
                             onTaskStatusChange={onTaskStatusChange}
+                            onPolicyClick={onPolicyClick}
                         />
                     ))}
 
@@ -139,7 +140,7 @@ export default function OrgDepartmentAccordion({
 
 // --- Section block within a department ---
 function OrgSectionBlock({
-    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor, onEditSection, onEditPost, onTaskStatusChange
+    section, tasks, onTaskClick, darkMode, isSuperAdmin, departmentColor, onEditSection, onEditPost, onTaskStatusChange, onPolicyClick
 }: {
     section: OrgSection;
     tasks: Task[];
@@ -150,6 +151,7 @@ function OrgSectionBlock({
     onEditSection?: (section: OrgSection) => void;
     onEditPost?: (post: OrgPost) => void;
     onTaskStatusChange?: () => void;
+    onPolicyClick?: (scope: string, id?: string) => void;
 }) {
     const [expanded, setExpanded] = useState(true);
 
