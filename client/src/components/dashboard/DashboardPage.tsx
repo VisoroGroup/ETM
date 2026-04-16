@@ -68,6 +68,16 @@ export default function DashboardPage() {
         );
     }
 
+    // Stat card color logic: if the "bad news" card shows 0, use a neutral color
+    // (a red "0 Depășite" or orange "0 Blocate" wrongly screams for attention)
+    const overdueColor = (stats?.overdue || 0) === 0
+        ? { bg: 'from-navy-600 to-navy-700', text: 'text-navy-400' }
+        : { bg: 'from-red-500 to-red-600', text: 'text-red-400' };
+
+    const blockedColor = (stats?.blocked || 0) === 0
+        ? { bg: 'from-navy-600 to-navy-700', text: 'text-navy-400' }
+        : { bg: 'from-orange-500 to-orange-600', text: 'text-orange-400' };
+
     const statCards = [
         {
             label: 'Sarcini active', value: stats?.active || 0,
@@ -76,12 +86,12 @@ export default function DashboardPage() {
         },
         {
             label: 'Depășite', value: stats?.overdue || 0,
-            icon: AlertTriangle, color: 'from-red-500 to-red-600', textColor: 'text-red-400',
+            icon: AlertTriangle, color: overdueColor.bg, textColor: overdueColor.text,
             onClick: () => navigate('/tasks', { state: { filter: 'overdue' } })
         },
         {
             label: 'Blocate', value: stats?.blocked || 0,
-            icon: Ban, color: 'from-orange-500 to-orange-600', textColor: 'text-orange-400',
+            icon: Ban, color: blockedColor.bg, textColor: blockedColor.text,
             onClick: () => navigate('/tasks', { state: { filter: 'blocat' } })
         },
         {

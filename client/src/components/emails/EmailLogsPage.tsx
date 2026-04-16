@@ -174,7 +174,7 @@ export default function EmailLogsPage() {
                                         <span className="text-xs text-navy-300">{log.email_type.replace('_', ' ')}</span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="text-xs text-navy-300">{log.task_ids?.length || 0} sarcini</span>
+                                        <span className="text-xs text-navy-300">{log.task_ids?.length || 0} {(log.task_ids?.length || 0) === 1 ? 'sarcină' : 'sarcini'}</span>
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className="text-xs text-navy-300">

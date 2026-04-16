@@ -60,11 +60,13 @@ export default function OrgDepartmentAccordion({
                 <div className="flex-1 text-left">
                     <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-sm">{department.name}</h3>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                            darkMode ? 'bg-navy-700 text-navy-300' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                            {deptTaskCount} {deptTaskCount === 1 ? 'sarcină' : 'sarcini'}
-                        </span>
+                        {deptTaskCount > 0 && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                darkMode ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                            }`}>
+                                {deptTaskCount} {deptTaskCount === 1 ? 'sarcină' : 'sarcini'}
+                            </span>
+                        )}
                     </div>
                     <p className={`text-xs mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
                         Responsabil: {department.head_user_name || '—'}

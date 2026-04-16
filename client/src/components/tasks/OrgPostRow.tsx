@@ -114,14 +114,14 @@ export default function OrgPostRow({
                     )}
                 </div>
 
-                {/* Task count badge */}
-                <span className={`text-[10px] px-2 py-0.5 rounded-full min-w-[48px] text-center font-medium ${
-                    taskCount > 0
-                        ? darkMode ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
-                        : darkMode ? 'bg-navy-800/50 text-navy-500' : 'bg-gray-100 text-gray-400'
-                }`}>
-                    {taskCount} {taskCount === 1 ? 'sarcină' : 'sarcini'}
-                </span>
+                {/* Task count badge — hidden when 0 to reduce visual noise */}
+                {taskCount > 0 && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full min-w-[48px] text-center font-medium ${
+                        darkMode ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    }`}>
+                        {taskCount} {taskCount === 1 ? 'sarcină' : 'sarcini'}
+                    </span>
+                )}
 
                 {/* Policy count — always visible, clickable */}
                 <button

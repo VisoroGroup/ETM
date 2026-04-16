@@ -20,6 +20,7 @@ export default function Layout() {
         return saved === null ? true : saved === 'true'; // default: dark
     });
     const [showProfile, setShowProfile] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     // Persist dark mode
     useEffect(() => {
@@ -196,7 +197,12 @@ export default function Layout() {
                                 </div>
                             )}
                             {!collapsed && (
-                                <button onClick={logout} className={`${darkMode ? 'text-navy-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'} transition-colors`}>
+                                <button
+                                    onClick={() => setShowLogoutConfirm(true)}
+                                    className={`${darkMode ? 'text-navy-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'} transition-colors`}
+                                    title="Deconectare"
+                                    aria-label="Deconectare"
+                                >
                                     <LogOut className="w-4 h-4" />
                                 </button>
                             )}
@@ -253,6 +259,56 @@ export default function Layout() {
 
             {/* Profile Modal */}
             {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}
+
+            {/* Logout confirm */}
+            {showLogoutConfirm && (
+                <div
+                    className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setShowLogoutConfirm(false)}
+                >
+                    <div
+                        className={`w-full max-w-sm rounded-2xl shadow-2xl animate-slide-up ${
+                            darkMode ? 'bg-navy-900 border border-navy-700/50' : 'bg-white border border-gray-200'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-5">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0">
+                                    <LogOut className="w-5 h-5 text-red-400" />
+                                </div>
+                                <div>
+                                    <h3 className={`text-base font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                        Deconectare
+                                    </h3>
+                                    <p className={`text-xs ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
+                                        Sigur vrei să te deconectezi din cont?
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        darkMode
+                                            ? 'bg-navy-800/50 text-navy-300 hover:bg-navy-700/50'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    Anulează
+                                </button>
+                                <button
+                                    onClick={() => { setShowLogoutConfirm(false); logout(); }}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
+                                    autoFocus
+                                >
+                                    Deconectare
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

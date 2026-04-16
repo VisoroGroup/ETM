@@ -330,7 +330,7 @@ export default function TaskListPage() {
         if (fail > 0) {
             showToast(`${ok} șters, ${fail} eșuat: ${lastError}`, 'error');
         } else {
-            showToast(`${ok} sarcini șterse`);
+            showToast(`${ok} ${ok === 1 ? 'sarcină ștearsă' : 'sarcini șterse'}`);
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -390,7 +390,7 @@ export default function TaskListPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold">Sarcini</h1>
-                    <p className="text-navy-400 text-sm mt-1">{total} sarcini</p>
+                    <p className="text-navy-400 text-sm mt-1">{total} {total === 1 ? 'sarcină în total' : 'sarcini în total'}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
