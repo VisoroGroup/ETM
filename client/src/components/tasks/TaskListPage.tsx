@@ -880,6 +880,11 @@ export default function TaskListPage() {
                     onCreated={() => {
                         setShowCreateModal(false);
                         loadTasks();
+                        // Refresh org structure too — a new post (with task_count) may have been created
+                        departmentsApi.list().then(data => {
+                            setOrgDepartments(data.departments || []);
+                            setCompanyPolicyCount(data.company_policy_count || 0);
+                        }).catch(() => {});
                         showToast('Sarcină creată cu succes!');
                     }}
                 />
