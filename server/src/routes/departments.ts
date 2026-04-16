@@ -281,8 +281,8 @@ router.get('/sections/:sectionId/posts', asyncHandler(async (req: AuthRequest, r
     res.json(rows);
 }));
 
-// POST /api/departments/sections/:sectionId/posts — create post (superadmin only)
-router.post('/sections/:sectionId/posts', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+// POST /api/departments/sections/:sectionId/posts — create post (admin + superadmin)
+router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const { sectionId } = req.params;
     const { name, user_id, description } = req.body;
     if (!name) {

@@ -24,7 +24,8 @@ export const createTaskSchema = z.object({
     department_label: z.string().min(1),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD formátum szükséges'),
     assigned_to: z.string().uuid().nullable().optional(),
-    assigned_post_id: z.string().uuid().nullable().optional(),
+    // Post is required: tasks must always belong to a specific post (responsible person)
+    assigned_post_id: z.string().uuid('Postul este obligatoriu — alege un post sau creează unul nou'),
     parent_id: z.string().uuid().nullable().optional(),
     is_recurring: z.boolean().optional(),
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),

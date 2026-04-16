@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { tasksApi, authApi, departmentsApi } from '../../services/api';
+import { tasksApi, authApi, departmentsApi, postsApi } from '../../services/api';
 import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User, OrgDepartment, OrgSection, OrgPost } from '../../types';
-import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase } from 'lucide-react';
+import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase, Plus } from 'lucide-react';
 
 interface Props {
     onClose: () => void;
@@ -27,9 +27,56 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [selectedDeptId, setSelectedDeptId] = useState<string>('');
     const [selectedSectionId, setSelectedSectionId] = useState<string>('');
 
+    // Inline "create new post" state
+    const [showCreatePost, setShowCreatePost] = useState(false);
+    const [newPostName, setNewPostName] = useState('');
+    const [newPostUserId, setNewPostUserId] = useState('');
+    const [newPostDescription, setNewPostDescription] = useState('');
+    const [creatingPost, setCreatingPost] = useState(false);
+
+    function reloadOrgStructure(selectNewPostId?: string) {
+        return departmentsApi.list().then(data => {
+            setOrgDepts(data.departments || []);
+            if (selectNewPostId) setAssignedPostId(selectNewPostId);
+        });
+    }
+
+    async function handleCreatePost() {
+        if (!newPostName.trim()) {
+            setError('Numele postului este obligatoriu.');
+            return;
+        }
+        if (!newPostUserId) {
+            setError('Responsabilul postului este obligatoriu.');
+            return;
+        }
+        if (!selectedSectionId) {
+            setError('Alege mai întâi subdepartamentul.');
+            return;
+        }
+        try {
+            setCreatingPost(true);
+            setError('');
+            const created = await postsApi.create(selectedSectionId, {
+                name: newPostName.trim(),
+                user_id: newPostUserId,
+                description: newPostDescription.trim() || undefined,
+            });
+            await reloadOrgStructure(created.id);
+            setShowCreatePost(false);
+            setNewPostName('');
+            setNewPostUserId('');
+            setNewPostDescription('');
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Eroare la crearea postului.');
+        } finally {
+            setCreatingPost(false);
+        }
+    }
+
     useEffect(() => {
         authApi.users().then(setUsers).catch(() => {});
-        departmentsApi.list().then(data => setOrgDepts(data.departments || [])).catch(() => {});
+        reloadOrgStructure().catch(() => {});
     }, []);
 
     // When department changes, reset section and post
@@ -61,6 +108,18 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
         e.preventDefault();
         if (!title.trim() || !dueDate) {
             setError('Titlul și termenul limită sunt obligatorii.');
+            return;
+        }
+        if (!selectedDeptId) {
+            setError('Departamentul este obligatoriu.');
+            return;
+        }
+        if (!selectedSectionId) {
+            setError('Subdepartamentul este obligatoriu.');
+            return;
+        }
+        if (!assignedPostId) {
+            setError('Postul (persoana responsabilă) este obligatoriu.');
             return;
         }
 
@@ -152,7 +211,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         />
                     </div>
 
-                    {/* Org structure: Department → Section → Post */}
+                    {/* Org structure: Department → Section → Post — all required */}
                     <div className="space-y-3">
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">
@@ -160,7 +219,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             </label>
                             <select
                                 value={selectedDeptId}
-                                onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setAssignedPostId(''); }}
+                                onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setAssignedPostId(''); setShowCreatePost(false); }}
                                 className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                             >
                                 <option value="">— Alege departamentul —</option>
@@ -170,14 +229,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             </select>
                         </div>
 
-                        {selectedDeptId && availableSections.length > 0 && (
+                        {selectedDeptId && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Subdepartament
+                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Subdepartament *
                                 </label>
                                 <select
                                     value={selectedSectionId}
-                                    onChange={e => { setSelectedSectionId(e.target.value); setAssignedPostId(''); }}
+                                    onChange={e => { setSelectedSectionId(e.target.value); setAssignedPostId(''); setShowCreatePost(false); }}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     <option value="">— Alege subdepartamentul —</option>
@@ -188,14 +247,21 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             </div>
                         )}
 
-                        {selectedSectionId && availablePosts.length > 0 && (
+                        {selectedSectionId && !showCreatePost && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (persoana responsabilă)
+                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (persoana responsabilă) *
                                 </label>
                                 <select
                                     value={assignedPostId}
-                                    onChange={e => setAssignedPostId(e.target.value)}
+                                    onChange={e => {
+                                        if (e.target.value === '__create_new__') {
+                                            setShowCreatePost(true);
+                                            setAssignedPostId('');
+                                        } else {
+                                            setAssignedPostId(e.target.value);
+                                        }
+                                    }}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     <option value="">— Alege postul —</option>
@@ -204,12 +270,72 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                             {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
                                         </option>
                                     ))}
+                                    <option value="__create_new__">+ Creare post nou…</option>
                                 </select>
                                 {selectedPost?.user_name && (
                                     <p className="text-[10px] text-navy-400 mt-1">
                                         Responsabil automat: <span className="text-blue-400">{selectedPost.user_name}</span>
                                     </p>
                                 )}
+                            </div>
+                        )}
+
+                        {selectedSectionId && showCreatePost && (
+                            <div className="border border-blue-500/30 bg-blue-500/5 rounded-lg p-3 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-blue-300">
+                                        <Plus className="w-3.5 h-3.5 inline mr-1" /> Post nou
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowCreatePost(false); setNewPostName(''); setNewPostUserId(''); setNewPostDescription(''); setError(''); }}
+                                        className="text-xs text-navy-400 hover:text-white"
+                                    >
+                                        Anulează
+                                    </button>
+                                </div>
+                                <div>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Nume post *</label>
+                                    <input
+                                        type="text"
+                                        value={newPostName}
+                                        onChange={e => setNewPostName(e.target.value)}
+                                        maxLength={200}
+                                        placeholder="Ex: Gestiune stoc"
+                                        className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Responsabil (user) *</label>
+                                    <select
+                                        value={newPostUserId}
+                                        onChange={e => setNewPostUserId(e.target.value)}
+                                        className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                                    >
+                                        <option value="">— Alege responsabilul —</option>
+                                        {users.map(u => (
+                                            <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Descriere (opțional)</label>
+                                    <textarea
+                                        value={newPostDescription}
+                                        onChange={e => setNewPostDescription(e.target.value)}
+                                        rows={2}
+                                        placeholder="Responsabilitățile postului…"
+                                        className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCreatePost}
+                                    disabled={creatingPost}
+                                    className="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    {creatingPost ? 'Se salvează…' : 'Salvează postul'}
+                                </button>
                             </div>
                         )}
                     </div>
