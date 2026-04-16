@@ -43,10 +43,13 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         const taskWhere = taskConditions.length > 0 ? 'WHERE ' + taskConditions.join(' AND ') : '';
 
         const taskSelect = `
-            SELECT 
-                a.id, a.task_id, a.user_id, a.action_type, a.details, a.created_at,
+            SELECT
+                a.id, a.task_id, a.user_id,
+                a.action_type::text AS action_type,
+                a.details, a.created_at,
                 u.display_name AS user_name, u.avatar_url,
-                t.title AS task_title, t.department_label,
+                t.title AS task_title,
+                t.department_label::text AS department_label,
                 'task' AS source_type
             FROM activity_log a
             JOIN users u ON a.user_id = u.id
@@ -79,10 +82,13 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
             idx = allParams.length + 1;
 
             const paySelect = `
-                SELECT 
-                    pa.id, pa.payment_id AS task_id, pa.user_id, pa.action_type, pa.details, pa.created_at,
+                SELECT
+                    pa.id, pa.payment_id AS task_id, pa.user_id,
+                    pa.action_type::text AS action_type,
+                    pa.details, pa.created_at,
                     u.display_name AS user_name, u.avatar_url,
-                    p.title AS task_title, NULL::text AS department_label,
+                    p.title AS task_title,
+                    NULL::text AS department_label,
                     'payment' AS source_type
                 FROM payment_activity_log pa
                 JOIN users u ON pa.user_id = u.id
