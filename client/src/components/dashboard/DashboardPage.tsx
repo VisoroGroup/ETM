@@ -317,47 +317,46 @@ export default function DashboardPage() {
                     <button
                         onClick={() => setShowCustomizer(true)}
                         className="p-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-navy-400 hover:text-white hover:border-navy-600 transition-all"
-                        title="Personalizare panou"
+                        title="Personalizează panoul — afișează/ascunde widget-uri"
+                        aria-label="Personalizează panoul"
                     >
                         <Settings className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
-            {/* "În Atenție" — Active alerts panel */}
+            {/* "În Atenție" — Active alerts panel (compact; still pulsing) */}
             {isVisible('active_alerts') && activeAlerts.length > 0 && (
-                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-4 md:p-5 shadow-lg shadow-red-500/5 animate-slide-up overflow-hidden">
+                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-2.5 md:p-3 shadow-lg shadow-red-500/5 animate-slide-up overflow-hidden">
                     <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
                     <div className="relative">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold flex items-center gap-2 text-red-400">
-                                <span className="relative flex h-3 w-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xs md:text-sm font-bold flex items-center gap-2 text-red-400">
+                                <span className="relative flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
                                 </span>
-                                <Bell className="w-4 h-4" />
+                                <Bell className="w-3.5 h-3.5" />
                                 În Atenție — {activeAlerts.length} {activeAlerts.length === 1 ? 'alertă activă' : 'alerte active'}
                             </h3>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             {activeAlerts.map((alert) => (
                                 <div
                                     key={alert.id}
-                                    className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-navy-900/60 border border-red-500/20 transition-all hover:bg-navy-800/80 hover:border-red-500/40 group"
                                 >
                                     <div
                                         onClick={() => setSelectedTaskId(alert.task_id)}
-                                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:translate-x-1 transition-transform"
+                                        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer hover:translate-x-0.5 transition-transform"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-md">
-                                            <AlertTriangle className="w-4 h-4 text-white" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold truncate group-hover:text-white transition-colors">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                                            <p className="text-xs font-semibold truncate group-hover:text-white transition-colors">
                                                 {alert.task_title}
                                             </p>
-                                            <p className="text-xs text-navy-300 mt-0.5 line-clamp-1">{alert.content}</p>
-                                            <span className="text-[10px] text-navy-500 mt-1 inline-block">de {alert.creator_name} · {timeAgo(alert.created_at)}</span>
+                                            <span className="text-[10px] text-navy-400 truncate hidden md:inline">— {alert.content}</span>
+                                            <span className="text-[10px] text-navy-500 flex-shrink-0 ml-auto">{timeAgo(alert.created_at)}</span>
                                         </div>
                                     </div>
                                     <button
@@ -369,9 +368,10 @@ export default function DashboardPage() {
                                             } catch {}
                                         }}
                                         title="Marchează rezolvat"
-                                        className="hidden md:flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+                                        aria-label="Marchează rezolvat"
+                                        className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
                                     >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        <CheckCircle2 className="w-3 h-3" />
                                         Rezolvat
                                     </button>
                                 </div>

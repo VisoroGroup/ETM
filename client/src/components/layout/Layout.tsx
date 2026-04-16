@@ -52,7 +52,8 @@ export default function Layout() {
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
         { to: '/activitate', icon: Activity, label: 'Activitate' },
-        { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
+        // Templates hidden until the instantiate flow respects assigned_post_id (M6)
+        // { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
         ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
         ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
         ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
