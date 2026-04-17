@@ -922,9 +922,16 @@ export default function TaskListPage() {
                     department={editDept}
                     onClose={() => setEditDept(null)}
                     onSaved={() => {
+                        // Preserve scroll position — re-rendering the whole org accordion
+                        // otherwise snaps the page back to the top (to the first dept).
+                        // The scroll container is the Layout's <main> element (overflow-y-auto),
+                        // NOT window — so we restore its scrollTop.
+                        const mainEl = document.querySelector('main');
+                        const scrollY = mainEl?.scrollTop ?? 0;
                         departmentsApi.list().then(data => {
                             setOrgDepartments(data.departments || []);
                             setCompanyPolicyCount(data.company_policy_count || 0);
+                            requestAnimationFrame(() => { if (mainEl) mainEl.scrollTop = scrollY; });
                         });
                         loadTasks();
                     }}
@@ -935,8 +942,11 @@ export default function TaskListPage() {
                     section={editSection}
                     onClose={() => setEditSection(null)}
                     onSaved={() => {
+                        const mainEl = document.querySelector('main');
+                        const scrollY = mainEl?.scrollTop ?? 0;
                         departmentsApi.list().then(data => {
                             setOrgDepartments(data.departments || []);
+                            requestAnimationFrame(() => { if (mainEl) mainEl.scrollTop = scrollY; });
                         });
                     }}
                 />
@@ -946,8 +956,11 @@ export default function TaskListPage() {
                     post={editPost}
                     onClose={() => setEditPost(null)}
                     onSaved={() => {
+                        const mainEl = document.querySelector('main');
+                        const scrollY = mainEl?.scrollTop ?? 0;
                         departmentsApi.list().then(data => {
                             setOrgDepartments(data.departments || []);
+                            requestAnimationFrame(() => { if (mainEl) mainEl.scrollTop = scrollY; });
                         });
                         loadTasks();
                     }}
