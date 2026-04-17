@@ -364,10 +364,12 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
                     const newTaskId = uuidv4();
                     await client.query(
-                        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label)
-                         VALUES ($1, $2, $3, $4, $5, $6)`,
+                        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
+                                            assigned_to, assigned_post_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                         [newTaskId, task.title, task.description, toLocalDateStr(nextDueDate),
-                            task.created_by, task.department_label]
+                            task.created_by, task.department_label,
+                            task.assigned_to, task.assigned_post_id]
                     );
 
                     // Copy subtasks as template

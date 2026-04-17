@@ -449,9 +449,12 @@ export async function duplicateTask(id: string, userId: string) {
     dueDate.setDate(dueDate.getDate() + 7);
 
     await pool.query(
-        `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label)
-         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6)`,
-        [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0], userId, original.department_label]
+        `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label,
+                            assigned_to, assigned_post_id)
+         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8)`,
+        [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0],
+         userId, original.department_label,
+         original.assigned_to, original.assigned_post_id]
     );
 
     // Copy subtasks (reset checkboxes, clear assigned_to)
