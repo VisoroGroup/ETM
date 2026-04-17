@@ -11,8 +11,14 @@ export async function getTaskById(id: string) {
         `SELECT t.*, u.display_name AS creator_name, u.avatar_url AS creator_avatar,
         au.display_name AS assignee_name, au.avatar_url AS assignee_avatar, au.email AS assignee_email,
         ap.name AS assigned_post_name,
-        aps.name AS assigned_section_name,
-        apd.name AS assigned_department_name,
+        COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
+        COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name,
+        CASE
+          WHEN t.assigned_post_id IS NOT NULL THEN 'post'
+          WHEN t.assigned_section_id IS NOT NULL THEN 'section'
+          WHEN t.assigned_department_id IS NOT NULL THEN 'department'
+          ELSE NULL
+        END AS assigned_scope,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         rt.frequency AS recurring_frequency,
         (SELECT tsc.reason FROM task_status_changes tsc
@@ -24,6 +30,9 @@ export async function getTaskById(id: string) {
        LEFT JOIN posts ap ON t.assigned_post_id = ap.id
        LEFT JOIN sections aps ON ap.section_id = aps.id
        LEFT JOIN departments apd ON aps.department_id = apd.id
+       LEFT JOIN sections direct_sec ON t.assigned_section_id = direct_sec.id
+       LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
+       LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
        LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
        WHERE t.id = $1 AND t.deleted_at IS NULL`,
         [id]
@@ -159,29 +168,53 @@ export async function getTaskById(id: string) {
 // ------- POST / — create task -------
 
 export async function createTask(
-    data: { title: string; description?: string; due_date: string; department_label: string; assigned_to?: string; assigned_post_id?: string },
+    data: {
+        title: string;
+        description?: string;
+        due_date: string;
+        department_label: string;
+        assigned_to?: string;
+        assigned_post_id?: string;
+        assigned_section_id?: string;
+        assigned_department_id?: string;
+    },
     userId: string
 ) {
-    const { title, description, due_date, department_label, assigned_post_id } = data;
+    const { title, description, due_date, department_label, assigned_post_id, assigned_section_id, assigned_department_id } = data;
     let { assigned_to } = data;
     const taskId = uuidv4();
 
-    // If assigned_post_id is provided, auto-resolve the user from the post
-    if (assigned_post_id && !assigned_to) {
-        const { rows: postRows } = await pool.query('SELECT user_id FROM posts WHERE id = $1', [assigned_post_id]);
-        if (postRows.length > 0 && postRows[0].user_id) {
-            assigned_to = postRows[0].user_id;
-            console.log(`📧 [task_create] Auto-resolved post ${assigned_post_id} → user ${assigned_to}`);
-        } else {
-            console.warn(`📧 [task_create] Post ${assigned_post_id} has no user_id assigned`);
+    // Auto-resolve responsible user based on which scope was picked.
+    // Priority: post.user_id > section.head_user_id > department.head_user_id
+    if (!assigned_to) {
+        if (assigned_post_id) {
+            const { rows: postRows } = await pool.query('SELECT user_id FROM posts WHERE id = $1', [assigned_post_id]);
+            if (postRows[0]?.user_id) {
+                assigned_to = postRows[0].user_id;
+                console.log(`📧 [task_create] Auto-resolved post → user ${assigned_to}`);
+            }
+        } else if (assigned_section_id) {
+            const { rows: secRows } = await pool.query('SELECT head_user_id FROM sections WHERE id = $1', [assigned_section_id]);
+            if (secRows[0]?.head_user_id) {
+                assigned_to = secRows[0].head_user_id;
+                console.log(`📧 [task_create] Auto-resolved section head → user ${assigned_to}`);
+            }
+        } else if (assigned_department_id) {
+            const { rows: deptRows } = await pool.query('SELECT head_user_id FROM departments WHERE id = $1', [assigned_department_id]);
+            if (deptRows[0]?.head_user_id) {
+                assigned_to = deptRows[0].head_user_id;
+                console.log(`📧 [task_create] Auto-resolved department head → user ${assigned_to}`);
+            }
         }
     }
 
     const { rows } = await pool.query(
-        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label, assigned_to, assigned_post_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
+                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-        [taskId, title, description || null, due_date, userId, department_label, assigned_to || null, assigned_post_id || null]
+        [taskId, title, description || null, due_date, userId, department_label,
+         assigned_to || null, assigned_post_id || null, assigned_section_id || null, assigned_department_id || null]
     );
 
     // Activity log
@@ -243,7 +276,15 @@ export async function createTask(
 
 export async function updateTask(
     id: string,
-    data: { title?: string; description?: string; department_label?: string; assigned_to?: string; assigned_post_id?: string },
+    data: {
+        title?: string;
+        description?: string;
+        department_label?: string;
+        assigned_to?: string;
+        assigned_post_id?: string;
+        assigned_section_id?: string;
+        assigned_department_id?: string;
+    },
     userId: string
 ) {
     // Use transaction with FOR UPDATE to prevent concurrent update races
@@ -282,16 +323,47 @@ export async function updateTask(
             updates.push(`assigned_to = $${paramIndex++}`);
             values.push(data.assigned_to || null);
         }
-        if (data.assigned_post_id !== undefined) {
-            updates.push(`assigned_post_id = $${paramIndex++}`);
-            values.push(data.assigned_post_id || null);
+        // Scope changes: clear the other two scope fields when one is set.
+        // This guarantees "exactly one" at the DB level even without a CHECK.
+        const scopeChanged =
+            data.assigned_post_id !== undefined
+            || data.assigned_section_id !== undefined
+            || data.assigned_department_id !== undefined;
 
-            // Auto-resolve assigned_to from post user if not explicitly provided
-            if (data.assigned_to === undefined && data.assigned_post_id) {
-                const { rows: postRows } = await client.query('SELECT user_id FROM posts WHERE id = $1', [data.assigned_post_id]);
-                if (postRows.length > 0 && postRows[0].user_id) {
+        if (scopeChanged) {
+            // Resolve the chosen scope + responsible user in one go
+            let newPostId: string | null = data.assigned_post_id ?? null;
+            let newSectionId: string | null = data.assigned_section_id ?? null;
+            let newDeptId: string | null = data.assigned_department_id ?? null;
+            let resolvedAssignee: string | null | undefined = undefined;
+
+            // Only one scope should actually be set — API validation enforces this.
+            if (newPostId) { newSectionId = null; newDeptId = null; }
+            else if (newSectionId) { newPostId = null; newDeptId = null; }
+            else if (newDeptId) { newPostId = null; newSectionId = null; }
+
+            updates.push(`assigned_post_id = $${paramIndex++}`);
+            values.push(newPostId);
+            updates.push(`assigned_section_id = $${paramIndex++}`);
+            values.push(newSectionId);
+            updates.push(`assigned_department_id = $${paramIndex++}`);
+            values.push(newDeptId);
+
+            // Auto-resolve assigned_to from the chosen scope if caller didn't set it explicitly
+            if (data.assigned_to === undefined) {
+                if (newPostId) {
+                    const { rows } = await client.query('SELECT user_id FROM posts WHERE id = $1', [newPostId]);
+                    if (rows[0]?.user_id) resolvedAssignee = rows[0].user_id;
+                } else if (newSectionId) {
+                    const { rows } = await client.query('SELECT head_user_id FROM sections WHERE id = $1', [newSectionId]);
+                    if (rows[0]?.head_user_id) resolvedAssignee = rows[0].head_user_id;
+                } else if (newDeptId) {
+                    const { rows } = await client.query('SELECT head_user_id FROM departments WHERE id = $1', [newDeptId]);
+                    if (rows[0]?.head_user_id) resolvedAssignee = rows[0].head_user_id;
+                }
+                if (resolvedAssignee !== undefined) {
                     updates.push(`assigned_to = $${paramIndex++}`);
-                    values.push(postRows[0].user_id);
+                    values.push(resolvedAssignee);
                 }
             }
         }
@@ -450,11 +522,12 @@ export async function duplicateTask(id: string, userId: string) {
 
     await pool.query(
         `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label,
-                            assigned_to, assigned_post_id)
-         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8)`,
+                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
+         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8, $9, $10)`,
         [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0],
          userId, original.department_label,
-         original.assigned_to, original.assigned_post_id]
+         original.assigned_to, original.assigned_post_id,
+         original.assigned_section_id, original.assigned_department_id]
     );
 
     // Copy subtasks (reset checkboxes, clear assigned_to)

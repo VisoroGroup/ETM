@@ -104,6 +104,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
         }
     }, [selectedDeptId]);
 
+    // Scope targets — sentinel values used inside the subdept/post dropdowns:
+    //   SEL_DEPT_HEAD:    user picked "— Departament vezetőjének —" from the Subdept dropdown.
+    //   SEL_SECTION_HEAD: user picked "— Subdept vezetőjének —" from the Post dropdown.
+    const SEL_DEPT_HEAD = '__dept_head__';
+    const SEL_SECTION_HEAD = '__section_head__';
+    const isDeptHeadScope = selectedSectionId === SEL_DEPT_HEAD;
+    const isSectionHeadScope = !isDeptHeadScope && assignedPostId === SEL_SECTION_HEAD;
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!title.trim() || !dueDate) {
@@ -114,13 +122,24 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
             setError('Departamentul este obligatoriu.');
             return;
         }
-        if (!selectedSectionId) {
-            setError('Subdepartamentul este obligatoriu.');
-            return;
-        }
-        if (!assignedPostId) {
-            setError('Postul (persoana responsabilă) este obligatoriu.');
-            return;
+        // Build the scope payload depending on which level the user stopped at.
+        const scopePayload: any = {};
+        if (isDeptHeadScope) {
+            scopePayload.assigned_department_id = selectedDeptId;
+        } else {
+            if (!selectedSectionId) {
+                setError('Subdepartamentul este obligatoriu.');
+                return;
+            }
+            if (isSectionHeadScope) {
+                scopePayload.assigned_section_id = selectedSectionId;
+            } else {
+                if (!assignedPostId) {
+                    setError('Postul (persoana responsabilă) este obligatoriu.');
+                    return;
+                }
+                scopePayload.assigned_post_id = assignedPostId;
+            }
         }
 
         try {
@@ -131,7 +150,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 due_date: dueDate,
                 department_label: department,
                 assigned_to: assignedTo || null,
-                assigned_post_id: assignedPostId || null,
+                ...scopePayload,
             } as any);
 
             // Set recurring if needed (non-blocking — task is already created)
@@ -240,14 +259,26 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     <option value="">— Alege subdepartamentul —</option>
+                                    {/* Dept-head scope option — only shown if the department has a head user */}
+                                    {selectedDept?.head_user_name && (
+                                        <option value={SEL_DEPT_HEAD}>
+                                            — Vezetőjének: {selectedDept.head_user_name} —
+                                        </option>
+                                    )}
                                     {availableSections.map(s => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
+                                {isDeptHeadScope && (
+                                    <p className="text-[10px] text-navy-400 mt-1">
+                                        Responsabil automat: <span className="text-blue-400">{selectedDept?.head_user_name}</span>
+                                        <span className="text-navy-500"> (conducător departament)</span>
+                                    </p>
+                                )}
                             </div>
                         )}
 
-                        {selectedSectionId && !showCreatePost && (
+                        {selectedSectionId && !isDeptHeadScope && !showCreatePost && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
                                     <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (persoana responsabilă) *
@@ -265,6 +296,12 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     <option value="">— Alege postul —</option>
+                                    {/* Section-head scope option — only if the section has a head user */}
+                                    {selectedSection?.head_user_name && (
+                                        <option value={SEL_SECTION_HEAD}>
+                                            — Vezetőjének: {selectedSection.head_user_name} —
+                                        </option>
+                                    )}
                                     {availablePosts.map(p => (
                                         <option key={p.id} value={p.id}>
                                             {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
@@ -272,7 +309,13 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     ))}
                                     <option value="__create_new__">+ Creare post nou…</option>
                                 </select>
-                                {selectedPost?.user_name && (
+                                {isSectionHeadScope && (
+                                    <p className="text-[10px] text-navy-400 mt-1">
+                                        Responsabil automat: <span className="text-blue-400">{selectedSection?.head_user_name}</span>
+                                        <span className="text-navy-500"> (conducător subdepartament)</span>
+                                    </p>
+                                )}
+                                {!isSectionHeadScope && selectedPost?.user_name && (
                                     <p className="text-[10px] text-navy-400 mt-1">
                                         Responsabil automat: <span className="text-blue-400">{selectedPost.user_name}</span>
                                     </p>

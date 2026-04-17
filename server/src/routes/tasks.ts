@@ -154,7 +154,12 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const offset = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
 
-        // Main query with aggregates
+        // Main query with aggregates.
+        // A task is scoped to exactly one of: post, section, department.
+        // The *_name columns below COALESCE the walk-up from whichever scope is set:
+        //   post  → ap.name / aps.name / apd.name (via section + department FK)
+        //   section → direct_sec.name / direct_sec_dept.name
+        //   dept  → direct_dept.name
         const query = `
       SELECT
         t.*,
@@ -163,8 +168,14 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         au.display_name AS assignee_name,
         au.avatar_url AS assignee_avatar,
         ap.name AS assigned_post_name,
-        aps.name AS assigned_section_name,
-        apd.name AS assigned_department_name,
+        COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
+        COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name,
+        CASE
+          WHEN t.assigned_post_id IS NOT NULL THEN 'post'
+          WHEN t.assigned_section_id IS NOT NULL THEN 'section'
+          WHEN t.assigned_department_id IS NOT NULL THEN 'department'
+          ELSE NULL
+        END AS assigned_scope,
         COALESCE(sub.total, 0) AS subtask_total,
         COALESCE(sub.completed, 0) AS subtask_completed,
         al.last_activity,
@@ -177,9 +188,15 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
       FROM tasks t
       JOIN users u ON t.created_by = u.id
       LEFT JOIN users au ON t.assigned_to = au.id
+      -- Post scope
       LEFT JOIN posts ap ON t.assigned_post_id = ap.id
       LEFT JOIN sections aps ON ap.section_id = aps.id
       LEFT JOIN departments apd ON aps.department_id = apd.id
+      -- Section scope (direct)
+      LEFT JOIN sections direct_sec ON t.assigned_section_id = direct_sec.id
+      LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
+      -- Department scope (direct)
+      LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
       LEFT JOIN (
         SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
         FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
@@ -365,11 +382,12 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     const newTaskId = uuidv4();
                     await client.query(
                         `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
-                                            assigned_to, assigned_post_id)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                         [newTaskId, task.title, task.description, toLocalDateStr(nextDueDate),
                             task.created_by, task.department_label,
-                            task.assigned_to, task.assigned_post_id]
+                            task.assigned_to, task.assigned_post_id,
+                            task.assigned_section_id, task.assigned_department_id]
                     );
 
                     // Copy subtasks as template

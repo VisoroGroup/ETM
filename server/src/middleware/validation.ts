@@ -24,12 +24,20 @@ export const createTaskSchema = z.object({
     department_label: z.string().min(1),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD formátum szükséges'),
     assigned_to: z.string().uuid().nullable().optional(),
-    // Post is required: tasks must always belong to a specific post (responsible person)
-    assigned_post_id: z.string().uuid('Postul este obligatoriu — alege un post sau creează unul nou'),
+    // Exactly ONE of the three scopes must be set — enforced in .refine() below.
+    assigned_post_id: z.string().uuid().nullable().optional(),
+    assigned_section_id: z.string().uuid().nullable().optional(),
+    assigned_department_id: z.string().uuid().nullable().optional(),
     parent_id: z.string().uuid().nullable().optional(),
     is_recurring: z.boolean().optional(),
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
-});
+}).refine(
+    (d) => {
+        const set = [d.assigned_post_id, d.assigned_section_id, d.assigned_department_id].filter(Boolean).length;
+        return set === 1;
+    },
+    { message: 'Alege unul: post, subdepartament sau departament', path: ['assigned_post_id'] }
+);
 
 export const updateTaskSchema = z.object({
     title: z.string().min(1).max(255).optional(),
@@ -38,6 +46,8 @@ export const updateTaskSchema = z.object({
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD formátum szükséges').optional(),
     assigned_to: z.string().uuid().nullable().optional(),
     assigned_post_id: z.string().uuid().nullable().optional(),
+    assigned_section_id: z.string().uuid().nullable().optional(),
+    assigned_department_id: z.string().uuid().nullable().optional(),
     is_recurring: z.boolean().optional(),
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
 });

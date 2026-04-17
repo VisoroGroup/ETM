@@ -21,7 +21,12 @@ export default function OrphanTasksPage() {
     const [loading, setLoading] = useState(true);
     const [orgDepts, setOrgDepts] = useState<any[]>([]);
 
-    // Per-task local selections: { [taskId]: { deptId, sectionId, postId } }
+    // Per-task local selections.
+    // sectionId or postId can take a sentinel value for "head scope":
+    //   SEL_DEPT_HEAD in sectionId    → assigned_department_id scope
+    //   SEL_SECTION_HEAD in postId   → assigned_section_id scope
+    const SEL_DEPT_HEAD = '__dept_head__';
+    const SEL_SECTION_HEAD = '__section_head__';
     const [selection, setSelection] = useState<Record<string, { deptId: string; sectionId: string; postId: string }>>({});
     const [saving, setSaving] = useState<Record<string, boolean>>({});
 
@@ -56,16 +61,28 @@ export default function OrphanTasksPage() {
 
     async function assignPost(taskId: string) {
         const sel = selection[taskId];
-        if (!sel?.postId) {
-            showToast('Alege postul', 'error');
+        if (!sel) {
+            showToast('Alege scope-ul', 'error');
             return;
         }
+
+        // Determine which scope was chosen based on the sentinel values
+        const payload: any = {};
+        if (sel.sectionId === SEL_DEPT_HEAD) {
+            if (!sel.deptId) { showToast('Alege departamentul', 'error'); return; }
+            payload.assigned_department_id = sel.deptId;
+        } else if (sel.postId === SEL_SECTION_HEAD) {
+            if (!sel.sectionId) { showToast('Alege subdepartamentul', 'error'); return; }
+            payload.assigned_section_id = sel.sectionId;
+        } else {
+            if (!sel.postId) { showToast('Alege postul sau vezetőjének', 'error'); return; }
+            payload.assigned_post_id = sel.postId;
+        }
+
         setSaving(prev => ({ ...prev, [taskId]: true }));
         try {
-            // Backend auto-resolves assigned_to from post.user_id when assigned_to is undefined
-            await tasksApi.update(taskId, { assigned_post_id: sel.postId } as any);
-            showToast('Post atribuit!');
-            // Remove the task from the list
+            await tasksApi.update(taskId, payload);
+            showToast('Scope atribuit!');
             setTasks(prev => prev.filter(t => t.id !== taskId));
         } catch {
             showToast('Nu a funcționat — încearcă din nou', 'error');
@@ -125,8 +142,10 @@ export default function OrphanTasksPage() {
                             const sel = selection[task.id] || { deptId: '', sectionId: '', postId: '' };
                             const dept = orgDepts.find(d => d.id === sel.deptId);
                             const sections = dept?.sections || [];
-                            const section = sections.find((s: any) => s.id === sel.sectionId);
+                            const isDeptHeadScope = sel.sectionId === SEL_DEPT_HEAD;
+                            const section = !isDeptHeadScope ? sections.find((s: any) => s.id === sel.sectionId) : null;
                             const posts = section?.posts || [];
+                            const isSectionHeadScope = sel.postId === SEL_SECTION_HEAD;
                             const chosen = postForTask(task.id);
 
                             return (
@@ -185,6 +204,11 @@ export default function OrphanTasksPage() {
                                                 className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded text-xs text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-40"
                                             >
                                                 <option value="">— alege —</option>
+                                                {dept?.head_user_name && (
+                                                    <option value={SEL_DEPT_HEAD}>
+                                                        — Vezetőjének: {dept.head_user_name} —
+                                                    </option>
+                                                )}
                                                 {sections.map((s: any) => (
                                                     <option key={s.id} value={s.id}>{s.name}</option>
                                                 ))}
@@ -195,10 +219,15 @@ export default function OrphanTasksPage() {
                                             <select
                                                 value={sel.postId}
                                                 onChange={(e) => updateSelection(task.id, 'postId', e.target.value)}
-                                                disabled={!sel.sectionId}
+                                                disabled={!sel.sectionId || isDeptHeadScope}
                                                 className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded text-xs text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-40"
                                             >
                                                 <option value="">— alege —</option>
+                                                {section?.head_user_name && (
+                                                    <option value={SEL_SECTION_HEAD}>
+                                                        — Vezetőjének: {section.head_user_name} —
+                                                    </option>
+                                                )}
                                                 {posts.map((p: any) => (
                                                     <option key={p.id} value={p.id}>
                                                         {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
@@ -208,13 +237,32 @@ export default function OrphanTasksPage() {
                                         </div>
                                         <button
                                             onClick={() => assignPost(task.id)}
-                                            disabled={!sel.postId || saving[task.id]}
+                                            disabled={
+                                                saving[task.id]
+                                                || !(
+                                                    isDeptHeadScope
+                                                    || isSectionHeadScope
+                                                    || !!sel.postId
+                                                )
+                                            }
                                             className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             {saving[task.id] ? 'Se salvează…' : 'Atribuie'}
                                         </button>
                                     </div>
-                                    {chosen?.post?.user_name && sel.postId && (
+                                    {isDeptHeadScope && dept?.head_user_name && (
+                                        <p className="text-[10px] text-navy-400 mt-1.5">
+                                            Responsabil: <span className="text-blue-400">{dept.head_user_name}</span>
+                                            <span className="text-navy-500"> (conducător departament)</span>
+                                        </p>
+                                    )}
+                                    {isSectionHeadScope && section?.head_user_name && (
+                                        <p className="text-[10px] text-navy-400 mt-1.5">
+                                            Responsabil: <span className="text-blue-400">{section.head_user_name}</span>
+                                            <span className="text-navy-500"> (conducător subdepartament)</span>
+                                        </p>
+                                    )}
+                                    {!isDeptHeadScope && !isSectionHeadScope && chosen?.post?.user_name && sel.postId && (
                                         <p className="text-[10px] text-navy-400 mt-1.5">
                                             Responsabil: <span className="text-blue-400">{chosen.post.user_name}</span>
                                         </p>
