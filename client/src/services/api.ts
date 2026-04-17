@@ -316,5 +316,25 @@ export const searchApi = {
         api.get<GlobalSearchResult>('/search', { params: { q, limit } }).then(r => r.data),
 };
 
+// Orphan tasks — triage list for admins
+export interface OrphanTask {
+    id: string;
+    title: string;
+    status: string;
+    department_label: string;
+    due_date: string;
+    created_at: string;
+    assigned_to: string | null;
+    assignee_name: string | null;
+    assignee_avatar: string | null;
+    created_by: string;
+    creator_name: string;
+    creator_avatar: string | null;
+    is_recurring_template: boolean;
+}
+export const orphanTasksApi = {
+    list: () => api.get<{ tasks: OrphanTask[]; total: number }>('/orphan-tasks').then(r => r.data),
+};
+
 export { api };
 export default api;

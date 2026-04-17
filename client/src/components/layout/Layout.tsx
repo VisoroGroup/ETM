@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
-    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X, Search, CalendarRange
+    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X, Search, CalendarRange, AlertTriangle
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -59,6 +59,7 @@ export default function Layout() {
         ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
         ...(isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: 'Vedere săptămânală' }] : []),
         ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
+        ...(isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: 'Sarcini orfane' }] : []),
         ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
         { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
     ];
