@@ -51,13 +51,18 @@ router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(asyn
         return;
     }
 
-    // Build 7 dates starting at `start` (Monday if possible)
-    const start = new Date(startStr + 'T00:00:00');
+    // Build 7 dates starting at `start`. We stay in local time the whole way —
+    // splitting on toISOString() would convert to UTC first and, on servers east
+    // of UTC, shift each day by one. Since the input is already YYYY-MM-DD, we
+    // just increment the date component and format it back.
     const dates: string[] = [];
+    const [startY, startM, startD] = startStr.split('-').map(Number);
     for (let i = 0; i < 7; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        dates.push(d.toISOString().split('T')[0]);
+        const d = new Date(startY, startM - 1, startD + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        dates.push(`${y}-${m}-${dd}`);
     }
 
     // Query each day in parallel

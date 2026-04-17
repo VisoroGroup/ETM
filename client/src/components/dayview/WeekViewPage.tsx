@@ -42,8 +42,15 @@ const STATUS_LABEL: Record<string, string> = {
     terminat: 'Terminat',
 };
 
+// Local-date ISO string (YYYY-MM-DD). We deliberately avoid toISOString() because
+// it converts to UTC first — in timezones east of UTC (e.g. Europe/Bucharest, +3)
+// Monday 00:00 local becomes Sunday 21:00 UTC, and toISOString().split('T')[0]
+// then returns the wrong date. The week view would render days shifted by one.
 function toIsoDate(d: Date): string {
-    return d.toISOString().split('T')[0];
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 // Given any date, return the Monday of that ISO week
