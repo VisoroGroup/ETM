@@ -298,5 +298,22 @@ export const settingsApi = {
     updateCompanyGoal: (goal: string) => api.put<{ goal: string }>('/settings/company-goal', { goal }).then(r => r.data),
 };
 
+// Global search
+export interface GlobalSearchResult {
+    tasks: any[];
+    comments: any[];
+    attachments: any[];
+    policies: any[];
+    users: any[];
+    posts: any[];
+    sections: any[];
+    departments: any[];
+    total: number;
+}
+export const searchApi = {
+    search: (q: string, limit = 10) =>
+        api.get<GlobalSearchResult>('/search', { params: { q, limit } }).then(r => r.data),
+};
+
 export { api };
 export default api;

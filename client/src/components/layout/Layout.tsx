@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
-    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X
+    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X, Search
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -52,6 +52,7 @@ export default function Layout() {
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
+        { to: '/search', icon: Search, label: 'Căutare' },
         { to: '/activitate', icon: Activity, label: 'Activitate' },
         // Templates hidden until the instantiate flow respects assigned_post_id (M6)
         // { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },

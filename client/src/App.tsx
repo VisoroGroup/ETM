@@ -17,6 +17,7 @@ import CompletedTasksPage from './components/tasks/CompletedTasksPage';
 import BudgetPlanningPage from './components/budget/BudgetPlanningPage';
 import ClientInvoicesPage from './components/budget/ClientInvoicesPage';
 import BankImportPage from './components/budget/BankImportPage';
+import SearchPage from './components/search/SearchPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
@@ -55,6 +56,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
         <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
+        <Route path="/search" element={<ErrorBoundary><SearchPage /></ErrorBoundary>} />
         <Route path="/activitate" element={<ErrorBoundary><ActivityFeedPage /></ErrorBoundary>} />
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
