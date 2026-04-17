@@ -188,6 +188,16 @@ export default function TaskListPage() {
             .catch(err => console.error('Failed to load departments:', err));
     }, []);
 
+    // Open-task event (fired by dependency graph navigation)
+    useEffect(() => {
+        function handler(e: Event) {
+            const id = (e as CustomEvent<string>).detail;
+            if (id) setSelectedTaskId(id);
+        }
+        window.addEventListener('etm:open-task', handler as EventListener);
+        return () => window.removeEventListener('etm:open-task', handler as EventListener);
+    }, []);
+
     useEffect(() => {
         const state = location.state;
         if (state?.openTaskId) {

@@ -4,14 +4,18 @@ import { tasksApi } from '../../../services/api';
 import { useToast } from '../../../hooks/useToast';
 import type { Task, TaskDependency } from '../../../types';
 import { STATUSES } from '../../../types';
-import { Link2, X, Search, CheckCircle2, Plus, Loader2 } from 'lucide-react';
+import { Link2, X, Search, CheckCircle2, Plus, Loader2, List, Network } from 'lucide-react';
+import DependencyGraph from '../DependencyGraph';
 
 interface Props {
     taskId: string;
     onReload: () => void;
+    task?: Task;
+    onOpenTask?: (id: string) => void;
 }
 
-export default function DependenciesTab({ taskId, onReload }: Props) {
+export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: Props) {
+    const [view, setView] = useState<'list' | 'graph'>('list');
     const { blocks, blockedBy, isLoading, addDependency, removeDependency, isAdding } = useTaskDependencies(taskId);
     const { showToast } = useToast();
 
@@ -126,6 +130,40 @@ export default function DependenciesTab({ taskId, onReload }: Props) {
 
     return (
         <div className="space-y-5">
+            {/* View toggle: list vs graph */}
+            <div className="flex items-center justify-end gap-1 bg-navy-800/40 border border-navy-700/40 rounded-lg p-0.5 self-start w-fit ml-auto">
+                <button
+                    onClick={() => setView('list')}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                        view === 'list' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
+                    }`}
+                    aria-label="Vedere listă"
+                >
+                    <List className="w-3 h-3" /> Listă
+                </button>
+                <button
+                    onClick={() => setView('graph')}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                        view === 'graph' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
+                    }`}
+                    aria-label="Vedere graf"
+                >
+                    <Network className="w-3 h-3" /> Graf
+                </button>
+            </div>
+
+            {view === 'graph' && task && (
+                <DependencyGraph
+                    currentTaskId={taskId}
+                    currentTaskTitle={task.title}
+                    currentTaskStatus={task.status}
+                    blockedBy={blockedBy as any}
+                    blocks={blocks as any}
+                    onNodeClick={(id) => onOpenTask?.(id)}
+                />
+            )}
+
+            {view === 'list' && <>
             {/* Blocked by section */}
             <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400/70 mb-2">
@@ -237,6 +275,7 @@ export default function DependenciesTab({ taskId, onReload }: Props) {
                     )}
                 </div>
             )}
+            </>}
         </div>
     );
 }
