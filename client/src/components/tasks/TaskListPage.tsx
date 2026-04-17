@@ -683,14 +683,21 @@ export default function TaskListPage() {
                 /* ===== ORG STRUCTURE ACCORDION VIEW ===== */
                 <div className="space-y-3">
                     {/* Company-level policies link — always visible */}
-                    <div className="flex items-center justify-between px-4 py-2 rounded-lg border border-navy-700/30 bg-navy-800/20">
-                        <span className="text-sm text-navy-300 flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-blue-400" />
-                            Directive la nivel de companie {companyPolicyCount > 0 && `(${companyPolicyCount})`}
-                        </span>
+                    <div className="flex items-center justify-between px-4 py-2.5 rounded-lg border border-navy-700/30 bg-navy-800/20">
+                        <div className="flex items-start gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                                <p className="text-sm text-navy-300 leading-tight">
+                                    Directive la nivel de companie {companyPolicyCount > 0 && `(${companyPolicyCount})`}
+                                </p>
+                                <p className="text-[11px] text-navy-500 mt-0.5">
+                                    Politici și reguli care se aplică întregii firme.
+                                </p>
+                            </div>
+                        </div>
                         <button
                             onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: 'Directive la nivel de companie' })}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0 ml-3"
                         >
                             Deschide
                         </button>

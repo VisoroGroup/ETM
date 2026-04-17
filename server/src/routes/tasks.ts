@@ -235,7 +235,7 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
 router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const task = await taskService.getTaskById(req.params.id);
     if (!task) {
-        res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
         return;
     }
 
@@ -255,7 +255,7 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
         return;
     }
     if (result === undefined) {
-        res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
         return;
     }
     res.json(result);
@@ -285,7 +285,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
         // Get current status
         const { rows: current } = await pool.query('SELECT status FROM tasks WHERE id = $1', [id]);
         if (current.length === 0) {
-            res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+            res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
             return;
         }
 
@@ -548,7 +548,7 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
         // Get current due date
         const { rows: current } = await pool.query('SELECT due_date FROM tasks WHERE id = $1', [id]);
         if (current.length === 0) {
-            res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+            res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
             return;
         }
 

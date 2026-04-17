@@ -31,6 +31,9 @@ export default function LoginPage() {
                         </div>
                         <h1 className="text-2xl font-bold text-white mb-1">Sarcinator Visoro</h1>
                         <p className="text-navy-300 text-sm">Visoro Global SRL</p>
+                        <p className="text-navy-400 text-xs mt-4 leading-relaxed">
+                            Organizează sarcinile, monitorizează progresul și colaborează cu echipa ta — totul într-un singur loc.
+                        </p>
                     </div>
 
                     <div className="space-y-4">

@@ -24,7 +24,7 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
     // Get task due date for calculating next run
     const { rows: taskRows } = await pool.query('SELECT due_date FROM tasks WHERE id = $1', [taskId]);
     if (taskRows.length === 0) {
-        res.status(404).json({ error: 'Task-ul nu a fost găsit.' });
+        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
         return;
     }
 

@@ -119,16 +119,25 @@ export default function Layout() {
                         <>
                             <button
                                 onClick={() => setFinanciarOpen(!financiarOpen)}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
+                                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
                                     financiarOpen
                                         ? darkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50/50'
                                         : darkMode ? 'text-navy-300 hover:bg-navy-800 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                 }`}
+                                title={collapsed ? `Financiar (${financiarSubItems.length} opțiuni)` : undefined}
+                                aria-label={collapsed ? `Financiar — ${financiarSubItems.length} sub-opțiuni` : undefined}
                             >
                                 <Banknote className="w-5 h-5 flex-shrink-0" />
+                                {/* M11: collapsed-state submenu indicator — tiny dot so users know there's more inside */}
+                                {collapsed && (
+                                    <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${darkMode ? 'bg-navy-400' : 'bg-gray-400'}`} />
+                                )}
                                 {!collapsed && (
                                     <>
                                         <span className="flex-1 text-left">Financiar</span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${darkMode ? 'bg-navy-800 text-navy-400' : 'bg-gray-100 text-gray-500'}`}>
+                                            {financiarSubItems.length}
+                                        </span>
                                         <ChevronDown className={`w-4 h-4 transition-transform ${financiarOpen ? 'rotate-180' : ''}`} />
                                     </>
                                 )}
