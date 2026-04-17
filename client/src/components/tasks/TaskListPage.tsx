@@ -8,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import OrgDepartmentAccordion from './OrgDepartmentAccordion';
+import InlineStatusPill from './InlineStatusPill';
 import PolicyDrawer from './PolicyDrawer';
 import { DepartmentEditModal, SectionEditModal, PostEditModal } from './OrgEditModals';
 import { SkeletonTaskList } from '../ui/Skeleton';
@@ -664,15 +665,11 @@ export default function TaskListPage() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span
-                                                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                                                style={{
-                                                    backgroundColor: `${STATUSES[task.status]?.color}20`,
-                                                    color: STATUSES[task.status]?.color
-                                                }}
-                                            >
-                                                {STATUSES[task.status]?.label}
-                                            </span>
+                                            <InlineStatusPill
+                                                taskId={task.id}
+                                                currentStatus={task.status}
+                                                onChanged={() => loadTasks()}
+                                            />
                                         </td>
                                     </tr>
                                 );

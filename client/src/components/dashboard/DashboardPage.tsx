@@ -13,6 +13,7 @@ import CalendarView from './CalendarView';
 import ReportModal from './ReportModal';
 import DashboardCustomizer from './DashboardCustomizer';
 import TaskDrawer from '../tasks/TaskDrawer';
+import InlineStatusPill from '../tasks/InlineStatusPill';
 import type { WidgetConfig } from '../../types';
 
 export default function DashboardPage() {
@@ -208,15 +209,14 @@ export default function DashboardPage() {
                     </span>
                 </td>
                 <td className={`px-4 py-2.5 ${COL.status}`}>
-                    <span
-                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                        style={{
-                            backgroundColor: `${STATUSES[task.status]?.color}20`,
-                            color: STATUSES[task.status]?.color
+                    <InlineStatusPill
+                        taskId={task.id}
+                        currentStatus={task.status}
+                        onChanged={(newStatus) => {
+                            // Optimistically update allTasks so the row and groupings reflect the change
+                            setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
                         }}
-                    >
-                        {STATUSES[task.status]?.label}
-                    </span>
+                    />
                 </td>
             </tr>
         );
