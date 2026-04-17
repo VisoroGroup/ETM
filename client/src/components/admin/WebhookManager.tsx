@@ -69,7 +69,7 @@ export default function WebhookManager() {
             await updateMut.mutateAsync({ id: sub.id, data: { is_active: !sub.is_active } });
             showToast(sub.is_active ? 'Webhook dezactivat' : 'Webhook activat', 'success');
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -79,7 +79,7 @@ export default function WebhookManager() {
             await deleteMut.mutateAsync(id);
             showToast('Webhook șters', 'success');
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -259,7 +259,7 @@ export default function WebhookManager() {
                             setShowForm(false);
                             setEditingSub(null);
                         } catch {
-                            showToast('Eroare', 'error');
+                            showToast('Nu a funcționat — încearcă din nou', 'error');
                         }
                     }}
                 />

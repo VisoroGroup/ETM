@@ -177,15 +177,23 @@ export default function DashboardPage() {
                         />
                         <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
-                    <div className="md:hidden mt-1 text-[10px] text-navy-400">
-                        {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
-                        {task.assigned_section_name && ` · ${task.assigned_section_name}`}
+                    <div className="md:hidden mt-1 text-[10px] text-navy-400 space-y-0.5">
+                        <div>
+                            {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                            {task.assigned_section_name && ` · ${task.assigned_section_name}`}
+                        </div>
+                        {task.assigned_post_name && (
+                            <div className="text-navy-500">
+                                {task.assigned_post_name}
+                                {showAssignee && task.assignee_name && ` → ${task.assignee_name}`}
+                            </div>
+                        )}
                     </div>
                 </td>
                 <td className={`px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell truncate ${COL.dept}`}>
                     {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                 </td>
-                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.subdept}`}>
+                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden md:table-cell truncate ${COL.subdept}`}>
                     {task.assigned_section_name || '—'}
                 </td>
                 <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.post}`}>
@@ -256,7 +264,7 @@ export default function DashboardPage() {
                                                 <tr className="bg-navy-800/20">
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>Sarcină</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>Departament</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.subdept}`}>Subdepartament</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>Subdepartament</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{fourthColHeader}</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>Termen</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>Status</th>

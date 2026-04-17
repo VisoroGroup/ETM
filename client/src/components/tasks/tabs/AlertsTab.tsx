@@ -38,7 +38,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
             showToast('Alertă marcată ca rezolvată');
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -48,7 +48,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
             showToast('Alertă ștearsă');
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 

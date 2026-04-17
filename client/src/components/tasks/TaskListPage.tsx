@@ -165,7 +165,7 @@ export default function TaskListPage() {
             await savedFiltersApi.delete(id);
             setSavedViews(prev => prev.filter(v => v.id !== id));
             showToast('Vedere ștearsă');
-        } catch { showToast('Eroare', 'error'); }
+        } catch { showToast('Nu a funcționat — încearcă din nou', 'error'); }
     }
     function applyView(view: any) {
         setFilters(view.filter_config || {});

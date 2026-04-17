@@ -62,7 +62,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
             showToast('Fișier șters');
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 

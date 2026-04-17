@@ -39,7 +39,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             await checklistApi.update(taskId, item.id, { is_checked: !item.is_checked });
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -48,7 +48,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             await checklistApi.remove(taskId, itemId);
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 

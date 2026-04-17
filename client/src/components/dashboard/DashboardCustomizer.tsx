@@ -64,7 +64,7 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
             onSave(defaults);
             showToast('Resetat la implicit', 'success');
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 

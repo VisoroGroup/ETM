@@ -161,7 +161,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         if (!task) return;
         td.toggleRecurring.mutate(undefined, {
             onSuccess: () => showToast(task.is_recurring ? 'Recurență dezactivată' : 'Recurență activată (săptămânal)'),
-            onError: () => showToast('Eroare', 'error'),
+            onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
         });
     }
 
@@ -382,7 +382,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                     const val = e.target.value || null;
                                     td.updateTask.mutate({ assigned_to: val }, {
                                         onSuccess: () => { showToast(val ? 'Responsabil setat' : 'Responsabil eliminat'); onUpdate(); },
-                                        onError: () => showToast('Eroare', 'error'),
+                                        onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
                                     });
                                 }}
                                 aria-label="Schimbă responsabilul"

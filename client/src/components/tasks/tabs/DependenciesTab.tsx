@@ -70,7 +70,7 @@ export default function DependenciesTab({ taskId, onReload }: Props) {
                 showToast('Dependență eliminată');
                 onReload();
             },
-            onError: () => showToast('Eroare', 'error'),
+            onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
         });
     }
 

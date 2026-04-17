@@ -69,7 +69,7 @@ export default function TemplatesPage() {
             await templatesApi.delete(id);
             showToast('Sablon șters');
             load();
-        } catch { showToast('Eroare', 'error'); }
+        } catch { showToast('Nu a funcționat — încearcă din nou', 'error'); }
     }
 
     function resetForm() {

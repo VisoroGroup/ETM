@@ -33,7 +33,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -43,7 +43,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -53,7 +53,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -63,7 +63,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -72,7 +72,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.update(taskId, subtaskId, { priority });
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -81,7 +81,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.update(taskId, subtaskId, { due_date });
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 

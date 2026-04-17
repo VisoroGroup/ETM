@@ -118,7 +118,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             setReplyTo(null);
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -127,7 +127,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             await commentsApi.delete(taskId, commentId);
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
@@ -136,7 +136,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             await commentsApi.toggleReaction(taskId, commentId);
             onReload();
         } catch {
-            showToast('Eroare', 'error');
+            showToast('Nu a funcționat — încearcă din nou', 'error');
         }
     }
 
