@@ -374,7 +374,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                         </div>
 
                         {/* Assignee */}
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                             <span className="text-xs text-navy-500">Responsabil:</span>
                             <select
                                 value={task.assigned_to || ''}
@@ -385,6 +385,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                         onError: () => showToast('Eroare', 'error'),
                                     });
                                 }}
+                                aria-label="Schimbă responsabilul"
                                 className="flex-1 max-w-[200px] px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50"
                             >
                                 <option value="">— Neasignat —</option>
@@ -696,6 +697,21 @@ function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: (
         }
     };
 
+    // Look up the post's "official" user (to detect delegation: assigned_to ≠ post.user_id)
+    let postUser: { id: string | null; name: string | null } = { id: null, name: null };
+    if (task.assigned_post_id) {
+        for (const d of orgDepts) {
+            for (const s of (d.sections || [])) {
+                for (const p of (s.posts || [])) {
+                    if (p.id === task.assigned_post_id) {
+                        postUser = { id: p.user_id, name: p.user_name };
+                    }
+                }
+            }
+        }
+    }
+    const isDelegated = postUser.id && task.assigned_to && postUser.id !== task.assigned_to;
+
     if (!editing) {
         return (
             <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -712,6 +728,14 @@ function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: (
                 {task.assigned_post_name && (
                     <span className="text-[10px] px-2 py-1 rounded bg-navy-800/50 text-navy-400">
                         {task.assigned_post_name}
+                    </span>
+                )}
+                {isDelegated && (
+                    <span
+                        className="text-[10px] px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                        title={`Postul aparține de ${postUser.name || 'alt coleg'} — responsabilul actual este o delegare temporară.`}
+                    >
+                        ⚠ Delegare temporară
                     </span>
                 )}
                 <button

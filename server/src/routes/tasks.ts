@@ -128,9 +128,14 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             values.push(assigned_to);
         }
 
-        // My tasks filter — tasks created by or assigned to the current user
+        // My tasks filter — anything the current user is involved in
+        // (creator, assignee, or a subtask assignee)
         if (my_tasks === 'true') {
-            conditions.push(`(t.created_by = $${paramIndex} OR t.assigned_to = $${paramIndex})`);
+            conditions.push(`(
+                t.created_by = $${paramIndex}
+                OR t.assigned_to = $${paramIndex}
+                OR EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = t.id AND st.assigned_to = $${paramIndex})
+            )`);
             values.push(req.user!.id);
             paramIndex++;
         }
@@ -235,7 +240,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
     }
 
     if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -262,7 +267,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
@@ -525,7 +530,7 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
         const { due_date, reason } = req.body;
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 

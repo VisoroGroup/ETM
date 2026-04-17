@@ -11,7 +11,7 @@ const router = Router({ mergeParams: true });
 router.get('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
     const { rows } = await pool.query(
@@ -26,7 +26,7 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
     const taskId = req.params.id;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -82,7 +82,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     const { id: taskId, itemId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -161,7 +161,7 @@ router.put('/checklist-reorder', authMiddleware, asyncHandler(async (req: AuthRe
     const taskId = req.params.id;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -189,7 +189,7 @@ router.delete('/checklist/:itemId', authMiddleware, asyncHandler(async (req: Aut
     const { id: taskId, itemId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

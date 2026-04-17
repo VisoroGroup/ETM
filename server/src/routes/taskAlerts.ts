@@ -11,7 +11,7 @@ router.get('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res:
     const { id: taskId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
     const { rows } = await pool.query(
@@ -34,7 +34,7 @@ router.post('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res
     const { content } = req.body;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -67,7 +67,7 @@ router.put('/alerts/:alertId/resolve', authMiddleware, asyncHandler(async (req: 
     const { id: taskId, alertId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -102,7 +102,7 @@ router.delete('/alerts/:alertId', authMiddleware, asyncHandler(async (req: AuthR
     const { id: taskId, alertId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

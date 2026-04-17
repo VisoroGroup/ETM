@@ -12,7 +12,7 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
     const { frequency, workdays_only = false } = req.body;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -77,7 +77,7 @@ router.delete('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest
     const { id: taskId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
     await pool.query(

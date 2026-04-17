@@ -11,7 +11,7 @@ router.get('/activity', authMiddleware, asyncHandler(async (req: AuthRequest, re
     const { id: taskId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

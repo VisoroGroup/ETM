@@ -128,7 +128,7 @@ export default function OrgDepartmentAccordion({
                         darkMode ? 'border-navy-700/30 text-navy-400/80' : 'border-gray-100 text-gray-500'
                     }`}>
                         {department.pfv && (
-                            <p className="leading-relaxed"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>PFV:</span> {department.pfv}</p>
+                            <p className="leading-relaxed"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`} title="Privire Funcțional-Valorică — rezultatul vizat al acestei unități">PFV:</span> {department.pfv}</p>
                         )}
                         {department.statistic_name && (
                             <p className="mt-1"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>Statistică:</span> {department.statistic_name}</p>
@@ -204,7 +204,7 @@ function OrgSectionBlock({
             {/* Section PFV */}
             {expanded && section.pfv && (
                 <div className={`px-6 py-1.5 text-[10px] italic ${darkMode ? 'text-navy-400/70' : 'text-gray-400'}`}>
-                    <span className={`font-medium not-italic ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>PFV:</span> {section.pfv}
+                    <span className={`font-medium not-italic ${darkMode ? 'text-navy-400' : 'text-gray-500'}`} title="Privire Funcțional-Valorică — rezultatul vizat al acestei unități">PFV:</span> {section.pfv}
                 </div>
             )}
         </div>

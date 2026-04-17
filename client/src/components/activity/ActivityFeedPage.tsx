@@ -195,6 +195,7 @@ export default function ActivityFeedPage() {
                 <div className="text-center py-16">
                     <Activity className="w-12 h-12 text-navy-700 mx-auto mb-3" />
                     <p className="text-navy-400 text-sm">Nicio activitate găsită</p>
+                    <p className="text-navy-500 text-xs mt-2">Activitățile apar aici pe măsură ce se creează, comentează sau finalizează sarcini.</p>
                 </div>
             ) : (
                 <div className="space-y-0">

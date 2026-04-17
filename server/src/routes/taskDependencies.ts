@@ -11,7 +11,7 @@ router.get('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest
     const taskId = req.params.id;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -57,7 +57,7 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
     // Check access to both tasks
     if (!await checkTaskAccess(blocking_task_id, req.user!.id, req.user!.role) ||
         !await checkTaskAccess(blocked_task_id, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
@@ -133,7 +133,7 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
     const { id: taskId, depId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

@@ -357,6 +357,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 <select
                                     value={frequency}
                                     onChange={e => setFrequency(e.target.value as RecurringFrequency)}
+                                    aria-label="Frecvența recurenței"
                                     className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     {(Object.keys(FREQUENCIES) as RecurringFrequency[]).map(f => (
@@ -373,6 +374,18 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                         />
                                         <span className="text-xs text-navy-300">Doar în zile lucrătoare (Luni-Vineri)</span>
                                     </label>
+                                )}
+                                {/* Recurrence preview — plain-language explanation */}
+                                {dueDate && (
+                                    <p className="text-[11px] text-cyan-400/90 mt-2 italic">
+                                        {(() => {
+                                            const freq = FREQUENCIES[frequency].toLowerCase();
+                                            const prefix = frequency === 'daily' && workdaysOnly
+                                                ? 'zilnic (doar luni-vineri)'
+                                                : freq;
+                                            return `După finalizare, sarcina se va repeta ${prefix}, începând cu ${dueDate}.`;
+                                        })()}
+                                    </p>
                                 )}
                             </div>
                         )}

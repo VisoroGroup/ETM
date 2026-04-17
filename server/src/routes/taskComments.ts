@@ -15,7 +15,7 @@ router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, re
         const offset = parseInt(req.query.offset as string, 10) || 0;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
@@ -61,7 +61,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         const { content, mentions = [], parent_comment_id = null } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
@@ -196,7 +196,7 @@ router.put('/comments/:commentId', authMiddleware, asyncHandler(async (req: Auth
         const { content } = req.body;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
@@ -232,7 +232,7 @@ router.delete('/comments/:commentId', authMiddleware, asyncHandler(async (req: A
     const { id: taskId, commentId } = req.params;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
@@ -260,7 +260,7 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
         const reaction = req.body.reaction || '👍';
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 

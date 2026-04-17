@@ -14,7 +14,7 @@ router.delete('/attachments/:attachmentId', authMiddleware, asyncHandler(async (
 
     // Task-level access check (uses shared middleware — includes manager role)
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

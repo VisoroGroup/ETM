@@ -514,7 +514,7 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
 
     // Check task access for the API token user
     if (!await checkTaskAccess(attachment.task_id, req.user!.id, req.user!.role)) {
-        res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 

@@ -69,7 +69,7 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
 
         // Check task access
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
-            res.status(403).json({ error: 'Nincs jogosultságod ehhez a feladathoz.' });
+            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
