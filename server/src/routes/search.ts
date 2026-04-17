@@ -79,7 +79,9 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         LIMIT $2
     `, params);
 
-    // Comments — content match; reveal the parent task for navigation
+    // Comments — content match; reveal the parent task for navigation.
+    // Note: task_comments has no deleted_at column (deletes are hard-deletes),
+    // so we don't filter on it.
     const { rows: comments } = await pool.query(`
         SELECT tc.id, tc.task_id, tc.content, tc.created_at,
                tc.author_id,
@@ -88,37 +90,45 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         FROM task_comments tc
         JOIN tasks t ON tc.task_id = t.id
         JOIN users u ON tc.author_id = u.id
-        WHERE tc.deleted_at IS NULL
-          AND t.deleted_at IS NULL
+        WHERE t.deleted_at IS NULL
           AND f_unaccent(lower(tc.content)) LIKE f_unaccent($1)
           ${taskAccessClause}
         ORDER BY tc.created_at DESC
         LIMIT $2
     `, params);
 
-    // Attachments — filename match
+    // Attachments — filename match.
+    // task_attachments columns: file_name (not "filename") + created_at (not "uploaded_at").
+    // We alias them so the frontend doesn't have to care about the server schema.
     const { rows: attachments } = await pool.query(`
-        SELECT ta.id, ta.task_id, ta.filename, ta.file_size, ta.uploaded_at,
+        SELECT ta.id, ta.task_id,
+               ta.file_name AS filename,
+               ta.file_size,
+               ta.created_at AS uploaded_at,
                t.title AS task_title
         FROM task_attachments ta
         JOIN tasks t ON ta.task_id = t.id
         WHERE t.deleted_at IS NULL
-          AND f_unaccent(lower(ta.filename)) LIKE f_unaccent($1)
+          AND f_unaccent(lower(ta.file_name)) LIKE f_unaccent($1)
           ${taskAccessClause}
-        ORDER BY ta.uploaded_at DESC
+        ORDER BY ta.created_at DESC
         LIMIT $2
     `, params);
 
     // The remaining entities are metadata — no per-user scoping (privileged or not, everyone sees them)
     const metaParams: any[] = [pattern, limit];
 
+    // Policies use content_html (HTML source) as the body column.
+    // We strip tags for the match so searching for a plain word hits the text content.
     const { rows: policies } = await pool.query(`
-        SELECT p.id, p.title, p.scope, p.content, p.updated_at
+        SELECT p.id, p.title, p.scope,
+               p.content_html AS content,
+               p.updated_at
         FROM policies p
         WHERE p.is_active = true
           AND (
               f_unaccent(lower(p.title)) LIKE f_unaccent($1)
-              OR f_unaccent(lower(COALESCE(p.content, ''))) LIKE f_unaccent($1)
+              OR f_unaccent(lower(regexp_replace(COALESCE(p.content_html, ''), '<[^>]*>', ' ', 'g'))) LIKE f_unaccent($1)
           )
         ORDER BY p.updated_at DESC
         LIMIT $2
