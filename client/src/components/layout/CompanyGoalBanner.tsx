@@ -60,9 +60,9 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
                     </button>
                 </div>
             ) : (
-                <div className="flex items-center justify-center gap-2 max-w-full mx-auto px-2">
-                    <Target className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
-                    <span className="italic line-clamp-2 md:line-clamp-1">{goal}</span>
+                <div className="flex items-start justify-center gap-2 max-w-full mx-auto px-2">
+                    <Target className="w-3.5 h-3.5 flex-shrink-0 opacity-60 mt-0.5" />
+                    <span className="italic">{goal}</span>
                     {isSuperAdmin && (
                         <button
                             onClick={() => { setEditValue(goal); setEditing(true); }}
