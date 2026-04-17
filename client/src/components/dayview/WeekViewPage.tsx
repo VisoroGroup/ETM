@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { dayViewApi } from '../../services/api';
-import { CalendarRange, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
 import TaskDrawer from '../tasks/TaskDrawer';
 import { useToast } from '../../hooks/useToast';
@@ -10,6 +10,7 @@ interface Task {
     title: string;
     status: string;
     department_label: string;
+    is_recurring?: boolean;
 }
 interface DayUser {
     id: string;
@@ -212,6 +213,9 @@ export default function WeekViewPage() {
                                                                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                                                     style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
                                                                 />
+                                                                {t.is_recurring && (
+                                                                    <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />
+                                                                )}
                                                                 <span className="text-[11px] truncate">{t.title}</span>
                                                             </button>
                                                         ))}
@@ -262,7 +266,10 @@ export default function WeekViewPage() {
                                                 style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
                                             />
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] truncate leading-tight">{t.title}</p>
+                                                <p className="text-[11px] truncate leading-tight flex items-center gap-1">
+                                                    {t.is_recurring && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />}
+                                                    <span className="truncate">{t.title}</span>
+                                                </p>
                                                 <p className="text-[9px] text-navy-500 truncate">{t.user.display_name}</p>
                                             </div>
                                         </button>

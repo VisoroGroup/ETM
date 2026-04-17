@@ -650,6 +650,15 @@ export default function TaskListPage() {
                                         <td className="px-4 py-3 w-[35%]">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
+                                                {task.is_recurring && (
+                                                    <span
+                                                        title="Sarcină recurentă — se regenerează automat la finalizare"
+                                                        aria-label="Recurentă"
+                                                        className="inline-flex flex-shrink-0 text-cyan-400"
+                                                    >
+                                                        <RefreshCw className="w-3 h-3" />
+                                                    </span>
+                                                )}
                                                 <span className="font-medium text-white truncate">{task.title}</span>
                                             </div>
                                             <div className="md:hidden mt-1 text-[10px] text-navy-400">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Settings, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Settings, FileText, RefreshCw } from 'lucide-react';
 import { OrgPost, Task, TaskStatus, STATUSES } from '../../types';
 import { getDueDateStatus, formatDate } from '../../utils/helpers';
 import { tasksApi } from '../../services/api';
@@ -218,6 +218,15 @@ export default function OrgPostRow({
                                     )}
                                 </div>
 
+                                {/* Recurring indicator — subtle chip before the title */}
+                                {task.is_recurring && (
+                                    <span
+                                        title="Sarcină recurentă — se regenerează automat la finalizare"
+                                        className="inline-flex items-center flex-shrink-0 text-cyan-400"
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                    </span>
+                                )}
                                 {/* Task title — clickable to open */}
                                 <button
                                     onClick={() => onTaskClick(task.id)}

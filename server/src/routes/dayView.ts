@@ -112,7 +112,8 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
 
     // Batch query 2: all tasks due on this date (with assigned user)
     const { rows: allTasks } = await pool.query(`
-        SELECT t.id, t.title, t.status, t.due_date, t.description, t.department_label, t.assigned_to
+        SELECT t.id, t.title, t.status, t.due_date, t.description, t.department_label, t.assigned_to,
+               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring
         FROM tasks t
         WHERE t.deleted_at IS NULL
           AND t.status != 'terminat'
@@ -129,7 +130,8 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
     // Batch query 3: all subtask-based tasks for this date (user has subtask due, but task not directly assigned)
     const { rows: subtaskTasks } = await pool.query(`
         SELECT DISTINCT t.id, t.title, t.status, t.due_date, t.description, t.department_label,
-               s.assigned_to
+               s.assigned_to,
+               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring
         FROM tasks t
         JOIN subtasks s ON s.task_id = t.id
         WHERE t.deleted_at IS NULL

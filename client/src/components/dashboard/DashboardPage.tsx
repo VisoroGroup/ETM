@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
-    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase
+    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import CalendarView from './CalendarView';
@@ -176,6 +176,15 @@ export default function DashboardPage() {
                             title={STATUSES[task.status]?.label}
                             aria-label={`Status: ${STATUSES[task.status]?.label}`}
                         />
+                        {task.is_recurring && (
+                            <span
+                                title="Sarcină recurentă — se regenerează automat la finalizare"
+                                aria-label="Recurentă"
+                                className="inline-flex flex-shrink-0 text-cyan-400"
+                            >
+                                <RefreshCw className="w-3 h-3" />
+                            </span>
+                        )}
                         <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
                     <div className="md:hidden mt-1 text-[10px] text-navy-400 space-y-0.5">

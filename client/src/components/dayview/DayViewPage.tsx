@@ -5,7 +5,7 @@ import { dayViewApi } from '../../services/api';
 import { STATUSES, TaskStatus, DEPARTMENTS, Department } from '../../types';
 import {
     CalendarClock, ChevronDown, ChevronRight, FileDown,
-    GripVertical, CheckCircle2, Circle, AlertTriangle, Loader2
+    GripVertical, CheckCircle2, Circle, AlertTriangle, Loader2, RefreshCw
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
@@ -267,6 +267,14 @@ export default function DayViewPage() {
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2 flex-wrap">
+                                                                            {(task as any).is_recurring && (
+                                                                                <span
+                                                                                    title="Sarcină recurentă — se regenerează automat la finalizare"
+                                                                                    className="inline-flex flex-shrink-0 text-cyan-400"
+                                                                                >
+                                                                                    <RefreshCw className="w-3 h-3" />
+                                                                                </span>
+                                                                            )}
                                                                             <span className="text-sm font-medium">{task.title}</span>
                                                                             <span
                                                                                 className="text-[10px] px-1.5 py-0.5 rounded font-medium"
