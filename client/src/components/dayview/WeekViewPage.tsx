@@ -11,6 +11,24 @@ interface Task {
     status: string;
     department_label: string;
     is_recurring?: boolean;
+    assigned_scope?: 'post' | 'section' | 'department' | null;
+    assigned_post_name?: string | null;
+    assigned_section_name?: string | null;
+    assigned_department_name?: string | null;
+}
+
+/**
+ * Build the scope label shown above each task cell, so people learn to
+ * think in terms of posts/sections/departments, not individuals.
+ *   post scope     → just the post name ("Plăți")
+ *   section scope  → section name + " (conducător)" — it's a leadership task
+ *   dept scope     → department name + " (conducător)" — same
+ */
+function scopeLabel(t: Task): string {
+    if (t.assigned_scope === 'post') return t.assigned_post_name || '—';
+    if (t.assigned_scope === 'section') return `${t.assigned_section_name || '—'} (conducător)`;
+    if (t.assigned_scope === 'department') return `${t.assigned_department_name || '—'} (conducător)`;
+    return '—';
 }
 interface DayUser {
     id: string;
@@ -213,17 +231,24 @@ export default function WeekViewPage() {
                                                             <button
                                                                 key={t.id}
                                                                 onClick={() => setSelectedTaskId(t.id)}
-                                                                className="w-full text-left flex items-center gap-1 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
-                                                                title={`${STATUS_LABEL[t.status] || t.status} — ${t.title}`}
+                                                                className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
+                                                                title={`${scopeLabel(t)} · ${STATUS_LABEL[t.status] || t.status} — ${t.title}`}
                                                             >
-                                                                <span
-                                                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                                                    style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
-                                                                />
-                                                                {t.is_recurring && (
-                                                                    <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />
-                                                                )}
-                                                                <span className="text-[11px] truncate">{t.title}</span>
+                                                                {/* Post / scope name — above, smaller but prominent in cyan */}
+                                                                <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
+                                                                    {scopeLabel(t)}
+                                                                </span>
+                                                                {/* Task title — below */}
+                                                                <div className="flex items-center gap-1">
+                                                                    <span
+                                                                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                                        style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
+                                                                    />
+                                                                    {t.is_recurring && (
+                                                                        <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />
+                                                                    )}
+                                                                    <span className="text-[11px] truncate">{t.title}</span>
+                                                                </div>
                                                             </button>
                                                         ))}
                                                         {tasks.length > 4 && (
@@ -266,18 +291,26 @@ export default function WeekViewPage() {
                                         <button
                                             key={`${t.user.id}-${t.id}`}
                                             onClick={() => setSelectedTaskId(t.id)}
-                                            className="w-full text-left flex items-start gap-1.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
+                                            className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
+                                            title={`${scopeLabel(t)} — ${t.title}`}
                                         >
-                                            <span
-                                                className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1"
-                                                style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] truncate leading-tight flex items-center gap-1">
-                                                    {t.is_recurring && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />}
-                                                    <span className="truncate">{t.title}</span>
-                                                </p>
-                                                <p className="text-[9px] text-navy-500 truncate">{t.user.display_name}</p>
+                                            {/* Post / scope above */}
+                                            <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
+                                                {scopeLabel(t)}
+                                            </span>
+                                            <div className="flex items-start gap-1.5">
+                                                <span
+                                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1"
+                                                    style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] truncate leading-tight flex items-center gap-1">
+                                                        {t.is_recurring && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />}
+                                                        <span className="truncate">{t.title}</span>
+                                                    </p>
+                                                    {/* Responsible user — smaller, below title */}
+                                                    <p className="text-[9px] text-navy-500 truncate">{t.user.display_name}</p>
+                                                </div>
                                             </div>
                                         </button>
                                     ))}

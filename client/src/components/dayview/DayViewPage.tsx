@@ -266,6 +266,19 @@ export default function DayViewPage() {
                                                                         }
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
+                                                                        {/* Post / scope label above the title — teaches post-based thinking */}
+                                                                        {(() => {
+                                                                            const t: any = task;
+                                                                            let label: string | null = null;
+                                                                            if (t.assigned_scope === 'post' && t.assigned_post_name) label = t.assigned_post_name;
+                                                                            else if (t.assigned_scope === 'section' && t.assigned_section_name) label = `${t.assigned_section_name} (conducător)`;
+                                                                            else if (t.assigned_scope === 'department' && t.assigned_department_name) label = `${t.assigned_department_name} (conducător)`;
+                                                                            return label ? (
+                                                                                <p className="text-[10px] text-cyan-300 font-semibold uppercase tracking-wide mb-0.5">
+                                                                                    {label}
+                                                                                </p>
+                                                                            ) : null;
+                                                                        })()}
                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                             {(task as any).is_recurring && (
                                                                                 <span

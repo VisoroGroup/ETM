@@ -118,8 +118,24 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
     // Batch query 2: all tasks due on this date (with assigned user)
     const { rows: allTasks } = await pool.query(`
         SELECT t.id, t.title, t.status, t.due_date, t.description, t.department_label, t.assigned_to,
-               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring
+               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring,
+               -- Scope labels for the UI: show what post/section/department the task belongs to
+               CASE
+                 WHEN t.assigned_post_id IS NOT NULL THEN 'post'
+                 WHEN t.assigned_section_id IS NOT NULL THEN 'section'
+                 WHEN t.assigned_department_id IS NOT NULL THEN 'department'
+                 ELSE NULL
+               END AS assigned_scope,
+               ap.name AS assigned_post_name,
+               COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
+               COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name
         FROM tasks t
+        LEFT JOIN posts ap ON t.assigned_post_id = ap.id
+        LEFT JOIN sections aps ON ap.section_id = aps.id
+        LEFT JOIN departments apd ON aps.department_id = apd.id
+        LEFT JOIN sections direct_sec ON t.assigned_section_id = direct_sec.id
+        LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
+        LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
         WHERE t.deleted_at IS NULL
           AND t.status != 'terminat'
           AND t.due_date::date = $1::date
@@ -136,9 +152,24 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
     const { rows: subtaskTasks } = await pool.query(`
         SELECT DISTINCT t.id, t.title, t.status, t.due_date, t.description, t.department_label,
                s.assigned_to,
-               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring
+               EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = t.id AND rt.is_active = true) AS is_recurring,
+               CASE
+                 WHEN t.assigned_post_id IS NOT NULL THEN 'post'
+                 WHEN t.assigned_section_id IS NOT NULL THEN 'section'
+                 WHEN t.assigned_department_id IS NOT NULL THEN 'department'
+                 ELSE NULL
+               END AS assigned_scope,
+               ap.name AS assigned_post_name,
+               COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
+               COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name
         FROM tasks t
         JOIN subtasks s ON s.task_id = t.id
+        LEFT JOIN posts ap ON t.assigned_post_id = ap.id
+        LEFT JOIN sections aps ON ap.section_id = aps.id
+        LEFT JOIN departments apd ON aps.department_id = apd.id
+        LEFT JOIN sections direct_sec ON t.assigned_section_id = direct_sec.id
+        LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
+        LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
         WHERE t.deleted_at IS NULL
           AND t.status != 'terminat'
           AND s.is_completed = false
