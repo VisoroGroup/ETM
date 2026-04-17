@@ -144,12 +144,14 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         <div ref={ref} className="relative">
             <button
                 onClick={handleOpen}
-                className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-all ${darkMode ? 'text-navy-300 hover:bg-navy-700/60' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`relative flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-lg transition-all ${darkMode ? 'text-navy-300 hover:bg-navy-700/60' : 'text-gray-500 hover:bg-gray-100'}`}
+                aria-label={count > 0 ? `Notificări (${count} necitite)` : 'Notificări'}
+                title={count > 0 ? `${count} ${count === 1 ? 'notificare necitită' : 'notificări necitite'}` : 'Notificări'}
             >
                 <Bell className="w-4 h-4" />
                 {count > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center animate-pulse">
-                        {count > 9 ? '9+' : count}
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center animate-pulse ring-2 ring-navy-900">
+                        {count > 99 ? '99+' : count}
                     </span>
                 )}
             </button>

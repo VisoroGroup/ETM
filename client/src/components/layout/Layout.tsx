@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
-    PieChart, ChevronDown, FileText, Download
+    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -21,6 +21,7 @@ export default function Layout() {
     });
     const [showProfile, setShowProfile] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Persist dark mode
     useEffect(() => {
@@ -223,13 +224,14 @@ export default function Layout() {
             <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 safe-area-bottom ${
                 darkMode ? 'bg-navy-900/95 border-navy-700/60 backdrop-blur-md' : 'bg-white/95 border-gray-200 backdrop-blur-md'
             }`}>
-                {navItems.slice(0, 4).map(({ to, icon: Icon, label }) => (
+                {/* Show first 3 nav items + "Mai mult" + Profile */}
+                {navItems.slice(0, 3).map(({ to, icon: Icon, label }) => (
                     <NavLink
                         key={to}
                         to={to}
                         end={to === '/'}
                         className={({ isActive }) =>
-                            `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-medium transition-all ${
+                            `flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
                                 isActive
                                     ? darkMode ? 'text-blue-400' : 'text-blue-600'
                                     : darkMode ? 'text-navy-400' : 'text-gray-500'
@@ -240,13 +242,27 @@ export default function Layout() {
                         <span>{label}</span>
                     </NavLink>
                 ))}
+                {/* More menu trigger — opens a sheet with all remaining nav items */}
+                {navItems.length > 3 && (
+                    <button
+                        onClick={() => setShowMobileMenu(true)}
+                        className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
+                            darkMode ? 'text-navy-400 active:text-blue-400' : 'text-gray-500 active:text-blue-600'
+                        }`}
+                        aria-label="Deschide meniul complet"
+                    >
+                        <MoreHorizontal className="w-5 h-5" />
+                        <span>Mai mult</span>
+                    </button>
+                )}
                 {/* User avatar on mobile bottom nav */}
                 {user && (
                     <button
                         onClick={() => setShowProfile(true)}
-                        className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-medium transition-all ${
+                        className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
                             darkMode ? 'text-navy-400' : 'text-gray-500'
                         }`}
+                        aria-label="Profilul meu"
                     >
                         <UserAvatar
                             name={user.display_name}
@@ -257,6 +273,83 @@ export default function Layout() {
                     </button>
                 )}
             </nav>
+
+            {/* Mobile "Mai mult" menu sheet */}
+            {showMobileMenu && (
+                <div
+                    className="md:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setShowMobileMenu(false)}
+                >
+                    <div
+                        className={`absolute bottom-0 left-0 right-0 rounded-t-2xl animate-slide-up ${
+                            darkMode ? 'bg-navy-900 border-t border-navy-700' : 'bg-white border-t border-gray-200'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-700' : 'border-gray-100'}`}>
+                            <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Meniu</h3>
+                            <button onClick={() => setShowMobileMenu(false)} aria-label="Închide meniul" className={darkMode ? 'text-navy-400' : 'text-gray-500'}>
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-3 grid grid-cols-3 gap-2 pb-safe">
+                            {navItems.slice(3).map(({ to, icon: Icon, label }) => (
+                                <NavLink
+                                    key={to}
+                                    to={to}
+                                    onClick={() => setShowMobileMenu(false)}
+                                    className={({ isActive }) =>
+                                        `flex flex-col items-center gap-1.5 px-3 py-4 rounded-xl text-[11px] font-medium transition-all ${
+                                            isActive
+                                                ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                : darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <Icon className="w-5 h-5" />
+                                    <span className="text-center">{label}</span>
+                                </NavLink>
+                            ))}
+                            {/* Financiar submenu items for mobile */}
+                            {financiarSubItems.length > 0 && financiarSubItems.map(({ to, icon: Icon, label }) => (
+                                <NavLink
+                                    key={to}
+                                    to={to}
+                                    onClick={() => setShowMobileMenu(false)}
+                                    className={({ isActive }) =>
+                                        `flex flex-col items-center gap-1.5 px-3 py-4 rounded-xl text-[11px] font-medium transition-all ${
+                                            isActive
+                                                ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                : darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <Icon className="w-5 h-5" />
+                                    <span className="text-center">{label}</span>
+                                </NavLink>
+                            ))}
+                        </div>
+                        <div className={`px-3 pb-4 pt-2 grid grid-cols-2 gap-2 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-100'}`}>
+                            <button
+                                onClick={() => { setDarkMode(!darkMode); }}
+                                className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-medium transition-all ${
+                                    darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+                                }`}
+                            >
+                                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                                {darkMode ? 'Mod luminos' : 'Mod întunecat'}
+                            </button>
+                            <button
+                                onClick={() => { setShowMobileMenu(false); setShowLogoutConfirm(true); }}
+                                className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-medium bg-red-500/15 text-red-400 active:bg-red-500/25 transition-all"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Deconectare
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Profile Modal */}
             {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}

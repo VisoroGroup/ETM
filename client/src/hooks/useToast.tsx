@@ -20,9 +20,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', undoAction?: () => void) => {
         const id = Date.now().toString();
         setToasts(prev => [...prev, { id, message, type, undoAction }]);
+        // L3: duration by type — success is quick, error gives more reading time
+        const duration = undoAction
+            ? 6000
+            : type === 'error'
+                ? 6000
+                : type === 'info'
+                    ? 4000
+                    : 2500; // success: quick
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
-        }, undoAction ? 6000 : 4000); // longer if undo available
+        }, duration);
     }, []);
 
     const removeToast = (id: string) => {
@@ -44,10 +52,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+            <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2" role="status" aria-live="polite">
                 {toasts.map(toast => (
                     <div
                         key={toast.id}
+                        role={toast.type === 'error' ? 'alert' : 'status'}
                         className={`toast-enter flex items-center gap-3 px-4 py-3 rounded-lg border shadow-2xl text-white text-sm ${bgColors[toast.type]}`}
                     >
                         {icons[toast.type]}
@@ -56,11 +65,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             <button
                                 onClick={() => { toast.undoAction?.(); removeToast(toast.id); }}
                                 className="ml-1 flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs font-medium transition-colors"
+                                aria-label="Anulează acțiunea"
                             >
                                 <Undo2 className="w-3 h-3" /> Anulează
                             </button>
                         )}
-                        <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70">
+                        <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70" aria-label="Închide notificarea">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
