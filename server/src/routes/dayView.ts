@@ -41,6 +41,33 @@ interface DayViewUser {
     tasks: DayViewTask[];
 }
 
+// GET /api/day-view/week?start=YYYY-MM-DD — 7 days starting at `start`
+// Returns { days: [{ date, users: [...] }, ...] } where each day uses the same
+// shape as /day-view so the client can re-use renderers.
+router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const startStr = (req.query.start as string) || new Date().toISOString().split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) {
+        res.status(400).json({ error: 'Format dată invalid. Folosește YYYY-MM-DD.' });
+        return;
+    }
+
+    // Build 7 dates starting at `start` (Monday if possible)
+    const start = new Date(startStr + 'T00:00:00');
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        dates.push(d.toISOString().split('T')[0]);
+    }
+
+    // Query each day in parallel
+    const days = await Promise.all(
+        dates.map(async (date) => ({ date, users: await getDayViewData(date) }))
+    );
+
+    res.json({ start: dates[0], end: dates[dates.length - 1], days });
+}));
+
 // GET /api/day-view?date=YYYY-MM-DD
 router.get('/', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];

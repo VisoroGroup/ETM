@@ -241,6 +241,7 @@ export const webhookApi = {
 // Day View (superadmin)
 export const dayViewApi = {
     get: (date: string) => api.get(`/day-view`, { params: { date } }).then(r => r.data),
+    getWeek: (start: string) => api.get(`/day-view/week`, { params: { start } }).then(r => r.data),
     downloadPdf: async (userId: string, date: string) => {
         const res = await api.get(`/day-view/pdf/${userId}`, {
             params: { date },
