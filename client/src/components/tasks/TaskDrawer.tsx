@@ -407,12 +407,14 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                     </div>
 
-                    {/* Tabs */}
+                    {/* Tabs — labels hidden on mobile (<sm), icons + counts only */}
                     <div className="flex-shrink-0 flex border-b border-navy-700/50 overflow-x-auto">
                         {tabs.map(tab => (
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
+                                title={tab.label}
+                                aria-label={tab.label}
                                 className={`flex items-center gap-1.5 px-3 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${activeTab === tab.key
                                         ? tab.alertActive
                                             ? 'border-red-400 text-red-400'
@@ -423,7 +425,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                     }`}
                             >
                                 {tab.icon}
-                                {tab.label}
+                                <span className="hidden sm:inline">{tab.label}</span>
                                 {tab.alertActive ? (
                                     <span className="px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px] font-bold">
                                         {tab.count}

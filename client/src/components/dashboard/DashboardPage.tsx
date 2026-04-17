@@ -169,7 +169,12 @@ export default function DashboardPage() {
             >
                 <td className={`px-4 py-2.5 ${COL.title}`}>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
+                        <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: STATUSES[task.status]?.color }}
+                            title={STATUSES[task.status]?.label}
+                            aria-label={`Status: ${STATUSES[task.status]?.label}`}
+                        />
                         <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
                     <div className="md:hidden mt-1 text-[10px] text-navy-400">

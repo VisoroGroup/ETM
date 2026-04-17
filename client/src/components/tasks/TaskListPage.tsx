@@ -385,7 +385,7 @@ export default function TaskListPage() {
     }
 
     return (
-        <div className="p-4 md:p-6 animate-fade-in max-w-[1350px] mx-auto w-full">
+        <div className={`p-4 md:p-6 animate-fade-in max-w-[1350px] mx-auto w-full ${selectedIds.size > 0 ? 'pb-32 md:pb-24' : ''}`}>
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
@@ -481,9 +481,10 @@ export default function TaskListPage() {
                         {hasActiveFilters && !savingView && (
                             <button
                                 onClick={() => setSavingView(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-navy-600 rounded-lg text-xs text-navy-400 hover:border-blue-500/50 hover:text-blue-400 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/40 rounded-lg text-xs text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/60 transition-colors font-medium"
+                                title="Salvează combinația actuală de filtre"
                             >
-                                <BookmarkPlus className="w-3 h-3" /> Salvează vederea
+                                <BookmarkPlus className="w-3 h-3" /> Salvează această vedere
                             </button>
                         )}
                         {savingView && (
