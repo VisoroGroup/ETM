@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { subtasksApi } from '../../../services/api';
+import { useState, useEffect } from 'react';
+import { subtasksApi, notificationsApi } from '../../../services/api';
 import type { TaskDetail, Subtask, User } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
@@ -24,6 +24,18 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
     const { users } = useAuth();
     const { showToast } = useToast();
     const [newSubtask, setNewSubtask] = useState('');
+
+    // Switching to the Subtasks tab = the user has seen their assigned subtasks,
+    // so subtask-assignment notifications for this task can be cleared.
+    useEffect(() => {
+        if (!taskId) return;
+        notificationsApi
+            .markReadForTask(taskId, ['subtask_assigned'])
+            .then(res => {
+                if (res?.updated > 0) window.dispatchEvent(new CustomEvent('etm:notifications-updated'));
+            })
+            .catch(() => {});
+    }, [taskId]);
 
     async function addSubtask() {
         if (!newSubtask.trim()) return;

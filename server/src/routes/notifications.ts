@@ -65,4 +65,34 @@ router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) =
     }
 }));
 
+// PATCH /api/notifications/read-for-task/:taskId
+// Body: { types: string[] } — only notifications whose `type` is in the list
+// are marked read. Used when a user opens a task drawer / switches to a tab:
+// that action proves they saw the corresponding notification type.
+router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { taskId } = req.params;
+    const types = Array.isArray(req.body?.types) ? req.body.types : [];
+
+    if (types.length === 0) {
+        res.status(400).json({ error: 'types array is required.' });
+        return;
+    }
+
+    try {
+        const { rowCount } = await pool.query(
+            `UPDATE notifications
+                SET is_read = true
+              WHERE user_id = $1
+                AND task_id = $2
+                AND type = ANY($3::text[])
+                AND is_read = false`,
+            [req.user!.id, taskId, types]
+        );
+        res.json({ success: true, updated: rowCount ?? 0 });
+    } catch (err) {
+        console.error('read-for-task error:', err);
+        res.status(500).json({ error: 'Eroare.' });
+    }
+}));
+
 export default router;

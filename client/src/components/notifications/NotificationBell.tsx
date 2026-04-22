@@ -52,8 +52,17 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
     useEffect(() => {
         fetchCount();
         const interval = setInterval(fetchCount, 15000);
-        return () => clearInterval(interval);
-    }, []);
+        // Refresh immediately when another component marks notifications read
+        const handler = () => {
+            fetchCount();
+            if (open) fetchNotifications();
+        };
+        window.addEventListener('etm:notifications-updated', handler);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('etm:notifications-updated', handler);
+        };
+    }, [open]);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {

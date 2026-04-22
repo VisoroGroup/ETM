@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SkeletonDrawer } from '../ui/Skeleton';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
-import { tasksApi } from '../../services/api';
+import { tasksApi, notificationsApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
@@ -67,6 +67,19 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             setEditDescValue(task.description || '');
         }
     }, [task?.id, task?.title, task?.description]);
+
+    // Opening the task drawer means the user has "seen" the task itself,
+    // so task-level notifications (assignment, status reminders) are cleared.
+    // Comment/mention/subtask notifications are cleared by their respective tabs.
+    useEffect(() => {
+        if (!taskId) return;
+        notificationsApi
+            .markReadForTask(taskId, ['task_assigned'])
+            .then(res => {
+                if (res?.updated > 0) window.dispatchEvent(new CustomEvent('etm:notifications-updated'));
+            })
+            .catch(() => {});
+    }, [taskId]);
 
     // Status change
     async function handleStatusChange(newStatus: TaskStatus) {

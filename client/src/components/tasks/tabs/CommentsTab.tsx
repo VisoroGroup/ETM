@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { commentsApi } from '../../../services/api';
+import { useState, useRef, useEffect } from 'react';
+import { commentsApi, notificationsApi } from '../../../services/api';
 import type { TaskDetail, TaskComment, User } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
@@ -70,6 +70,18 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
     const { user, users } = useAuth();
     const { showToast } = useToast();
     const [newComment, setNewComment] = useState('');
+
+    // Switching to the Comments tab = the user has seen the comment thread,
+    // so comment/mention notifications for this task can be cleared.
+    useEffect(() => {
+        if (!taskId) return;
+        notificationsApi
+            .markReadForTask(taskId, ['comment', 'mention'])
+            .then(res => {
+                if (res?.updated > 0) window.dispatchEvent(new CustomEvent('etm:notifications-updated'));
+            })
+            .catch(() => {});
+    }, [taskId]);
     const [showMentionDropdown, setShowMentionDropdown] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionIds, setMentionIds] = useState<string[]>([]);

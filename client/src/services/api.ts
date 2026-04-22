@@ -210,6 +210,8 @@ export const notificationsApi = {
     unreadCount: () => api.get('/notifications/unread-count').then(r => r.data),
     markRead: (id: string) => api.patch(`/notifications/${id}/read`, {}).then(r => r.data),
     markAllRead: () => api.patch('/notifications/read-all', {}).then(r => r.data),
+    markReadForTask: (taskId: string, types: string[]) =>
+        api.patch(`/notifications/read-for-task/${taskId}`, { types }).then(r => r.data),
 };
 
 // Emails / Email Logs
