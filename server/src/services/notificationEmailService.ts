@@ -60,7 +60,7 @@ export function buildNotificationHtml(params: {
         <div style="background: #f0f4f8; border-left: 4px solid #2563EB; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
           <p style="margin: 0; font-weight: bold; color: #1E3A5F;">${safeTaskTitle}</p>
         </div>
-        <a href="${taskUrl}" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: 8px;">
+        <a href="${taskUrl}" target="sarcinator-app" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: 8px;">
           ${ctaLabel}
         </a>
         <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
