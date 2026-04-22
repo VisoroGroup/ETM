@@ -3,6 +3,7 @@ import { attachmentsApi } from '../../../services/api';
 import type { TaskDetail, TaskAttachment } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
+import { AuthedImage, useAuthedFileUrl, downloadAuthedFile } from '../../../hooks/useAuthedFileUrl';
 import { timeAgo, formatFileSize } from '../../../utils/helpers';
 import {
     Paperclip, Upload, Download, Trash2, X, ChevronLeft, ChevronRight,
@@ -37,6 +38,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const [pdfPreview, setPdfPreview] = useState<string | null>(null);
+    const { blobUrl: pdfPreviewBlob } = useAuthedFileUrl(pdfPreview);
 
     // Separate images from other files
     const images = task.attachments.filter(a => isImage(a.file_name));
@@ -104,7 +106,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                     <div key={att.id} className="group relative aspect-square rounded-lg overflow-hidden bg-navy-800 border border-navy-700/50 cursor-pointer hover:border-blue-500/50 transition-colors"
                                         onClick={() => openLightbox(idx)}
                                     >
-                                        <img
+                                        <AuthedImage
                                             src={att.file_url}
                                             alt={att.file_name}
                                             className="w-full h-full object-cover"
@@ -157,13 +159,18 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                                 {pdfPreview === att.file_url ? 'Ascunde' : 'Previzualizare'}
                                             </button>
                                         )}
-                                        <a
-                                            href={att.file_url}
-                                            download={att.file_name}
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await downloadAuthedFile(att.file_url, att.file_name);
+                                                } catch {
+                                                    showToast('Eroare la descărcare', 'error');
+                                                }
+                                            }}
                                             className="text-navy-500 hover:text-blue-400 transition-colors"
                                         >
                                             <Download className="w-4 h-4" />
-                                        </a>
+                                        </button>
                                         {(att.uploaded_by === user?.id || user?.role === 'admin') && (
                                             <button
                                                 onClick={() => deleteAttachment(att.id)}
@@ -181,11 +188,17 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                     {/* PDF inline preview */}
                     {pdfPreview && (
                         <div className="rounded-lg overflow-hidden border border-navy-700/50">
-                            <iframe
-                                src={pdfPreview}
-                                className="w-full h-96 bg-white"
-                                title="PDF previzualizare"
-                            />
+                            {pdfPreviewBlob ? (
+                                <iframe
+                                    src={pdfPreviewBlob}
+                                    className="w-full h-96 bg-white"
+                                    title="PDF previzualizare"
+                                />
+                            ) : (
+                                <div className="w-full h-96 bg-navy-900/40 flex items-center justify-center text-sm text-navy-400">
+                                    Se încarcă...
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -213,7 +226,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                     )}
 
                     {/* Image */}
-                    <img
+                    <AuthedImage
                         src={images[lightboxIndex].file_url}
                         alt={images[lightboxIndex].file_name}
                         className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
@@ -234,14 +247,19 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/50 backdrop-blur rounded-lg px-4 py-2">
                         <span className="text-sm text-white">{images[lightboxIndex].file_name}</span>
                         <span className="text-xs text-white/50">{lightboxIndex + 1}/{images.length}</span>
-                        <a
-                            href={images[lightboxIndex].file_url}
-                            download={images[lightboxIndex].file_name}
-                            onClick={e => e.stopPropagation()}
+                        <button
+                            onClick={async e => {
+                                e.stopPropagation();
+                                try {
+                                    await downloadAuthedFile(images[lightboxIndex].file_url, images[lightboxIndex].file_name);
+                                } catch {
+                                    showToast('Eroare la descărcare', 'error');
+                                }
+                            }}
                             className="text-blue-400 hover:text-blue-300"
                         >
                             <Download className="w-4 h-4" />
-                        </a>
+                        </button>
                     </div>
                 </div>
             )}

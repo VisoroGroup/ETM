@@ -69,7 +69,9 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
 
         res.set('Content-Type', file_mime || 'application/octet-stream');
         res.set('Content-Disposition', `inline; filename="${encodeURIComponent(file_name)}"`);
-        res.set('Cache-Control', 'private, max-age=3600');
+        // no-store: sensitive attachments (contracts, PDFs) must not be cached
+        // by the browser after the user logs out
+        res.set('Cache-Control', 'no-store');
         res.send(file_data);
     } catch (err) {
         console.error('Error serving attachment:', err);
