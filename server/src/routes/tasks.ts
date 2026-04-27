@@ -545,9 +545,13 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 }));
 
 // PUT /api/tasks/:id/due-date — change due date (reason mandatory)
+// Optional `realign_recurring` flag: if true and the task has an active recurring
+// rule, the rule's next_run_date is shifted to the new date so subsequent
+// instances spawn from there. Without this flag, only this single instance moves
+// and the recurring schedule keeps its original cadence.
 router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-        const { due_date, reason } = req.body;
+        const { due_date, reason, realign_recurring } = req.body;
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
@@ -580,6 +584,21 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             [due_date, id]
         );
 
+        // If asked, realign the recurring rule so future instances follow the new date.
+        // We only update if a recurring rule actually exists & is active — otherwise the
+        // flag is silently a no-op (the task may have lost recurrence between client
+        // fetch and submit).
+        let recurringRealigned = false;
+        if (realign_recurring === true) {
+            const { rowCount } = await pool.query(
+                `UPDATE recurring_tasks
+                 SET next_run_date = $1, updated_at = NOW()
+                 WHERE template_task_id = $2 AND is_active = true`,
+                [due_date, id]
+            );
+            recurringRealigned = (rowCount ?? 0) > 0;
+        }
+
         // Log due date change
         await pool.query(
             `INSERT INTO task_due_date_changes (task_id, old_date, new_date, reason, changed_by)
@@ -594,14 +613,18 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             [id, req.user!.id, JSON.stringify({
                 old_date: oldDate,
                 new_date: due_date,
-                reason
+                reason,
+                recurring_realigned: recurringRealigned
             })]
         );
 
         // Auto-comment: make the date change reason visible in the Comments tab
         const oldDateStr = new Date(oldDate).toLocaleDateString('ro-RO');
         const newDateStr = new Date(due_date).toLocaleDateString('ro-RO');
-        const commentContent = `📅 Data limită schimbată: ${oldDateStr} → ${newDateStr}\n📝 Motiv: ${reason}`;
+        let commentContent = `📅 Data limită schimbată: ${oldDateStr} → ${newDateStr}\n📝 Motiv: ${reason}`;
+        if (recurringRealigned) {
+            commentContent += `\n🔁 Recurența a fost realiniată: și următoarele instanțe vor pornî de la noua dată.`;
+        }
         await pool.query(
             `INSERT INTO task_comments (task_id, author_id, content, mentions)
        VALUES ($1, $2, $3, $4)`,

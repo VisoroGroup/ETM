@@ -196,8 +196,8 @@ export function useTaskDetail(taskId: string) {
 
     // Due date change
     const changeDueDate = useMutation({
-        mutationFn: ({ date, reason }: { date: string; reason: string }) =>
-            tasksApi.changeDueDate(taskId, date, reason),
+        mutationFn: ({ date, reason, realignRecurring }: { date: string; reason: string; realignRecurring?: boolean }) =>
+            tasksApi.changeDueDate(taskId, date, reason, realignRecurring ?? false),
         onMutate: async ({ date }) => {
             await queryClient.cancelQueries({ queryKey: TASK_KEY(taskId) });
             const ctx = snapshot();

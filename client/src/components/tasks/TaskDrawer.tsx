@@ -48,6 +48,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [blockedReason, setBlockedReason] = useState('');
     const [newDueDate, setNewDueDate] = useState('');
     const [dueDateReason, setDueDateReason] = useState('');
+    // For recurring tasks: should the rule shift too, or only this single instance?
+    // Defaults to false (safer — only this instance) and is reset every time the modal opens.
+    const [realignRecurring, setRealignRecurring] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
 
     // Delete confirm
@@ -109,16 +112,24 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         if (task) {
             setNewDueDate(task.due_date);
             setDueDateReason('');
+            setRealignRecurring(false);
             setShowDueDateModal(true);
         }
     }
 
     async function confirmDueDateChange() {
         if (!dueDateReason.trim() || !newDueDate) return;
-        td.changeDueDate.mutate({ date: newDueDate, reason: dueDateReason.trim() }, {
-            onSuccess: () => { showToast('Data limită schimbată'); setShowDueDateModal(false); onUpdate(); },
-            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
-        });
+        td.changeDueDate.mutate(
+            { date: newDueDate, reason: dueDateReason.trim(), realignRecurring },
+            {
+                onSuccess: () => {
+                    showToast(realignRecurring ? 'Data limită schimbată — recurență realiniată' : 'Data limită schimbată');
+                    setShowDueDateModal(false);
+                    onUpdate();
+                },
+                onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+            }
+        );
     }
 
     // Title update
@@ -598,6 +609,40 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 />
                             </div>
                         </div>
+
+                        {task.is_recurring && (
+                            <div className="mb-4">
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                                    Acest task se repetă. Ce vrei să muți?
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRealignRecurring(false)}
+                                        className={`px-3 py-2 rounded-lg border text-left text-xs transition-colors ${
+                                            !realignRecurring
+                                                ? 'bg-cyan-500/15 border-cyan-500/60 text-cyan-200'
+                                                : 'bg-navy-800/40 border-navy-700/50 text-navy-300 hover:bg-navy-800/70'
+                                        }`}
+                                    >
+                                        <div className="font-semibold mb-0.5">Doar această ocurență</div>
+                                        <div className="text-[10px] text-navy-400 leading-snug">Mută doar această dată. Următoarele instanțe rămân pe programul existent.</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRealignRecurring(true)}
+                                        className={`px-3 py-2 rounded-lg border text-left text-xs transition-colors ${
+                                            realignRecurring
+                                                ? 'bg-cyan-500/15 border-cyan-500/60 text-cyan-200'
+                                                : 'bg-navy-800/40 border-navy-700/50 text-navy-300 hover:bg-navy-800/70'
+                                        }`}
+                                    >
+                                        <div className="font-semibold mb-0.5">Această și următoarele</div>
+                                        <div className="text-[10px] text-navy-400 leading-snug">Realiniază tot programul: și instanțele viitoare vor pornî de la noua dată.</div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">

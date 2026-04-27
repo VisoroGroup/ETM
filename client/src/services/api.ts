@@ -43,8 +43,8 @@ export const tasksApi = {
     update: (id: string, data: Partial<Task>) => api.put<Task>(`/tasks/${id}`, data).then(r => r.data),
     changeStatus: (id: string, status: string, reason?: string) =>
         api.put(`/tasks/${id}/status`, { status, reason }).then(r => r.data),
-    changeDueDate: (id: string, due_date: string, reason: string) =>
-        api.put(`/tasks/${id}/due-date`, { due_date, reason }).then(r => r.data),
+    changeDueDate: (id: string, due_date: string, reason: string, realign_recurring = false) =>
+        api.put(`/tasks/${id}/due-date`, { due_date, reason, realign_recurring }).then(r => r.data),
     delete: (id: string) => api.delete(`/tasks/${id}`).then(r => r.data),
     duplicate: (id: string) => api.post<Task>(`/tasks/${id}/duplicate`).then(r => r.data),
 };
