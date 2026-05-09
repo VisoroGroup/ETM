@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Shield, Mail, Activity, CalendarClock, CheckCircle2,
@@ -24,34 +25,35 @@ type NavItem = { to: string; icon: any; label: string };
  */
 function buildMenuForCompany(
     company: Company,
-    role: { isAdmin: boolean; isSuperAdmin: boolean; isManagerOrAbove: boolean }
+    role: { isAdmin: boolean; isSuperAdmin: boolean; isManagerOrAbove: boolean },
+    t: TFunction
 ): NavItem[] {
-    const t: CompanyTemplateType = company.template_type;
-    if (t === 'full') {
+    const tpl: CompanyTemplateType = company.template_type;
+    if (tpl === 'full') {
         return [
-            { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-            { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
-            { to: '/search', icon: Search, label: 'Căutare' },
-            { to: '/activitate', icon: Activity, label: 'Activitate' },
-            ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
-            ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: 'Vedere săptămânală' }] : []),
-            ...(role.isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
-            ...(role.isAdmin ? [{ to: '/admin/companies', icon: Building2, label: 'Companii' }] : []),
-            ...(role.isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: 'Sarcini orfane' }] : []),
-            ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
-            { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
+            { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+            { to: '/tasks', icon: ListTodo, label: t('nav.tasks') },
+            { to: '/search', icon: Search, label: t('nav.search') },
+            { to: '/activitate', icon: Activity, label: t('nav.activity') },
+            ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: t('nav.day_view') }] : []),
+            ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: t('nav.week_view') }] : []),
+            ...(role.isAdmin ? [{ to: '/admin', icon: Shield, label: t('nav.admin') }] : []),
+            ...(role.isAdmin ? [{ to: '/admin/companies', icon: Building2, label: t('nav.companies') }] : []),
+            ...(role.isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: t('nav.orphan_tasks') }] : []),
+            ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: t('nav.email_log') }] : []),
+            { to: '/terminate', icon: CheckCircle2, label: t('nav.completed') },
         ];
     }
     // 'simple' and 'project' menus will grow as those modules are built.
-    // For now they show only the placeholder tasks entry per company.
     return [
-        { to: '/tasks', icon: ListTodo, label: t === 'project' ? 'Sarcini' : 'Feladatok' },
+        { to: '/tasks', icon: ListTodo, label: t('nav.tasks') },
     ];
 }
 
 export default function Layout() {
     const { user, logout } = useAuth();
     const { companies, activeCompany, setActiveCompany } = useCompany();
+    const { t, tFor } = useTranslation();
     const [collapsed, setCollapsed] = useState(() => safeLocalStorage.get('sidebar-collapsed') === 'true');
     const [darkMode, setDarkMode] = useState(() => {
         const saved = safeLocalStorage.get('dark-mode');
@@ -76,10 +78,10 @@ export default function Layout() {
     const isSuperAdmin = user?.role === 'superadmin';
     const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
-    // Build company blocks: each gets its own menu derived from its template_type.
+    // Build company blocks: each gets its own menu in its OWN language (Q43).
     const companyBlocks = companies.map((c) => ({
         company: c,
-        items: buildMenuForCompany(c, { isAdmin, isSuperAdmin, isManagerOrAbove }),
+        items: buildMenuForCompany(c, { isAdmin, isSuperAdmin, isManagerOrAbove }, tFor(c.language)),
     }));
 
     // Flat list of all nav items across all companies — used by the mobile bottom bar
@@ -128,7 +130,7 @@ export default function Layout() {
                 <nav className="flex-1 py-2 overflow-y-auto">
                     {companyBlocks.length === 0 && (
                         <div className={`px-4 py-3 text-xs ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
-                            {collapsed ? <Building2 className="w-5 h-5 mx-auto" /> : 'Nicio companie disponibilă.'}
+                            {collapsed ? <Building2 className="w-5 h-5 mx-auto" /> : t('sidebar.no_companies')}
                         </div>
                     )}
                     {companyBlocks.map(({ company, items }, idx) => (
@@ -173,7 +175,7 @@ export default function Layout() {
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${collapsed ? 'justify-center' : ''} ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                        {!collapsed && <span>{darkMode ? 'Mod luminos' : 'Mod întunecat'}</span>}
+                        {!collapsed && <span>{darkMode ? t('sidebar.light_mode') : t('sidebar.dark_mode')}</span>}
                     </button>
 
                     <button
@@ -181,7 +183,7 @@ export default function Layout() {
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${collapsed ? 'justify-center' : ''} ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-                        {!collapsed && <span>Restrânge</span>}
+                        {!collapsed && <span>{t('sidebar.collapse')}</span>}
                     </button>
 
                     {user && (
@@ -189,7 +191,7 @@ export default function Layout() {
                             <button
                                 onClick={() => setShowProfile(true)}
                                 className="hover:opacity-80 transition-opacity"
-                                title="Editează profil"
+                                title={t('sidebar.edit_profile')}
                             >
                                 <UserAvatar
                                     name={user.display_name}
@@ -207,8 +209,8 @@ export default function Layout() {
                                 <button
                                     onClick={() => setShowLogoutConfirm(true)}
                                     className={`${darkMode ? 'text-navy-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'} transition-colors`}
-                                    title="Deconectare"
-                                    aria-label="Deconectare"
+                                    title={t('sidebar.logout')}
+                                    aria-label={t('sidebar.logout')}
                                 >
                                     <LogOut className="w-4 h-4" />
                                 </button>
@@ -251,10 +253,10 @@ export default function Layout() {
                         className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
                             darkMode ? 'text-navy-400 active:text-blue-400' : 'text-gray-500 active:text-blue-600'
                         }`}
-                        aria-label="Deschide meniul complet"
+                        aria-label={t('common.menu')}
                     >
                         <MoreHorizontal className="w-5 h-5" />
-                        <span>Mai mult</span>
+                        <span>{t('common.more')}</span>
                     </button>
                 )}
                 {user && (
@@ -263,7 +265,7 @@ export default function Layout() {
                         className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
                             darkMode ? 'text-navy-400' : 'text-gray-500'
                         }`}
-                        aria-label="Profilul meu"
+                        aria-label={t('sidebar.edit_profile')}
                     >
                         <UserAvatar
                             name={user.display_name}
@@ -288,8 +290,8 @@ export default function Layout() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className={`flex items-center justify-between px-4 py-3 border-b sticky top-0 ${darkMode ? 'bg-navy-900 border-navy-700' : 'bg-white border-gray-100'}`}>
-                            <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Meniu</h3>
-                            <button onClick={() => setShowMobileMenu(false)} aria-label="Închide meniul" className={darkMode ? 'text-navy-400' : 'text-gray-500'}>
+                            <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{t('common.menu')}</h3>
+                            <button onClick={() => setShowMobileMenu(false)} aria-label={t('common.close')} className={darkMode ? 'text-navy-400' : 'text-gray-500'}>
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -330,14 +332,14 @@ export default function Layout() {
                                 }`}
                             >
                                 {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                                {darkMode ? 'Mod luminos' : 'Mod întunecat'}
+                                {darkMode ? t('sidebar.light_mode') : t('sidebar.dark_mode')}
                             </button>
                             <button
                                 onClick={() => { setShowMobileMenu(false); setShowLogoutConfirm(true); }}
                                 className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-medium bg-red-500/15 text-red-400 active:bg-red-500/25 transition-all"
                             >
                                 <LogOut className="w-4 h-4" />
-                                Deconectare
+                                {t('sidebar.logout')}
                             </button>
                         </div>
                     </div>
@@ -364,10 +366,10 @@ export default function Layout() {
                                 </div>
                                 <div>
                                     <h3 className={`text-base font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                        Deconectare
+                                        {t('sidebar.logout_confirm_title')}
                                     </h3>
                                     <p className={`text-xs ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
-                                        Sigur vrei să te deconectezi din cont?
+                                        {t('sidebar.logout_confirm_body')}
                                     </p>
                                 </div>
                             </div>
@@ -380,14 +382,14 @@ export default function Layout() {
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                                 >
-                                    Anulează
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={() => { setShowLogoutConfirm(false); logout(); }}
                                     className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
                                     autoFocus
                                 >
-                                    Deconectare
+                                    {t('sidebar.logout')}
                                 </button>
                             </div>
                         </div>
