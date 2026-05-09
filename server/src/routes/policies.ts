@@ -24,15 +24,20 @@ const htmlUpload = multer({
 
 // GET /api/policies — list all policies with optional scope filter
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+    const companyId = req.activeCompanyId;
     const { scope, department_id, post_id } = req.query;
 
+    const params: any[] = [companyId];
     let query = `
         SELECT p.*, u.display_name as creator_name
         FROM policies p
         LEFT JOIN users u ON p.created_by_id = u.id
-        WHERE p.is_active = true
+        WHERE p.is_active = true AND p.company_id = $1
     `;
-    const params: any[] = [];
 
     if (scope) {
         params.push(scope);
@@ -50,15 +55,15 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
             SELECT pd.policy_id, d.id, d.name
             FROM policy_departments pd
             JOIN departments d ON pd.department_id = d.id
-            WHERE pd.policy_id = ANY($1)
-        `, [policyIds]);
+            WHERE pd.policy_id = ANY($1) AND pd.company_id = $2
+        `, [policyIds, companyId]);
 
         const { rows: postLinks } = await pool.query(`
             SELECT pp.policy_id, po.id, po.name
             FROM policy_posts pp
             JOIN posts po ON pp.post_id = po.id
-            WHERE pp.policy_id = ANY($1)
-        `, [policyIds]);
+            WHERE pp.policy_id = ANY($1) AND pp.company_id = $2
+        `, [policyIds, companyId]);
 
         policies.forEach((p: any) => {
             p.departments = deptLinks.filter((d: any) => d.policy_id === p.id).map((d: any) => ({ id: d.id, name: d.name }));
@@ -84,26 +89,33 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // GET /api/policies/:id — single policy with full HTML content
 router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+    const companyId = req.activeCompanyId;
     const { id } = req.params;
     const { rows } = await pool.query(`
         SELECT p.*, u.display_name as creator_name
         FROM policies p
         LEFT JOIN users u ON p.created_by_id = u.id
-        WHERE p.id = $1
-    `, [id]);
+        WHERE p.id = $1 AND p.company_id = $2
+    `, [id, companyId]);
 
     if (rows.length === 0) {
         res.status(404).json({ error: 'Directiva nu a fost găsită.' });
         return;
     }
 
-    // Get associations
+    // Get associations (tenant-scoped)
     const { rows: deptLinks } = await pool.query(`
-        SELECT d.id, d.name FROM policy_departments pd JOIN departments d ON pd.department_id = d.id WHERE pd.policy_id = $1
-    `, [id]);
+        SELECT d.id, d.name FROM policy_departments pd JOIN departments d ON pd.department_id = d.id
+        WHERE pd.policy_id = $1 AND pd.company_id = $2
+    `, [id, companyId]);
     const { rows: postLinks } = await pool.query(`
-        SELECT po.id, po.name FROM policy_posts pp JOIN posts po ON pp.post_id = po.id WHERE pp.policy_id = $1
-    `, [id]);
+        SELECT po.id, po.name FROM policy_posts pp JOIN posts po ON pp.post_id = po.id
+        WHERE pp.policy_id = $1 AND pp.company_id = $2
+    `, [id, companyId]);
 
     const policy = rows[0];
     policy.departments = deptLinks;
@@ -114,6 +126,11 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // POST /api/policies/upload — upload HTML policy (superadmin only)
 router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+    const companyId = req.activeCompanyId;
     const { directive_number, title, date, scope, department_ids, post_ids } = req.body;
 
     if (!title || !date || !scope) {
@@ -143,10 +160,10 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
 
         // Insert policy
         const { rows } = await client.query(`
-            INSERT INTO policies (directive_number, title, date, content_html, scope, created_by_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO policies (directive_number, title, date, content_html, scope, created_by_id, company_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-        `, [directive_number || null, title, date, content_html, scope, req.user!.id]);
+        `, [directive_number || null, title, date, content_html, scope, req.user!.id, companyId]);
 
         const policyId = rows[0].id;
 
@@ -155,8 +172,8 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
             const deptIds = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
             for (const deptId of deptIds) {
                 await client.query(
-                    'INSERT INTO policy_departments (policy_id, department_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [policyId, deptId]
+                    'INSERT INTO policy_departments (policy_id, department_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                    [policyId, deptId, companyId]
                 );
             }
         }
@@ -166,8 +183,8 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
             const pIds = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
             for (const postId of pIds) {
                 await client.query(
-                    'INSERT INTO policy_posts (policy_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [policyId, postId]
+                    'INSERT INTO policy_posts (policy_id, post_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                    [policyId, postId, companyId]
                 );
             }
         }
@@ -184,6 +201,11 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
 
 // PUT /api/policies/:id — update policy (superadmin only)
 router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+    const companyId = req.activeCompanyId;
     const { id } = req.params;
     const { directive_number, title, date, scope, content_html, department_ids, post_ids } = req.body;
 
@@ -199,9 +221,9 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
                 scope = COALESCE($4, scope),
                 content_html = COALESCE($5, content_html),
                 updated_at = NOW()
-            WHERE id = $6
+            WHERE id = $6 AND company_id = $7
             RETURNING *
-        `, [directive_number, title, date, scope, content_html, id]);
+        `, [directive_number, title, date, scope, content_html, id, companyId]);
 
         if (rows.length === 0) {
             await client.query('ROLLBACK');
@@ -211,24 +233,30 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 
         // Update department links if provided
         if (department_ids !== undefined) {
-            await client.query('DELETE FROM policy_departments WHERE policy_id = $1', [id]);
+            await client.query(
+                'DELETE FROM policy_departments WHERE policy_id = $1 AND company_id = $2',
+                [id, companyId]
+            );
             const deptIds = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
             for (const deptId of (deptIds || [])) {
                 await client.query(
-                    'INSERT INTO policy_departments (policy_id, department_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [id, deptId]
+                    'INSERT INTO policy_departments (policy_id, department_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                    [id, deptId, companyId]
                 );
             }
         }
 
         // Update post links if provided
         if (post_ids !== undefined) {
-            await client.query('DELETE FROM policy_posts WHERE policy_id = $1', [id]);
+            await client.query(
+                'DELETE FROM policy_posts WHERE policy_id = $1 AND company_id = $2',
+                [id, companyId]
+            );
             const pIds = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
             for (const postId of (pIds || [])) {
                 await client.query(
-                    'INSERT INTO policy_posts (policy_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [id, postId]
+                    'INSERT INTO policy_posts (policy_id, post_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                    [id, postId, companyId]
                 );
             }
         }
@@ -245,10 +273,15 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 
 // DELETE /api/policies/:id — soft delete (superadmin only)
 router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     const { id } = req.params;
     const { rows } = await pool.query(`
-        UPDATE policies SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id
-    `, [id]);
+        UPDATE policies SET is_active = false, updated_at = NOW()
+        WHERE id = $1 AND company_id = $2 RETURNING id
+    `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
         res.status(404).json({ error: 'Directiva nu a fost găsită.' });

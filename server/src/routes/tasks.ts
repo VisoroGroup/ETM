@@ -37,9 +37,18 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             limit = '50'
         } = req.query;
 
+        if (req.activeCompanyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+
         const conditions: string[] = ['t.deleted_at IS NULL'];
         const values: any[] = [];
         let paramIndex = 1;
+
+        // Multi-tenant scoping: only show tasks belonging to the active company
+        conditions.push(`t.company_id = $${paramIndex++}`);
+        values.push(req.activeCompanyId);
 
         // Status filter (multi-select, comma separated)
         if (status) {
@@ -244,12 +253,38 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
 
 // POST /api/tasks — create task
 router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     const task = await taskService.createTask(req.body, req.user!.id);
-    res.status(201).json(task);
+    // Multi-tenant scoping: assign newly created task to the active company.
+    // The service's INSERT relies on the column DEFAULT (=1) — we override it here
+    // so the task lands in the caller's active tenant.
+    const { rows: scoped } = await pool.query(
+        `UPDATE tasks SET company_id = $1 WHERE id = $2 RETURNING *`,
+        [req.activeCompanyId, task.id]
+    );
+    res.status(201).json(scoped[0] ?? task);
 }));
 
 // GET /api/tasks/:id — task details
 router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Multi-tenant guard: ensure the task belongs to the active company
+    const { rows: tenantCheck } = await pool.query(
+        `SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2`,
+        [req.params.id, req.activeCompanyId]
+    );
+    if (tenantCheck.length === 0) {
+        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        return;
+    }
+
     const task = await taskService.getTaskById(req.params.id);
     if (!task) {
         res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
@@ -266,6 +301,21 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
 
 // PUT /api/tasks/:id — update task
 router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Multi-tenant guard
+    const { rows: tenantCheck } = await pool.query(
+        `SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2`,
+        [req.params.id, req.activeCompanyId]
+    );
+    if (tenantCheck.length === 0) {
+        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        return;
+    }
+
     const result = await taskService.updateTask(req.params.id, req.body, req.user!.id);
     if (result === null) {
         res.status(400).json({ error: 'Nimic de actualizat.' });
@@ -283,6 +333,11 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
     const { id } = req.params;
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
 
+        if (req.activeCompanyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
@@ -299,8 +354,11 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             return;
         }
 
-        // Get current status
-        const { rows: current } = await pool.query('SELECT status FROM tasks WHERE id = $1', [id]);
+        // Get current status (tenant-scoped)
+        const { rows: current } = await pool.query(
+            'SELECT status FROM tasks WHERE id = $1 AND company_id = $2',
+            [id, req.activeCompanyId]
+        );
         if (current.length === 0) {
             res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
             return;
@@ -308,10 +366,10 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
         const oldStatus = current[0].status;
 
-        // Update task
+        // Update task (tenant-scoped)
         const { rows } = await pool.query(
-            `UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-            [status, id]
+            `UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`,
+            [status, id, req.activeCompanyId]
         );
 
         // Log status change
@@ -382,12 +440,14 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     const newTaskId = uuidv4();
                     await client.query(
                         `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
-                                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id,
+                                            company_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
                         [newTaskId, task.title, task.description, toLocalDateStr(nextDueDate),
                             task.created_by, task.department_label,
                             task.assigned_to, task.assigned_post_id,
-                            task.assigned_section_id, task.assigned_department_id]
+                            task.assigned_section_id, task.assigned_department_id,
+                            task.company_id ?? req.activeCompanyId]
                     );
 
                     // Copy subtasks as template
@@ -432,13 +492,13 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 }
             }
 
-            // Handle dependency resolution: notify blocked tasks
+            // Handle dependency resolution: notify blocked tasks (tenant-scoped)
             const { rows: blockedTasks } = await pool.query(
                 `SELECT td.blocked_task_id, t.title, t.assigned_to
                  FROM task_dependencies td
                  JOIN tasks t ON td.blocked_task_id = t.id
-                 WHERE td.blocking_task_id = $1 AND t.deleted_at IS NULL`,
-                [id]
+                 WHERE td.blocking_task_id = $1 AND t.deleted_at IS NULL AND t.company_id = $2`,
+                [id, req.activeCompanyId]
             );
 
             const completedTaskTitle = rows[0].title;
@@ -553,6 +613,11 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
     const { id } = req.params;
         const { due_date, reason, realign_recurring } = req.body;
 
+        if (req.activeCompanyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
@@ -569,8 +634,11 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             return;
         }
 
-        // Get current due date
-        const { rows: current } = await pool.query('SELECT due_date FROM tasks WHERE id = $1', [id]);
+        // Get current due date (tenant-scoped)
+        const { rows: current } = await pool.query(
+            'SELECT due_date FROM tasks WHERE id = $1 AND company_id = $2',
+            [id, req.activeCompanyId]
+        );
         if (current.length === 0) {
             res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
             return;
@@ -578,10 +646,10 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
 
         const oldDate = current[0].due_date;
 
-        // Update task
+        // Update task (tenant-scoped)
         const { rows } = await pool.query(
-            `UPDATE tasks SET due_date = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-            [due_date, id]
+            `UPDATE tasks SET due_date = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`,
+            [due_date, id, req.activeCompanyId]
         );
 
         // If asked, realign the recurring rule so future instances follow the new date.
@@ -593,8 +661,9 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             const { rowCount } = await pool.query(
                 `UPDATE recurring_tasks
                  SET next_run_date = $1, updated_at = NOW()
-                 WHERE template_task_id = $2 AND is_active = true`,
-                [due_date, id]
+                 WHERE template_task_id = $2 AND is_active = true
+                   AND EXISTS (SELECT 1 FROM tasks t WHERE t.id = recurring_tasks.template_task_id AND t.company_id = $3)`,
+                [due_date, id, req.activeCompanyId]
             );
             recurringRealigned = (rowCount ?? 0) > 0;
         }
@@ -647,6 +716,21 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
 
 // DELETE /api/tasks/:id — soft delete task
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Multi-tenant guard
+    const { rows: tenantCheck } = await pool.query(
+        `SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2`,
+        [req.params.id, req.activeCompanyId]
+    );
+    if (tenantCheck.length === 0) {
+        res.status(404).json({ error: 'Task-ul nu a fost găsit sau a fost deja șters.' });
+        return;
+    }
+
     const result = await taskService.softDeleteTask(req.params.id, req.user!.id, req.user!.role);
     if ('error' in result) {
         if (result.error === 'not_found') {
@@ -661,12 +745,32 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
 
 // POST /api/tasks/:id/duplicate — duplicate task with subtasks
 router.post('/:id/duplicate', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Multi-tenant guard on the source task
+    const { rows: tenantCheck } = await pool.query(
+        `SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2`,
+        [req.params.id, req.activeCompanyId]
+    );
+    if (tenantCheck.length === 0) {
+        res.status(404).json({ error: 'Task negăsit.' });
+        return;
+    }
+
     const newTask = await taskService.duplicateTask(req.params.id, req.user!.id);
     if (!newTask) {
         res.status(404).json({ error: 'Task negăsit.' });
         return;
     }
-    res.status(201).json(newTask);
+    // Ensure the duplicate lands in the active tenant (the service may rely on DEFAULT 1).
+    const { rows: scoped } = await pool.query(
+        `UPDATE tasks SET company_id = $1 WHERE id = $2 RETURNING *`,
+        [req.activeCompanyId, newTask.id]
+    );
+    res.status(201).json(scoped[0] ?? newTask);
 }));
 
 // === SUB-ROUTERS (mounted on /:id) ===

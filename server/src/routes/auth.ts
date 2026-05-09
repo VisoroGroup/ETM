@@ -324,10 +324,27 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/users — all users (for @mention, subtask assignment)
+// Multi-tenant: returns only users with access to the active company.
+// Admin/superadmin users are returned regardless (they have access to all companies).
 router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+        if (req.activeCompanyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
         const { rows } = await pool.query(
-            'SELECT id, email, display_name, avatar_url, departments, role FROM users WHERE is_active = true ORDER BY display_name'
+            `SELECT u.id, u.email, u.display_name, u.avatar_url, u.departments, u.role
+             FROM users u
+             WHERE u.is_active = true
+               AND (
+                   u.role IN ('admin', 'superadmin')
+                   OR EXISTS (
+                       SELECT 1 FROM user_companies uc
+                       WHERE uc.user_id = u.id AND uc.company_id = $1
+                   )
+               )
+             ORDER BY u.display_name`,
+            [req.activeCompanyId]
         );
         res.json(rows);
     } catch (err) {

@@ -8,6 +8,10 @@ router.use(authMiddleware);
 
 // GET /api/activity-feed — global activity feed with filters and pagination
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
         const {
             user_id,
@@ -22,9 +26,13 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         const offset = (pageNum - 1) * limitNum;
 
         // Build task activity query with its own params
+        // Always tenant-scoped via activity_log.company_id.
         const taskConditions: string[] = [];
         const allParams: any[] = [];
         let idx = 1;
+
+        taskConditions.push(`a.company_id = $${idx++}`);
+        allParams.push(req.activeCompanyId);
 
         if (user_id) {
             taskConditions.push(`a.user_id = $${idx++}`);

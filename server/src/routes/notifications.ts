@@ -6,8 +6,12 @@ import { asyncHandler } from '../middleware/errorHandler';
 const router = Router();
 router.use(authMiddleware);
 
-// GET /api/notifications — get unread notifications for current user
+// GET /api/notifications — get unread notifications for current user (within active company)
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
         const { rows } = await pool.query(`
             SELECT n.*, u.display_name as created_by_name, u.avatar_url as created_by_avatar,
@@ -15,10 +19,10 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
             FROM notifications n
             LEFT JOIN users u ON n.created_by = u.id
             LEFT JOIN tasks t ON n.task_id = t.id
-            WHERE n.user_id = $1
+            WHERE n.user_id = $1 AND n.company_id = $2
             ORDER BY n.created_at DESC
             LIMIT 50
-        `, [req.user!.id]);
+        `, [req.user!.id, req.activeCompanyId]);
         res.json(rows);
     } catch (err) {
         console.error('Notifications error:', err);
@@ -28,10 +32,15 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // GET /api/notifications/unread-count
 router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
         const { rows: [{ count }] } = await pool.query(
-            `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`,
-            [req.user!.id]
+            `SELECT COUNT(*) FROM notifications
+             WHERE user_id = $1 AND is_read = false AND company_id = $2`,
+            [req.user!.id, req.activeCompanyId]
         );
         res.json({ count: parseInt(count, 10) });
     } catch (err) {
@@ -41,10 +50,15 @@ router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response)
 
 // PATCH /api/notifications/:id/read — mark single as read
 router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
         await pool.query(
-            `UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2`,
-            [req.params.id, req.user!.id]
+            `UPDATE notifications SET is_read = true
+             WHERE id = $1 AND user_id = $2 AND company_id = $3`,
+            [req.params.id, req.user!.id, req.activeCompanyId]
         );
         res.json({ success: true });
     } catch (err) {
@@ -54,10 +68,15 @@ router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) =
 
 // PATCH /api/notifications/read-all — mark all as read
 router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
         await pool.query(
-            `UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
-            [req.user!.id]
+            `UPDATE notifications SET is_read = true
+             WHERE user_id = $1 AND is_read = false AND company_id = $2`,
+            [req.user!.id, req.activeCompanyId]
         );
         res.json({ success: true });
     } catch (err) {
@@ -70,6 +89,10 @@ router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) =
 // are marked read. Used when a user opens a task drawer / switches to a tab:
 // that action proves they saw the corresponding notification type.
 router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     const { taskId } = req.params;
     const types = Array.isArray(req.body?.types) ? req.body.types : [];
 
@@ -85,8 +108,9 @@ router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res
               WHERE user_id = $1
                 AND task_id = $2
                 AND type = ANY($3::text[])
-                AND is_read = false`,
-            [req.user!.id, taskId, types]
+                AND is_read = false
+                AND company_id = $4`,
+            [req.user!.id, taskId, types, req.activeCompanyId]
         );
         res.json({ success: true, updated: rowCount ?? 0 });
     } catch (err) {
