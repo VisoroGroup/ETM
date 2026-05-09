@@ -13,6 +13,41 @@ interface JwtPayload {
 
 export interface AuthRequest extends Request {
     user?: User;
+    /** All companies the user has access to. Superadmin/admin see all non-archived companies. */
+    userCompanyIds?: number[];
+    /** The currently selected company for this request (from X-Active-Company header, falls back to user's first). */
+    activeCompanyId?: number;
+}
+
+async function loadCompanyContext(req: AuthRequest, userId: string, role: string): Promise<void> {
+    // Superadmin and admin see every non-archived company.
+    let companyIds: number[];
+    if (role === 'superadmin' || role === 'admin') {
+        const { rows } = await pool.query<{ id: number }>(
+            'SELECT id FROM companies WHERE is_archived = false ORDER BY sort_order, id'
+        );
+        companyIds = rows.map((r) => r.id);
+    } else {
+        const { rows } = await pool.query<{ company_id: number }>(
+            `SELECT uc.company_id
+               FROM user_companies uc
+               JOIN companies c ON c.id = uc.company_id
+              WHERE uc.user_id = $1 AND c.is_archived = false
+              ORDER BY c.sort_order, c.id`,
+            [userId]
+        );
+        companyIds = rows.map((r) => r.company_id);
+    }
+    req.userCompanyIds = companyIds;
+
+    // Resolve the active company from the X-Active-Company header.
+    const headerVal = req.headers['x-active-company'];
+    const requested = Array.isArray(headerVal) ? Number(headerVal[0]) : Number(headerVal);
+    if (Number.isFinite(requested) && companyIds.includes(requested)) {
+        req.activeCompanyId = requested;
+    } else {
+        req.activeCompanyId = companyIds[0]; // may be undefined if user belongs to no companies
+    }
 }
 
 const DEFAULT_JWT_SECRET = 'visoro-task-manager-jwt-secret-dev-2024';
@@ -51,6 +86,7 @@ export async function authMiddleware(
                     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
                     if (rows.length > 0) {
                         req.user = rows[0];
+                        await loadCompanyContext(req, rows[0].id, rows[0].role);
                         return next();
                     }
                 } catch {
@@ -62,6 +98,7 @@ export async function authMiddleware(
             const { rows } = await pool.query('SELECT * FROM users WHERE is_active = true ORDER BY created_at LIMIT 1');
             if (rows.length > 0) {
                 req.user = rows[0];
+                await loadCompanyContext(req, rows[0].id, rows[0].role);
                 return next();
             }
 
@@ -92,6 +129,7 @@ export async function authMiddleware(
         }
 
         req.user = rows[0];
+        await loadCompanyContext(req, rows[0].id, rows[0].role);
         next();
     } catch (err) {
         res.status(401).json({ error: 'Token invalid sau expirat.' });

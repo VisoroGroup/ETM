@@ -1,19 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Activity, CalendarClock, CheckCircle2,
-    MoreHorizontal, X, Search, CalendarRange, AlertTriangle
+    ChevronLeft, ChevronRight, Shield, Mail, Activity, CalendarClock, CheckCircle2,
+    MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
 import CompanyGoalBanner from './CompanyGoalBanner';
+import { Company, CompanyTemplateType } from '../../types';
+
+type NavItem = { to: string; icon: any; label: string };
+
+/**
+ * Build the menu items for a single company based on its template_type and the
+ * caller's role. The "full" template (Visoro Global) gets the rich legacy menu.
+ * "simple" (Hungary) and "project" (Neo Plan) get a minimal task-focused set
+ * that we'll grow as those companies' modules are built.
+ */
+function buildMenuForCompany(
+    company: Company,
+    role: { isAdmin: boolean; isSuperAdmin: boolean; isManagerOrAbove: boolean }
+): NavItem[] {
+    const t: CompanyTemplateType = company.template_type;
+    if (t === 'full') {
+        return [
+            { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+            { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
+            { to: '/search', icon: Search, label: 'Căutare' },
+            { to: '/activitate', icon: Activity, label: 'Activitate' },
+            ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
+            ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: 'Vedere săptămânală' }] : []),
+            ...(role.isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
+            ...(role.isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: 'Sarcini orfane' }] : []),
+            ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
+            { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
+        ];
+    }
+    // 'simple' and 'project' menus will grow as those modules are built.
+    // For now they show only the placeholder tasks entry per company.
+    return [
+        { to: '/tasks', icon: ListTodo, label: t === 'project' ? 'Sarcini' : 'Feladatok' },
+    ];
+}
 
 export default function Layout() {
     const { user, logout } = useAuth();
+    const { companies, activeCompany, setActiveCompany } = useCompany();
     const [collapsed, setCollapsed] = useState(() => safeLocalStorage.get('sidebar-collapsed') === 'true');
     const [darkMode, setDarkMode] = useState(() => {
         const saved = safeLocalStorage.get('dark-mode');
@@ -38,20 +75,31 @@ export default function Layout() {
     const isSuperAdmin = user?.role === 'superadmin';
     const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
-    const navItems = [
-        { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-        { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
-        { to: '/search', icon: Search, label: 'Căutare' },
-        { to: '/activitate', icon: Activity, label: 'Activitate' },
-        // Templates hidden until the instantiate flow respects assigned_post_id (M6)
-        // { to: '/templates', icon: LayoutTemplate, label: 'Șabloane' },
-        ...(isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
-        ...(isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: 'Vedere săptămânală' }] : []),
-        ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
-        ...(isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: 'Sarcini orfane' }] : []),
-        ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
-        { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
-    ];
+    // Build company blocks: each gets its own menu derived from its template_type.
+    const companyBlocks = companies.map((c) => ({
+        company: c,
+        items: buildMenuForCompany(c, { isAdmin, isSuperAdmin, isManagerOrAbove }),
+    }));
+
+    // Flat list of all nav items across all companies — used by the mobile bottom bar
+    // (it shows the first 3 items of the active company).
+    const activeBlock = companyBlocks.find((b) => b.company.id === activeCompany?.id) ?? companyBlocks[0];
+    const activeItems: NavItem[] = activeBlock?.items ?? [];
+
+    const renderCompanyHeader = (company: Company) => (
+        <div className={`flex items-center gap-2 px-3 py-2 ${collapsed ? 'justify-center' : ''}`}>
+            <span
+                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: company.color }}
+                aria-hidden
+            />
+            {!collapsed && (
+                <span className={`text-[11px] font-semibold uppercase tracking-wider truncate ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
+                    {company.sidebar_name}
+                </span>
+            )}
+        </div>
+    );
 
     return (
         <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -65,44 +113,60 @@ export default function Layout() {
                     {!collapsed && (
                         <div className="ml-3 overflow-hidden flex-1">
                             <h1 className="text-base font-bold truncate tracking-tight">Sarcinator Visoro</h1>
-                            <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>Visoro Global SRL</p>
+                            <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
+                                {activeCompany?.name ?? 'Visoro Global SRL'}
+                            </p>
                         </div>
                     )}
-                    {/* Notification bell in sidebar header */}
                     <div className={collapsed ? 'mt-2' : 'ml-auto'}>
                         <NotificationBell collapsed={collapsed} darkMode={darkMode} />
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 py-4 px-2 space-y-1">
-                    {navItems.map(({ to, icon: Icon, label }) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            end={to === '/'}
-                            className={({ isActive }) =>
-                                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''
-                                } ${isActive
-                                    ? darkMode
-                                        ? 'bg-blue-500/20 text-blue-400'
-                                        : 'bg-blue-50 text-blue-600'
-                                    : darkMode
-                                        ? 'text-navy-300 hover:bg-navy-800 hover:text-white'
-                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                }`
-                            }
+                {/* Navigation — one block per company the user can access */}
+                <nav className="flex-1 py-2 overflow-y-auto">
+                    {companyBlocks.length === 0 && (
+                        <div className={`px-4 py-3 text-xs ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
+                            {collapsed ? <Building2 className="w-5 h-5 mx-auto" /> : 'Nicio companie disponibilă.'}
+                        </div>
+                    )}
+                    {companyBlocks.map(({ company, items }, idx) => (
+                        <div
+                            key={company.id}
+                            className={`${idx > 0 ? `mt-1 pt-2 border-t ${darkMode ? 'border-navy-800/60' : 'border-gray-200/70'}` : ''}`}
                         >
-                            <Icon className="w-5 h-5 flex-shrink-0" />
-                            {!collapsed && <span>{label}</span>}
-                        </NavLink>
+                            {renderCompanyHeader(company)}
+                            <div className="space-y-1 px-2">
+                                {items.map(({ to, icon: Icon, label }) => (
+                                    <NavLink
+                                        key={`${company.id}-${to}`}
+                                        to={to}
+                                        end={to === '/'}
+                                        onClick={() => setActiveCompany(company.id)}
+                                        className={({ isActive }) => {
+                                            const isReallyActive = isActive && company.id === activeCompany?.id;
+                                            return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
+                                                isReallyActive
+                                                    ? darkMode
+                                                        ? 'bg-blue-500/20 text-blue-400'
+                                                        : 'bg-blue-50 text-blue-600'
+                                                    : darkMode
+                                                        ? 'text-navy-300 hover:bg-navy-800 hover:text-white'
+                                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                            }`;
+                                        }}
+                                    >
+                                        <Icon className="w-5 h-5 flex-shrink-0" />
+                                        {!collapsed && <span className="truncate">{label}</span>}
+                                    </NavLink>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </nav>
 
                 {/* Bottom section */}
                 <div className={`p-3 border-t ${darkMode ? 'border-navy-800' : 'border-gray-200'} space-y-1`}>
-
-                    {/* Dark mode toggle */}
                     <button
                         onClick={() => setDarkMode(!darkMode)}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${collapsed ? 'justify-center' : ''} ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-600 hover:bg-gray-100'}`}
@@ -111,7 +175,6 @@ export default function Layout() {
                         {!collapsed && <span>{darkMode ? 'Mod luminos' : 'Mod întunecat'}</span>}
                     </button>
 
-                    {/* Collapse toggle */}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${collapsed ? 'justify-center' : ''} ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-600 hover:bg-gray-100'}`}
@@ -120,7 +183,6 @@ export default function Layout() {
                         {!collapsed && <span>Restrânge</span>}
                     </button>
 
-                    {/* User info */}
                     {user && (
                         <div className={`mt-2 flex items-center gap-2.5 px-3 py-2.5 rounded-lg ${darkMode ? 'bg-navy-800/50' : 'bg-gray-50'}`}>
                             <button
@@ -161,13 +223,11 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-
             {/* Bottom Navigation — mobile only (with safe-area for notched devices) */}
             <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around px-2 py-1 safe-area-bottom ${
                 darkMode ? 'bg-navy-900/95 border-navy-700/60 backdrop-blur-md' : 'bg-white/95 border-gray-200 backdrop-blur-md'
             }`}>
-                {/* Show first 3 nav items + "Mai mult" + Profile */}
-                {navItems.slice(0, 3).map(({ to, icon: Icon, label }) => (
+                {activeItems.slice(0, 3).map(({ to, icon: Icon, label }) => (
                     <NavLink
                         key={to}
                         to={to}
@@ -184,8 +244,7 @@ export default function Layout() {
                         <span>{label}</span>
                     </NavLink>
                 ))}
-                {/* More menu trigger — opens a sheet with all remaining nav items */}
-                {navItems.length > 3 && (
+                {activeItems.length > 3 && (
                     <button
                         onClick={() => setShowMobileMenu(true)}
                         className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl text-[10px] font-medium transition-all min-w-[44px] ${
@@ -197,7 +256,6 @@ export default function Layout() {
                         <span>Mai mult</span>
                     </button>
                 )}
-                {/* User avatar on mobile bottom nav */}
                 {user && (
                     <button
                         onClick={() => setShowProfile(true)}
@@ -216,44 +274,54 @@ export default function Layout() {
                 )}
             </nav>
 
-            {/* Mobile "Mai mult" menu sheet */}
+            {/* Mobile "Mai mult" menu sheet — shows all blocks by company */}
             {showMobileMenu && (
                 <div
                     className="md:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm animate-fade-in"
                     onClick={() => setShowMobileMenu(false)}
                 >
                     <div
-                        className={`absolute bottom-0 left-0 right-0 rounded-t-2xl animate-slide-up ${
+                        className={`absolute bottom-0 left-0 right-0 rounded-t-2xl animate-slide-up max-h-[85vh] overflow-y-auto ${
                             darkMode ? 'bg-navy-900 border-t border-navy-700' : 'bg-white border-t border-gray-200'
                         }`}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-700' : 'border-gray-100'}`}>
+                        <div className={`flex items-center justify-between px-4 py-3 border-b sticky top-0 ${darkMode ? 'bg-navy-900 border-navy-700' : 'bg-white border-gray-100'}`}>
                             <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Meniu</h3>
                             <button onClick={() => setShowMobileMenu(false)} aria-label="Închide meniul" className={darkMode ? 'text-navy-400' : 'text-gray-500'}>
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="p-3 grid grid-cols-3 gap-2 pb-safe">
-                            {navItems.slice(3).map(({ to, icon: Icon, label }) => (
-                                <NavLink
-                                    key={to}
-                                    to={to}
-                                    onClick={() => setShowMobileMenu(false)}
-                                    className={({ isActive }) =>
-                                        `flex flex-col items-center gap-1.5 px-3 py-4 rounded-xl text-[11px] font-medium transition-all ${
-                                            isActive
-                                                ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                                : darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
-                                        }`
-                                    }
-                                >
-                                    <Icon className="w-5 h-5" />
-                                    <span className="text-center">{label}</span>
-                                </NavLink>
-                            ))}
-                        </div>
-                        <div className={`px-3 pb-4 pt-2 grid grid-cols-2 gap-2 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-100'}`}>
+                        {companyBlocks.map(({ company, items }) => (
+                            <div key={company.id} className="px-3 pt-3">
+                                <div className="flex items-center gap-2 px-2 pb-2">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: company.color }} />
+                                    <span className={`text-[11px] font-semibold uppercase tracking-wider ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
+                                        {company.sidebar_name}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 pb-2">
+                                    {items.map(({ to, icon: Icon, label }) => (
+                                        <NavLink
+                                            key={`${company.id}-${to}`}
+                                            to={to}
+                                            onClick={() => { setActiveCompany(company.id); setShowMobileMenu(false); }}
+                                            className={({ isActive }) =>
+                                                `flex flex-col items-center gap-1.5 px-3 py-4 rounded-xl text-[11px] font-medium transition-all ${
+                                                    isActive && company.id === activeCompany?.id
+                                                        ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                        : darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <Icon className="w-5 h-5" />
+                                            <span className="text-center">{label}</span>
+                                        </NavLink>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        <div className={`px-3 pb-4 pt-2 mt-2 grid grid-cols-2 gap-2 border-t ${darkMode ? 'border-navy-700/50' : 'border-gray-100'}`}>
                             <button
                                 onClick={() => { setDarkMode(!darkMode); }}
                                 className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-medium transition-all ${
@@ -275,10 +343,8 @@ export default function Layout() {
                 </div>
             )}
 
-            {/* Profile Modal */}
             {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}
 
-            {/* Logout confirm */}
             {showLogoutConfirm && (
                 <div
                     className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"

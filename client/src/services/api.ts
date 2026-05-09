@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy } from '../types';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy, Company } from '../types';
 import { safeLocalStorage } from '../utils/storage';
 
 const api = axios.create({
@@ -7,11 +7,28 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 });
 
-// Add auth token to requests
+const ACTIVE_COMPANY_KEY = 'visoro_active_company_id';
+
+export function getActiveCompanyId(): number | null {
+    const raw = safeLocalStorage.get(ACTIVE_COMPANY_KEY);
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function setActiveCompanyId(id: number | null): void {
+    if (id == null) safeLocalStorage.remove(ACTIVE_COMPANY_KEY);
+    else safeLocalStorage.set(ACTIVE_COMPANY_KEY, String(id));
+}
+
+// Add auth token + active company to requests
 api.interceptors.request.use((config) => {
     const token = safeLocalStorage.get('visoro_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+    const activeCompanyId = getActiveCompanyId();
+    if (activeCompanyId != null) {
+        config.headers['X-Active-Company'] = String(activeCompanyId);
     }
     return config;
 });
@@ -336,6 +353,11 @@ export interface OrphanTask {
 }
 export const orphanTasksApi = {
     list: () => api.get<{ tasks: OrphanTask[]; total: number }>('/orphan-tasks').then(r => r.data),
+};
+
+// Companies (multi-tenant)
+export const companiesApi = {
+    list: () => api.get<{ companies: Company[] }>('/companies').then(r => r.data),
 };
 
 export { api };

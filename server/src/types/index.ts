@@ -6,6 +6,34 @@
 
 export type UserRole = 'superadmin' | 'admin' | 'manager' | 'user';
 
+// ==========================================
+// Multi-tenant: companies and user-company access
+// ==========================================
+
+export type CompanyLanguage = 'ro' | 'hu' | 'en';
+export type CompanyTemplateType = 'full' | 'project' | 'simple';
+
+export interface Company {
+    id: number;
+    name: string;
+    sidebar_name: string;
+    slug: string;
+    language: CompanyLanguage;
+    template_type: CompanyTemplateType;
+    color: string;
+    icon: string | null;
+    sort_order: number;
+    is_archived: boolean;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface UserCompany {
+    user_id: string;
+    company_id: number;
+    created_at: Date;
+}
+
 export type Department =
     | 'departament_1'
     | 'departament_2'

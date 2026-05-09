@@ -6,6 +6,31 @@
 // Client adds UI-specific fields (bg, border) to constants
 // ==========================================
 export type UserRole = 'superadmin' | 'admin' | 'manager' | 'user';
+
+// Multi-tenant types — keep in sync with server/src/types/index.ts
+export type CompanyLanguage = 'ro' | 'hu' | 'en';
+export type CompanyTemplateType = 'full' | 'project' | 'simple';
+
+export interface Company {
+    id: number;
+    name: string;
+    sidebar_name: string;
+    slug: string;
+    language: CompanyLanguage;
+    template_type: CompanyTemplateType;
+    color: string;
+    icon: string | null;
+    sort_order: number;
+    is_archived: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UserCompany {
+    user_id: string;
+    company_id: number;
+    created_at: string;
+}
 export type Department = 'departament_1' | 'departament_2' | 'departament_3' | 'departament_4' | 'departament_5' | 'departament_6' | 'departament_7';
 export type TaskStatus = 'de_rezolvat' | 'in_realizare' | 'terminat' | 'blocat';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';

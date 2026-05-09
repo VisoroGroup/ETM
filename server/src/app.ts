@@ -35,6 +35,7 @@ import policyRoutes from './routes/policies';
 import settingsRoutes from './routes/settings';
 import searchRoutes from './routes/search';
 import orphanTasksRoutes from './routes/orphanTasks';
+import companiesRoutes from './routes/companies';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
@@ -95,6 +96,7 @@ app.use('/api/policies', policyRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/orphan-tasks', orphanTasksRoutes);
+app.use('/api/companies', companiesRoutes);
 app.use('/api/v1', externalApiRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {
