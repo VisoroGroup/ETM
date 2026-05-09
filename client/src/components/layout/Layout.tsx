@@ -36,6 +36,7 @@ function buildMenuForCompany(
             ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: 'Vedere zilnică' }] : []),
             ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: 'Vedere săptămânală' }] : []),
             ...(role.isAdmin ? [{ to: '/admin', icon: Shield, label: 'Administrare' }] : []),
+            ...(role.isAdmin ? [{ to: '/admin/companies', icon: Building2, label: 'Companii' }] : []),
             ...(role.isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: 'Sarcini orfane' }] : []),
             ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
             { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },

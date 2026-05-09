@@ -25,19 +25,80 @@ const avatarUpload = multer({
     }
 });
 
-// GET /api/admin/users — list all users with their departments and roles
+// GET /api/admin/users — list all users with their departments, roles, and
+// the IDs of companies they have access to.
 router.get('/users', asyncHandler(async (_req: AuthRequest, res: Response) => {
     try {
         const { rows } = await pool.query(`
-            SELECT id, microsoft_id, email, display_name, avatar_url, departments, role, is_active, created_at, updated_at
-            FROM users
-            WHERE is_active = true
-            ORDER BY display_name ASC
+            SELECT u.id, u.microsoft_id, u.email, u.display_name, u.avatar_url,
+                   u.departments, u.role, u.is_active, u.created_at, u.updated_at,
+                   COALESCE(
+                       (SELECT array_agg(uc.company_id ORDER BY uc.company_id)
+                          FROM user_companies uc
+                         WHERE uc.user_id = u.id),
+                       ARRAY[]::int[]
+                   ) AS company_ids
+              FROM users u
+             WHERE u.is_active = true
+             ORDER BY u.display_name ASC
         `);
         res.json(rows);
     } catch (err) {
         console.error('Admin users error:', err);
         res.status(500).json({ error: 'Eroare la încărcarea utilizatorilor.' });
+    }
+}));
+
+// PUT /api/admin/users/:id/companies — replace the user's company access list.
+// Superadmin only (Robert is the sole authority on cross-company access).
+router.put('/users/:id/companies', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = req.params.id;
+    const raw = req.body?.company_ids;
+    if (!Array.isArray(raw)) {
+        res.status(400).json({ error: 'company_ids trebuie să fie un array.' });
+        return;
+    }
+    const companyIds = Array.from(new Set(raw.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0)));
+
+    // Verify the user exists.
+    const userExists = await pool.query('SELECT 1 FROM users WHERE id = $1 LIMIT 1', [userId]);
+    if (userExists.rowCount === 0) {
+        res.status(404).json({ error: 'Utilizator inexistent.' });
+        return;
+    }
+
+    // Verify every company id refers to an existing, non-archived company.
+    if (companyIds.length > 0) {
+        const { rows } = await pool.query<{ id: number }>(
+            'SELECT id FROM companies WHERE id = ANY($1::int[]) AND is_archived = false',
+            [companyIds]
+        );
+        const valid = new Set(rows.map((r) => r.id));
+        const invalid = companyIds.filter((id) => !valid.has(id));
+        if (invalid.length > 0) {
+            res.status(400).json({ error: `Companii inexistente sau arhivate: ${invalid.join(', ')}` });
+            return;
+        }
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM user_companies WHERE user_id = $1', [userId]);
+        if (companyIds.length > 0) {
+            const valuesSql = companyIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+            await client.query(
+                `INSERT INTO user_companies (user_id, company_id) VALUES ${valuesSql}`,
+                [userId, ...companyIds]
+            );
+        }
+        await client.query('COMMIT');
+        res.json({ user_id: userId, company_ids: companyIds });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
 }));
 

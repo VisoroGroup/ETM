@@ -360,5 +360,30 @@ export const companiesApi = {
     list: () => api.get<{ companies: Company[] }>('/companies').then(r => r.data),
 };
 
+// Admin Companies (superadmin manages, admin reads)
+export interface AdminCompanyInput {
+    name: string;
+    sidebar_name: string;
+    slug?: string;
+    language: 'ro' | 'hu' | 'en';
+    template_type: 'full' | 'project' | 'simple';
+    color: string;
+    icon?: string | null;
+}
+export const adminCompaniesApi = {
+    list: () => api.get<{ companies: Company[] }>('/admin/companies').then(r => r.data),
+    create: (data: AdminCompanyInput) => api.post<{ company: Company }>('/admin/companies', data).then(r => r.data),
+    update: (id: number, data: Partial<AdminCompanyInput> & { sort_order?: number }) =>
+        api.put<{ company: Company }>(`/admin/companies/${id}`, data).then(r => r.data),
+    archive: (id: number, archive: boolean) =>
+        api.patch<{ company: Company }>(`/admin/companies/${id}/archive`, { archive }).then(r => r.data),
+};
+
+// Extends adminApi with company-access management
+export const adminUserCompaniesApi = {
+    setUserCompanies: (userId: string, companyIds: number[]) =>
+        api.put(`/admin/users/${userId}/companies`, { company_ids: companyIds }).then(r => r.data),
+};
+
 export { api };
 export default api;
