@@ -37,6 +37,8 @@ import searchRoutes from './routes/search';
 import orphanTasksRoutes from './routes/orphanTasks';
 import companiesRoutes from './routes/companies';
 import adminCompaniesRoutes from './routes/adminCompanies';
+import pugAdminRoutes from './routes/pugAdmin';
+import pugProjectsRoutes from './routes/pugProjects';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
@@ -99,6 +101,8 @@ app.use('/api/search', searchRoutes);
 app.use('/api/orphan-tasks', orphanTasksRoutes);
 app.use('/api/companies', companiesRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
+app.use('/api/admin/pug', pugAdminRoutes);
+app.use('/api/pug/projects', pugProjectsRoutes);
 app.use('/api/v1', externalApiRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {

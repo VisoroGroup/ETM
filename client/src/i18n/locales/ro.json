@@ -391,5 +391,28 @@
         "choose_post_or_head": "Alege postul sau conducătorul",
         "scope_assigned": "Scope atribuit!",
         "assign_failed": "Nu a funcționat — încearcă din nou"
+    },
+    "projects": {
+        "title": "Proiecte",
+        "new_project": "Proiect nou",
+        "show_archived": "Arată arhivate",
+        "empty_title": "Niciun proiect",
+        "empty_subtitle": "Creează primul proiect (PUG) pentru a începe.",
+        "title_required": "Titlul este obligatoriu.",
+        "field_title": "Titlu",
+        "field_work_type": "Tip lucrare",
+        "field_client": "Client (autoritate / beneficiar)",
+        "field_location": "Locație",
+        "field_contract_number": "Număr contract",
+        "field_contract_date": "Data contract",
+        "field_contract_amount": "Valoare contract",
+        "field_area_hectares": "Suprafață (ha)",
+        "field_start_date": "Data începere",
+        "field_deadline": "Termen final",
+        "field_notes": "Observații",
+        "field_responsibles": "Responsabili",
+        "status_new": "Nou",
+        "status_active": "Activ",
+        "status_closed": "Închis"
     }
 }

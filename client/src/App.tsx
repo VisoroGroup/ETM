@@ -19,6 +19,7 @@ import CompletedTasksPage from './components/tasks/CompletedTasksPage';
 import SearchPage from './components/search/SearchPage';
 import OrphanTasksPage from './components/admin/OrphanTasksPage';
 import CompaniesAdminPage from './components/admin/CompaniesAdminPage';
+import ProjectsListPage from './components/projects/ProjectsListPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
 
@@ -62,6 +63,7 @@ function AppRoutes() {
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><CompaniesAdminPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/proiecte" element={<ErrorBoundary><ProjectsListPage /></ErrorBoundary>} />
         <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />

@@ -391,5 +391,28 @@
         "choose_post_or_head": "Válaszd ki a posztot vagy a vezetőt",
         "scope_assigned": "Hatókör hozzárendelve!",
         "assign_failed": "Nem sikerült — próbáld újra"
+    },
+    "projects": {
+        "title": "Projektek",
+        "new_project": "Új projekt",
+        "show_archived": "Archiváltak megjelenítése",
+        "empty_title": "Nincs projekt",
+        "empty_subtitle": "Hozd létre az első projektet (PUG) a kezdéshez.",
+        "title_required": "A cím megadása kötelező.",
+        "field_title": "Cím",
+        "field_work_type": "Munka típusa",
+        "field_client": "Megrendelő (önkormányzat / partner)",
+        "field_location": "Helyszín",
+        "field_contract_number": "Szerződés száma",
+        "field_contract_date": "Szerződés dátuma",
+        "field_contract_amount": "Szerződéses összeg",
+        "field_area_hectares": "Terület (ha)",
+        "field_start_date": "Kezdés dátuma",
+        "field_deadline": "Határidő",
+        "field_notes": "Megjegyzések",
+        "field_responsibles": "Felelősök",
+        "status_new": "Új",
+        "status_active": "Aktív",
+        "status_closed": "Lezárt"
     }
 }

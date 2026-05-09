@@ -385,5 +385,91 @@ export const adminUserCompaniesApi = {
         api.put(`/admin/users/${userId}/companies`, { company_ids: companyIds }).then(r => r.data),
 };
 
+// PUG (Visoro Neo Plan) — admin catalogs + project CRUD
+export interface PugStage {
+    id: string;
+    name: string;
+    icon: string | null;
+    color: string;
+    sort_order: number;
+    is_default: boolean;
+    is_active: boolean;
+}
+export interface PugStatus {
+    id: string;
+    name: string;
+    color: string;
+    sort_order: number;
+    is_initial: boolean;
+    is_terminal: boolean;
+    is_active: boolean;
+}
+export interface PugWorkType {
+    id: string;
+    name: string;
+    sort_order: number;
+    is_active: boolean;
+}
+export interface PugCustomField {
+    id: string;
+    name: string;
+    field_type: 'text' | 'number' | 'date' | 'boolean' | 'select';
+    options: any;
+    is_required: boolean;
+    sort_order: number;
+    is_active: boolean;
+}
+export interface PugProject {
+    id: string;
+    title: string;
+    work_type_id: string | null;
+    work_type_name: string | null;
+    client_name: string | null;
+    location: string | null;
+    contract_number: string | null;
+    contract_date: string | null;
+    contract_amount: string | null;
+    contract_currency: string | null;
+    area_hectares: string | null;
+    start_date: string | null;
+    deadline: string | null;
+    notes: string | null;
+    is_archived: boolean;
+    status: 'new' | 'active' | 'closed';
+    responsibles: { id: string; display_name: string; avatar_url: string | null; email: string }[];
+    created_at: string;
+    updated_at: string;
+}
+export const pugAdminApi = {
+    listStages: () => api.get<{ stages: PugStage[] }>('/admin/pug/stages').then(r => r.data),
+    createStage: (data: Partial<PugStage>) => api.post<{ stage: PugStage }>('/admin/pug/stages', data).then(r => r.data),
+    updateStage: (id: string, data: Partial<PugStage>) => api.put<{ stage: PugStage }>(`/admin/pug/stages/${id}`, data).then(r => r.data),
+    deleteStage: (id: string) => api.delete(`/admin/pug/stages/${id}`).then(r => r.data),
+    listStatuses: () => api.get<{ statuses: PugStatus[] }>('/admin/pug/statuses').then(r => r.data),
+    createStatus: (data: Partial<PugStatus>) => api.post<{ status: PugStatus }>('/admin/pug/statuses', data).then(r => r.data),
+    updateStatus: (id: string, data: Partial<PugStatus>) => api.put<{ status: PugStatus }>(`/admin/pug/statuses/${id}`, data).then(r => r.data),
+    deleteStatus: (id: string) => api.delete(`/admin/pug/statuses/${id}`).then(r => r.data),
+    listWorkTypes: () => api.get<{ work_types: PugWorkType[] }>('/admin/pug/work-types').then(r => r.data),
+    createWorkType: (data: Partial<PugWorkType>) => api.post<{ work_type: PugWorkType }>('/admin/pug/work-types', data).then(r => r.data),
+    updateWorkType: (id: string, data: Partial<PugWorkType>) => api.put<{ work_type: PugWorkType }>(`/admin/pug/work-types/${id}`, data).then(r => r.data),
+    deleteWorkType: (id: string) => api.delete(`/admin/pug/work-types/${id}`).then(r => r.data),
+    listCustomFields: () => api.get<{ fields: PugCustomField[] }>('/admin/pug/custom-fields').then(r => r.data),
+    createCustomField: (data: Partial<PugCustomField>) => api.post<{ field: PugCustomField }>('/admin/pug/custom-fields', data).then(r => r.data),
+    updateCustomField: (id: string, data: Partial<PugCustomField>) => api.put<{ field: PugCustomField }>(`/admin/pug/custom-fields/${id}`, data).then(r => r.data),
+    deleteCustomField: (id: string) => api.delete(`/admin/pug/custom-fields/${id}`).then(r => r.data),
+};
+export const pugProjectsApi = {
+    list: (includeArchived = false) => api.get<{ projects: PugProject[] }>('/pug/projects', { params: { archived: includeArchived } }).then(r => r.data),
+    get: (id: string) => api.get<{ project: any }>(`/pug/projects/${id}`).then(r => r.data),
+    create: (data: any) => api.post<{ project_id: string }>('/pug/projects', data).then(r => r.data),
+    update: (id: string, data: any) => api.put(`/pug/projects/${id}`, data).then(r => r.data),
+    archive: (id: string, archive: boolean) => api.patch(`/pug/projects/${id}/archive`, { archive }).then(r => r.data),
+    addStage: (projectId: string, data: any) => api.post<{ stage_id: string }>(`/pug/projects/${projectId}/stages`, data).then(r => r.data),
+    updateStage: (projectId: string, stageId: string, data: any) => api.put(`/pug/projects/${projectId}/stages/${stageId}`, data).then(r => r.data),
+    deleteStage: (projectId: string, stageId: string) => api.delete(`/pug/projects/${projectId}/stages/${stageId}`).then(r => r.data),
+    setCustomFieldValues: (projectId: string, values: Record<string, any>) => api.put(`/pug/projects/${projectId}/custom-fields`, { values }).then(r => r.data),
+    setResponsibles: (projectId: string, userIds: string[]) => api.put(`/pug/projects/${projectId}/responsibles`, { user_ids: userIds }).then(r => r.data),
+};
+
 export { api };
 export default api;
