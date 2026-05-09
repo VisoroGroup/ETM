@@ -23,6 +23,7 @@ import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 import { exportToCSV } from '../../utils/exportUtils';
 import UserAvatar from '../ui/UserAvatar';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useTranslation } from '../../i18n/I18nContext';
 
 export default function TaskListPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -53,6 +54,7 @@ export default function TaskListPage() {
     const [viewName, setViewName] = useState('');
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { t } = useTranslation();
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
 
@@ -98,7 +100,7 @@ export default function TaskListPage() {
     useEffect(() => {
         const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
         for (const task of tasks) {
-            const key = task.assignee_name || 'Neasignat';
+            const key = task.assignee_name || t('tasks.unassigned');
             let group = map.get(key);
             if (!group) {
                 group = { name: key, avatar: task.assignee_avatar ?? undefined, tasks: [] };
@@ -117,9 +119,10 @@ export default function TaskListPage() {
             if (g) { ordered.push(g); map.delete(name); }
         }
         // Append remaining groups alphabetically (Neasignat last)
+        const unassignedLabel = t('tasks.unassigned');
         const remaining = Array.from(map.values()).sort((a, b) => {
-            if (a.name === 'Neasignat') return 1;
-            if (b.name === 'Neasignat') return -1;
+            if (a.name === unassignedLabel) return 1;
+            if (b.name === unassignedLabel) return -1;
             return a.name.localeCompare(b.name);
         });
         ordered.push(...remaining);
@@ -158,15 +161,15 @@ export default function TaskListPage() {
             setSavedViews(prev => [...prev, created]);
             setViewName('');
             setSavingView(false);
-            showToast('Vedere salvată!');
-        } catch { showToast('Eroare la salvare', 'error'); }
+            showToast(t('task_filters.view_saved'));
+        } catch { showToast(t('common.error_saving'), 'error'); }
     }
     async function deleteView(id: string) {
         try {
             await savedFiltersApi.delete(id);
             setSavedViews(prev => prev.filter(v => v.id !== id));
-            showToast('Vedere ștearsă');
-        } catch { showToast('Nu a funcționat — încearcă din nou', 'error'); }
+            showToast(t('task_filters.view_deleted'));
+        } catch { showToast(t('tasks.try_again'), 'error'); }
     }
     function applyView(view: any) {
         setFilters(view.filter_config || {});
@@ -242,7 +245,7 @@ export default function TaskListPage() {
                 requestAnimationFrame(() => window.scrollTo(0, scrollY));
             }
         } catch (err) {
-            showToast('Eroare la încărcarea sarcinilor', 'error');
+            showToast(t('tasks.error_loading_tasks'), 'error');
         } finally {
             setLoading(false);
         }
@@ -319,9 +322,9 @@ export default function TaskListPage() {
             }
         }
         if (failed.length > 0) {
-            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+            showToast(t('tasks.bulk_partial_failure', { ok: String(ok), fail: String(failed.length), titles: failed.join(', ') }), 'error');
         } else {
-            showToast(`${ok} task → ${STATUSES[status].label}`);
+            showToast(`${ok} task → ${t(`task_status.${status}`)}`);
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -339,9 +342,9 @@ export default function TaskListPage() {
             }
         }
         if (fail > 0) {
-            showToast(`${ok} șters, ${fail} eșuat: ${lastError}`, 'error');
+            showToast(t('tasks.bulk_delete_partial', { ok: String(ok), fail: String(fail), error: lastError }), 'error');
         } else {
-            showToast(`${ok} ${ok === 1 ? 'sarcină ștearsă' : 'sarcini șterse'}`);
+            showToast(ok === 1 ? t('tasks.bulk_deleted_one', { ok: String(ok) }) : t('tasks.bulk_deleted_many', { ok: String(ok) }));
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -357,9 +360,9 @@ export default function TaskListPage() {
             }
         }
         if (failed.length > 0) {
-            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+            showToast(t('tasks.bulk_partial_failure', { ok: String(ok), fail: String(failed.length), titles: failed.join(', ') }), 'error');
         } else {
-            showToast(userId ? `${ok} task asignat` : `${ok} task neasignat`);
+            showToast(userId ? t('tasks.bulk_assigned', { ok: String(ok) }) : t('tasks.bulk_unassigned', { ok: String(ok) }));
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -370,9 +373,9 @@ export default function TaskListPage() {
         try {
             await tasksApi.update(taskId, { department_label: dept });
             setTasks(prev => prev.map(t => t.id === taskId ? { ...t, department_label: dept } : t));
-            showToast(`Departament actualizat`);
+            showToast(t('tasks.department_updated'));
         } catch {
-            showToast('Eroare la actualizare', 'error');
+            showToast(t('tasks.error_updating'), 'error');
         }
     }
 
@@ -387,7 +390,7 @@ export default function TaskListPage() {
             }
         }
         if (failed.length > 0) {
-            showToast(`${ok} reușit, ${failed.length} eșuat: ${failed.join(', ')}`, 'error');
+            showToast(t('tasks.bulk_partial_failure', { ok: String(ok), fail: String(failed.length), titles: failed.join(', ') }), 'error');
         } else {
             showToast(`${ok} task → ${DEPARTMENTS[dept].label}`);
         }
@@ -400,14 +403,14 @@ export default function TaskListPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold">Sarcini</h1>
-                    <p className="text-navy-400 text-sm mt-1">{total} {total === 1 ? 'sarcină în total' : 'sarcini în total'}</p>
+                    <h1 className="text-2xl font-bold">{t('tasks.title')}</h1>
+                    <p className="text-navy-400 text-sm mt-1">{total} {total === 1 ? t('tasks.total_one') : t('tasks.total_many')}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
                         onClick={() => exportToCSV(tasks)}
                         className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
-                        title="Exportă lista curentă"
+                        title={t('tasks.export_csv_tooltip')}
                     >
                         CSV
                     </button>
@@ -416,7 +419,7 @@ export default function TaskListPage() {
                         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all"
                     >
                         <Plus className="w-4 h-4" />
-                        Sarcină nouă
+                        {t('tasks.new_task')}
                     </button>
                 </div>
             </div>
@@ -432,7 +435,7 @@ export default function TaskListPage() {
                             value={searchText}
                             onChange={e => setSearchText(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                            placeholder="Caută în titlu, descriere sau comentarii..."
+                            placeholder={t('tasks.search_placeholder')}
                             className="w-full pl-10 pr-4 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                     </div>
@@ -441,7 +444,7 @@ export default function TaskListPage() {
                             onClick={handleSearch}
                             className="flex-1 md:flex-none px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                         >
-                            Caută
+                            {t('common.search')}
                         </button>
                         <button
                             onClick={() => setFilters(prev => ({
@@ -455,7 +458,7 @@ export default function TaskListPage() {
                             }`}
                         >
                             <UserCircle className="w-4 h-4" />
-                            Sarcinile mele
+                            {t('dashboard.my_tasks')}
                         </button>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
@@ -465,7 +468,7 @@ export default function TaskListPage() {
                                 }`}
                         >
                             <Filter className="w-4 h-4" />
-                            Filtre {activeFilterCount > 0 && `(${activeFilterCount})`}
+                            {t('task_filters.filters')} {activeFilterCount > 0 && `(${activeFilterCount})`}
                         </button>
                     </div>
                 </div>
@@ -493,9 +496,9 @@ export default function TaskListPage() {
                             <button
                                 onClick={() => setSavingView(true)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/40 rounded-lg text-xs text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/60 transition-colors font-medium"
-                                title="Salvează combinația actuală de filtre"
+                                title={t('task_filters.save_view_tooltip')}
                             >
-                                <BookmarkPlus className="w-3 h-3" /> Salvează această vedere
+                                <BookmarkPlus className="w-3 h-3" /> {t('task_filters.save_this_view')}
                             </button>
                         )}
                         {savingView && (
@@ -505,11 +508,11 @@ export default function TaskListPage() {
                                     value={viewName}
                                     onChange={e => setViewName(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && saveView()}
-                                    placeholder="Numele vederii..."
+                                    placeholder={t('task_filters.view_name_placeholder')}
                                     className="px-2 py-1 bg-navy-800 border border-navy-600 rounded text-xs text-white w-40 outline-none focus:border-blue-500"
                                 />
-                                <button onClick={saveView} className="text-xs text-blue-400 hover:text-blue-300">Salvează</button>
-                                <button onClick={() => { setSavingView(false); setViewName(''); }} className="text-xs text-navy-500 hover:text-navy-300">Anulează</button>
+                                <button onClick={saveView} className="text-xs text-blue-400 hover:text-blue-300">{t('common.save')}</button>
+                                <button onClick={() => { setSavingView(false); setViewName(''); }} className="text-xs text-navy-500 hover:text-navy-300">{t('common.cancel')}</button>
                             </div>
                         )}
                     </div>
@@ -520,7 +523,7 @@ export default function TaskListPage() {
                     <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-4 animate-slide-up space-y-4">
                         {/* Status filters */}
                         <div>
-                            <label className="text-xs font-medium text-navy-400 mb-2 block">Status</label>
+                            <label className="text-xs font-medium text-navy-400 mb-2 block">{t('common.status')}</label>
                             <div className="flex flex-wrap gap-2">
                                 {(Object.keys(STATUSES) as TaskStatus[]).map(status => {
                                     const active = filters.status?.includes(status);
@@ -534,7 +537,7 @@ export default function TaskListPage() {
                                                 }`}
                                             style={active ? { background: STATUSES[status].color } : undefined}
                                         >
-                                            {STATUSES[status].label}
+                                            {t(`task_status.${status}`)}
                                         </button>
                                     );
                                 })}
@@ -543,7 +546,7 @@ export default function TaskListPage() {
 
                         {/* Department filters */}
                         <div>
-                            <label className="text-xs font-medium text-navy-400 mb-2 block">Departament</label>
+                            <label className="text-xs font-medium text-navy-400 mb-2 block">{t('tasks.department')}</label>
                             <div className="flex flex-wrap gap-2">
                                 {(Object.keys(DEPARTMENTS) as Department[]).map(dept => {
                                     const active = filters.department?.includes(dept);
@@ -566,13 +569,13 @@ export default function TaskListPage() {
 
                         {/* Period filter */}
                         <div>
-                            <label className="text-xs font-medium text-navy-400 mb-2 block">Perioadă</label>
+                            <label className="text-xs font-medium text-navy-400 mb-2 block">{t('task_filters.period')}</label>
                             <div className="flex flex-wrap gap-2">
                                 {[
-                                    { value: 'today', label: 'Azi' },
-                                    { value: 'this_week', label: 'Săptămâna aceasta' },
-                                    { value: 'this_month', label: 'Luna aceasta' },
-                                    { value: 'overdue', label: 'Depășite' },
+                                    { value: 'today', label: t('task_filters.period_today') },
+                                    { value: 'this_week', label: t('task_filters.period_this_week') },
+                                    { value: 'this_month', label: t('task_filters.period_this_month') },
+                                    { value: 'overdue', label: t('task_filters.period_overdue') },
                                 ].map(p => (
                                     <button
                                         key={p.value}
@@ -590,7 +593,7 @@ export default function TaskListPage() {
 
                         {activeFilterCount > 0 && (
                             <button onClick={clearFilters} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
-                                <X className="w-3 h-3" /> Șterge filtrele
+                                <X className="w-3 h-3" /> {t('task_filters.clear_filters')}
                             </button>
                         )}
                     </div>
@@ -604,17 +607,17 @@ export default function TaskListPage() {
                 <div className="text-center py-20">
                     <ListTodo className="w-16 h-16 text-navy-700 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-navy-400 mb-1">
-                        {filters.my_tasks === 'true' ? 'Nu ai sarcini active' : 'Nicio sarcină găsită'}
+                        {filters.my_tasks === 'true' ? t('tasks.empty_my_title') : t('tasks.empty_title')}
                     </h3>
                     <p className="text-sm text-navy-500 mb-4">
-                        {filters.my_tasks === 'true' ? 'Sarcinile tale vor apărea aici.' : 'Creează primul tău task sau schimbă filtrele.'}
+                        {filters.my_tasks === 'true' ? t('tasks.empty_my_subtitle') : t('tasks.empty_subtitle')}
                     </p>
                     {filters.my_tasks !== 'true' && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm transition-colors"
                         >
-                            <Plus className="w-4 h-4 inline mr-1" /> Creează sarcină
+                            <Plus className="w-4 h-4 inline mr-1" /> {t('tasks.create_task')}
                         </button>
                     )}
                 </div>
@@ -624,12 +627,12 @@ export default function TaskListPage() {
                     <table className="w-full text-sm table-fixed">
                         <thead>
                             <tr className="bg-navy-800/80">
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[35%]">Sarcină</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell w-[14%]">Departament</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[13%]">Subdepartament</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[16%]">Post</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[12%]">Termen</th>
-                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[10%]">Status</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[35%]">{t('dashboard.col_task')}</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell w-[14%]">{t('tasks.department')}</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[13%]">{t('dashboard.col_subdepartment')}</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[16%]">{t('dashboard.col_post')}</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[12%]">{t('tasks.due_date')}</th>
+                                <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[10%]">{t('common.status')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -652,8 +655,8 @@ export default function TaskListPage() {
                                                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUSES[task.status]?.color }} />
                                                 {task.is_recurring && (
                                                     <span
-                                                        title="Sarcină recurentă — se regenerează automat la finalizare"
-                                                        aria-label="Recurentă"
+                                                        title={t('dashboard.recurring_tooltip')}
+                                                        aria-label={t('dashboard.recurring_label')}
                                                         className="inline-flex flex-shrink-0 text-cyan-400"
                                                     >
                                                         <RefreshCw className="w-3 h-3" />
@@ -680,7 +683,7 @@ export default function TaskListPage() {
                                                 isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                                             }`}>
                                                 {formatDate(task.due_date)}
-                                                {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}z)</span>}
+                                                {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}{t('dashboard.days_short')})</span>}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
@@ -705,18 +708,18 @@ export default function TaskListPage() {
                             <FileText className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
                             <div className="min-w-0">
                                 <p className="text-sm text-navy-300 leading-tight">
-                                    Directive la nivel de companie {companyPolicyCount > 0 && `(${companyPolicyCount})`}
+                                    {t('tasks.company_policies_title')} {companyPolicyCount > 0 && `(${companyPolicyCount})`}
                                 </p>
                                 <p className="text-[11px] text-navy-500 mt-0.5">
-                                    Politici și reguli care se aplică întregii firme.
+                                    {t('tasks.company_policies_subtitle')}
                                 </p>
                             </div>
                         </div>
                         <button
-                            onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: 'Directive la nivel de companie' })}
+                            onClick={() => setPolicyDrawer({ open: true, scope: 'COMPANY', title: t('tasks.company_policies_title') })}
                             className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0 ml-3"
                         >
-                            Deschide
+                            {t('tasks.open')}
                         </button>
                     </div>
 
@@ -738,7 +741,7 @@ export default function TaskListPage() {
                                 scope: scope as any,
                                 departmentId: scope === 'DEPARTMENT' ? id : undefined,
                                 postId: scope === 'POST' ? id : undefined,
-                                title: `Directive — ${dept.name}`
+                                title: `${t('tasks.policies')} — ${dept.name}`
                             })}
                         />
                     ))}
@@ -763,7 +766,7 @@ export default function TaskListPage() {
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 bg-navy-900 border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-500/10 animate-slide-up flex-wrap justify-center max-w-[95vw]">
-                    <span className="text-sm font-semibold text-blue-400 mr-2">{selectedIds.size} selectat{selectedIds.size > 1 ? 'e' : ''}</span>
+                    <span className="text-sm font-semibold text-blue-400 mr-2">{selectedIds.size} {selectedIds.size > 1 ? t('tasks.selected_many') : t('tasks.selected_one')}</span>
 
                     {/* Status change */}
                     <div className="relative">
@@ -771,7 +774,7 @@ export default function TaskListPage() {
                             onClick={() => { setBulkStatusOpen(o => !o); setBulkAssignOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
-                            <CheckSquare className="w-3.5 h-3.5" /> Status <ChevronDown className="w-3 h-3" />
+                            <CheckSquare className="w-3.5 h-3.5" /> {t('common.status')} <ChevronDown className="w-3 h-3" />
                         </button>
                         {bulkStatusOpen && (
                             <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[160px] animate-slide-up">
@@ -782,7 +785,7 @@ export default function TaskListPage() {
                                         className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-navy-700 transition-colors"
                                         style={{ color: STATUSES[s].color }}
                                     >
-                                        {STATUSES[s].label}
+                                        {t(`task_status.${s}`)}
                                     </button>
                                 ))}
                             </div>
@@ -795,11 +798,11 @@ export default function TaskListPage() {
                             onClick={() => { setBulkAssignOpen(o => !o); setBulkStatusOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
-                            <UserCircle className="w-3.5 h-3.5" /> Asignează <ChevronDown className="w-3 h-3" />
+                            <UserCircle className="w-3.5 h-3.5" /> {t('tasks.assign')} <ChevronDown className="w-3 h-3" />
                         </button>
                         {bulkAssignOpen && (
                             <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[180px] animate-slide-up">
-                                <button onClick={() => bulkAssign(null)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-navy-400 hover:bg-navy-700">— Neasignat —</button>
+                                <button onClick={() => bulkAssign(null)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-navy-400 hover:bg-navy-700">— {t('tasks.unassigned')} —</button>
                                 {users.map(u => (
                                     <button key={u.id} onClick={() => bulkAssign(u.id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-white hover:bg-navy-700">
                                         <UserAvatar
@@ -820,7 +823,7 @@ export default function TaskListPage() {
                             onClick={() => { setBulkDeptOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
-                            <Tag className="w-3.5 h-3.5" /> Dept <ChevronDown className="w-3 h-3" />
+                            <Tag className="w-3.5 h-3.5" /> {t('tasks.dept_short')} <ChevronDown className="w-3 h-3" />
                         </button>
                         {bulkDeptOpen && (
                             <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[180px] animate-slide-up">
@@ -844,7 +847,7 @@ export default function TaskListPage() {
                         onClick={() => setShowDeleteConfirm(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/40 rounded-lg text-xs font-medium text-red-400 transition-colors"
                     >
-                        <Trash2 className="w-3.5 h-3.5" /> Șterge
+                        <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                     </button>
 
                     {/* Clear */}
@@ -863,25 +866,25 @@ export default function TaskListPage() {
                                 <Trash2 className="w-5 h-5 text-red-400" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white">Confirmare ștergere</h3>
-                                <p className="text-xs text-navy-400">Acțiunea este ireversibilă</p>
+                                <h3 className="font-semibold text-white">{t('tasks.delete_confirm_title')}</h3>
+                                <p className="text-xs text-navy-400">{t('tasks.delete_confirm_irreversible')}</p>
                             </div>
                         </div>
-                        <p className="text-sm text-navy-300 mb-6">
-                            Ești sigur că vrei să ștergi <strong className="text-white">{selectedIds.size} sarcini</strong>?
-                        </p>
+                        <p className="text-sm text-navy-300 mb-6"
+                           dangerouslySetInnerHTML={{ __html: t('tasks.delete_confirm_body', { count: String(selectedIds.size) }) }}
+                        />
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-navy-700 hover:bg-navy-600 text-navy-300 transition-colors"
                             >
-                                Anulează
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={bulkDelete}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
                             >
-                                Șterge definitiv
+                                {t('tasks.delete_permanent')}
                             </button>
                         </div>
                     </div>
@@ -909,7 +912,7 @@ export default function TaskListPage() {
                             setOrgDepartments(data.departments || []);
                             setCompanyPolicyCount(data.company_policy_count || 0);
                         }).catch(() => {});
-                        showToast('Sarcină creată cu succes!');
+                        showToast(t('tasks.created_success'));
                     }}
                 />
             )}

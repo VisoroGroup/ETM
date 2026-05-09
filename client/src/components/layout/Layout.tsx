@@ -44,9 +44,19 @@ function buildMenuForCompany(
             { to: '/terminate', icon: CheckCircle2, label: t('nav.completed') },
         ];
     }
-    // 'simple' and 'project' menus will grow as those modules are built.
+    // 'simple' (Hungary) and 'project' (Neo Plan): per Q33+Q53 the user-visible
+    // pages are tasks/day-view/week-view/terminate plus activity/notifications/
+    // email-log. Day-view/week-view will be auto-rebased to user-grouping for
+    // non-'full' companies (no department structure exists). Project type also
+    // gets a Proiecte (PUG) entry — placeholder route for now until Phase 6.
     return [
+        ...(tpl === 'project' ? [{ to: '/proiecte', icon: LayoutDashboard, label: t('nav.projects') }] : []),
         { to: '/tasks', icon: ListTodo, label: t('nav.tasks') },
+        { to: '/activitate', icon: Activity, label: t('nav.activity') },
+        ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: t('nav.day_view') }] : []),
+        ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: t('nav.week_view') }] : []),
+        ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: t('nav.email_log') }] : []),
+        { to: '/terminate', icon: CheckCircle2, label: t('nav.completed') },
     ];
 }
 

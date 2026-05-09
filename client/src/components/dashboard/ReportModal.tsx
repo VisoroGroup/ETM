@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X, FileDown, Loader2 } from 'lucide-react';
 import { safeLocalStorage } from '../../utils/storage';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
 interface Props {
     isOpen: boolean;
@@ -9,10 +10,13 @@ interface Props {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-function getLast12Months(): { value: string; label: string }[] {
+function getLast12Months(t: TFunction): { value: string; label: string }[] {
     const months: { value: string; label: string }[] = [];
-    const names = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-        'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
+    const names = [
+        t('report.month_1'), t('report.month_2'), t('report.month_3'), t('report.month_4'),
+        t('report.month_5'), t('report.month_6'), t('report.month_7'), t('report.month_8'),
+        t('report.month_9'), t('report.month_10'), t('report.month_11'), t('report.month_12'),
+    ];
     const now = new Date();
     for (let i = 1; i <= 12; i++) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -23,7 +27,8 @@ function getLast12Months(): { value: string; label: string }[] {
 }
 
 export default function ReportModal({ isOpen, onClose }: Props) {
-    const months = getLast12Months();
+    const { t } = useTranslation();
+    const months = useMemo(() => getLast12Months(t), [t]);
     const [month, setMonth] = useState(months[0].value);
     const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
     const [sections, setSections] = useState({
@@ -48,7 +53,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             if (!response.ok) {
-                let errorMsg = `Eroare ${response.status}`;
+                let errorMsg = `${t('report.error_prefix')} ${response.status}`;
                 try {
                     const errBody = await response.json();
                     errorMsg = errBody.error || errBody.message || errorMsg;
@@ -64,7 +69,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
             URL.revokeObjectURL(link.href);
             onClose();
         } catch (e: any) {
-            alert(`Eroare la generarea raportului: ${e?.message || 'Eroare necunoscută'}`);
+            alert(`${t('report.generate_error')}: ${e?.message || t('report.unknown_error')}`);
         } finally {
             setGenerating(false);
         }
@@ -77,7 +82,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
                     <div className="flex items-center gap-2">
                         <FileDown className="w-5 h-5 text-blue-400" />
-                        <h2 className="text-base font-bold">Generează raport lunar</h2>
+                        <h2 className="text-base font-bold">{t('report.title')}</h2>
                     </div>
                     <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
@@ -87,7 +92,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
                 <div className="p-5 space-y-5">
                     {/* Month selector */}
                     <div>
-                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">Lună</label>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('report.month')}</label>
                         <select
                             value={month}
                             onChange={e => setMonth(e.target.value)}
@@ -101,7 +106,7 @@ export default function ReportModal({ isOpen, onClose }: Props) {
 
                     {/* Format selector */}
                     <div>
-                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">Format</label>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('report.format')}</label>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setFormat('pdf')}
@@ -128,12 +133,12 @@ export default function ReportModal({ isOpen, onClose }: Props) {
 
                     {/* Sections */}
                     <div>
-                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">Secțiuni</label>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('report.sections')}</label>
                         <div className="space-y-2">
                             {[
-                                { key: 'tasks' as const, label: 'Sumar sarcini' },
-                                { key: 'departments' as const, label: 'Detalii pe departamente' },
-                                { key: 'users' as const, label: 'Detalii pe utilizatori' },
+                                { key: 'tasks' as const, label: t('report.section_tasks') },
+                                { key: 'departments' as const, label: t('report.section_departments') },
+                                { key: 'users' as const, label: t('report.section_users') },
                             ].map(s => (
                                 <label key={s.key} className="flex items-center gap-2 cursor-pointer group">
                                     <input
@@ -155,9 +160,9 @@ export default function ReportModal({ isOpen, onClose }: Props) {
                         className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                         {generating ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Se generează...</>
+                            <><Loader2 className="w-4 h-4 animate-spin" /> {t('report.generating')}</>
                         ) : (
-                            <><FileDown className="w-4 h-4" /> Generează raport</>
+                            <><FileDown className="w-4 h-4" /> {t('report.generate')}</>
                         )}
                     </button>
                 </div>

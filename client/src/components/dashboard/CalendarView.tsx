@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ro } from 'date-fns/locale';
@@ -7,6 +7,7 @@ import { STATUSES, DEPARTMENTS } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../../services/api';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 const locales = { 'ro': ro };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -24,22 +25,22 @@ interface CalendarEvent {
     parent_task_title: string | null;
 }
 
-const messages = {
-    today: 'Azi',
-    previous: '‹',
-    next: '›',
-    month: 'Lună',
-    week: 'Săptămână',
-    day: 'Zi',
-    agenda: 'Agendă',
-    noEventsInRange: 'Nicio sarcină în această perioadă',
-    date: 'Data',
-    time: 'Ora',
-    event: 'Sarcină',
-};
-
 export default function CalendarView() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
+    const messages = useMemo(() => ({
+        today: t('calendar.today'),
+        previous: '‹',
+        next: '›',
+        month: t('calendar.month'),
+        week: t('calendar.week'),
+        day: t('calendar.day'),
+        agenda: t('calendar.agenda'),
+        noEventsInRange: t('calendar.no_events'),
+        date: t('calendar.date'),
+        time: t('calendar.time'),
+        event: t('calendar.event'),
+    }), [t]);
     const [view, setView] = useState<View>('month');
     const [date, setDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -144,7 +145,7 @@ export default function CalendarView() {
                     </span>
                     {isSubtask && ev.parent_task_title && (
                         <span className="text-[10px] text-navy-500">
-                            din: {ev.parent_task_title}
+                            {t('calendar.from')}: {ev.parent_task_title}
                         </span>
                     )}
                     {ev.assignee_name && (
@@ -261,10 +262,10 @@ export default function CalendarView() {
                 popup
                 tooltipAccessor={(event: any) => {
                     const ev: CalendarEvent = event.resource;
-                    const prefix = ev.event_type === 'subtask' ? `[Subtask] ` : '';
+                    const prefix = ev.event_type === 'subtask' ? `[${t('calendar.subtask')}] ` : '';
                     const statusLabel = STATUSES[ev.status as keyof typeof STATUSES]?.label || ev.status;
                     const assignee = ev.assignee_name ? ` — ${ev.assignee_name}` : '';
-                    const parent = ev.parent_task_title ? `\nTask: ${ev.parent_task_title}` : '';
+                    const parent = ev.parent_task_title ? `\n${t('calendar.task')}: ${ev.parent_task_title}` : '';
                     return `${prefix}${ev.title} — ${statusLabel}${assignee}${parent}`;
                 }}
             />

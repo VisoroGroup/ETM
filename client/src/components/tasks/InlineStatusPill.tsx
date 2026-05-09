@@ -3,6 +3,7 @@ import { STATUSES, TaskStatus } from '../../types';
 import { tasksApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { ChevronDown, X } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     taskId: string;
@@ -25,6 +26,7 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
     const [status, setStatus] = useState<TaskStatus>(currentStatus);
     const wrapRef = useRef<HTMLDivElement>(null);
     const { showToast } = useToast();
+    const { t } = useTranslation();
 
     useEffect(() => setStatus(currentStatus), [currentStatus]);
 
@@ -56,10 +58,10 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
             setOpen(false);
             setPendingBlocat(false);
             setReason('');
-            showToast(`Status: ${STATUSES[newStatus].label}`);
+            showToast(`${t('common.status')}: ${t(`task_status.${newStatus}`)}`);
             onChanged?.(newStatus);
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         } finally {
             setSaving(false);
         }
@@ -75,14 +77,14 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                 type="button"
                 onClick={() => setOpen(o => !o)}
                 disabled={saving}
-                aria-label={`Schimbă statusul (actual: ${STATUSES[status]?.label})`}
+                aria-label={t('tasks.change_status_aria', { current: t(`task_status.${status}`) })}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all hover:brightness-125 cursor-pointer"
                 style={{
                     backgroundColor: `${STATUSES[status]?.color}20`,
                     color: STATUSES[status]?.color
                 }}
             >
-                {STATUSES[status]?.label}
+                {t(`task_status.${status}`)}
                 {!compact && <ChevronDown className="w-2.5 h-2.5 opacity-70" />}
             </button>
 
@@ -102,8 +104,8 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                                 className="w-2 h-2 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: STATUSES[s].color }}
                             />
-                            <span style={{ color: STATUSES[s].color }}>{STATUSES[s].label}</span>
-                            {s === status && <span className="ml-auto text-[9px] text-navy-400">actual</span>}
+                            <span style={{ color: STATUSES[s].color }}>{t(`task_status.${s}`)}</span>
+                            {s === status && <span className="ml-auto text-[9px] text-navy-400">{t('tasks.current')}</span>}
                         </button>
                     ))}
                 </div>
@@ -112,11 +114,11 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
             {open && pendingBlocat && (
                 <div className="absolute right-0 top-full mt-1 z-50 w-64 p-3 bg-navy-900 border border-navy-700 rounded-lg shadow-2xl">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-semibold text-orange-400">Motiv blocare *</span>
+                        <span className="text-[11px] font-semibold text-orange-400">{t('tasks.block_reason')} *</span>
                         <button
                             type="button"
                             onClick={() => { setPendingBlocat(false); setReason(''); }}
-                            aria-label="Anulează"
+                            aria-label={t('common.cancel')}
                             className="text-navy-400 hover:text-white"
                         >
                             <X className="w-3 h-3" />
@@ -127,7 +129,7 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                         onChange={e => setReason(e.target.value)}
                         autoFocus
                         rows={3}
-                        placeholder="De ce este blocat? (obligatoriu)"
+                        placeholder={t('tasks.block_reason_placeholder')}
                         className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700 rounded text-xs text-white placeholder:text-navy-500 focus:outline-none focus:border-orange-500/50 resize-none"
                     />
                     <div className="flex justify-end gap-2 mt-2">
@@ -136,7 +138,7 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                             onClick={() => { setPendingBlocat(false); setReason(''); }}
                             className="px-2 py-1 text-[10px] text-navy-400 hover:text-white"
                         >
-                            Anulează
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="button"
@@ -144,7 +146,7 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                             disabled={!reason.trim() || saving}
                             className="px-3 py-1 text-[10px] font-medium rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                            {saving ? 'Se salvează…' : 'Blochează'}
+                            {saving ? t('task_form.saving') : t('tasks.block')}
                         </button>
                     </div>
                 </div>

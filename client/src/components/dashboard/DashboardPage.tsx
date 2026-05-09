@@ -4,6 +4,7 @@ import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENT
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n/I18nContext';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
     ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw
@@ -30,6 +31,7 @@ export default function DashboardPage() {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { t } = useTranslation();
 
     useEffect(() => {
         let cancelled = false;
@@ -81,22 +83,22 @@ export default function DashboardPage() {
 
     const statCards = [
         {
-            label: 'Sarcini active', value: stats?.active || 0,
+            label: t('dashboard.stat_active'), value: stats?.active || 0,
             icon: Activity, color: 'from-blue-500 to-blue-600', textColor: 'text-blue-400',
             onClick: () => navigate('/tasks')
         },
         {
-            label: 'Depășite', value: stats?.overdue || 0,
+            label: t('dashboard.stat_overdue'), value: stats?.overdue || 0,
             icon: AlertTriangle, color: overdueColor.bg, textColor: overdueColor.text,
             onClick: () => navigate('/tasks', { state: { filter: 'overdue' } })
         },
         {
-            label: 'Blocate', value: stats?.blocked || 0,
+            label: t('dashboard.stat_blocked'), value: stats?.blocked || 0,
             icon: Ban, color: blockedColor.bg, textColor: blockedColor.text,
             onClick: () => navigate('/tasks', { state: { filter: 'blocat' } })
         },
         {
-            label: 'Finalizate luna aceasta', value: stats?.completed_this_month || 0,
+            label: t('dashboard.stat_completed_this_month'), value: stats?.completed_this_month || 0,
             icon: CheckCircle2, color: 'from-green-500 to-green-600', textColor: 'text-green-400',
             onClick: undefined
         },
@@ -174,12 +176,12 @@ export default function DashboardPage() {
                             className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: STATUSES[task.status]?.color }}
                             title={STATUSES[task.status]?.label}
-                            aria-label={`Status: ${STATUSES[task.status]?.label}`}
+                            aria-label={`${t('common.status')}: ${STATUSES[task.status]?.label}`}
                         />
                         {task.is_recurring && (
                             <span
-                                title="Sarcină recurentă — se regenerează automat la finalizare"
-                                aria-label="Recurentă"
+                                title={t('dashboard.recurring_tooltip')}
+                                aria-label={t('dashboard.recurring_label')}
                                 className="inline-flex flex-shrink-0 text-cyan-400"
                             >
                                 <RefreshCw className="w-3 h-3" />
@@ -214,7 +216,7 @@ export default function DashboardPage() {
                         isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                     }`}>
                         {formatDate(task.due_date)}
-                        {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}z)</span>}
+                        {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}{t('dashboard.days_short')})</span>}
                     </span>
                 </td>
                 <td className={`px-4 py-2.5 ${COL.status}`}>
@@ -234,7 +236,7 @@ export default function DashboardPage() {
     // Render a grouped task section
     const renderTaskSection = (title: string, icon: React.ReactNode, tasks: Task[], sectionKey: string, showAssignee = false) => {
         const groups = groupByStatus(tasks);
-        const fourthColHeader = showAssignee ? 'Responsabil' : 'Post';
+        const fourthColHeader = showAssignee ? t('dashboard.col_assignee') : t('dashboard.col_post');
 
         return (
             <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
@@ -249,7 +251,7 @@ export default function DashboardPage() {
                 {tasks.length === 0 ? (
                     <div className="text-center py-8">
                         <CheckCircle2 className="w-8 h-8 text-green-400/30 mx-auto mb-2" />
-                        <p className="text-navy-500 text-sm">Nicio sarcină</p>
+                        <p className="text-navy-500 text-sm">{t('tasks.no_tasks')}</p>
                     </div>
                 ) : (
                     <div>
@@ -271,12 +273,12 @@ export default function DashboardPage() {
                                         <table className="w-full text-sm table-fixed">
                                             <thead>
                                                 <tr className="bg-navy-800/20">
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>Sarcină</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>Departament</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>Subdepartament</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>{t('dashboard.col_task')}</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{fourthColHeader}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>Termen</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>Status</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>{t('tasks.due_date')}</th>
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>{t('common.status')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -298,8 +300,8 @@ export default function DashboardPage() {
             {/* Header + Controls */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold">Dashboard</h1>
-                    <p className="text-navy-400 text-sm mt-1">Bine ai venit! Iată o privire de ansamblu.</p>
+                    <h1 className="text-2xl font-bold">{t('nav.dashboard')}</h1>
+                    <p className="text-navy-400 text-sm mt-1">{t('dashboard.welcome')}</p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
                     {/* Report button — admin/manager only */}
@@ -309,7 +311,7 @@ export default function DashboardPage() {
                             className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
                         >
                             <FileDown className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Raport</span>
+                            <span className="hidden sm:inline">{t('dashboard.report')}</span>
                         </button>
                     )}
 
@@ -322,7 +324,7 @@ export default function DashboardPage() {
                             }`}
                         >
                             <List className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Listă</span>
+                            <span className="hidden sm:inline">{t('dashboard.view_list')}</span>
                         </button>
                         <button
                             onClick={() => setShowCalendar(true)}
@@ -331,7 +333,7 @@ export default function DashboardPage() {
                             }`}
                         >
                             <CalendarDays className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Calendar</span>
+                            <span className="hidden sm:inline">{t('dashboard.view_calendar')}</span>
                         </button>
                     </div>
 
@@ -339,8 +341,8 @@ export default function DashboardPage() {
                     <button
                         onClick={() => setShowCustomizer(true)}
                         className="p-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-navy-400 hover:text-white hover:border-navy-600 transition-all"
-                        title="Personalizează panoul — afișează/ascunde widget-uri"
-                        aria-label="Personalizează panoul"
+                        title={t('dashboard.customize_tooltip')}
+                        aria-label={t('dashboard.customize_label')}
                     >
                         <Settings className="w-4 h-4" />
                     </button>
@@ -359,7 +361,7 @@ export default function DashboardPage() {
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
                                 </span>
                                 <Bell className="w-3.5 h-3.5" />
-                                În Atenție — {activeAlerts.length} {activeAlerts.length === 1 ? 'alertă activă' : 'alerte active'}
+                                {t('dashboard.attention')} — {activeAlerts.length} {activeAlerts.length === 1 ? t('dashboard.alert_singular') : t('dashboard.alert_plural')}
                             </h3>
                         </div>
                         <div className="space-y-1">
@@ -389,12 +391,12 @@ export default function DashboardPage() {
                                                 setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
                                             } catch {}
                                         }}
-                                        title="Marchează rezolvat"
-                                        aria-label="Marchează rezolvat"
+                                        title={t('dashboard.mark_resolved')}
+                                        aria-label={t('dashboard.mark_resolved')}
                                         className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
                                     >
                                         <CheckCircle2 className="w-3 h-3" />
-                                        Rezolvat
+                                        {t('dashboard.resolved')}
                                     </button>
                                 </div>
                             ))}
@@ -413,7 +415,7 @@ export default function DashboardPage() {
                         className={`bg-navy-900/50 border border-navy-700/50 rounded-lg px-3 py-2 md:px-4 md:py-2.5 transition-all flex items-center gap-2 md:gap-3 ${
                             card.onClick ? 'cursor-pointer hover:border-navy-500/70 hover:bg-navy-800/50' : ''
                         }`}
-                        title={card.onClick ? 'Apasă pentru lista filtrată' : undefined}
+                        title={card.onClick ? t('dashboard.click_for_filtered') : undefined}
                     >
                         <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${card.color} flex items-center justify-center flex-shrink-0`}>
                             <card.icon className="w-3.5 h-3.5 text-white" />
@@ -432,7 +434,7 @@ export default function DashboardPage() {
                 <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                     <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-blue-400" />
-                        Vedere calendar — termene limită
+                        {t('dashboard.calendar_title')}
                     </h3>
                     <CalendarView />
                 </div>
@@ -440,7 +442,7 @@ export default function DashboardPage() {
                 <>
                     {/* MY ASSIGNED TASKS — grouped by status */}
                     {renderTaskSection(
-                        'Sarcinile mele',
+                        t('dashboard.my_tasks'),
                         <UserCircle className="w-4 h-4 text-cyan-400" />,
                         myAssignedTasks,
                         'assigned'
@@ -448,7 +450,7 @@ export default function DashboardPage() {
 
                     {/* TASKS I CREATED (assigned to others) — grouped by status */}
                     {renderTaskSection(
-                        'Create de mine',
+                        t('dashboard.created_by_me'),
                         <Briefcase className="w-4 h-4 text-purple-400" />,
                         myCreatedTasks,
                         'created',

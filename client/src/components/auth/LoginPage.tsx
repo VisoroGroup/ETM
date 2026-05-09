@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n/I18nContext';
 import { Shield } from 'lucide-react';
 
 export default function LoginPage() {
     const { login, loading } = useAuth();
+    const { t } = useTranslation();
     const [animateIn, setAnimateIn] = useState(false);
 
     useEffect(() => {
@@ -32,7 +34,7 @@ export default function LoginPage() {
                         <h1 className="text-2xl font-bold text-white mb-1">Sarcinator Visoro</h1>
                         <p className="text-navy-300 text-sm">Visoro Global SRL</p>
                         <p className="text-navy-400 text-xs mt-4 leading-relaxed">
-                            Organizează sarcinile, monitorizează progresul și colaborează cu echipa ta — totul într-un singur loc.
+                            {t('login.tagline')}
                         </p>
                     </div>
 
@@ -43,17 +45,17 @@ export default function LoginPage() {
                             className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Shield className="w-5 h-5" />
-                            {loading ? 'Se conectează...' : 'Conectare cu Microsoft 365'}
+                            {loading ? t('login.connecting') : t('login.with_microsoft_365')}
                         </button>
 
                         <p className="text-center text-navy-400 text-xs">
-                            Autentificare securizată prin Microsoft Entra ID
+                            {t('login.secure_auth_note')}
                         </p>
                     </div>
                 </div>
 
                 <p className="text-center text-navy-500 text-xs mt-6">
-                    © {new Date().getFullYear()} Visoro Global SRL. Toate drepturile rezervate.
+                    {t('login.copyright', { year: new Date().getFullYear() })}
                 </p>
             </div>
         </div>

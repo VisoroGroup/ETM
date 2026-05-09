@@ -8,6 +8,7 @@ import {
     Search, CheckCircle2, RotateCcw, Calendar, Loader2, Archive, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
+import { useTranslation } from '../../i18n/I18nContext';
 
 export default function CompletedTasksPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -18,6 +19,7 @@ export default function CompletedTasksPage() {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [reactivatingId, setReactivatingId] = useState<string | null>(null);
     const { showToast } = useToast();
+    const { t } = useTranslation();
 
     const loadTasks = useCallback(async () => {
         try {
@@ -30,11 +32,11 @@ export default function CompletedTasksPage() {
             setTasks(result.tasks);
             setTotal(result.total);
         } catch {
-            showToast('Eroare la încărcarea sarcinilor', 'error');
+            showToast(t('tasks.error_loading_tasks'), 'error');
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, showToast]);
+    }, [searchQuery, showToast, t]);
 
     useEffect(() => { loadTasks(); }, [loadTasks]);
 
@@ -75,7 +77,7 @@ export default function CompletedTasksPage() {
     useEffect(() => {
         const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
         for (const task of tasks) {
-            const key = task.assignee_name || 'Neasignat';
+            const key = task.assignee_name || t('tasks.unassigned');
             let group = map.get(key);
             if (!group) {
                 group = { name: key, avatar: task.assignee_avatar ?? undefined, tasks: [] };
@@ -91,9 +93,10 @@ export default function CompletedTasksPage() {
             const g = map.get(name);
             if (g) { ordered.push(g); map.delete(name); }
         }
+        const unassignedLabel = t('tasks.unassigned');
         const remaining = Array.from(map.values()).sort((a, b) => {
-            if (a.name === 'Neasignat') return 1;
-            if (b.name === 'Neasignat') return -1;
+            if (a.name === unassignedLabel) return 1;
+            if (b.name === unassignedLabel) return -1;
             return a.name.localeCompare(b.name);
         });
         ordered.push(...remaining);
@@ -108,11 +111,11 @@ export default function CompletedTasksPage() {
         setReactivatingId(taskId);
         try {
             await tasksApi.changeStatus(taskId, 'de_rezolvat');
-            showToast('Sarcină reactivată!');
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            showToast(t('tasks.task_reactivated'));
+            setTasks(prev => prev.filter(x => x.id !== taskId));
             setTotal(prev => prev - 1);
         } catch {
-            showToast('Eroare la reactivare', 'error');
+            showToast(t('tasks.error_reactivating'), 'error');
         } finally {
             setReactivatingId(null);
         }
@@ -127,8 +130,8 @@ export default function CompletedTasksPage() {
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold">Sarcini terminate</h1>
-                        <p className="text-navy-400 text-sm">{total} sarcini finalizate</p>
+                        <h1 className="text-2xl font-bold">{t('tasks.completed_title')}</h1>
+                        <p className="text-navy-400 text-sm">{total} {t('tasks.completed_subtitle')}</p>
                     </div>
                 </div>
             </div>
@@ -142,7 +145,7 @@ export default function CompletedTasksPage() {
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        placeholder="Caută în sarcinile terminate..."
+                        placeholder={t('tasks.completed_search_placeholder')}
                         className="w-full pl-10 pr-4 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                     />
                 </div>
@@ -150,7 +153,7 @@ export default function CompletedTasksPage() {
                     onClick={handleSearch}
                     className="px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                 >
-                    Caută
+                    {t('common.search')}
                 </button>
             </div>
 
@@ -163,10 +166,10 @@ export default function CompletedTasksPage() {
                 <div className="text-center py-20">
                     <Archive className="w-16 h-16 text-navy-700 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-navy-400 mb-1">
-                        {searchQuery ? 'Niciun rezultat' : 'Nicio sarcină terminată'}
+                        {searchQuery ? t('tasks.no_results') : t('tasks.no_completed')}
                     </h3>
                     <p className="text-sm text-navy-500">
-                        {searchQuery ? 'Încearcă cu alți termeni de căutare.' : 'Sarcinile completate vor apărea aici.'}
+                        {searchQuery ? t('tasks.no_results_hint') : t('tasks.no_completed_hint')}
                     </p>
                 </div>
             ) : (
@@ -218,7 +221,7 @@ export default function CompletedTasksPage() {
                                                     className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-[11px] font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50"
                                                 >
                                                     <RotateCcw className={`w-3 h-3 ${reactivatingId === task.id ? 'animate-spin' : ''}`} />
-                                                    Reactivează
+                                                    {t('tasks.reactivate')}
                                                 </button>
                                             </div>
                                         </div>
@@ -240,7 +243,7 @@ export default function CompletedTasksPage() {
                                     <ChevronRight className={`w-4 h-4 text-navy-400 transition-transform flex-shrink-0 ${expandedGroups.has(group.name) ? 'rotate-90' : ''}`} />
                                     <UserAvatar name={group.name} avatarUrl={group.avatar} size="md" />
                                     <span className="text-sm font-bold text-white">{group.name}</span>
-                                    <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} {group.tasks.length !== 1 ? 'sarcini' : 'sarcină'}</span>
+                                    <span className="text-[11px] text-navy-400 font-medium">{group.tasks.length} {group.tasks.length !== 1 ? t('tasks.task_count_many') : t('tasks.task_count_one')}</span>
                                     <div className="ml-auto flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                         <button
                                             onClick={() => moveGroup(group.name, 'up')}
@@ -262,10 +265,10 @@ export default function CompletedTasksPage() {
                                 {/* Header + rows — only if expanded */}
                                 {expandedGroups.has(group.name) && <>
                                 <div className="grid grid-cols-[1fr_120px_140px_100px_120px] gap-3 px-4 py-2.5 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
-                                    <span>Titlu</span>
-                                    <span>Data limită</span>
-                                    <span>Departament</span>
-                                    <span>Terminat</span>
+                                    <span>{t('tasks.col_title')}</span>
+                                    <span>{t('tasks.due_date_long')}</span>
+                                    <span>{t('tasks.department')}</span>
+                                    <span>{t('task_status.terminat')}</span>
                                     <span></span>
                                 </div>
 
@@ -320,7 +323,7 @@ export default function CompletedTasksPage() {
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-[11px] font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50"
                                             >
                                                 <RotateCcw className={`w-3 h-3 ${reactivatingId === task.id ? 'animate-spin' : ''}`} />
-                                                Reactivează
+                                                {t('tasks.reactivate')}
                                             </button>
                                         </div>
                                     </div>

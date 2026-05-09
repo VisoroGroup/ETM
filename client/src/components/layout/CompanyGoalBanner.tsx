@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, Pencil, Check, X } from 'lucide-react';
 import { settingsApi } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     darkMode?: boolean;
@@ -9,6 +10,7 @@ interface Props {
 
 export default function CompanyGoalBanner({ darkMode = true }: Props) {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [goal, setGoal] = useState('');
     const [editing, setEditing] = useState(false);
     const [editValue, setEditValue] = useState('');
@@ -69,8 +71,8 @@ export default function CompanyGoalBanner({ darkMode = true }: Props) {
                             className={`ml-1 p-1 rounded opacity-40 hover:opacity-100 transition-opacity flex-shrink-0 ${
                                 darkMode ? 'hover:bg-navy-700' : 'hover:bg-blue-100'
                             }`}
-                            title="Editare obiectivul companiei"
-                            aria-label="Editare obiectivul companiei"
+                            title={t('company_goal.edit')}
+                            aria-label={t('company_goal.edit')}
                         >
                             <Pencil className="w-3 h-3" />
                         </button>

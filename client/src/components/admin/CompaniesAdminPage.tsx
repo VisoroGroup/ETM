@@ -9,17 +9,18 @@ import {
     AdminCompanyInput,
 } from '../../services/api';
 import { Company, User, CompanyLanguage, CompanyTemplateType } from '../../types';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
-const LANGUAGE_OPTIONS: { value: CompanyLanguage; label: string }[] = [
-    { value: 'ro', label: 'Română' },
-    { value: 'hu', label: 'Magyar' },
-    { value: 'en', label: 'English' },
+const LANGUAGE_OPTIONS = (t: TFunction): { value: CompanyLanguage; label: string }[] => [
+    { value: 'ro', label: t('admin_companies.language_ro') },
+    { value: 'hu', label: t('admin_companies.language_hu') },
+    { value: 'en', label: t('admin_companies.language_en') },
 ];
 
-const TEMPLATE_OPTIONS: { value: CompanyTemplateType; label: string; hint: string }[] = [
-    { value: 'full', label: 'Full', hint: 'departamente + secțiuni + posturi (ca Visoro Global)' },
-    { value: 'project', label: 'Project', hint: 'proiecte cu stage-uri (ca Neo Plan / PUG)' },
-    { value: 'simple', label: 'Simple', hint: 'doar sarcini și utilizatori (ca Hungary)' },
+const TEMPLATE_OPTIONS = (t: TFunction): { value: CompanyTemplateType; label: string; hint: string }[] => [
+    { value: 'full', label: t('admin_companies.tpl_full'), hint: t('admin_companies.tpl_full_hint') },
+    { value: 'project', label: t('admin_companies.tpl_project'), hint: t('admin_companies.tpl_project_hint') },
+    { value: 'simple', label: t('admin_companies.tpl_simple'), hint: t('admin_companies.tpl_simple_hint') },
 ];
 
 const DEFAULT_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
@@ -29,6 +30,9 @@ interface UserWithCompanies extends User {
 }
 
 export default function CompaniesAdminPage() {
+    const { t } = useTranslation();
+    const languageOptions = LANGUAGE_OPTIONS(t);
+    const templateOptions = TEMPLATE_OPTIONS(t);
     const { user: currentUser } = useAuth();
     const { reload: reloadSidebar } = useCompany();
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -52,7 +56,7 @@ export default function CompaniesAdminPage() {
             setCompanies(c);
             setUsers(u);
         } catch (err: any) {
-            setError(err.response?.data?.error ?? 'Eroare la încărcare.');
+            setError(err.response?.data?.error ?? t('common.error_loading'));
         } finally {
             setLoading(false);
         }
@@ -66,7 +70,7 @@ export default function CompaniesAdminPage() {
             await load();
             await reloadSidebar();
         } catch (err: any) {
-            setError(err.response?.data?.error ?? 'Eroare.');
+            setError(err.response?.data?.error ?? t('admin_companies.error_generic'));
         }
     };
 
@@ -75,19 +79,19 @@ export default function CompaniesAdminPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                     <Building2 className="w-6 h-6 text-blue-400" />
-                    <h1 className="text-xl font-bold">Companii</h1>
+                    <h1 className="text-xl font-bold">{t('admin_companies.title')}</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm transition-colors">
                         <RefreshCw className="w-4 h-4" />
-                        Reîncarcă
+                        {t('admin_users.reload')}
                     </button>
                     {isSuperAdmin && (
                         <button
                             onClick={() => setShowCreate(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-medium"
                         >
-                            <Plus className="w-4 h-4" /> Companie nouă
+                            <Plus className="w-4 h-4" /> {t('admin_companies.create')}
                         </button>
                     )}
                 </div>
@@ -102,7 +106,7 @@ export default function CompaniesAdminPage() {
             {/* Companies table */}
             <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-hidden mb-6">
                 <div className="px-4 py-3 border-b border-navy-700/50">
-                    <h2 className="text-sm font-semibold">Lista companiilor ({companies.length})</h2>
+                    <h2 className="text-sm font-semibold">{t('admin_companies.list_title', { count: companies.length })}</h2>
                 </div>
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
@@ -113,13 +117,13 @@ export default function CompaniesAdminPage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-navy-700/50">
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Companie</th>
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Slug</th>
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Limbă</th>
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Tip</th>
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Status</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.company')}</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('admin_companies.col_slug')}</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.language')}</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('admin_companies.col_type')}</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.status')}</th>
                                     {isSuperAdmin && (
-                                        <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">Acțiuni</th>
+                                        <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.actions')}</th>
                                     )}
                                 </tr>
                             </thead>
@@ -136,30 +140,30 @@ export default function CompaniesAdminPage() {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-xs text-navy-300 font-mono">{c.slug}</td>
-                                        <td className="px-4 py-3 text-xs">{LANGUAGE_OPTIONS.find((l) => l.value === c.language)?.label ?? c.language}</td>
-                                        <td className="px-4 py-3 text-xs">{TEMPLATE_OPTIONS.find((t) => t.value === c.template_type)?.label ?? c.template_type}</td>
+                                        <td className="px-4 py-3 text-xs">{languageOptions.find((l) => l.value === c.language)?.label ?? c.language}</td>
+                                        <td className="px-4 py-3 text-xs">{templateOptions.find((tp) => tp.value === c.template_type)?.label ?? c.template_type}</td>
                                         <td className="px-4 py-3">
                                             {c.is_archived
-                                                ? <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">Arhivată</span>
-                                                : <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Activă</span>}
+                                                ? <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">{t('common.archived')}</span>
+                                                : <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">{t('common.active')}</span>}
                                         </td>
                                         {isSuperAdmin && (
                                             <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                                                 <button
                                                     onClick={() => setEditing(c)}
                                                     className="inline-flex items-center gap-1 px-2 py-1 rounded bg-navy-700 hover:bg-navy-600 text-xs"
-                                                    title="Editează"
+                                                    title={t('common.edit')}
                                                 >
-                                                    <Edit2 className="w-3 h-3" /> Editează
+                                                    <Edit2 className="w-3 h-3" /> {t('common.edit')}
                                                 </button>
                                                 {c.id !== 1 && (
                                                     <button
                                                         onClick={() => onArchive(c)}
                                                         className="inline-flex items-center gap-1 px-2 py-1 rounded bg-navy-700 hover:bg-navy-600 text-xs"
-                                                        title={c.is_archived ? 'Reactivează' : 'Arhivează'}
+                                                        title={c.is_archived ? t('admin_companies.unarchive') : t('admin_companies.archive')}
                                                     >
                                                         {c.is_archived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
-                                                        {c.is_archived ? 'Reactivează' : 'Arhivează'}
+                                                        {c.is_archived ? t('admin_companies.unarchive') : t('admin_companies.archive')}
                                                     </button>
                                                 )}
                                             </td>
@@ -177,7 +181,7 @@ export default function CompaniesAdminPage() {
                 <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-hidden">
                     <div className="px-4 py-3 border-b border-navy-700/50 flex items-center gap-2">
                         <Users className="w-4 h-4 text-navy-300" />
-                        <h2 className="text-sm font-semibold">Acces utilizatori la companii</h2>
+                        <h2 className="text-sm font-semibold">{t('admin_companies.user_access_title')}</h2>
                     </div>
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
@@ -188,10 +192,10 @@ export default function CompaniesAdminPage() {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-navy-700/50">
-                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
-                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Rol</th>
-                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Companii</th>
-                                        <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">Acțiuni</th>
+                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.user')}</th>
+                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.role')}</th>
+                                        <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.companies')}</th>
+                                        <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -207,11 +211,11 @@ export default function CompaniesAdminPage() {
                                                 <td className="px-4 py-3 text-xs">{u.role}</td>
                                                 <td className="px-4 py-3">
                                                     {isAdminUser ? (
-                                                        <span className="text-[11px] text-navy-300 italic">Toate (implicit, {u.role})</span>
+                                                        <span className="text-[11px] text-navy-300 italic">{t('admin_companies.implicit_access', { role: u.role })}</span>
                                                     ) : (
                                                         <div className="flex flex-wrap gap-1">
                                                             {(u.company_ids ?? []).length === 0
-                                                                ? <span className="text-[11px] text-navy-400 italic">— niciuna —</span>
+                                                                ? <span className="text-[11px] text-navy-400 italic">{t('admin_companies.no_access')}</span>
                                                                 : (u.company_ids ?? []).map((cid) => {
                                                                     const c = companies.find((x) => x.id === cid);
                                                                     if (!c) return null;
@@ -235,7 +239,7 @@ export default function CompaniesAdminPage() {
                                                             onClick={() => setAccessUserId(u.id)}
                                                             className="px-2 py-1 rounded bg-navy-700 hover:bg-navy-600 text-xs"
                                                         >
-                                                            Editează acces
+                                                            {t('admin_companies.edit_access')}
                                                         </button>
                                                     )}
                                                 </td>
@@ -288,6 +292,9 @@ export default function CompaniesAdminPage() {
 }
 
 function CompanyEditorModal({ company, onClose, onSaved }: { company?: Company; onClose: () => void; onSaved: () => void; }) {
+    const { t } = useTranslation();
+    const languageOptions = LANGUAGE_OPTIONS(t);
+    const templateOptions = TEMPLATE_OPTIONS(t);
     const [name, setName] = useState(company?.name ?? '');
     const [sidebarName, setSidebarName] = useState(company?.sidebar_name ?? '');
     const [slug, setSlug] = useState(company?.slug ?? '');
@@ -320,7 +327,7 @@ function CompanyEditorModal({ company, onClose, onSaved }: { company?: Company; 
             }
             onSaved();
         } catch (e: any) {
-            setErr(e.response?.data?.error ?? 'Eroare la salvare.');
+            setErr(e.response?.data?.error ?? t('common.error_saving'));
         } finally {
             setSaving(false);
         }
@@ -330,33 +337,33 @@ function CompanyEditorModal({ company, onClose, onSaved }: { company?: Company; 
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div className="bg-navy-900 border border-navy-700 rounded-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-semibold">{isEdit ? 'Editează companie' : 'Companie nouă'}</h3>
+                    <h3 className="text-base font-semibold">{isEdit ? t('admin_companies.form_edit_title') : t('admin_companies.form_create_title')}</h3>
                     <button onClick={onClose} className="text-navy-400 hover:text-white"><X className="w-5 h-5" /></button>
                 </div>
 
                 {err && <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-xs">{err}</div>}
 
                 <div className="space-y-3">
-                    <Field label="Nume oficial">
+                    <Field label={t('admin_companies.official_name')}>
                         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Visoro Hungary KFT" className={inputCls} />
                     </Field>
-                    <Field label="Nume scurt (sidebar)">
+                    <Field label={t('admin_companies.sidebar_name')}>
                         <input value={sidebarName} onChange={(e) => setSidebarName(e.target.value)} placeholder="Hungary" className={inputCls} />
                     </Field>
-                    <Field label="Slug (URL-safe — opțional, generat din nume dacă lipsește)">
+                    <Field label={t('admin_companies.slug')}>
                         <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="hungary" className={inputCls} />
                     </Field>
-                    <Field label="Limbă">
+                    <Field label={t('common.language')}>
                         <select value={language} onChange={(e) => setLanguage(e.target.value as CompanyLanguage)} className={inputCls}>
-                            {LANGUAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            {languageOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     </Field>
-                    <Field label="Tip de structură">
+                    <Field label={t('admin_companies.structure_type')}>
                         <select value={templateType} onChange={(e) => setTemplateType(e.target.value as CompanyTemplateType)} className={inputCls}>
-                            {TEMPLATE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
+                            {templateOptions.map((o) => <option key={o.value} value={o.value}>{o.label} — {o.hint}</option>)}
                         </select>
                     </Field>
-                    <Field label="Culoare (hex)">
+                    <Field label={t('admin_companies.color_hex')}>
                         <div className="flex items-center gap-2">
                             <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-10 h-9 bg-transparent cursor-pointer" />
                             <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#3B82F6" className={inputCls + ' flex-1'} />
@@ -368,25 +375,25 @@ function CompanyEditorModal({ company, onClose, onSaved }: { company?: Company; 
                                         onClick={() => setColor(c)}
                                         className="w-6 h-6 rounded border border-navy-700"
                                         style={{ backgroundColor: c }}
-                                        aria-label={`Setează culoarea ${c}`}
+                                        aria-label={t('admin_companies.set_color_aria', { color: c })}
                                     />
                                 ))}
                             </div>
                         </div>
                     </Field>
-                    <Field label="Icon (lucide name — opțional, e.g. building-2)">
+                    <Field label={t('admin_companies.icon')}>
                         <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="building-2" className={inputCls} />
                     </Field>
                 </div>
 
                 <div className="flex gap-2 mt-5">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm">Anulează</button>
+                    <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm">{t('common.cancel')}</button>
                     <button
                         onClick={submit}
                         disabled={saving || !name.trim() || !sidebarName.trim()}
                         className="flex-1 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium disabled:opacity-50"
                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (isEdit ? 'Salvează' : 'Creează')}
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (isEdit ? t('common.save') : t('common.create'))}
                     </button>
                 </div>
             </div>
@@ -405,6 +412,7 @@ function UserCompanyAccessModal({
     onClose: () => void;
     onSaved: () => void;
 }) {
+    const { t } = useTranslation();
     const [selected, setSelected] = useState<Set<number>>(new Set(user.company_ids ?? []));
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
@@ -425,7 +433,7 @@ function UserCompanyAccessModal({
             await adminUserCompaniesApi.setUserCompanies(user.id, Array.from(selected));
             onSaved();
         } catch (e: any) {
-            setErr(e.response?.data?.error ?? 'Eroare la salvare.');
+            setErr(e.response?.data?.error ?? t('common.error_saving'));
         } finally {
             setSaving(false);
         }
@@ -436,7 +444,7 @@ function UserCompanyAccessModal({
             <div className="bg-navy-900 border border-navy-700 rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="text-base font-semibold">Acces companii</h3>
+                        <h3 className="text-base font-semibold">{t('admin_companies.modal_user_access_title')}</h3>
                         <p className="text-xs text-navy-400">{user.display_name} · {user.email}</p>
                     </div>
                     <button onClick={onClose} className="text-navy-400 hover:text-white"><X className="w-5 h-5" /></button>
@@ -466,13 +474,13 @@ function UserCompanyAccessModal({
                 </div>
 
                 <div className="flex gap-2 mt-5">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm">Anulează</button>
+                    <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm">{t('common.cancel')}</button>
                     <button
                         onClick={save}
                         disabled={saving}
                         className="flex-1 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium disabled:opacity-50"
                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Salvează'}
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('common.save')}
                     </button>
                 </div>
             </div>

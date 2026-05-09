@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { tasksApi, authApi, departmentsApi, postsApi } from '../../services/api';
 import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User, OrgDepartment, OrgSection, OrgPost } from '../../types';
 import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase, Plus } from 'lucide-react';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     onClose: () => void;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function TaskFormModal({ onClose, onCreated }: Props) {
+    const { t } = useTranslation();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -43,15 +45,15 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
     async function handleCreatePost() {
         if (!newPostName.trim()) {
-            setError('Numele postului este obligatoriu.');
+            setError(t('task_form.error_post_name_required'));
             return;
         }
         if (!newPostUserId) {
-            setError('Responsabilul postului este obligatoriu.');
+            setError(t('task_form.error_post_user_required'));
             return;
         }
         if (!selectedSectionId) {
-            setError('Alege mai întâi subdepartamentul.');
+            setError(t('task_form.error_select_section_first'));
             return;
         }
         try {
@@ -68,7 +70,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
             setNewPostUserId('');
             setNewPostDescription('');
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la crearea postului.');
+            setError(err.response?.data?.error || t('task_form.error_creating_post'));
         } finally {
             setCreatingPost(false);
         }
@@ -115,11 +117,11 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!title.trim() || !dueDate) {
-            setError('Titlul și termenul limită sunt obligatorii.');
+            setError(t('task_form.error_title_and_due_required'));
             return;
         }
         if (!selectedDeptId) {
-            setError('Departamentul este obligatoriu.');
+            setError(t('task_form.error_department_required'));
             return;
         }
         // Build the scope payload depending on which level the user stopped at.
@@ -128,14 +130,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
             scopePayload.assigned_department_id = selectedDeptId;
         } else {
             if (!selectedSectionId) {
-                setError('Subdepartamentul este obligatoriu.');
+                setError(t('task_form.error_section_required'));
                 return;
             }
             if (isSectionHeadScope) {
                 scopePayload.assigned_section_id = selectedSectionId;
             } else {
                 if (!assignedPostId) {
-                    setError('Postul (persoana responsabilă) este obligatoriu.');
+                    setError(t('task_form.error_post_required'));
                     return;
                 }
                 scopePayload.assigned_post_id = assignedPostId;
@@ -160,7 +162,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     await recurringApi.set(task.id, frequency, workdaysOnly);
                 } catch (recurErr) {
                     console.error('Recurring setup failed:', recurErr);
-                    setError('Sarcina a fost creată, dar recurența nu a putut fi setată. Poți seta recurența din detalii.');
+                    setError(t('task_form.error_recurring_partial'));
                     setSaving(false);
                     // Still refresh the list so user sees the new task
                     onCreated();
@@ -170,7 +172,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
             onCreated();
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la crearea sarcinii.');
+            setError(err.response?.data?.error || t('task_form.error_creating_task'));
         } finally {
             setSaving(false);
         }
@@ -180,7 +182,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
-                    <h2 className="text-lg font-bold">Sarcină nouă</h2>
+                    <h2 className="text-lg font-bold">{t('tasks.new_task')}</h2>
                     <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
@@ -193,26 +195,26 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
                     <div>
                         <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                            <FileText className="w-3.5 h-3.5 inline mr-1" /> Titlu *
+                            <FileText className="w-3.5 h-3.5 inline mr-1" /> {t('task_form.title_label')} *
                         </label>
                         <input
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             maxLength={500}
-                            placeholder="Ex: Pregătirea raportului trimestrial"
+                            placeholder={t('task_form.title_placeholder')}
                             className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                             autoFocus
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">Descriere</label>
+                        <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('tasks.description')}</label>
                         <textarea
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             rows={3}
-                            placeholder="Detalii suplimentare..."
+                            placeholder={t('task_form.description_placeholder')}
                             className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
                         />
                     </div>
@@ -220,7 +222,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     {/* Date */}
                     <div>
                         <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                            <Calendar className="w-3.5 h-3.5 inline mr-1" /> Data limită *
+                            <Calendar className="w-3.5 h-3.5 inline mr-1" /> {t('tasks.due_date_long')} *
                         </label>
                         <input
                             type="date"
@@ -234,14 +236,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                     <div className="space-y-3">
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                <Building2 className="w-3.5 h-3.5 inline mr-1" /> Departament *
+                                <Building2 className="w-3.5 h-3.5 inline mr-1" /> {t('tasks.department')} *
                             </label>
                             <select
                                 value={selectedDeptId}
                                 onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setAssignedPostId(''); setShowCreatePost(false); }}
                                 className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                             >
-                                <option value="">— Alege departamentul —</option>
+                                <option value="">— {t('task_form.select_department')} —</option>
                                 {orgDepts.map(d => (
                                     <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
@@ -251,18 +253,18 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         {selectedDeptId && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> Subdepartament *
+                                    <Layers className="w-3.5 h-3.5 inline mr-1" /> {t('task_form.section')} *
                                 </label>
                                 <select
                                     value={selectedSectionId}
                                     onChange={e => { setSelectedSectionId(e.target.value); setAssignedPostId(''); setShowCreatePost(false); }}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
-                                    <option value="">— Alege subdepartamentul —</option>
+                                    <option value="">— {t('task_form.select_section')} —</option>
                                     {/* Dept-head scope option — only shown if the department has a head user */}
                                     {selectedDept?.head_user_name && (
                                         <option value={SEL_DEPT_HEAD}>
-                                            — Vezetőjének: {selectedDept.head_user_name} —
+                                            — {t('task_form.assign_to_head', { name: selectedDept.head_user_name })} —
                                         </option>
                                     )}
                                     {availableSections.map(s => (
@@ -271,8 +273,8 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 </select>
                                 {isDeptHeadScope && (
                                     <p className="text-[10px] text-navy-400 mt-1">
-                                        Responsabil automat: <span className="text-blue-400">{selectedDept?.head_user_name}</span>
-                                        <span className="text-navy-500"> (conducător departament)</span>
+                                        {t('task_form.auto_assignee')}: <span className="text-blue-400">{selectedDept?.head_user_name}</span>
+                                        <span className="text-navy-500"> ({t('task_form.dept_head_role')})</span>
                                     </p>
                                 )}
                             </div>
@@ -281,7 +283,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         {selectedSectionId && !isDeptHeadScope && !showCreatePost && (
                             <div>
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> Post (persoana responsabilă) *
+                                    <Briefcase className="w-3.5 h-3.5 inline mr-1" /> {t('task_form.post_label')} *
                                 </label>
                                 <select
                                     value={assignedPostId}
@@ -295,29 +297,29 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     }}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
-                                    <option value="">— Alege postul —</option>
+                                    <option value="">— {t('task_form.select_post')} —</option>
                                     {/* Section-head scope option — only if the section has a head user */}
                                     {selectedSection?.head_user_name && (
                                         <option value={SEL_SECTION_HEAD}>
-                                            — Vezetőjének: {selectedSection.head_user_name} —
+                                            — {t('task_form.assign_to_head', { name: selectedSection.head_user_name })} —
                                         </option>
                                     )}
                                     {availablePosts.map(p => (
                                         <option key={p.id} value={p.id}>
-                                            {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
+                                            {p.name}{p.user_name ? ` → ${p.user_name}` : ` (${t('task_form.post_unoccupied')})`}
                                         </option>
                                     ))}
-                                    <option value="__create_new__">+ Creare post nou…</option>
+                                    <option value="__create_new__">+ {t('task_form.create_new_post')}</option>
                                 </select>
                                 {isSectionHeadScope && (
                                     <p className="text-[10px] text-navy-400 mt-1">
-                                        Responsabil automat: <span className="text-blue-400">{selectedSection?.head_user_name}</span>
-                                        <span className="text-navy-500"> (conducător subdepartament)</span>
+                                        {t('task_form.auto_assignee')}: <span className="text-blue-400">{selectedSection?.head_user_name}</span>
+                                        <span className="text-navy-500"> ({t('task_form.section_head_role')})</span>
                                     </p>
                                 )}
                                 {!isSectionHeadScope && selectedPost?.user_name && (
                                     <p className="text-[10px] text-navy-400 mt-1">
-                                        Responsabil automat: <span className="text-blue-400">{selectedPost.user_name}</span>
+                                        {t('task_form.auto_assignee')}: <span className="text-blue-400">{selectedPost.user_name}</span>
                                     </p>
                                 )}
                             </div>
@@ -327,47 +329,47 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             <div className="border border-blue-500/30 bg-blue-500/5 rounded-lg p-3 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-medium text-blue-300">
-                                        <Plus className="w-3.5 h-3.5 inline mr-1" /> Post nou
+                                        <Plus className="w-3.5 h-3.5 inline mr-1" /> {t('task_form.new_post')}
                                     </span>
                                     <button
                                         type="button"
                                         onClick={() => { setShowCreatePost(false); setNewPostName(''); setNewPostUserId(''); setNewPostDescription(''); setError(''); }}
                                         className="text-xs text-navy-400 hover:text-white"
                                     >
-                                        Anulează
+                                        {t('common.cancel')}
                                     </button>
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Nume post *</label>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">{t('task_form.post_name')} *</label>
                                     <input
                                         type="text"
                                         value={newPostName}
                                         onChange={e => setNewPostName(e.target.value)}
                                         maxLength={200}
-                                        placeholder="Ex: Gestiune stoc"
+                                        placeholder={t('task_form.post_name_placeholder')}
                                         className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Responsabil (user) *</label>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">{t('task_form.responsible_user')} *</label>
                                     <select
                                         value={newPostUserId}
                                         onChange={e => setNewPostUserId(e.target.value)}
                                         className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                     >
-                                        <option value="">— Alege responsabilul —</option>
+                                        <option value="">— {t('task_form.select_responsible')} —</option>
                                         {users.map(u => (
                                             <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">Descriere (opțional)</label>
+                                    <label className="text-[11px] font-medium text-navy-400 mb-1 block">{t('task_form.description_optional')}</label>
                                     <textarea
                                         value={newPostDescription}
                                         onChange={e => setNewPostDescription(e.target.value)}
                                         rows={2}
-                                        placeholder="Responsabilitățile postului…"
+                                        placeholder={t('task_form.post_description_placeholder')}
                                         className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
                                     />
                                 </div>
@@ -377,7 +379,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     disabled={creatingPost}
                                     className="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors"
                                 >
-                                    {creatingPost ? 'Se salvează…' : 'Salvează postul'}
+                                    {creatingPost ? t('task_form.saving') : t('task_form.save_post')}
                                 </button>
                             </div>
                         )}
@@ -393,18 +395,18 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 className="w-4 h-4 rounded border-navy-600 bg-navy-800 text-blue-500 focus:ring-blue-500"
                             />
                             <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-                            <span className="text-sm">Sarcină recurentă</span>
+                            <span className="text-sm">{t('task_form.recurring_task')}</span>
                         </label>
                         {isRecurring && (
                             <div className="mt-3 ml-6">
                                 <select
                                     value={frequency}
                                     onChange={e => setFrequency(e.target.value as RecurringFrequency)}
-                                    aria-label="Frecvența recurenței"
+                                    aria-label={t('task_form.recurrence_frequency')}
                                     className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
                                     {(Object.keys(FREQUENCIES) as RecurringFrequency[]).map(f => (
-                                        <option key={f} value={f}>{FREQUENCIES[f]}</option>
+                                        <option key={f} value={f}>{t(`task_form.frequency_${f}`)}</option>
                                     ))}
                                 </select>
                                 {frequency === 'daily' && (
@@ -415,18 +417,18 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                             onChange={e => setWorkdaysOnly(e.target.checked)}
                                             className="w-4 h-4 rounded border-navy-600 bg-navy-800 text-blue-500 focus:ring-blue-500"
                                         />
-                                        <span className="text-xs text-navy-300">Doar în zile lucrătoare (Luni-Vineri)</span>
+                                        <span className="text-xs text-navy-300">{t('task_form.workdays_only')}</span>
                                     </label>
                                 )}
                                 {/* Recurrence preview — plain-language explanation */}
                                 {dueDate && (
                                     <p className="text-[11px] text-cyan-400/90 mt-2 italic">
                                         {(() => {
-                                            const freq = FREQUENCIES[frequency].toLowerCase();
+                                            const freq = t(`task_form.frequency_${frequency}`).toLowerCase();
                                             const prefix = frequency === 'daily' && workdaysOnly
-                                                ? 'zilnic (doar luni-vineri)'
+                                                ? t('task_form.daily_workdays')
                                                 : freq;
-                                            return `După finalizare, sarcina se va repeta ${prefix}, începând cu ${dueDate}.`;
+                                            return t('task_form.recurrence_preview', { prefix, date: dueDate });
                                         })()}
                                     </p>
                                 )}
@@ -441,14 +443,14 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             onClick={onClose}
                             className="px-4 py-2.5 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors"
                         >
-                            Anulează
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
                             className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 transition-all"
                         >
-                            {saving ? 'Se creează...' : 'Creează sarcina'}
+                            {saving ? t('task_form.creating') : t('task_form.create_task')}
                         </button>
                     </div>
                 </form>

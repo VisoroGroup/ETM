@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Send, CheckCircle, XCircle, RefreshCw, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n/I18nContext';
 import { emailApi } from '../../services/api';
 
 interface EmailLog {
@@ -17,6 +18,7 @@ interface EmailLog {
 
 export default function EmailLogsPage() {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [logs, setLogs] = useState<EmailLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [testLoading, setTestLoading] = useState(false);
@@ -49,7 +51,7 @@ export default function EmailLogsPage() {
         } catch (err: any) {
             setTestResult({
                 success: false,
-                message: err.response?.data?.error || err.message || 'Eroare la trimitere'
+                message: err.response?.data?.error || err.message || t('email_log.send_error')
             });
         } finally {
             setTestLoading(false);
@@ -65,11 +67,11 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <Mail className="w-6 h-6 text-blue-400" />
-                    <h1 className="text-xl font-bold">Jurnal emailuri</h1>
+                    <h1 className="text-xl font-bold">{t('email_log.title')}</h1>
                 </div>
                 <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm transition-colors">
                     <RefreshCw className="w-4 h-4" />
-                    Reîncarcă
+                    {t('email_log.reload')}
                 </button>
             </div>
 
@@ -77,15 +79,15 @@ export default function EmailLogsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-navy-800/50 border border-navy-700/50 rounded-xl p-4">
                     <p className="text-2xl font-bold text-white">{logs.length}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">Total emailuri</p>
+                    <p className="text-xs text-navy-400 mt-0.5">{t('email_log.total')}</p>
                 </div>
                 <div className="bg-navy-800/50 border border-navy-700/50 rounded-xl p-4">
                     <p className="text-2xl font-bold text-green-400">{sentCount}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">Trimise cu succes</p>
+                    <p className="text-xs text-navy-400 mt-0.5">{t('email_log.sent_ok')}</p>
                 </div>
                 <div className="bg-navy-800/50 border border-navy-700/50 rounded-xl p-4">
                     <p className="text-2xl font-bold text-red-400">{failedCount}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">Eșuate</p>
+                    <p className="text-xs text-navy-400 mt-0.5">{t('email_log.failed')}</p>
                 </div>
             </div>
 
@@ -94,14 +96,14 @@ export default function EmailLogsPage() {
                 <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl p-4 mb-6">
                     <div className="flex items-center gap-2 mb-3">
                         <TestTube className="w-4 h-4 text-amber-400" />
-                        <h2 className="text-sm font-semibold">Trimite email de test</h2>
+                        <h2 className="text-sm font-semibold">{t('email_log.send_test')}</h2>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
                         <input
                             type="email"
                             value={testEmail}
                             onChange={e => setTestEmail(e.target.value)}
-                            placeholder={`Implicit: ${user.email}`}
+                            placeholder={t('email_log.default_placeholder', { email: user.email })}
                             className="flex-1 bg-navy-900/50 border border-navy-600 rounded-lg px-3 py-2 text-sm text-white placeholder-navy-500 outline-none focus:border-blue-500 transition-colors"
                         />
                         <button
@@ -110,7 +112,7 @@ export default function EmailLogsPage() {
                             className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <Send className="w-4 h-4" />
-                            {testLoading ? 'Se trimite...' : 'Trimite test'}
+                            {testLoading ? t('email_log.sending') : t('email_log.send_test_button')}
                         </button>
                     </div>
                     {testResult && (
@@ -119,7 +121,7 @@ export default function EmailLogsPage() {
                         </div>
                     )}
                     <p className="text-xs text-navy-500 mt-2">
-                        Necesită AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET și GRAPH_SENDER_EMAIL în Railway Variables.
+                        {t('email_log.azure_required_note')}
                     </p>
                 </div>
             )}
@@ -128,7 +130,7 @@ export default function EmailLogsPage() {
             <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-x-auto">
                 <div className="px-4 py-3 border-b border-navy-700/50">
                     <h2 className="text-sm font-semibold">
-                        {user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager' ? 'Toate emailurile' : 'Emailurile mele'}
+                        {user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager' ? t('email_log.all_emails') : t('email_log.my_emails')}
                     </h2>
                 </div>
 
@@ -139,20 +141,20 @@ export default function EmailLogsPage() {
                 ) : logs.length === 0 ? (
                     <div className="text-center py-12">
                         <Mail className="w-10 h-10 text-navy-600 mx-auto mb-3" />
-                        <p className="text-sm text-navy-400">Nu există emailuri în log</p>
+                        <p className="text-sm text-navy-400">{t('email_log.empty')}</p>
                     </div>
                 ) : (
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-navy-700/50">
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Status</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.status')}</th>
                                 {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager') && (
-                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
+                                    <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.user')}</th>
                                 )}
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Tip</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Sarcini</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Data</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Eroare</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('email_log.col_type')}</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('email_log.col_tasks')}</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('email_log.col_date')}</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('email_log.col_error')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -160,8 +162,8 @@ export default function EmailLogsPage() {
                                 <tr key={log.id} className="border-b border-navy-700/30 hover:bg-navy-700/20 transition-colors">
                                     <td className="px-4 py-3">
                                         {log.status === 'sent'
-                                            ? <span className="flex items-center gap-1.5 text-green-400 text-xs"><CheckCircle className="w-3.5 h-3.5" />Trimis</span>
-                                            : <span className="flex items-center gap-1.5 text-red-400 text-xs"><XCircle className="w-3.5 h-3.5" />Eșuat</span>
+                                            ? <span className="flex items-center gap-1.5 text-green-400 text-xs"><CheckCircle className="w-3.5 h-3.5" />{t('email_log.status_sent')}</span>
+                                            : <span className="flex items-center gap-1.5 text-red-400 text-xs"><XCircle className="w-3.5 h-3.5" />{t('email_log.status_failed')}</span>
                                         }
                                     </td>
                                     {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager') && (
@@ -174,7 +176,7 @@ export default function EmailLogsPage() {
                                         <span className="text-xs text-navy-300">{log.email_type.replace('_', ' ')}</span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="text-xs text-navy-300">{log.task_ids?.length || 0} {(log.task_ids?.length || 0) === 1 ? 'sarcină' : 'sarcini'}</span>
+                                        <span className="text-xs text-navy-300">{log.task_ids?.length || 0} {(log.task_ids?.length || 0) === 1 ? t('email_log.task_one') : t('email_log.task_many')}</span>
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className="text-xs text-navy-300">

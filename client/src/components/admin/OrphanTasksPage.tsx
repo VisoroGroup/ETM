@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw, ChevronDown, Loader2, CheckCircle2 } from 'lu
 import { orphanTasksApi, OrphanTask, departmentsApi, tasksApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import UserAvatar from '../ui/UserAvatar';
+import { useTranslation } from '../../i18n/I18nContext';
 
 /**
  * Admin triage page.
@@ -16,6 +17,7 @@ import UserAvatar from '../ui/UserAvatar';
  * and (if the post has a user) assigned_to is updated by the backend too.
  */
 export default function OrphanTasksPage() {
+    const { t } = useTranslation();
     const { showToast } = useToast();
     const [tasks, setTasks] = useState<OrphanTask[]>([]);
     const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function OrphanTasksPage() {
             setTasks(o.tasks);
             setOrgDepts(d.departments || []);
         } catch {
-            showToast('Eroare la încărcare', 'error');
+            showToast(t('common.error_loading'), 'error');
         } finally {
             setLoading(false);
         }
@@ -62,30 +64,30 @@ export default function OrphanTasksPage() {
     async function assignPost(taskId: string) {
         const sel = selection[taskId];
         if (!sel) {
-            showToast('Alege scope-ul', 'error');
+            showToast(t('admin_orphan.choose_scope'), 'error');
             return;
         }
 
         // Determine which scope was chosen based on the sentinel values
         const payload: any = {};
         if (sel.sectionId === SEL_DEPT_HEAD) {
-            if (!sel.deptId) { showToast('Alege departamentul', 'error'); return; }
+            if (!sel.deptId) { showToast(t('admin_orphan.choose_department'), 'error'); return; }
             payload.assigned_department_id = sel.deptId;
         } else if (sel.postId === SEL_SECTION_HEAD) {
-            if (!sel.sectionId) { showToast('Alege subdepartamentul', 'error'); return; }
+            if (!sel.sectionId) { showToast(t('admin_orphan.choose_subdepartment'), 'error'); return; }
             payload.assigned_section_id = sel.sectionId;
         } else {
-            if (!sel.postId) { showToast('Alege postul sau vezetőjének', 'error'); return; }
+            if (!sel.postId) { showToast(t('admin_orphan.choose_post_or_head'), 'error'); return; }
             payload.assigned_post_id = sel.postId;
         }
 
         setSaving(prev => ({ ...prev, [taskId]: true }));
         try {
             await tasksApi.update(taskId, payload);
-            showToast('Scope atribuit!');
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            showToast(t('admin_orphan.scope_assigned'));
+            setTasks(prev => prev.filter(tk => tk.id !== taskId));
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('admin_orphan.assign_failed'), 'error');
         } finally {
             setSaving(prev => ({ ...prev, [taskId]: false }));
         }
@@ -106,36 +108,34 @@ export default function OrphanTasksPage() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <AlertTriangle className="w-6 h-6 text-amber-400" />
-                        Sarcini orfane
+                        {t('admin_orphan.title')}
                     </h1>
                     <p className="text-navy-400 text-sm mt-1">
-                        Sarcini fără post asignat — nu apar sub nicio unitate în organigramă.
-                        Atribuie-le un post ca să devină vizibile pentru întreaga echipă.
+                        {t('admin_orphan.subtitle')}
                     </p>
                 </div>
                 <button
                     onClick={loadAll}
                     className="flex items-center gap-1.5 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs hover:bg-navy-700/50"
                 >
-                    <RefreshCw className="w-3.5 h-3.5" /> Reîncarcă
+                    <RefreshCw className="w-3.5 h-3.5" /> {t('admin_users.reload')}
                 </button>
             </div>
 
             {loading ? (
                 <div className="flex items-center justify-center py-16 text-navy-400">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" /> Se încarcă…
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('common.loading')}
                 </div>
             ) : tasks.length === 0 ? (
                 <div className="text-center py-16">
                     <CheckCircle2 className="w-12 h-12 text-green-400/60 mx-auto mb-3" />
-                    <p className="text-navy-300 text-sm font-medium">Toate sarcinile au post asignat!</p>
-                    <p className="text-navy-500 text-xs mt-1">Nu sunt sarcini orfane de rezolvat.</p>
+                    <p className="text-navy-300 text-sm font-medium">{t('admin_orphan.all_assigned')}</p>
+                    <p className="text-navy-500 text-xs mt-1">{t('admin_orphan.no_orphans')}</p>
                 </div>
             ) : (
                 <>
                     <p className="text-xs text-navy-400 mb-3">
-                        {tasks.length} {tasks.length === 1 ? 'sarcină' : 'sarcini'} fără post.
-                        Cele marcate cu 🔁 sunt șabloane recurente — atribuind postul, toate instanțele viitoare vor moșteni automat.
+                        {t(tasks.length === 1 ? 'admin_orphan.count_one' : 'admin_orphan.count_other', { count: tasks.length })}
                     </p>
                     <div className="space-y-2">
                         {tasks.map(task => {
@@ -157,9 +157,9 @@ export default function OrphanTasksPage() {
                                                 {task.is_recurring_template && (
                                                     <span
                                                         className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                                                        title="Șablon recurent — instanțele viitoare vor moșteni postul"
+                                                        title={t('admin_orphan.recurring_tooltip')}
                                                     >
-                                                        🔁 recurent
+                                                        🔁 {t('admin_orphan.recurring_badge')}
                                                     </span>
                                                 )}
                                                 <h3 className="text-sm font-semibold text-white truncate">{task.title}</h3>
@@ -167,7 +167,7 @@ export default function OrphanTasksPage() {
                                             <div className="flex items-center gap-3 mt-1 text-[10px] text-navy-500">
                                                 <span className="flex items-center gap-1">
                                                     <UserAvatar name={task.creator_name} avatarUrl={task.creator_avatar} size="xs" />
-                                                    creat de {task.creator_name}
+                                                    {t('admin_orphan.created_by', { name: task.creator_name })}
                                                 </span>
                                                 {task.assignee_name && (
                                                     <span className="flex items-center gap-1">
@@ -175,7 +175,7 @@ export default function OrphanTasksPage() {
                                                         → {task.assignee_name}
                                                     </span>
                                                 )}
-                                                <span>scadent {task.due_date}</span>
+                                                <span>{t('admin_orphan.due', { date: task.due_date })}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -183,30 +183,30 @@ export default function OrphanTasksPage() {
                                     {/* Three selects + action */}
                                     <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-end">
                                         <div className="flex-1">
-                                            <label className="block text-[10px] text-navy-500 mb-0.5">Departament *</label>
+                                            <label className="block text-[10px] text-navy-500 mb-0.5">{t('admin_orphan.department_label')}</label>
                                             <select
                                                 value={sel.deptId}
                                                 onChange={(e) => updateSelection(task.id, 'deptId', e.target.value)}
                                                 className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded text-xs text-white focus:outline-none focus:border-blue-500/50"
                                             >
-                                                <option value="">— alege —</option>
+                                                <option value="">{t('admin_orphan.choose_placeholder')}</option>
                                                 {orgDepts.map(d => (
                                                     <option key={d.id} value={d.id}>{d.name}</option>
                                                 ))}
                                             </select>
                                         </div>
                                         <div className="flex-1">
-                                            <label className="block text-[10px] text-navy-500 mb-0.5">Subdepartament *</label>
+                                            <label className="block text-[10px] text-navy-500 mb-0.5">{t('admin_orphan.subdepartment_label')}</label>
                                             <select
                                                 value={sel.sectionId}
                                                 onChange={(e) => updateSelection(task.id, 'sectionId', e.target.value)}
                                                 disabled={!sel.deptId}
                                                 className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded text-xs text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-40"
                                             >
-                                                <option value="">— alege —</option>
+                                                <option value="">{t('admin_orphan.choose_placeholder')}</option>
                                                 {dept?.head_user_name && (
                                                     <option value={SEL_DEPT_HEAD}>
-                                                        — Vezetőjének: {dept.head_user_name} —
+                                                        {t('admin_orphan.head_option', { name: dept.head_user_name })}
                                                     </option>
                                                 )}
                                                 {sections.map((s: any) => (
@@ -215,22 +215,22 @@ export default function OrphanTasksPage() {
                                             </select>
                                         </div>
                                         <div className="flex-1">
-                                            <label className="block text-[10px] text-navy-500 mb-0.5">Post *</label>
+                                            <label className="block text-[10px] text-navy-500 mb-0.5">{t('admin_orphan.post_label')}</label>
                                             <select
                                                 value={sel.postId}
                                                 onChange={(e) => updateSelection(task.id, 'postId', e.target.value)}
                                                 disabled={!sel.sectionId || isDeptHeadScope}
                                                 className="w-full px-2 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded text-xs text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-40"
                                             >
-                                                <option value="">— alege —</option>
+                                                <option value="">{t('admin_orphan.choose_placeholder')}</option>
                                                 {section?.head_user_name && (
                                                     <option value={SEL_SECTION_HEAD}>
-                                                        — Vezetőjének: {section.head_user_name} —
+                                                        {t('admin_orphan.head_option', { name: section.head_user_name })}
                                                     </option>
                                                 )}
                                                 {posts.map((p: any) => (
                                                     <option key={p.id} value={p.id}>
-                                                        {p.name}{p.user_name ? ` → ${p.user_name}` : ' (neocupat)'}
+                                                        {p.name}{p.user_name ? ` → ${p.user_name}` : ` ${t('admin_orphan.unoccupied')}`}
                                                     </option>
                                                 ))}
                                             </select>
@@ -247,24 +247,24 @@ export default function OrphanTasksPage() {
                                             }
                                             className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
-                                            {saving[task.id] ? 'Se salvează…' : 'Atribuie'}
+                                            {saving[task.id] ? t('admin_orphan.saving') : t('admin_orphan.assign')}
                                         </button>
                                     </div>
                                     {isDeptHeadScope && dept?.head_user_name && (
                                         <p className="text-[10px] text-navy-400 mt-1.5">
-                                            Responsabil: <span className="text-blue-400">{dept.head_user_name}</span>
-                                            <span className="text-navy-500"> (conducător departament)</span>
+                                            {t('admin_orphan.assignee_label')}: <span className="text-blue-400">{dept.head_user_name}</span>
+                                            <span className="text-navy-500"> {t('admin_orphan.dept_head_suffix')}</span>
                                         </p>
                                     )}
                                     {isSectionHeadScope && section?.head_user_name && (
                                         <p className="text-[10px] text-navy-400 mt-1.5">
-                                            Responsabil: <span className="text-blue-400">{section.head_user_name}</span>
-                                            <span className="text-navy-500"> (conducător subdepartament)</span>
+                                            {t('admin_orphan.assignee_label')}: <span className="text-blue-400">{section.head_user_name}</span>
+                                            <span className="text-navy-500"> {t('admin_orphan.section_head_suffix')}</span>
                                         </p>
                                     )}
                                     {!isDeptHeadScope && !isSectionHeadScope && chosen?.post?.user_name && sel.postId && (
                                         <p className="text-[10px] text-navy-400 mt-1.5">
-                                            Responsabil: <span className="text-blue-400">{chosen.post.user_name}</span>
+                                            {t('admin_orphan.assignee_label')}: <span className="text-blue-400">{chosen.post.user_name}</span>
                                         </p>
                                     )}
                                 </div>

@@ -6,6 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import type { WidgetConfig } from '../../types';
 import { AVAILABLE_WIDGETS } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     isOpen: boolean;
@@ -17,6 +18,7 @@ interface Props {
 export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }: Props) {
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { t } = useTranslation();
     const [items, setItems] = useState<WidgetConfig[]>([...layout]);
     const [saving, setSaving] = useState(false);
 
@@ -47,10 +49,10 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
         try {
             await dashboardApi.savePreferences(items);
             onSave(items);
-            showToast('Preferințe salvate!', 'success');
+            showToast(t('dashboard.prefs_saved'), 'success');
             onClose();
         } catch {
-            showToast('Eroare la salvare', 'error');
+            showToast(t('common.error_saving'), 'error');
         } finally {
             setSaving(false);
         }
@@ -62,9 +64,9 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
             const defaults = await dashboardApi.getPreferences();
             setItems(defaults);
             onSave(defaults);
-            showToast('Resetat la implicit', 'success');
+            showToast(t('dashboard.reset_done'), 'success');
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('dashboard.try_again'), 'error');
         }
     }
 
@@ -73,7 +75,7 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
             <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
-                    <h2 className="text-base font-bold">Personalizare panou</h2>
+                    <h2 className="text-base font-bold">{t('dashboard.customize_title')}</h2>
                     <button onClick={onClose} className="text-navy-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
@@ -131,7 +133,7 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
                 {/* Footer */}
                 <div className="flex items-center justify-between p-5 border-t border-navy-700/50">
                     <button onClick={reset} className="flex items-center gap-1.5 text-sm text-navy-400 hover:text-white transition-colors">
-                        <RotateCcw className="w-3.5 h-3.5" /> Resetare
+                        <RotateCcw className="w-3.5 h-3.5" /> {t('dashboard.reset')}
                     </button>
                     <button
                         onClick={save}
@@ -139,7 +141,7 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
                         className="px-5 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        Salvează
+                        {t('common.save')}
                     </button>
                 </div>
             </div>

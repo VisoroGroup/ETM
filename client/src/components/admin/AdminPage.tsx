@@ -7,11 +7,13 @@ import WebhookManager from './WebhookManager';
 import ApiTokenManager from './ApiTokenManager';
 import UserAvatar from '../ui/UserAvatar';
 import AvatarCropper from '../ui/AvatarCropper';
+import { useTranslation } from '../../i18n/I18nContext';
 
 const ROLES = ['superadmin', 'admin', 'manager', 'user'] as const;
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
 
 export default function AdminPage() {
+    const { t } = useTranslation();
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<any>(null);
@@ -29,11 +31,11 @@ export default function AdminPage() {
 
     const handleAvatarUpload = async (userId: string, file: File) => {
         if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-            setError('Doar imagini (jpg, png, gif, webp) sunt permise.');
+            setError(t('admin_users.error_image_type'));
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            setError('Imaginea nu poate depăși 5MB.');
+            setError(t('admin_users.error_image_size'));
             return;
         }
         
@@ -52,7 +54,7 @@ export default function AdminPage() {
             const updated = await adminApi.uploadUserAvatar(userId, croppedFile);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, avatar_url: updated.avatar_url } : u));
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la încărcarea avatarului.');
+            setError(err.response?.data?.error || t('admin_users.error_avatar_upload'));
         } finally {
             setUploadingAvatarId(null);
         }
@@ -72,7 +74,7 @@ export default function AdminPage() {
             setUsers(usersData);
             setStats(statsData);
         } catch (err: any) {
-            setError('Nu ai acces la panoul admin.');
+            setError(t('admin_users.error_no_access'));
         } finally {
             setLoading(false);
         }
@@ -103,7 +105,7 @@ export default function AdminPage() {
             setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
             setEditingId(null);
         } catch {
-            setError('Eroare la salvare.');
+            setError(t('common.error_saving'));
         } finally {
             setSaving(false);
         }
@@ -111,7 +113,7 @@ export default function AdminPage() {
 
     const createUser = async () => {
         if (!newUser.email.trim() || !newUser.display_name.trim()) {
-            setError('Email și nume sunt obligatorii.');
+            setError(t('admin_users.error_email_name_required'));
             return;
         }
         setCreating(true);
@@ -122,19 +124,19 @@ export default function AdminPage() {
             setShowCreateUser(false);
             setNewUser({ email: '', display_name: '', role: 'user', departments: [] });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la crearea utilizatorului.');
+            setError(err.response?.data?.error || t('admin_users.error_create_user'));
         } finally {
             setCreating(false);
         }
     };
 
     const deleteUser = async (u: User) => {
-        if (!confirm(`Ștergi utilizatorul ${u.display_name}? Aceasta va șterge și toate sarcinile create de el.`)) return;
+        if (!confirm(t('admin_users.confirm_delete_user', { name: u.display_name }))) return;
         try {
             await adminApi.deleteUser(u.id);
             setUsers(prev => prev.filter(x => x.id !== u.id));
         } catch {
-            setError('Eroare la ștergere.');
+            setError(t('admin_users.error_delete'));
         }
     };
 
@@ -143,8 +145,8 @@ export default function AdminPage() {
             <div className="flex items-center justify-center h-96">
                 <div className="text-center">
                     <Shield className="w-12 h-12 text-red-400 mx-auto mb-3" />
-                    <p className="text-lg font-semibold text-red-400">Acces restricționat</p>
-                    <p className="text-sm text-gray-400 mt-1">Această pagina este doar pentru administratori.</p>
+                    <p className="text-lg font-semibold text-red-400">{t('admin_users.access_restricted')}</p>
+                    <p className="text-sm text-gray-400 mt-1">{t('admin_users.access_restricted_body')}</p>
                 </div>
             </div>
         );
@@ -156,11 +158,11 @@ export default function AdminPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <Shield className="w-6 h-6 text-blue-400" />
-                    <h1 className="text-xl font-bold">Panou administrare</h1>
+                    <h1 className="text-xl font-bold">{t('admin_users.title')}</h1>
                 </div>
                 <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm transition-colors">
                     <RefreshCw className="w-4 h-4" />
-                    Reîncarcă
+                    {t('admin_users.reload')}
                 </button>
             </div>
 
@@ -170,11 +172,11 @@ export default function AdminPage() {
             {stats && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
                     {[
-                        { label: 'Utilizatori', value: stats.total_users, color: 'text-blue-400' },
-                        { label: 'Sarcini total', value: stats.total_tasks, color: 'text-white' },
-                        { label: 'Terminate', value: stats.completed_tasks, color: 'text-green-400' },
-                        { label: 'Blocate', value: stats.blocked_tasks, color: 'text-red-400' },
-                        { label: 'Restante', value: stats.overdue_tasks, color: 'text-amber-400' },
+                        { label: t('admin_users.stat_users'), value: stats.total_users, color: 'text-blue-400' },
+                        { label: t('admin_users.stat_total_tasks'), value: stats.total_tasks, color: 'text-white' },
+                        { label: t('admin_users.stat_completed'), value: stats.completed_tasks, color: 'text-green-400' },
+                        { label: t('admin_users.stat_blocked'), value: stats.blocked_tasks, color: 'text-red-400' },
+                        { label: t('admin_users.stat_overdue'), value: stats.overdue_tasks, color: 'text-amber-400' },
                     ].map(s => (
                         <div key={s.label} className="bg-navy-800/50 border border-navy-700/50 rounded-xl p-4">
                             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -189,13 +191,13 @@ export default function AdminPage() {
                 <div className="px-4 py-3 border-b border-navy-700/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-navy-300" />
-                        <h2 className="text-sm font-semibold">Utilizatori ({users.length})</h2>
+                        <h2 className="text-sm font-semibold">{t('admin_users.list_title', { count: users.length })}</h2>
                     </div>
                     <button
                         onClick={() => setShowCreateUser(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium transition-colors"
                     >
-                        <Plus className="w-3.5 h-3.5" /> Adaugă coleg
+                        <Plus className="w-3.5 h-3.5" /> {t('admin_users.add_colleague')}
                     </button>
                 </div>
 
@@ -208,10 +210,10 @@ export default function AdminPage() {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-navy-700/50">
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Utilizator</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Rol</th>
-                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">Departamente</th>
-                                <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">Acțiuni</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.user')}</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.role')}</th>
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('admin_users.departments')}</th>
+                                <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -302,12 +304,12 @@ export default function AdminPage() {
                                                         onClick={() => saveEdit(u.id)}
                                                         disabled={saving}
                                                         className="p-1.5 rounded text-green-400 hover:bg-green-500/10 transition-colors"
-                                                        title="Salvează"
+                                                        title={t('common.save')}
                                                     >
                                                         <CheckCircle className="w-4 h-4" />
                                                     </button>
                                                     <button onClick={() => setEditingId(null)} className="text-xs text-navy-400 hover:text-white px-2">
-                                                        Anulează
+                                                        {t('common.cancel')}
                                                     </button>
                                                 </>
                                             ) : (
@@ -315,7 +317,7 @@ export default function AdminPage() {
                                                     <button
                                                         onClick={() => startEdit(u)}
                                                         className="p-1.5 rounded text-navy-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                                                        title="Editează"
+                                                        title={t('common.edit')}
                                                     >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
@@ -323,7 +325,7 @@ export default function AdminPage() {
                                                         <button
                                                             onClick={() => deleteUser(u)}
                                                             className="p-1.5 rounded text-navy-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                                            title="Șterge"
+                                                            title={t('common.delete')}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -363,7 +365,7 @@ export default function AdminPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowCreateUser(false)}>
                     <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-lg font-bold text-white">Adaugă coleg</h3>
+                            <h3 className="text-lg font-bold text-white">{t('admin_users.add_colleague')}</h3>
                             <button onClick={() => setShowCreateUser(false)} className="text-navy-400 hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
@@ -371,17 +373,17 @@ export default function AdminPage() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Nume *</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('admin_users.field_name')}</label>
                                 <input
                                     type="text"
                                     value={newUser.display_name}
                                     onChange={e => setNewUser(prev => ({ ...prev, display_name: e.target.value }))}
-                                    placeholder="Nume Prenume"
+                                    placeholder={t('admin_users.placeholder_name')}
                                     className="w-full px-3 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Email *</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('admin_users.field_email')}</label>
                                 <input
                                     type="email"
                                     value={newUser.email}
@@ -391,7 +393,7 @@ export default function AdminPage() {
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Rol</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('common.role')}</label>
                                 <select
                                     value={newUser.role}
                                     onChange={e => setNewUser(prev => ({ ...prev, role: e.target.value }))}
@@ -403,7 +405,7 @@ export default function AdminPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">Departamente</label>
+                                <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('admin_users.departments')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {DEPT_KEYS.map(dept => {
                                         const active = newUser.departments.includes(dept);
@@ -437,14 +439,14 @@ export default function AdminPage() {
                                 onClick={() => setShowCreateUser(false)}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-navy-700 hover:bg-navy-600 text-navy-300 transition-colors"
                             >
-                                Anulează
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={createUser}
                                 disabled={creating}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-400 text-white transition-colors disabled:opacity-50"
                             >
-                                {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Adaugă'}
+                                {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('common.add')}
                             </button>
                         </div>
                     </div>
