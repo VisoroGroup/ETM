@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Banknote, Activity, CalendarClock, CheckCircle2,
-    PieChart, ChevronDown, FileText, Download, MoreHorizontal, X, Search, CalendarRange, AlertTriangle
+    ChevronLeft, ChevronRight, Bell, Shield, Mail, LayoutTemplate, Activity, CalendarClock, CheckCircle2,
+    MoreHorizontal, X, Search, CalendarRange, AlertTriangle
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -38,17 +38,6 @@ export default function Layout() {
     const isSuperAdmin = user?.role === 'superadmin';
     const isManagerOrAbove = isAdmin || user?.role === 'manager';
 
-    const location = useLocation();
-    const isFinanciarRoute = (p: string) =>
-        p.startsWith('/financiar') || p.startsWith('/budget') || p.startsWith('/client-invoices') || p.startsWith('/bank-import');
-
-    const [financiarOpen, setFinanciarOpen] = useState(() => isFinanciarRoute(window.location.pathname));
-
-    // Sync sidebar section with current route
-    useEffect(() => {
-        setFinanciarOpen(isFinanciarRoute(location.pathname));
-    }, [location.pathname]);
-
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tasks', icon: ListTodo, label: 'Sarcini' },
@@ -63,14 +52,6 @@ export default function Layout() {
         ...(isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: 'Jurnal emailuri' }] : []),
         { to: '/terminate', icon: CheckCircle2, label: 'Terminate' },
     ];
-
-    const financiarSubItems = [
-        ...(isSuperAdmin ? [{ to: '/budget', icon: PieChart, label: 'Planificare buget' }] : []),
-        ...(isAdmin ? [{ to: '/financiar', icon: Banknote, label: 'Plăți' }] : []),
-        ...(isSuperAdmin ? [{ to: '/client-invoices', icon: FileText, label: 'Facturi clienți' }] : []),
-        ...(isSuperAdmin ? [{ to: '/bank-import', icon: Download, label: 'Import bancar' }] : []),
-    ];
-
 
     return (
         <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -116,57 +97,6 @@ export default function Layout() {
                             {!collapsed && <span>{label}</span>}
                         </NavLink>
                     ))}
-
-                    {/* Financiar expandable submenu */}
-                    {financiarSubItems.length > 0 && (
-                        <>
-                            <button
-                                onClick={() => setFinanciarOpen(!financiarOpen)}
-                                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
-                                    financiarOpen
-                                        ? darkMode ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50/50'
-                                        : darkMode ? 'text-navy-300 hover:bg-navy-800 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                }`}
-                                title={collapsed ? `Financiar (${financiarSubItems.length} opțiuni)` : undefined}
-                                aria-label={collapsed ? `Financiar — ${financiarSubItems.length} sub-opțiuni` : undefined}
-                            >
-                                <Banknote className="w-5 h-5 flex-shrink-0" />
-                                {/* M11: collapsed-state submenu indicator — tiny dot so users know there's more inside */}
-                                {collapsed && (
-                                    <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${darkMode ? 'bg-navy-400' : 'bg-gray-400'}`} />
-                                )}
-                                {!collapsed && (
-                                    <>
-                                        <span className="flex-1 text-left">Financiar</span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${darkMode ? 'bg-navy-800 text-navy-400' : 'bg-gray-100 text-gray-500'}`}>
-                                            {financiarSubItems.length}
-                                        </span>
-                                        <ChevronDown className={`w-4 h-4 transition-transform ${financiarOpen ? 'rotate-180' : ''}`} />
-                                    </>
-                                )}
-                            </button>
-                            {financiarOpen && !collapsed && (
-                                <div className="ml-4 space-y-0.5 border-l-2 border-navy-700/30 pl-2">
-                                    {financiarSubItems.map(({ to, icon: Icon, label }) => (
-                                        <NavLink
-                                            key={to}
-                                            to={to}
-                                            className={({ isActive }) =>
-                                                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                                                    isActive
-                                                        ? darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                                        : darkMode ? 'text-navy-400 hover:bg-navy-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-                                                }`
-                                            }
-                                        >
-                                            <Icon className="w-4 h-4 flex-shrink-0" />
-                                            <span>{label}</span>
-                                        </NavLink>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
                 </nav>
 
                 {/* Bottom section */}
@@ -306,24 +236,6 @@ export default function Layout() {
                         </div>
                         <div className="p-3 grid grid-cols-3 gap-2 pb-safe">
                             {navItems.slice(3).map(({ to, icon: Icon, label }) => (
-                                <NavLink
-                                    key={to}
-                                    to={to}
-                                    onClick={() => setShowMobileMenu(false)}
-                                    className={({ isActive }) =>
-                                        `flex flex-col items-center gap-1.5 px-3 py-4 rounded-xl text-[11px] font-medium transition-all ${
-                                            isActive
-                                                ? darkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                                : darkMode ? 'bg-navy-800/50 text-navy-300 active:bg-navy-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
-                                        }`
-                                    }
-                                >
-                                    <Icon className="w-5 h-5" />
-                                    <span className="text-center">{label}</span>
-                                </NavLink>
-                            ))}
-                            {/* Financiar submenu items for mobile */}
-                            {financiarSubItems.length > 0 && financiarSubItems.map(({ to, icon: Icon, label }) => (
                                 <NavLink
                                     key={to}
                                     to={to}

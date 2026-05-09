@@ -20,7 +20,7 @@ interface Task {
 /**
  * Build the scope label shown above each task cell, so people learn to
  * think in terms of posts/sections/departments, not individuals.
- *   post scope     → just the post name ("Plăți")
+ *   post scope     → just the post name (e.g. "Vânzări")
  *   section scope  → section name + " (conducător)" — it's a leadership task
  *   dept scope     → department name + " (conducător)" — same
  */

@@ -12,19 +12,19 @@ const MONTH_NAMES = [
     'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
 ];
 
-// GET /api/reports/monthly?month=2026-03&format=pdf&sections=tasks,departments,users,payments
+// GET /api/reports/monthly?month=2026-03&format=pdf&sections=tasks,departments,users
 router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { month, format = 'pdf', sections: sectionsStr = 'tasks,departments,users,payments' } = req.query as any;
+    const { month, format = 'pdf', sections: sectionsStr = 'tasks,departments,users' } = req.query as any;
 
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
         res.status(400).json({ error: 'Parametrul month este obligatoriu (format: YYYY-MM).' });
         return;
     }
 
-    const validSections = ['tasks', 'departments', 'users', 'payments'];
+    const validSections = ['tasks', 'departments', 'users'];
     const sections = (sectionsStr as string).split(',').filter((s: string) => validSections.includes(s));
     if (sections.length === 0) {
-        res.status(400).json({ error: 'Invalid sections parameter. Valid: tasks, departments, users, payments.' });
+        res.status(400).json({ error: 'Invalid sections parameter. Valid: tasks, departments, users.' });
         return;
     }
     const [year, m] = month.split('-').map(Number);
@@ -67,34 +67,21 @@ router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHan
         ORDER BY completed DESC
     `, [startDate, endDate]);
 
-    // Payment summary
-    let paymentSummary = null;
-    if (sections.includes('payments') && req.user!.role === 'admin') {
-        const { rows: [ps] } = await pool.query(`
-            SELECT
-                COALESCE(SUM(amount) FILTER (WHERE status = 'platit' AND paid_at >= $1 AND paid_at < $2), 0) AS paid,
-                COALESCE(SUM(amount) FILTER (WHERE status = 'de_platit' AND due_date >= $1 AND due_date < $2), 0) AS to_pay,
-                COALESCE(SUM(amount) FILTER (WHERE status = 'de_platit' AND due_date < $1), 0) AS overdue_amount
-            FROM payments WHERE deleted_at IS NULL
-        `, [startDate, endDate]);
-        paymentSummary = ps;
-    }
-
     if (format === 'excel') {
-        await generateExcel(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, paymentSummary, sections, month });
+        await generateExcel(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month });
     } else {
-        await generatePDF(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, paymentSummary, sections, month });
+        await generatePDF(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month });
     }
 }));
 
 interface ReportData {
     monthName: string; year: number;
     taskSummary: any; deptBreakdown: any[]; userBreakdown: any[];
-    paymentSummary: any | null; sections: string[]; month: string;
+    sections: string[]; month: string;
 }
 
 async function generatePDF(res: Response, data: ReportData) {
-    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, paymentSummary, sections, month } = data;
+    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month } = data;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=raport_${month}.pdf`);
@@ -191,24 +178,6 @@ async function generatePDF(res: Response, data: ReportData) {
         doc.moveDown(1);
     }
 
-    // Payment summary
-    if (sections.includes('payments') && paymentSummary) {
-        if (doc.y > 650) doc.addPage();
-        doc.fontSize(14).font('Helvetica-Bold').text('Sumar plăți');
-        doc.moveDown(0.5);
-        drawLine(doc);
-        doc.moveDown(0.5);
-
-        doc.fontSize(11).font('Helvetica');
-        doc.text(`Plătit în ${monthName}: `, { continued: true });
-        doc.font('Helvetica-Bold').text(`${Number(paymentSummary.paid).toLocaleString('ro-RO')} RON`);
-        doc.font('Helvetica').text(`De plătit în ${monthName}: `, { continued: true });
-        doc.font('Helvetica-Bold').text(`${Number(paymentSummary.to_pay).toLocaleString('ro-RO')} RON`);
-        doc.font('Helvetica').text('Restanțe: ', { continued: true });
-        doc.font('Helvetica-Bold').fillColor('#cc0000').text(`${Number(paymentSummary.overdue_amount).toLocaleString('ro-RO')} RON`);
-        doc.fillColor('#000');
-    }
-
     doc.end();
 }
 
@@ -218,7 +187,7 @@ function drawLine(doc: PDFKit.PDFDocument) {
 }
 
 async function generateExcel(res: Response, data: ReportData) {
-    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, paymentSummary, sections, month } = data;
+    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month } = data;
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'ETM';
@@ -264,17 +233,6 @@ async function generateExcel(res: Response, data: ReportData) {
         for (const u of userBreakdown) {
             ws.addRow([u.display_name, Number(u.completed), Number(u.overdue), Number(u.total_assigned)]);
         }
-    }
-
-    // Sheet 4: Plăți
-    if (sections.includes('payments') && paymentSummary) {
-        const ws = workbook.addWorksheet('Plăți');
-        ws.columns = [{ width: 30 }, { width: 18 }];
-        const h = ws.addRow(['Indicator', 'Sumă (RON)']);
-        h.eachCell(c => { Object.assign(c.style, headerStyle); });
-        ws.addRow([`Plătit în ${monthName}`, Number(paymentSummary.paid)]);
-        ws.addRow([`De plătit în ${monthName}`, Number(paymentSummary.to_pay)]);
-        ws.addRow(['Restanțe', Number(paymentSummary.overdue_amount)]);
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

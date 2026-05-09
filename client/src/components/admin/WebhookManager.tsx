@@ -10,9 +10,6 @@ const EVENT_LABELS: Record<string, string> = {
     'task.status_changed': 'Status sarcină modificat',
     'task.assigned': 'Sarcină atribuită',
     'task.overdue': 'Sarcină depășită',
-    'payment.due_soon': 'Plată scadentă în curând',
-    'payment.overdue': 'Plată depășită',
-    'payment.paid': 'Plată efectuată',
 };
 
 const STATUS_BADGES: Record<string, { bg: string; text: string; label: string }> = {

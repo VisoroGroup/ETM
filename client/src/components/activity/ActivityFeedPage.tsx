@@ -56,7 +56,7 @@ interface FeedItem {
     avatar_url: string | null;
     task_title: string;
     department_label: string | null;
-    source_type: 'task' | 'payment';
+    source_type: 'task';
 }
 
 export default function ActivityFeedPage() {
@@ -220,7 +220,6 @@ export default function ActivityFeedPage() {
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="inline-flex items-center gap-1 text-xs text-navy-300">
                                         {ACTION_ICONS[item.action_type] || <Activity className="w-3 h-3 text-navy-500" />}
-                                        {item.source_type === 'payment' ? '💰' : ''}
                                         <span className="truncate max-w-[250px]">{item.task_title || '—'}</span>
                                     </span>
                                     {item.department_label && (

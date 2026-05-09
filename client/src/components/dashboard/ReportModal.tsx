@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X, FileDown, Loader2 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import { safeLocalStorage } from '../../utils/storage';
 
 interface Props {
@@ -24,12 +23,11 @@ function getLast12Months(): { value: string; label: string }[] {
 }
 
 export default function ReportModal({ isOpen, onClose }: Props) {
-    const { user } = useAuth();
     const months = getLast12Months();
     const [month, setMonth] = useState(months[0].value);
     const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
     const [sections, setSections] = useState({
-        tasks: true, departments: true, users: true, payments: true,
+        tasks: true, departments: true, users: true,
     });
     const [generating, setGenerating] = useState(false);
 
@@ -136,7 +134,6 @@ export default function ReportModal({ isOpen, onClose }: Props) {
                                 { key: 'tasks' as const, label: 'Sumar sarcini' },
                                 { key: 'departments' as const, label: 'Detalii pe departamente' },
                                 { key: 'users' as const, label: 'Detalii pe utilizatori' },
-                                ...(user?.role === 'admin' ? [{ key: 'payments' as const, label: 'Sumar plăți' }] : []),
                             ].map(s => (
                                 <label key={s.key} className="flex items-center gap-2 cursor-pointer group">
                                     <input

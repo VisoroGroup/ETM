@@ -116,8 +116,7 @@ const adminOnly = (req: AuthRequest, res: Response, next: any) => {
 
 // --- Zod validation ---
 const VALID_EVENTS = [
-    'task.created', 'task.completed', 'task.status_changed', 'task.assigned', 'task.overdue',
-    'payment.due_soon', 'payment.overdue', 'payment.paid'
+    'task.created', 'task.completed', 'task.status_changed', 'task.assigned', 'task.overdue'
 ] as const;
 
 const safeUrl = z.string().url('URL invalid').max(2048).refine(

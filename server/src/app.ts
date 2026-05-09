@@ -22,7 +22,6 @@ import profileRoutes from './routes/profile';
 import notificationRoutes from './routes/notifications';
 import emailRoutes from './routes/emails';
 import templatesRoutes from './routes/templates';
-import paymentsRoutes from './routes/payments';
 import savedFiltersRoutes from './routes/savedFilters';
 import activityFeedRoutes from './routes/activityFeed';
 import reportsRoutes from './routes/reports';
@@ -30,9 +29,6 @@ import webhookRoutes from './routes/webhooks';
 import dayViewRoutes from './routes/dayView';
 import externalApiRoutes from './routes/externalApi';
 import filesRoutes from './routes/files';
-import budgetRoutes from './routes/budgetPlanning';
-import clientInvoiceRoutes from './routes/clientInvoices';
-import bankImportRoutes from './routes/bankImport';
 import userPreferencesRoutes from './routes/userPreferences';
 import departmentRoutes from './routes/departments';
 import policyRoutes from './routes/policies';
@@ -43,7 +39,6 @@ import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimi
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
-import { startPaymentEmailScheduler } from './cron/paymentScheduler';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -89,15 +84,11 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/templates', templatesRoutes);
-app.use('/api/payments', paymentsRoutes);
 app.use('/api/saved-filters', savedFiltersRoutes);
 app.use('/api/activity-feed', activityFeedRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/day-view', dayViewRoutes);
-app.use('/api/budget', budgetRoutes);
-app.use('/api/client-invoices', clientInvoiceRoutes);
-app.use('/api/bank-import', bankImportRoutes);
 app.use('/api/user-preferences', userPreferencesRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/policies', policyRoutes);
@@ -252,17 +243,8 @@ const server = app.listen(PORT, async () => {
         console.error('⚠️  Startup setup error (non-fatal):', err?.message);
     }
 
-    // Seed budget categories (idempotent — skips if already done)
-    try {
-        const { seedBudgetCategories } = await import('./database/seedBudgetCategories');
-        await seedBudgetCategories();
-    } catch (seedErr: any) {
-        console.error('⚠️ Budget seed error (non-fatal):', seedErr?.message);
-    }
-
     // Start email scheduler
     startEmailScheduler();
-    startPaymentEmailScheduler();
 
     // Start webhook retry processor (DB-based, survives restarts)
     startWebhookRetryProcessor();

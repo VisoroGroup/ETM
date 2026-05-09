@@ -282,8 +282,7 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
         { widget_id: 'urgent_tasks', visible: true, order: 5, size: 'full' },
         { widget_id: 'active_alerts', visible: true, order: 6, size: 'full' },
         { widget_id: 'bottlenecks', visible: true, order: 7, size: 'full' },
-        { widget_id: 'payment_summary', visible: true, order: 8, size: 'full' },
-        { widget_id: 'calendar', visible: false, order: 9, size: 'full' },
+        { widget_id: 'calendar', visible: false, order: 8, size: 'full' },
     ],
     manager: [
         { widget_id: 'global_stats', visible: true, order: 0, size: 'full' },
@@ -294,8 +293,7 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
         { widget_id: 'bottlenecks', visible: true, order: 5, size: 'full' },
         { widget_id: 'status_chart', visible: false, order: 6, size: 'half' },
         { widget_id: 'trend_chart', visible: false, order: 7, size: 'full' },
-        { widget_id: 'payment_summary', visible: false, order: 8, size: 'full' },
-        { widget_id: 'calendar', visible: false, order: 9, size: 'full' },
+        { widget_id: 'calendar', visible: false, order: 8, size: 'full' },
     ],
     user: [
         { widget_id: 'my_stats', visible: true, order: 0, size: 'full' },
@@ -307,7 +305,6 @@ const DEFAULT_LAYOUTS: Record<string, any[]> = {
         { widget_id: 'dept_chart', visible: false, order: 6, size: 'half' },
         { widget_id: 'trend_chart', visible: false, order: 7, size: 'full' },
         { widget_id: 'bottlenecks', visible: false, order: 8, size: 'full' },
-        { widget_id: 'payment_summary', visible: false, order: 9, size: 'full' },
     ],
 };
 

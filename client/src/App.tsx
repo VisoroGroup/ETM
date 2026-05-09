@@ -9,15 +9,11 @@ import TaskListPage from './components/tasks/TaskListPage';
 import AdminPage from './components/admin/AdminPage';
 import EmailLogsPage from './components/emails/EmailLogsPage';
 import TemplatesPage from './pages/TemplatesPage';
-import PaymentsPage from './components/payments/PaymentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import ActivityFeedPage from './components/activity/ActivityFeedPage';
 import DayViewPage from './components/dayview/DayViewPage';
 import WeekViewPage from './components/dayview/WeekViewPage';
 import CompletedTasksPage from './components/tasks/CompletedTasksPage';
-import BudgetPlanningPage from './components/budget/BudgetPlanningPage';
-import ClientInvoicesPage from './components/budget/ClientInvoicesPage';
-import BankImportPage from './components/budget/BankImportPage';
 import SearchPage from './components/search/SearchPage';
 import OrphanTasksPage from './components/admin/OrphanTasksPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -63,13 +59,9 @@ function AppRoutes() {
         <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/financiar" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PaymentsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/week-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><WeekViewPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/budget" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><BudgetPlanningPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/client-invoices" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><ClientInvoicesPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/bank-import" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><BankImportPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
