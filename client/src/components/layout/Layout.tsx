@@ -6,7 +6,7 @@ import { useTranslation, TFunction } from '../../i18n/I18nContext';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, Shield, Mail, Activity, CalendarClock, CheckCircle2,
-    MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2
+    MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2, Settings
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -56,6 +56,7 @@ function buildMenuForCompany(
         ...(role.isSuperAdmin ? [{ to: '/day-view', icon: CalendarClock, label: t('nav.day_view') }] : []),
         ...(role.isSuperAdmin ? [{ to: '/week-view', icon: CalendarRange, label: t('nav.week_view') }] : []),
         ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: t('nav.email_log') }] : []),
+        ...(tpl === 'project' && role.isAdmin ? [{ to: '/admin/pug', icon: Settings, label: t('nav.pug_config') }] : []),
         { to: '/terminate', icon: CheckCircle2, label: t('nav.completed') },
     ];
 }

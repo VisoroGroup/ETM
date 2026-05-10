@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Folder, Plus, Loader2, RefreshCw, X, Calendar, MapPin, Building2, Archive, ArchiveRestore } from 'lucide-react';
 import { pugProjectsApi, pugAdminApi, PugProject, PugWorkType, authApi } from '../../services/api';
 import { useTranslation } from '../../i18n/I18nContext';
@@ -14,6 +15,7 @@ const STATUS_BADGE: Record<PugProject['status'], { label: string; cls: string }>
 export default function ProjectsListPage() {
     const { t } = useTranslation();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [projects, setProjects] = useState<PugProject[]>([]);
     const [workTypes, setWorkTypes] = useState<PugWorkType[]>([]);
     const [users, setUsers] = useState<{ id: string; display_name: string; avatar_url: string | null; email: string }[]>([]);
@@ -102,7 +104,19 @@ export default function ProjectsListPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.map((p) => (
-                        <div key={p.id} className="bg-navy-800/40 border border-navy-700/50 rounded-xl p-4 hover:bg-navy-800/60 transition-colors">
+                        <div
+                            key={p.id}
+                            onClick={() => navigate(`/proiecte/${p.id}`)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    navigate(`/proiecte/${p.id}`);
+                                }
+                            }}
+                            className="bg-navy-800/40 border border-navy-700/50 rounded-xl p-4 hover:bg-navy-800/60 hover:border-navy-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        >
                             <div className="flex items-start justify-between gap-2 mb-2">
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-sm font-semibold truncate">{p.title}</h3>
@@ -150,7 +164,7 @@ export default function ProjectsListPage() {
                             {isAdmin && (
                                 <div className="flex justify-end mt-3 pt-3 border-t border-navy-700/40">
                                     <button
-                                        onClick={() => onArchive(p)}
+                                        onClick={(e) => { e.stopPropagation(); onArchive(p); }}
                                         className="text-[11px] text-navy-400 hover:text-navy-200 flex items-center gap-1"
                                     >
                                         {p.is_archived
