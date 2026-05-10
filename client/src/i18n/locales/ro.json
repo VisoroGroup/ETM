@@ -480,6 +480,21 @@
         "icon_placeholder": "lucide name (ex: layers)",
         "name_placeholder": "Nume etapă / status / câmp"
     },
+    "pug_reminders": {
+        "tab": "Reminder-e",
+        "list_title": "Niveluri reminder ({{count}})",
+        "add": "Adaugă nivel",
+        "before": "{{days}} zile înainte",
+        "day_of": "În ziua scadenței",
+        "after": "{{days}} zile după scadență",
+        "col_days": "Zile",
+        "col_enabled": "Activ",
+        "duplicate_error": "Există deja un nivel cu acest număr de zile.",
+        "empty": "Niciun nivel configurat.",
+        "field_days_before": "Zile (negativ pentru depășire)",
+        "field_enabled": "Activ",
+        "help_text": "Numere pozitive = înainte de scadență. 0 = în ziua scadenței. Numere negative = după scadență."
+    },
     "task_drawer": {
         "tab_subtasks": "Subtask-uri",
         "tab_checklist": "Checklist",

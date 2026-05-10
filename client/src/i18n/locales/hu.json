@@ -480,6 +480,21 @@
         "icon_placeholder": "lucide név (pl: layers)",
         "name_placeholder": "Stádium / státusz / mező neve"
     },
+    "pug_reminders": {
+        "tab": "Emlékeztetők",
+        "list_title": "Emlékeztető szintek ({{count}})",
+        "add": "Új szint hozzáadása",
+        "before": "{{days}} nappal előtte",
+        "day_of": "A határidő napján",
+        "after": "{{days}} nappal a határidő után",
+        "col_days": "Napok",
+        "col_enabled": "Aktív",
+        "duplicate_error": "Már létezik szint ezzel a napszámmal.",
+        "empty": "Nincs beállított szint.",
+        "field_days_before": "Napok (negatív érték = lejárat utáni)",
+        "field_enabled": "Aktív",
+        "help_text": "Pozitív szám = határidő előtti emlékeztető. 0 = a határidő napján. Negatív szám = határidő után."
+    },
     "task_drawer": {
         "tab_subtasks": "Részfeladatok",
         "tab_checklist": "Ellenőrzőlista",

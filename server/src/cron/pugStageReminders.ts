@@ -7,20 +7,44 @@ import { sendEmail } from '../services/emailService';
 // ---------------------------------------------------------------------------
 // Daily at 07:00 Europe/Bucharest, scan every non-archived project of
 // `template_type = 'project'` companies. For each stage with a deadline whose
-// status is not terminal, compute days-until-deadline and decide a level:
-//   days >= 14 and days < 21 -> 'd14'
-//   days >=  7 and days < 14 -> 'd7'
-//   days >=  3 and days <  7 -> 'd3'
-//   days >=  1 and days <  3 -> 'd1'
-//   days == 0                -> 'd0'
-//   days <  0                -> 'overdue'  (sent only once total)
+// status is not terminal, compute days-until-deadline and match against the
+// company's configured pug_reminder_settings rows.
+//
+// Each enabled row has a `days_before` integer:
+//   > 0 : fires when (deadline - today) === days_before  (e.g. 14 = two weeks before)
+//   = 0 : fires on the deadline day
+//   < 0 : fires |days_before| days AFTER deadline (e.g. -1 = one day past deadline)
+//
+// The level encoded in pug_stage_reminder_log is:
+//   'd<N>'    for days_before >= 0   (e.g. 'd14', 'd7', 'd3', 'd1', 'd0')
+//   'overdue' for days_before === -1 (preserves existing log rows)
+//   'd<N>'    for days_before < -1   (e.g. 'd-2', 'd-7'); kept distinct so the
+//             dedup row is unique per configured level.
 // A row in pug_stage_reminder_log enforces single-shot delivery per
 // (stage, level). Each project responsible receives both an email (in their
 // company's language) and a notifications row.
 // ---------------------------------------------------------------------------
 
-type ReminderLevel = 'd14' | 'd7' | 'd3' | 'd1' | 'd0' | 'overdue';
 type Lang = 'ro' | 'hu' | 'en';
+
+/**
+ * Map a days_before integer to the level string used in pug_stage_reminder_log.
+ * Keep 'overdue' as the canonical name for days_before === -1 so that existing
+ * log rows from the pre-config era remain valid.
+ */
+function levelKey(daysBefore: number): string {
+    if (daysBefore === -1) return 'overdue';
+    return `d${daysBefore}`;
+}
+
+/**
+ * Whether this reminder fires for a stage that is `daysUntil` days away from
+ * its deadline. days_before > 0 means "fire when there are exactly N days
+ * left"; 0 means "fire on the day"; negative means "fire N days past deadline".
+ */
+function matchesLevel(daysUntil: number, daysBefore: number): boolean {
+    return daysUntil === daysBefore;
+}
 
 interface StageRow {
     stage_id: string;
@@ -61,16 +85,6 @@ function daysUntilBucharest(deadlineIso: string): number {
     return Math.round((d - t) / 86400000);
 }
 
-function decideLevel(days: number): ReminderLevel | null {
-    if (days >= 14 && days < 21) return 'd14';
-    if (days >= 7 && days < 14) return 'd7';
-    if (days >= 3 && days < 7) return 'd3';
-    if (days >= 1 && days < 3) return 'd1';
-    if (days === 0) return 'd0';
-    if (days < 0) return 'overdue';
-    return null; // days >= 21 — too far out
-}
-
 function pickLang(raw: string): Lang {
     if (raw === 'hu' || raw === 'en') return raw;
     return 'ro';
@@ -100,30 +114,31 @@ interface Phrases {
 
 function phrasesFor(opts: {
     lang: Lang;
-    level: ReminderLevel;
     days: number;
     stageName: string;
     projectTitle: string;
     deadlineFormatted: string;
     displayName: string;
 }): Phrases {
-    const { lang, level, days, stageName, projectTitle, deadlineFormatted, displayName } = opts;
+    const { lang, days, stageName, projectTitle, deadlineFormatted, displayName } = opts;
+    const overdue = days < 0;
+    const dayOf = days === 0;
     const overdueDays = Math.abs(days);
     const firstName = displayName.split(' ')[0];
 
     if (lang === 'hu') {
-        const daysLine = level === 'overdue'
+        const daysLine = overdue
             ? `Lejart hatarido: ${overdueDays} napja!`
-            : level === 'd0'
+            : dayOf
                 ? `Hatarido ma jar le.`
                 : `Meg ${days} nap a hataridoig.`;
-        const notifMessage = level === 'overdue'
+        const notifMessage = overdue
             ? `${stageName} (${projectTitle}): hatarido lejart ${overdueDays} napja.`
-            : level === 'd0'
+            : dayOf
                 ? `${stageName} (${projectTitle}): hatarido ma jar le.`
                 : `${stageName} (${projectTitle}): meg ${days} nap a hataridoig.`;
         return {
-            subject: level === 'overdue'
+            subject: overdue
                 ? `[Sarcinator] Lejart hatarido — ${stageName} / ${projectTitle}`
                 : `[Sarcinator] Hatarido emlekezteto — ${stageName} / ${projectTitle}`,
             heading: 'Sarcinator — projekt szakasz emlekezteto',
@@ -137,18 +152,18 @@ function phrasesFor(opts: {
     }
 
     if (lang === 'en') {
-        const daysLine = level === 'overdue'
+        const daysLine = overdue
             ? `Deadline overdue by ${overdueDays} day(s)!`
-            : level === 'd0'
+            : dayOf
                 ? `Deadline is today.`
                 : `${days} day(s) until deadline.`;
-        const notifMessage = level === 'overdue'
+        const notifMessage = overdue
             ? `${stageName} of project ${projectTitle}: overdue by ${overdueDays} day(s).`
-            : level === 'd0'
+            : dayOf
                 ? `${stageName} of project ${projectTitle}: deadline today.`
                 : `${stageName} of project ${projectTitle}: ${days} day(s) left.`;
         return {
-            subject: level === 'overdue'
+            subject: overdue
                 ? `[Sarcinator] Overdue — ${stageName} / ${projectTitle}`
                 : `[Sarcinator] Deadline reminder — ${stageName} / ${projectTitle}`,
             heading: 'Sarcinator — project stage reminder',
@@ -162,18 +177,18 @@ function phrasesFor(opts: {
     }
 
     // ro (default)
-    const daysLine = level === 'overdue'
+    const daysLine = overdue
         ? `Termen depasit cu ${overdueDays} zile!`
-        : level === 'd0'
+        : dayOf
             ? `Termenul este astazi.`
             : `Mai sunt ${days} zile pana la termen.`;
-    const notifMessage = level === 'overdue'
+    const notifMessage = overdue
         ? `${stageName} al proiectului ${projectTitle}: termen depasit cu ${overdueDays} zile.`
-        : level === 'd0'
+        : dayOf
             ? `${stageName} al proiectului ${projectTitle}: termen astazi.`
             : `${stageName} al proiectului ${projectTitle}: ${days} zile ramase.`;
     return {
-        subject: level === 'overdue'
+        subject: overdue
             ? `[Sarcinator] Termen depasit — ${stageName} / ${projectTitle}`
             : `[Sarcinator] Reamintire termen — ${stageName} / ${projectTitle}`,
         heading: 'Sarcinator — reamintire etapa proiect',
@@ -247,6 +262,22 @@ async function runPugStageReminderJob() {
             return;
         }
 
+        // Cache reminder-level configs per company (loaded lazily).
+        const settingsCache = new Map<number, number[]>();
+        const loadSettings = async (companyId: number): Promise<number[]> => {
+            const hit = settingsCache.get(companyId);
+            if (hit) return hit;
+            const { rows } = await pool.query<{ days_before: number }>(
+                `SELECT days_before FROM pug_reminder_settings
+                  WHERE company_id = $1 AND is_enabled = true
+                  ORDER BY days_before DESC`,
+                [companyId]
+            );
+            const list = rows.map(r => Number(r.days_before));
+            settingsCache.set(companyId, list);
+            return list;
+        };
+
         let sentCount = 0;
         let skippedCount = 0;
 
@@ -254,99 +285,106 @@ async function runPugStageReminderJob() {
             const days = daysUntilBucharest(s.deadline);
             if (Number.isNaN(days)) continue;
 
-            const level = decideLevel(days);
-            if (!level) continue; // too far out
+            const enabledLevels = await loadSettings(s.company_id);
+            if (enabledLevels.length === 0) continue;
 
-            // Already sent this level for this stage?
-            const { rowCount: alreadySent } = await pool.query(
-                `SELECT 1 FROM pug_stage_reminder_log WHERE project_stage_id = $1 AND level = $2`,
-                [s.stage_id, level]
-            );
-            if (alreadySent && alreadySent > 0) {
-                skippedCount++;
-                continue;
-            }
+            // Find every enabled level that matches today (typically 0 or 1).
+            const matched = enabledLevels.filter(d => matchesLevel(days, d));
+            if (matched.length === 0) continue;
 
-            // Find responsibles for this project.
-            const { rows: responsibles } = await pool.query<ResponsibleRow>(`
-                SELECT u.id AS user_id, u.email, u.display_name
-                FROM pug_project_responsibles pr
-                JOIN users u ON u.id = pr.user_id
-                WHERE pr.project_id = $1
-                  AND u.is_active = true
-                  AND u.email IS NOT NULL
-            `, [s.project_id]);
+            for (const daysBefore of matched) {
+                const level = levelKey(daysBefore);
 
-            if (responsibles.length === 0) {
-                // No-one to notify — still log the level so we don't keep checking.
+                // Already sent this level for this stage?
+                const { rowCount: alreadySent } = await pool.query(
+                    `SELECT 1 FROM pug_stage_reminder_log WHERE project_stage_id = $1 AND level = $2`,
+                    [s.stage_id, level]
+                );
+                if (alreadySent && alreadySent > 0) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Find responsibles for this project.
+                const { rows: responsibles } = await pool.query<ResponsibleRow>(`
+                    SELECT u.id AS user_id, u.email, u.display_name
+                    FROM pug_project_responsibles pr
+                    JOIN users u ON u.id = pr.user_id
+                    WHERE pr.project_id = $1
+                      AND u.is_active = true
+                      AND u.email IS NOT NULL
+                `, [s.project_id]);
+
+                if (responsibles.length === 0) {
+                    // No-one to notify — still log the level so we don't keep checking.
+                    await pool.query(
+                        `INSERT INTO pug_stage_reminder_log (company_id, project_stage_id, level)
+                         VALUES ($1, $2, $3)
+                         ON CONFLICT (project_stage_id, level) DO NOTHING`,
+                        [s.company_id, s.stage_id, level]
+                    );
+                    continue;
+                }
+
+                const lang = pickLang(s.company_language);
+                const deadlineFormatted = formatDate(s.deadline, lang);
+                const overdue = days < 0;
+
+                for (const u of responsibles) {
+                    const phrases = phrasesFor({
+                        lang,
+                        days,
+                        stageName: s.stage_name,
+                        projectTitle: s.project_title,
+                        deadlineFormatted,
+                        displayName: u.display_name || u.email,
+                    });
+
+                    const html = buildEmailHtml({
+                        phrases,
+                        stageName: s.stage_name,
+                        projectTitle: s.project_title,
+                        deadlineFormatted,
+                        overdue,
+                    });
+
+                    // Email — only if Graph credentials configured.
+                    if (process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET && process.env.AZURE_TENANT_ID) {
+                        try {
+                            await sendEmail({
+                                to: u.email,
+                                subject: phrases.subject,
+                                htmlBody: html,
+                                displayName: u.display_name || undefined,
+                            });
+                        } catch (err: any) {
+                            console.error(`[PUG-REMIND] email send failed to ${u.email}:`, err?.message);
+                        }
+                    } else {
+                        console.log(`[PUG-REMIND] (mock — no Azure creds) would email ${u.email}: ${phrases.subject}`);
+                    }
+
+                    // In-app notification (task_id NULL because this is a stage).
+                    try {
+                        await pool.query(
+                            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+                             VALUES ($1, NULL, 'pug_stage_deadline', $2, NULL, $3)`,
+                            [u.user_id, phrases.notifMessage, s.company_id]
+                        );
+                    } catch (err: any) {
+                        console.error(`[PUG-REMIND] notification insert failed for user ${u.user_id}:`, err?.message);
+                    }
+                }
+
+                // Record that this level has been sent.
                 await pool.query(
                     `INSERT INTO pug_stage_reminder_log (company_id, project_stage_id, level)
                      VALUES ($1, $2, $3)
                      ON CONFLICT (project_stage_id, level) DO NOTHING`,
                     [s.company_id, s.stage_id, level]
                 );
-                continue;
+                sentCount++;
             }
-
-            const lang = pickLang(s.company_language);
-            const deadlineFormatted = formatDate(s.deadline, lang);
-            const overdue = level === 'overdue';
-
-            for (const u of responsibles) {
-                const phrases = phrasesFor({
-                    lang,
-                    level,
-                    days,
-                    stageName: s.stage_name,
-                    projectTitle: s.project_title,
-                    deadlineFormatted,
-                    displayName: u.display_name || u.email,
-                });
-
-                const html = buildEmailHtml({
-                    phrases,
-                    stageName: s.stage_name,
-                    projectTitle: s.project_title,
-                    deadlineFormatted,
-                    overdue,
-                });
-
-                // Email — only if Graph credentials configured.
-                if (process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET && process.env.AZURE_TENANT_ID) {
-                    try {
-                        await sendEmail({
-                            to: u.email,
-                            subject: phrases.subject,
-                            htmlBody: html,
-                            displayName: u.display_name || undefined,
-                        });
-                    } catch (err: any) {
-                        console.error(`[PUG-REMIND] email send failed to ${u.email}:`, err?.message);
-                    }
-                } else {
-                    console.log(`[PUG-REMIND] (mock — no Azure creds) would email ${u.email}: ${phrases.subject}`);
-                }
-
-                // In-app notification (task_id NULL because this is a stage).
-                try {
-                    await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                         VALUES ($1, NULL, 'pug_stage_deadline', $2, NULL, $3)`,
-                        [u.user_id, phrases.notifMessage, s.company_id]
-                    );
-                } catch (err: any) {
-                    console.error(`[PUG-REMIND] notification insert failed for user ${u.user_id}:`, err?.message);
-                }
-            }
-
-            // Record that this level has been sent.
-            await pool.query(
-                `INSERT INTO pug_stage_reminder_log (company_id, project_stage_id, level)
-                 VALUES ($1, $2, $3)
-                 ON CONFLICT (project_stage_id, level) DO NOTHING`,
-                [s.company_id, s.stage_id, level]
-            );
-            sentCount++;
         }
 
         console.log(`[PUG-REMIND] done. sent=${sentCount}, skipped=${skippedCount}, candidates=${stages.length}`);

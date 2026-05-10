@@ -419,6 +419,13 @@ export interface PugCustomField {
     sort_order: number;
     is_active: boolean;
 }
+export interface PugReminderLevel {
+    id: string;
+    days_before: number;
+    is_enabled: boolean;
+    created_at: string;
+    updated_at: string;
+}
 export interface PugProject {
     id: string;
     title: string;
@@ -457,6 +464,12 @@ export const pugAdminApi = {
     createCustomField: (data: Partial<PugCustomField>) => api.post<{ field: PugCustomField }>('/admin/pug/custom-fields', data).then(r => r.data),
     updateCustomField: (id: string, data: Partial<PugCustomField>) => api.put<{ field: PugCustomField }>(`/admin/pug/custom-fields/${id}`, data).then(r => r.data),
     deleteCustomField: (id: string) => api.delete(`/admin/pug/custom-fields/${id}`).then(r => r.data),
+    listReminderLevels: () => api.get<{ levels: PugReminderLevel[] }>('/admin/pug/reminder-levels').then(r => r.data),
+    createReminderLevel: (data: { days_before: number; is_enabled?: boolean }) =>
+        api.post<{ level: PugReminderLevel }>('/admin/pug/reminder-levels', data).then(r => r.data),
+    updateReminderLevel: (id: string, data: { days_before?: number; is_enabled?: boolean }) =>
+        api.put<{ level: PugReminderLevel }>(`/admin/pug/reminder-levels/${id}`, data).then(r => r.data),
+    deleteReminderLevel: (id: string) => api.delete(`/admin/pug/reminder-levels/${id}`).then(r => r.data),
 };
 export const pugProjectsApi = {
     list: (includeArchived = false) => api.get<{ projects: PugProject[] }>('/pug/projects', { params: { archived: includeArchived } }).then(r => r.data),

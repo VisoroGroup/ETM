@@ -1,9 +1,10 @@
 import cron from 'node-cron';
 import pool from '../config/database';
-import { shouldSendReminder, daysDiff, formatDateRo, isWorkingDay, todayLocal } from '../utils/dateUtils';
+import { shouldSendReminder, daysDiff, isWorkingDay, todayLocal } from '../utils/dateUtils';
 import { DEPARTMENTS } from '../types';
 import { sendEmail } from '../services/emailService';
 import { dispatchWebhook } from '../services/webhookService';
+import { tServer, pickLocale, formatDateLocalized, ServerLocale } from '../i18n/serverI18n';
 
 interface TaskForEmail {
     id: string;
@@ -15,10 +16,12 @@ interface TaskForEmail {
     blocked_reason?: string;
 }
 
-interface UserEmail {
+interface UserCompanyEmail {
     user_id: string;
+    company_id: number;
     email: string;
     display_name: string;
+    language: ServerLocale;
     overdue: TaskForEmail[];
     due_today: TaskForEmail[];
     due_soon: TaskForEmail[];
@@ -27,93 +30,102 @@ interface UserEmail {
 }
 
 /**
- * Build the daily summary email HTML for a user
+ * Build the daily summary email HTML for a user, in their company's language.
  */
-function buildEmailHtml(userData: UserEmail): string {
-    const firstName = userData.display_name.split(' ')[0];
-    const today = formatDateRo(new Date());
+function buildEmailHtml(data: UserCompanyEmail): string {
+    const firstName = data.display_name.split(' ')[0];
+    const today = formatDateLocalized(new Date(), data.language);
+    const t = (key: string, vars?: Record<string, string | number>) =>
+        tServer(data.language, `daily_email.${key}`, vars);
 
     let html = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
       <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="margin: 0; font-size: 20px;">Sarcinator Visoro</h1>
-        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">Sumar zilnic — ${today}</p>
+        <h1 style="margin: 0; font-size: 20px;">ETM</h1>
+        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">${t('header_subtitle', { date: today })}</p>
       </div>
       <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p style="font-size: 16px; color: #333;">Bună dimineața, <strong>${firstName}</strong>!</p>
-        <p style="color: #666; font-size: 14px;">Iată sumarul task-urilor tale pentru astăzi:</p>
+        <p style="font-size: 16px; color: #333;">${t('greeting', { name: firstName })}</p>
+        <p style="color: #666; font-size: 14px;">${t('intro')}</p>
   `;
 
     // Overdue
-    if (userData.overdue.length > 0) {
+    if (data.overdue.length > 0) {
         html += `
       <div style="margin-top: 24px;">
-        <h2 style="color: #EF4444; font-size: 16px; margin-bottom: 8px;">🔴 DEPĂȘITE (${userData.overdue.length})</h2>
+        <h2 style="color: #EF4444; font-size: 16px; margin-bottom: 8px;">🔴 ${t('section_overdue', { count: data.overdue.length })}</h2>
         <div style="border-left: 3px solid #EF4444; padding-left: 12px;">
     `;
-        for (const task of userData.overdue) {
+        for (const task of data.overdue) {
             const daysOverdue = Math.abs(daysDiff(new Date(), new Date(task.due_date)));
             const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — depășit cu ${daysOverdue} zile — <span style="color: ${dept.color};">[${dept.label}]</span></p>`;
+            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('days_overdue', { days: daysOverdue })} — ${deptLabel}</p>`;
         }
         html += `</div></div>`;
     }
 
     // Due today
-    if (userData.due_today.length > 0) {
+    if (data.due_today.length > 0) {
         html += `
       <div style="margin-top: 24px;">
-        <h2 style="color: #F59E0B; font-size: 16px; margin-bottom: 8px;">🟡 SCADENTE AZI (${userData.due_today.length})</h2>
+        <h2 style="color: #F59E0B; font-size: 16px; margin-bottom: 8px;">🟡 ${t('section_today', { count: data.due_today.length })}</h2>
         <div style="border-left: 3px solid #F59E0B; padding-left: 12px;">
     `;
-        for (const task of userData.due_today) {
+        for (const task of data.due_today) {
             const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — scadent azi — <span style="color: ${dept.color};">[${dept.label}]</span></p>`;
+            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('due_today_label')} — ${deptLabel}</p>`;
         }
         html += `</div></div>`;
     }
 
     // Due soon
-    if (userData.due_soon.length > 0) {
+    if (data.due_soon.length > 0) {
         html += `
       <div style="margin-top: 24px;">
-        <h2 style="color: #F97316; font-size: 16px; margin-bottom: 8px;">🟠 SCADENTE ÎN CURÂND (${userData.due_soon.length})</h2>
+        <h2 style="color: #F97316; font-size: 16px; margin-bottom: 8px;">🟠 ${t('section_upcoming', { count: data.due_soon.length })}</h2>
         <div style="border-left: 3px solid #F97316; padding-left: 12px;">
     `;
-        for (const task of userData.due_soon) {
+        for (const task of data.due_soon) {
             const daysUntil = daysDiff(new Date(), new Date(task.due_date));
             const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — scadent în ${daysUntil} zile (${formatDateRo(task.due_date)}) — <span style="color: ${dept.color};">[${dept.label}]</span></p>`;
+            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('due_in_days', { days: daysUntil, date: formatDateLocalized(task.due_date, data.language) })} — ${deptLabel}</p>`;
         }
         html += `</div></div>`;
     }
 
-    // Weekly reminders
-    if (userData.weekly.length > 0) {
+    // Weekly
+    if (data.weekly.length > 0) {
         html += `
       <div style="margin-top: 24px;">
-        <h2 style="color: #3B82F6; font-size: 16px; margin-bottom: 8px;">📋 REMINDER SĂPTĂMÂNAL (${userData.weekly.length})</h2>
+        <h2 style="color: #3B82F6; font-size: 16px; margin-bottom: 8px;">📋 ${t('section_weekly', { count: data.weekly.length })}</h2>
         <div style="border-left: 3px solid #3B82F6; padding-left: 12px;">
     `;
-        for (const task of userData.weekly) {
+        for (const task of data.weekly) {
             const daysUntil = daysDiff(new Date(), new Date(task.due_date));
             const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — scadent pe ${formatDateRo(task.due_date)} (peste ${daysUntil} zile) — <span style="color: ${dept.color};">[${dept.label}]</span></p>`;
+            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('weekly_due_on', { date: formatDateLocalized(task.due_date, data.language), days: daysUntil })} — ${deptLabel}</p>`;
         }
         html += `</div></div>`;
     }
 
     // Blocked
-    if (userData.blocked.length > 0) {
+    if (data.blocked.length > 0) {
         html += `
       <div style="margin-top: 24px;">
-        <h2 style="color: #6B7280; font-size: 16px; margin-bottom: 8px;">🚫 BLOCATE (${userData.blocked.length})</h2>
+        <h2 style="color: #6B7280; font-size: 16px; margin-bottom: 8px;">🚫 ${t('section_blocked', { count: data.blocked.length })}</h2>
         <div style="border-left: 3px solid #6B7280; padding-left: 12px;">
     `;
-        for (const task of userData.blocked) {
+        for (const task of data.blocked) {
             const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const reason = task.blocked_reason ? ` — Motiv: ${task.blocked_reason.substring(0, 80)}${task.blocked_reason.length > 80 ? '...' : ''}` : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong>${reason} — <span style="color: ${dept.color};">[${dept.label}]</span></p>`;
+            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
+            const reason = task.blocked_reason
+                ? ` — ${t('blocked_reason_prefix')}: ${task.blocked_reason.substring(0, 80)}${task.blocked_reason.length > 80 ? '...' : ''}`
+                : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong>${reason} — ${deptLabel}</p>`;
         }
         html += `</div></div>`;
     }
@@ -121,7 +133,7 @@ function buildEmailHtml(userData: UserEmail): string {
     html += `
       <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
       <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-        Această notificare a fost generată automat de Sarcinator Visoro.
+        ${t('footer')}
       </p>
       </div>
     </div>
@@ -131,7 +143,11 @@ function buildEmailHtml(userData: UserEmail): string {
 }
 
 /**
- * Run the daily email job
+ * Run the daily email job.
+ *
+ * Per-tenant behaviour: every email represents ONE (user, company) pair.
+ * If a user belongs to 3 companies and has tasks in each, they get 3 emails
+ * — each in that company's configured language.
  */
 async function runDailyEmailJob() {
     const today = new Date();
@@ -145,7 +161,7 @@ async function runDailyEmailJob() {
     console.log(`📧 Running daily email job for ${todayLocal()}`);
 
     try {
-        // Get all active tasks with their blocked reasons
+        // Load all active tasks (with company_id) + most recent blocked reason
         const { rows: tasks } = await pool.query(`
       SELECT t.*,
         (SELECT tsc.reason FROM task_status_changes tsc
@@ -155,13 +171,33 @@ async function runDailyEmailJob() {
       WHERE t.status != 'terminat' AND t.deleted_at IS NULL
     `);
 
-        // Batch: load all active users into a Map (eliminates N+1 user queries)
+        // All active users
         const { rows: allUsers } = await pool.query(
             `SELECT id, email, display_name FROM users WHERE is_active = true`
         );
-        const usersMap = new Map(allUsers.map(u => [u.id, u]));
+        const usersMap = new Map<string, { id: string; email: string; display_name: string }>(
+            allUsers.map(u => [u.id, u])
+        );
 
-        // Batch: load all subtask assignees grouped by task_id (eliminates N+1 subtask queries)
+        // All companies (id → language)
+        const { rows: allCompanies } = await pool.query(
+            `SELECT id, language FROM companies WHERE is_archived = false`
+        );
+        const companyLangMap = new Map<number, ServerLocale>(
+            allCompanies.map((c: { id: number; language: string }) => [c.id, pickLocale(c.language)])
+        );
+
+        // Membership: user_id → Set<company_id>
+        const { rows: memberships } = await pool.query(
+            `SELECT user_id, company_id FROM user_companies`
+        );
+        const userCompanies = new Map<string, Set<number>>();
+        for (const row of memberships) {
+            if (!userCompanies.has(row.user_id)) userCompanies.set(row.user_id, new Set());
+            userCompanies.get(row.user_id)!.add(row.company_id);
+        }
+
+        // Subtask assignees grouped by task_id
         const taskIds = tasks.map(t => t.id);
         const subtaskAssigneesMap = new Map<string, string[]>();
         if (taskIds.length > 0) {
@@ -177,45 +213,56 @@ async function runDailyEmailJob() {
             }
         }
 
-        // Map of user_id → UserEmail data
-        const userEmails: Map<string, UserEmail> = new Map();
+        // Bucket key: `${user_id}::${company_id}`
+        const bucketKey = (userId: string, companyId: number) => `${userId}::${companyId}`;
+        const buckets: Map<string, UserCompanyEmail> = new Map();
 
-        const getOrCreateUserEntry = (userId: string): UserEmail | null => {
-            if (userEmails.has(userId)) return userEmails.get(userId)!;
+        const getOrCreateBucket = (userId: string, companyId: number): UserCompanyEmail | null => {
+            const key = bucketKey(userId, companyId);
+            if (buckets.has(key)) return buckets.get(key)!;
+
             const user = usersMap.get(userId);
             if (!user) return null;
 
-            const entry: UserEmail = {
+            // The user must actually be a member of this company. Otherwise we
+            // would email them about a tenant they no longer belong to.
+            const memberOf = userCompanies.get(userId);
+            if (!memberOf || !memberOf.has(companyId)) return null;
+
+            const language = companyLangMap.get(companyId) || 'ro';
+
+            const entry: UserCompanyEmail = {
                 user_id: userId,
+                company_id: companyId,
                 email: user.email,
                 display_name: user.display_name,
+                language,
                 overdue: [],
                 due_today: [],
                 due_soon: [],
                 weekly: [],
                 blocked: []
             };
-            userEmails.set(userId, entry);
+            buckets.set(key, entry);
             return entry;
         };
 
         for (const task of tasks) {
+            const companyId: number | null = task.company_id ?? null;
+            if (companyId == null) continue; // safety: skip tasks with no tenant
+
             const dueDate = new Date(task.due_date);
             const { send, phase } = shouldSendReminder(today, dueDate);
-
             if (!send && task.status !== 'blocat') continue;
 
-            // Get all relevant users (creator + subtask assignees) from Maps
+            // Stakeholders for this task: creator + subtask assignees
             const relevantUserIds = new Set<string>([task.created_by]);
             const assignees = subtaskAssigneesMap.get(task.id) || [];
-            for (const uid of assignees) {
-                relevantUserIds.add(uid);
-            }
+            for (const uid of assignees) relevantUserIds.add(uid);
 
-            // Add task to each relevant user's email
             for (const userId of relevantUserIds) {
-                const userEntry = getOrCreateUserEntry(userId);
-                if (!userEntry) continue;
+                const bucket = getOrCreateBucket(userId, companyId);
+                if (!bucket) continue;
 
                 const taskData: TaskForEmail = {
                     id: task.id,
@@ -228,75 +275,69 @@ async function runDailyEmailJob() {
                 };
 
                 if (task.status === 'blocat') {
-                    userEntry.blocked.push(taskData);
+                    bucket.blocked.push(taskData);
                 } else if (phase === 'overdue') {
-                    userEntry.overdue.push(taskData);
-                    // Webhook: task.overdue (fire-and-forget, deduplicated per task)
+                    bucket.overdue.push(taskData);
                     const daysOver = Math.abs(daysDiff(today, dueDate));
                     dispatchWebhook('task.overdue', {
                         task: { id: task.id, title: task.title, due_date: task.due_date, status: task.status, department_label: task.department_label },
                         days_overdue: daysOver
                     }).catch(err => console.error('[WEBHOOK] task.overdue dispatch error:', err.message));
                 } else if (phase === 'due_today') {
-                    userEntry.due_today.push(taskData);
+                    bucket.due_today.push(taskData);
                 } else if (phase === '4_days_before' || phase === '2_days_before' || phase === '1_day_before') {
-                    userEntry.due_soon.push(taskData);
+                    bucket.due_soon.push(taskData);
                 } else if (phase === 'weekly') {
-                    userEntry.weekly.push(taskData);
+                    bucket.weekly.push(taskData);
                 }
             }
         }
 
-        // Send emails
-        for (const [userId, userData] of userEmails) {
-            const totalTasks = userData.overdue.length + userData.due_today.length +
-                userData.due_soon.length + userData.weekly.length + userData.blocked.length;
-
+        // Send one email per (user, company) bucket that actually has tasks.
+        for (const [, data] of buckets) {
+            const totalTasks = data.overdue.length + data.due_today.length +
+                data.due_soon.length + data.weekly.length + data.blocked.length;
             if (totalTasks === 0) continue;
 
-            const taskIds = [
-                ...userData.overdue,
-                ...userData.due_today,
-                ...userData.due_soon,
-                ...userData.weekly,
-                ...userData.blocked
+            const taskIdsForLog = [
+                ...data.overdue, ...data.due_today, ...data.due_soon,
+                ...data.weekly, ...data.blocked
             ].map(t => t.id);
 
             try {
-                const emailHtml = buildEmailHtml(userData);
-                const subject = `[Sarcinator Visoro] Sumar zilnic — ${formatDateRo(today)}`;
+                const emailHtml = buildEmailHtml(data);
+                const subject = tServer(data.language, 'daily_email.subject', {
+                    date: formatDateLocalized(today, data.language),
+                });
 
-                // Send via Microsoft Graph API
                 if (process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET && process.env.AZURE_TENANT_ID) {
                     await sendEmail({
-                        to: userData.email,
+                        to: data.email,
                         subject,
                         htmlBody: emailHtml,
-                        displayName: userData.display_name,
+                        displayName: data.display_name,
                     });
-                    console.log(`📧 Email sent to ${userData.email} (${totalTasks} tasks)`);
+                    console.log(`📧 Email sent to ${data.email} [company ${data.company_id}, lang ${data.language}] (${totalTasks} tasks)`);
                 } else {
-                    // No Graph credentials — log only
-                    console.log(`📧 Email (mock — no Azure credentials) to ${userData.email}: ${subject} (${totalTasks} tasks)`);
+                    console.log(`📧 Email (mock — no Azure credentials) to ${data.email} [company ${data.company_id}]: ${subject} (${totalTasks} tasks)`);
                 }
 
-                // Log success
                 await pool.query(
-                    `INSERT INTO email_logs (user_id, task_ids, email_type, status)
-           VALUES ($1, $2, 'daily_summary', 'sent')`,
-                    [userId, taskIds]
+                    `INSERT INTO email_logs (user_id, task_ids, email_type, status, company_id)
+                     VALUES ($1, $2, 'daily_summary', 'sent', $3)`,
+                    [data.user_id, taskIdsForLog, data.company_id]
                 );
             } catch (err) {
-                console.error(`Failed to send email to ${userData.email}:`, err);
+                console.error(`Failed to send email to ${data.email} [company ${data.company_id}]:`, err);
                 await pool.query(
-                    `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message)
-           VALUES ($1, $2, 'daily_summary', 'failed', $3)`,
-                    [userId, taskIds, (err as Error).message]
+                    `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message, company_id)
+                     VALUES ($1, $2, 'daily_summary', 'failed', $3, $4)`,
+                    [data.user_id, taskIdsForLog, (err as Error).message, data.company_id]
                 );
             }
         }
 
-        console.log(`📧 Email job completed. Processed ${userEmails.size} users.`);
+        console.log(`📧 Email job completed. Processed ${buckets.size} (user, company) buckets.`);
     } catch (err) {
         console.error('Email job failed:', err);
     }

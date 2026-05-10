@@ -303,4 +303,85 @@ router.delete('/custom-fields/:id', requireRole('superadmin'), asyncHandler(asyn
     res.status(204).end();
 }));
 
+// ---------------------------------------------------------------------------
+// Reminder levels (configurable cadence for pugStageReminders cron)
+// ---------------------------------------------------------------------------
+router.get('/reminder-levels', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { rows } = await pool.query(
+        `SELECT id, days_before, is_enabled, created_at, updated_at
+           FROM pug_reminder_settings
+          WHERE company_id = $1
+          ORDER BY days_before DESC`,
+        [cid]
+    );
+    res.json({ levels: rows });
+}));
+
+router.post('/reminder-levels', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { days_before, is_enabled } = req.body ?? {};
+    if (!Number.isFinite(days_before) || !Number.isInteger(Number(days_before))) {
+        res.status(400).json({ error: 'days_before trebuie să fie un număr întreg.' });
+        return;
+    }
+    const dbVal = Number(days_before);
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO pug_reminder_settings (company_id, days_before, is_enabled)
+             VALUES ($1, $2, $3)
+             RETURNING id, days_before, is_enabled, created_at, updated_at`,
+            [cid, dbVal, is_enabled === false ? false : true]
+        );
+        res.status(201).json({ level: rows[0] });
+    } catch (e: any) {
+        if (e?.code === '23505') {
+            res.status(409).json({ error: 'Există deja un nivel cu acest număr de zile.' });
+            return;
+        }
+        throw e;
+    }
+}));
+
+router.put('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const { days_before, is_enabled } = req.body ?? {};
+    const sets: string[] = []; const vals: any[] = [];
+    if (days_before !== undefined) {
+        if (!Number.isFinite(days_before) || !Number.isInteger(Number(days_before))) {
+            res.status(400).json({ error: 'days_before trebuie să fie un număr întreg.' });
+            return;
+        }
+        vals.push(Number(days_before)); sets.push(`days_before=$${vals.length}`);
+    }
+    if (typeof is_enabled === 'boolean') { vals.push(is_enabled); sets.push(`is_enabled=$${vals.length}`); }
+    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    vals.push(id, cid);
+    try {
+        const { rows } = await pool.query(
+            `UPDATE pug_reminder_settings SET ${sets.join(', ')}, updated_at=NOW()
+              WHERE id=$${vals.length - 1} AND company_id=$${vals.length}
+            RETURNING id, days_before, is_enabled, created_at, updated_at`,
+            vals
+        );
+        if (rows.length === 0) { res.status(404).json({ error: 'Nivel inexistent.' }); return; }
+        res.json({ level: rows[0] });
+    } catch (e: any) {
+        if (e?.code === '23505') {
+            res.status(409).json({ error: 'Există deja un nivel cu acest număr de zile.' });
+            return;
+        }
+        throw e;
+    }
+}));
+
+router.delete('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM pug_reminder_settings WHERE id=$1 AND company_id=$2', [id, cid]);
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Nivel inexistent.' }); return; }
+    res.status(204).end();
+}));
+
 export default router;

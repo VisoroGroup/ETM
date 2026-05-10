@@ -4,39 +4,61 @@ import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
+import { tServer, ServerLocale } from '../i18n/serverI18n';
 
 const router = Router();
 
-const MONTH_NAMES = [
-    'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-    'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
-];
+const DATE_LOCALE: Record<ServerLocale, string> = {
+    ro: 'ro-RO',
+    hu: 'hu-HU',
+    en: 'en-US',
+};
+
+function monthName(locale: ServerLocale, monthIndex1Based: number): string {
+    return tServer(locale, `report.month_${monthIndex1Based}`);
+}
 
 // GET /api/reports/monthly?month=2026-03&format=pdf&sections=tasks,departments,users
 router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
+
+    // Resolve the company language up-front so even validation errors come
+    // back in the right language. Default to 'ro' if the company row is
+    // missing the column or the column is null.
+    let locale: ServerLocale = 'ro';
+    if (companyId !== undefined) {
+        const { rows } = await pool.query<{ language: string | null }>(
+            'SELECT language FROM companies WHERE id = $1',
+            [companyId]
+        );
+        const lang = rows[0]?.language;
+        if (lang === 'ro' || lang === 'hu' || lang === 'en') {
+            locale = lang;
+        }
+    }
+
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tServer(locale, 'report.error_no_active_company') });
         return;
     }
 
     const { month, format = 'pdf', sections: sectionsStr = 'tasks,departments,users' } = req.query as any;
 
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-        res.status(400).json({ error: 'Parametrul month este obligatoriu (format: YYYY-MM).' });
+        res.status(400).json({ error: tServer(locale, 'report.error_month_required') });
         return;
     }
 
     const validSections = ['tasks', 'departments', 'users'];
     const sections = (sectionsStr as string).split(',').filter((s: string) => validSections.includes(s));
     if (sections.length === 0) {
-        res.status(400).json({ error: 'Invalid sections parameter. Valid: tasks, departments, users.' });
+        res.status(400).json({ error: tServer(locale, 'report.error_invalid_sections') });
         return;
     }
     const [year, m] = month.split('-').map(Number);
     const startDate = new Date(year, m - 1, 1);
     const endDate = new Date(year, m, 1);
-    const monthName = MONTH_NAMES[m - 1];
+    const monthLabel = monthName(locale, m);
 
     // Task summary
     const { rows: [taskSummary] } = await pool.query(`
@@ -81,47 +103,50 @@ router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHan
     `, [startDate, endDate, companyId]);
 
     if (format === 'excel') {
-        await generateExcel(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month });
+        await generateExcel(res, { monthLabel, year, taskSummary, deptBreakdown, userBreakdown, sections, month, locale });
     } else {
-        await generatePDF(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month });
+        await generatePDF(res, { monthLabel, year, taskSummary, deptBreakdown, userBreakdown, sections, month, locale });
     }
 }));
 
 interface ReportData {
-    monthName: string; year: number;
+    monthLabel: string; year: number;
     taskSummary: any; deptBreakdown: any[]; userBreakdown: any[];
     sections: string[]; month: string;
+    locale: ServerLocale;
 }
 
 async function generatePDF(res: Response, data: ReportData) {
-    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month } = data;
+    const { monthLabel, year, taskSummary, deptBreakdown, userBreakdown, sections, month, locale } = data;
+    const t = (key: string, vars?: Record<string, string | number>) => tServer(locale, key, vars);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=raport_${month}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=raport_${month}_${locale}.pdf`);
 
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     doc.pipe(res);
 
     // Header
-    doc.fontSize(22).font('Helvetica-Bold').text('ETM — Raport lunar', { align: 'center' });
-    doc.fontSize(16).font('Helvetica').text(`${monthName} ${year}`, { align: 'center' });
+    doc.fontSize(22).font('Helvetica-Bold').text(t('report.title'), { align: 'center' });
+    doc.fontSize(16).font('Helvetica').text(t('report.month_year', { month: monthLabel, year }), { align: 'center' });
     doc.moveDown(0.5);
-    doc.fontSize(9).fillColor('#888').text(`Generat la: ${new Date().toLocaleDateString('ro-RO')}`, { align: 'center' });
+    const generatedDate = new Date().toLocaleDateString(DATE_LOCALE[locale]);
+    doc.fontSize(9).fillColor('#888').text(t('report.generated_at', { date: generatedDate }), { align: 'center' });
     doc.fillColor('#000');
     doc.moveDown(1.5);
 
     // Task Summary
     if (sections.includes('tasks')) {
-        doc.fontSize(14).font('Helvetica-Bold').text('Sumar sarcini');
+        doc.fontSize(14).font('Helvetica-Bold').text(t('report.section_summary'));
         doc.moveDown(0.5);
         drawLine(doc);
         doc.moveDown(0.5);
 
-        const stats = [
-            ['Create în această lună', taskSummary.created],
-            ['Completate în această lună', taskSummary.completed],
-            ['Restante', taskSummary.overdue],
-            ['Blocate', taskSummary.blocked],
+        const stats: Array<[string, any]> = [
+            [t('report.stat_created'), taskSummary.created],
+            [t('report.stat_completed'), taskSummary.completed],
+            [t('report.stat_overdue'), taskSummary.overdue],
+            [t('report.stat_blocked'), taskSummary.blocked],
         ];
         for (const [label, value] of stats) {
             doc.fontSize(11).font('Helvetica').text(`${label}: `, { continued: true });
@@ -132,7 +157,7 @@ async function generatePDF(res: Response, data: ReportData) {
 
     // Department breakdown
     if (sections.includes('departments') && deptBreakdown.length > 0) {
-        doc.fontSize(14).font('Helvetica-Bold').text('Detalii pe departamente');
+        doc.fontSize(14).font('Helvetica-Bold').text(t('report.section_departments'));
         doc.moveDown(0.5);
         drawLine(doc);
         doc.moveDown(0.5);
@@ -140,10 +165,10 @@ async function generatePDF(res: Response, data: ReportData) {
         // Table header
         const cols = [50, 200, 300, 380, 460];
         doc.fontSize(9).font('Helvetica-Bold');
-        doc.text('Departament', cols[0], doc.y, { width: 140 });
-        doc.text('Total', cols[1], doc.y, { width: 80 });
-        doc.text('Completate', cols[2], doc.y, { width: 80 });
-        doc.text('Restante', cols[3], doc.y, { width: 80 });
+        doc.text(t('report.col_department'), cols[0], doc.y, { width: 140 });
+        doc.text(t('report.col_total'), cols[1], doc.y, { width: 80 });
+        doc.text(t('report.col_completed'), cols[2], doc.y, { width: 80 });
+        doc.text(t('report.col_overdue'), cols[3], doc.y, { width: 80 });
         doc.moveDown(0.3);
         drawLine(doc);
         doc.moveDown(0.3);
@@ -151,7 +176,7 @@ async function generatePDF(res: Response, data: ReportData) {
         doc.font('Helvetica').fontSize(10);
         for (const dept of deptBreakdown) {
             const y = doc.y;
-            doc.text(dept.department_label || '—', cols[0], y, { width: 140 });
+            doc.text(dept.department_label || t('report.empty_dept'), cols[0], y, { width: 140 });
             doc.text(String(dept.total), cols[1], y, { width: 80 });
             doc.text(String(dept.completed), cols[2], y, { width: 80 });
             doc.text(String(dept.overdue), cols[3], y, { width: 80 });
@@ -163,17 +188,17 @@ async function generatePDF(res: Response, data: ReportData) {
     // User breakdown
     if (sections.includes('users') && userBreakdown.length > 0) {
         if (doc.y > 650) doc.addPage();
-        doc.fontSize(14).font('Helvetica-Bold').text('Detalii pe utilizatori');
+        doc.fontSize(14).font('Helvetica-Bold').text(t('report.section_users'));
         doc.moveDown(0.5);
         drawLine(doc);
         doc.moveDown(0.5);
 
         const cols = [50, 220, 310, 400];
         doc.fontSize(9).font('Helvetica-Bold');
-        doc.text('Utilizator', cols[0], doc.y, { width: 160 });
-        doc.text('Completate', cols[1], doc.y, { width: 80 });
-        doc.text('Restante', cols[2], doc.y, { width: 80 });
-        doc.text('Total asignate', cols[3], doc.y, { width: 100 });
+        doc.text(t('report.col_user'), cols[0], doc.y, { width: 160 });
+        doc.text(t('report.col_completed'), cols[1], doc.y, { width: 80 });
+        doc.text(t('report.col_overdue'), cols[2], doc.y, { width: 80 });
+        doc.text(t('report.col_total_assigned'), cols[3], doc.y, { width: 100 });
         doc.moveDown(0.3);
         drawLine(doc);
         doc.moveDown(0.3);
@@ -200,7 +225,8 @@ function drawLine(doc: PDFKit.PDFDocument) {
 }
 
 async function generateExcel(res: Response, data: ReportData) {
-    const { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month } = data;
+    const { monthLabel, year, taskSummary, deptBreakdown, userBreakdown, sections, month, locale } = data;
+    const t = (key: string, vars?: Record<string, string | number>) => tServer(locale, key, vars);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'ETM';
@@ -212,36 +238,51 @@ async function generateExcel(res: Response, data: ReportData) {
         alignment: { horizontal: 'center' },
     };
 
-    // Sheet 1: Sumar
+    // Sheet 1: Summary
     if (sections.includes('tasks')) {
-        const ws = workbook.addWorksheet('Sumar');
+        const ws = workbook.addWorksheet(t('report.sheet_summary'));
         ws.columns = [{ width: 35 }, { width: 15 }];
-        ws.addRow([`Raport lunar — ${monthName} ${year}`]).font = { bold: true, size: 14 };
+        ws.addRow([t('report.sheet_title_monthly', { month: monthLabel, year })]).font = { bold: true, size: 14 };
         ws.addRow([]);
-        const h = ws.addRow(['Indicator', 'Valoare']);
+        const h = ws.addRow([t('report.col_indicator'), t('report.col_value')]);
         h.eachCell(c => { Object.assign(c.style, headerStyle); });
-        ws.addRow(['Create în această lună', Number(taskSummary.created)]);
-        ws.addRow(['Completate în această lună', Number(taskSummary.completed)]);
-        ws.addRow(['Restante', Number(taskSummary.overdue)]);
-        ws.addRow(['Blocate', Number(taskSummary.blocked)]);
+        ws.addRow([t('report.stat_created'), Number(taskSummary.created)]);
+        ws.addRow([t('report.stat_completed'), Number(taskSummary.completed)]);
+        ws.addRow([t('report.stat_overdue'), Number(taskSummary.overdue)]);
+        ws.addRow([t('report.stat_blocked'), Number(taskSummary.blocked)]);
     }
 
-    // Sheet 2: Departamente
+    // Sheet 2: Departments
     if (sections.includes('departments') && deptBreakdown.length > 0) {
-        const ws = workbook.addWorksheet('Departamente');
+        const ws = workbook.addWorksheet(t('report.sheet_departments'));
         ws.columns = [{ width: 25 }, { width: 12 }, { width: 14 }, { width: 12 }];
-        const h = ws.addRow(['Departament', 'Total', 'Completate', 'Restante']);
+        const h = ws.addRow([
+            t('report.col_department'),
+            t('report.col_total'),
+            t('report.col_completed'),
+            t('report.col_overdue'),
+        ]);
         h.eachCell(c => { Object.assign(c.style, headerStyle); });
         for (const d of deptBreakdown) {
-            ws.addRow([d.department_label || '—', Number(d.total), Number(d.completed), Number(d.overdue)]);
+            ws.addRow([
+                d.department_label || t('report.empty_dept'),
+                Number(d.total),
+                Number(d.completed),
+                Number(d.overdue),
+            ]);
         }
     }
 
-    // Sheet 3: Utilizatori
+    // Sheet 3: Users
     if (sections.includes('users') && userBreakdown.length > 0) {
-        const ws = workbook.addWorksheet('Utilizatori');
+        const ws = workbook.addWorksheet(t('report.sheet_users'));
         ws.columns = [{ width: 25 }, { width: 14 }, { width: 12 }, { width: 16 }];
-        const h = ws.addRow(['Utilizator', 'Completate', 'Restante', 'Total asignate']);
+        const h = ws.addRow([
+            t('report.col_user'),
+            t('report.col_completed'),
+            t('report.col_overdue'),
+            t('report.col_total_assigned'),
+        ]);
         h.eachCell(c => { Object.assign(c.style, headerStyle); });
         for (const u of userBreakdown) {
             ws.addRow([u.display_name, Number(u.completed), Number(u.overdue), Number(u.total_assigned)]);
@@ -249,7 +290,7 @@ async function generateExcel(res: Response, data: ReportData) {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=raport_${month}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=raport_${month}_${locale}.xlsx`);
     await workbook.xlsx.write(res);
     res.end();
 }

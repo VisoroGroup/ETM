@@ -1,5 +1,6 @@
 import pool from '../config/database';
 import { sendEmail } from './emailService';
+import { tServer, pickLocale, ServerLocale } from '../i18n/serverI18n';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -31,8 +32,52 @@ export function hasAzureCredentials(): boolean {
 }
 
 /**
+ * Look up the language to use for a notification email destined for `userId`.
+ *
+ * Priority:
+ *   1. If a `companyId` is passed and the user is a member of it → that
+ *      company's language (the email is about a task in that tenant).
+ *   2. Otherwise → the language of any company the user belongs to (first
+ *      match), falling back to 'ro' for legacy behaviour.
+ */
+export async function resolveRecipientLocale(
+    userId: string,
+    companyId?: number | null
+): Promise<ServerLocale> {
+    try {
+        if (companyId != null) {
+            const { rows } = await pool.query(
+                `SELECT c.language
+                   FROM companies c
+                   JOIN user_companies uc ON uc.company_id = c.id
+                  WHERE uc.user_id = $1 AND c.id = $2
+                  LIMIT 1`,
+                [userId, companyId]
+            );
+            if (rows.length > 0) return pickLocale(rows[0].language);
+        }
+        const { rows } = await pool.query(
+            `SELECT c.language
+               FROM companies c
+               JOIN user_companies uc ON uc.company_id = c.id
+              WHERE uc.user_id = $1
+              ORDER BY c.id ASC
+              LIMIT 1`,
+            [userId]
+        );
+        if (rows.length > 0) return pickLocale(rows[0].language);
+    } catch (err: any) {
+        console.warn('[NOTIF_EMAIL] resolveRecipientLocale failed:', err?.message);
+    }
+    return 'ro';
+}
+
+/**
  * Build a standard notification email HTML.
  * All emails share the same navy header + white card + blue CTA button design.
+ *
+ * The wrapper (greeting, CTA label, footer) is localized via `language`.
+ * `subtitle` and `bodyLines` are passed in pre-translated by the caller.
  */
 export function buildNotificationHtml(params: {
     recipientName: string;
@@ -40,22 +85,30 @@ export function buildNotificationHtml(params: {
     bodyLines: string[];        // HTML lines inside the card body
     taskId: string;
     taskTitle: string;
-    ctaLabel?: string;          // defaults to "Deschide sarcina"
+    ctaLabel?: string;          // defaults to translated "Open task"
+    language?: ServerLocale;    // defaults to 'ro' for backward compatibility
 }): string {
-    const { recipientName, subtitle, bodyLines, taskId, taskTitle, ctaLabel = 'Deschide sarcina' } = params;
+    const {
+        recipientName, subtitle, bodyLines, taskId, taskTitle,
+        language = 'ro',
+    } = params;
+    const ctaLabel = params.ctaLabel || tServer(language, 'notif_email.cta_open_task');
     const firstName = escapeHtml(recipientName.split(' ')[0]);
     const safeSubtitle = escapeHtml(subtitle);
     const safeTaskTitle = escapeHtml(taskTitle);
     const taskUrl = `${APP_URL}/tasks?openTaskId=${encodeURIComponent(taskId)}`;
 
+    const greeting = tServer(language, 'notif_email.greeting', { name: firstName });
+    const footer = tServer(language, 'notif_email.footer');
+
     return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
       <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="margin: 0; font-size: 20px;">Sarcinator Visoro</h1>
+        <h1 style="margin: 0; font-size: 20px;">ETM</h1>
         <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">${safeSubtitle}</p>
       </div>
       <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p style="font-size: 16px; color: #333;">Bună, <strong>${firstName}</strong>!</p>
+        <p style="font-size: 16px; color: #333;">${greeting}</p>
         ${bodyLines.join('\n')}
         <div style="background: #f0f4f8; border-left: 4px solid #2563EB; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
           <p style="margin: 0; font-weight: bold; color: #1E3A5F;">${safeTaskTitle}</p>
@@ -65,7 +118,7 @@ export function buildNotificationHtml(params: {
         </a>
         <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
         <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-          Această notificare a fost generată automat de Sarcinator Visoro.
+          ${footer}
         </p>
       </div>
     </div>`;
@@ -83,8 +136,9 @@ export async function sendNotificationEmail(params: {
     subject: string;
     htmlBody: string;
     emailType: string;
+    companyId?: number | null;
 }): Promise<void> {
-    const { userId, userEmail, userName, taskId, subject, htmlBody, emailType } = params;
+    const { userId, userEmail, userName, taskId, subject, htmlBody, emailType, companyId } = params;
 
     if (!hasAzureCredentials()) {
         console.warn(`📧 [${emailType}] Email not sent — Azure credentials missing. To: ${userEmail}`);
@@ -100,21 +154,36 @@ export async function sendNotificationEmail(params: {
         });
         console.log(`📧 [${emailType}] Email sent to ${userEmail} for task ${taskId}`);
 
-        // Log success
-        await pool.query(
-            `INSERT INTO email_logs (user_id, task_ids, email_type, status)
-             VALUES ($1, $2, $3, 'sent')`,
-            [userId, [taskId], emailType]
-        ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log success:`, logErr));
+        // Log success — include company_id when known
+        if (companyId != null) {
+            await pool.query(
+                `INSERT INTO email_logs (user_id, task_ids, email_type, status, company_id)
+                 VALUES ($1, $2, $3, 'sent', $4)`,
+                [userId, [taskId], emailType, companyId]
+            ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log success:`, logErr));
+        } else {
+            await pool.query(
+                `INSERT INTO email_logs (user_id, task_ids, email_type, status)
+                 VALUES ($1, $2, $3, 'sent')`,
+                [userId, [taskId], emailType]
+            ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log success:`, logErr));
+        }
     } catch (err: any) {
         console.error(`📧 [${emailType}] Failed to send email to ${userEmail}:`, err?.message || err);
 
-        // Log failure
-        await pool.query(
-            `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message)
-             VALUES ($1, $2, $3, 'failed', $4)`,
-            [userId, [taskId], emailType, (err as Error).message]
-        ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log failure:`, logErr));
+        if (companyId != null) {
+            await pool.query(
+                `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message, company_id)
+                 VALUES ($1, $2, $3, 'failed', $4, $5)`,
+                [userId, [taskId], emailType, (err as Error).message, companyId]
+            ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log failure:`, logErr));
+        } else {
+            await pool.query(
+                `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message)
+                 VALUES ($1, $2, $3, 'failed', $4)`,
+                [userId, [taskId], emailType, (err as Error).message]
+            ).catch(logErr => console.error(`[EMAIL_LOG] Failed to log failure:`, logErr));
+        }
     }
 }
 
@@ -185,8 +254,13 @@ export function notifyStakeholders(params: {
     subtitle: string;
     bodyLines: string[];
     emailType: string;
+    companyId?: number | null;
+    language?: ServerLocale;
 }): void {
-    const { stakeholders, taskId, taskTitle, subject, subtitle, bodyLines, emailType } = params;
+    const {
+        stakeholders, taskId, taskTitle, subject, subtitle, bodyLines, emailType,
+        companyId, language,
+    } = params;
 
     for (const user of stakeholders) {
         const htmlBody = buildNotificationHtml({
@@ -195,6 +269,7 @@ export function notifyStakeholders(params: {
             bodyLines,
             taskId,
             taskTitle,
+            language,
         });
 
         sendNotificationEmail({
@@ -205,6 +280,7 @@ export function notifyStakeholders(params: {
             subject,
             htmlBody,
             emailType,
+            companyId,
         }).catch(err => console.error(`[${emailType}] Error:`, err));
     }
 }

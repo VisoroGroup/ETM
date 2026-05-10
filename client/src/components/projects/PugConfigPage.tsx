@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
     Settings, Plus, Edit2, Trash2, Loader2, RefreshCw, X,
-    Layers, Tag, Briefcase, ListChecks,
+    Layers, Tag, Briefcase, ListChecks, Bell,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import {
     pugAdminApi,
-    PugStage, PugStatus, PugWorkType, PugCustomField,
+    PugStage, PugStatus, PugWorkType, PugCustomField, PugReminderLevel,
 } from '../../services/api';
 import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
-type TabKey = 'stages' | 'statuses' | 'work_types' | 'custom_fields';
+type TabKey = 'stages' | 'statuses' | 'work_types' | 'custom_fields' | 'reminders';
 
 const DEFAULT_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#94A3B8'];
 
@@ -34,6 +34,7 @@ export default function PugConfigPage() {
     const [statuses, setStatuses] = useState<PugStatus[]>([]);
     const [workTypes, setWorkTypes] = useState<PugWorkType[]>([]);
     const [customFields, setCustomFields] = useState<PugCustomField[]>([]);
+    const [reminderLevels, setReminderLevels] = useState<PugReminderLevel[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -42,16 +43,18 @@ export default function PugConfigPage() {
         setLoading(true);
         setError('');
         try {
-            const [s, st, wt, cf] = await Promise.all([
+            const [s, st, wt, cf, rl] = await Promise.all([
                 pugAdminApi.listStages(),
                 pugAdminApi.listStatuses(),
                 pugAdminApi.listWorkTypes(),
                 pugAdminApi.listCustomFields(),
+                pugAdminApi.listReminderLevels(),
             ]);
             setStages(s.stages);
             setStatuses(st.statuses);
             setWorkTypes(wt.work_types);
             setCustomFields(cf.fields);
+            setReminderLevels(rl.levels);
         } catch (e: any) {
             setError(e.response?.data?.error ?? t('common.error_loading'));
         } finally {
@@ -66,6 +69,7 @@ export default function PugConfigPage() {
         { key: 'statuses', label: t('pug_config.tab_statuses'), icon: Tag },
         { key: 'work_types', label: t('pug_config.tab_work_types'), icon: Briefcase },
         { key: 'custom_fields', label: t('pug_config.tab_custom_fields'), icon: ListChecks },
+        { key: 'reminders', label: t('pug_reminders.tab'), icon: Bell },
     ];
 
     return (
@@ -144,6 +148,14 @@ export default function PugConfigPage() {
                     {tab === 'custom_fields' && (
                         <CustomFieldsPanel
                             fields={customFields}
+                            isSuperAdmin={isSuperAdmin}
+                            onChanged={load}
+                            onError={setError}
+                        />
+                    )}
+                    {tab === 'reminders' && (
+                        <ReminderLevelsPanel
+                            levels={reminderLevels}
                             isSuperAdmin={isSuperAdmin}
                             onChanged={load}
                             onError={setError}
@@ -777,6 +789,176 @@ function CustomFieldEditorModal({ field, onClose, onSaved }: { field?: PugCustom
             <CheckboxRow label={t('pug_config.col_required')} checked={isRequired} onChange={setIsRequired} />
             <CheckboxRow label={t('pug_config.col_is_active')} checked={isActive} onChange={setIsActive} />
             <ModalActions onClose={onClose} onSubmit={submit} saving={saving} isEdit={isEdit} disabled={!name.trim()} />
+        </Modal>
+    );
+}
+
+/* -------------------- Reminder levels -------------------- */
+
+function formatDaysBefore(t: TFunction, days: number): string {
+    if (days === 0) return t('pug_reminders.day_of');
+    if (days > 0) return t('pug_reminders.before', { days });
+    return t('pug_reminders.after', { days: Math.abs(days) });
+}
+
+function ReminderLevelsPanel({
+    levels, isSuperAdmin, onChanged, onError,
+}: {
+    levels: PugReminderLevel[];
+    isSuperAdmin: boolean;
+    onChanged: () => Promise<void> | void;
+    onError: (msg: string) => void;
+}) {
+    const { t } = useTranslation();
+    const [showCreate, setShowCreate] = useState(false);
+    const [editing, setEditing] = useState<PugReminderLevel | null>(null);
+
+    const onDelete = async (lv: PugReminderLevel) => {
+        const label = formatDaysBefore(t, lv.days_before);
+        if (!window.confirm(t('pug_config.delete_confirm', { name: label }))) return;
+        try {
+            await pugAdminApi.deleteReminderLevel(lv.id);
+            await onChanged();
+        } catch (e: any) {
+            onError(e.response?.data?.error ?? t('common.error_saving'));
+        }
+    };
+
+    const onToggle = async (lv: PugReminderLevel, next: boolean) => {
+        try {
+            await pugAdminApi.updateReminderLevel(lv.id, { is_enabled: next });
+            await onChanged();
+        } catch (e: any) {
+            onError(e.response?.data?.error ?? t('common.error_saving'));
+        }
+    };
+
+    return (
+        <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-navy-700/50 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">
+                    {t('pug_reminders.list_title', { count: levels.length })}
+                </h2>
+                {isSuperAdmin && (
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium"
+                    >
+                        <Plus className="w-3.5 h-3.5" /> {t('pug_reminders.add')}
+                    </button>
+                )}
+            </div>
+
+            <div className="px-4 py-3 text-xs text-navy-400 border-b border-navy-700/50">
+                {t('pug_reminders.help_text')}
+            </div>
+
+            {levels.length === 0 ? (
+                <div className="px-4 py-12 text-center text-sm text-navy-400">{t('pug_reminders.empty')}</div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-navy-700/50">
+                                <th className="text-left px-4 py-2.5 text-xs text-navy-400 font-medium">{t('pug_reminders.col_days')}</th>
+                                <th className="text-center px-4 py-2.5 text-xs text-navy-400 font-medium">{t('pug_reminders.col_enabled')}</th>
+                                {isSuperAdmin && <th className="text-right px-4 py-2.5 text-xs text-navy-400 font-medium">{t('common.actions')}</th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {levels.map((lv) => (
+                                <tr key={lv.id} className="border-b border-navy-700/30 hover:bg-navy-700/20">
+                                    <td className="px-4 py-3 text-xs">
+                                        <span className="font-medium">{formatDaysBefore(t, lv.days_before)}</span>
+                                        <span className="ml-2 text-navy-400 font-mono">({lv.days_before})</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={lv.is_enabled}
+                                            disabled={!isSuperAdmin}
+                                            onChange={(e) => onToggle(lv, e.target.checked)}
+                                            className="accent-blue-500"
+                                        />
+                                    </td>
+                                    {isSuperAdmin && (
+                                        <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                                            <button onClick={() => setEditing(lv)} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-navy-700 hover:bg-navy-600 text-xs" title={t('common.edit')}>
+                                                <Edit2 className="w-3 h-3" />
+                                            </button>
+                                            <button onClick={() => onDelete(lv)} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-navy-700 hover:bg-red-500/30 text-xs text-red-300" title={t('common.delete')}>
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {showCreate && (
+                <ReminderLevelEditorModal
+                    onClose={() => setShowCreate(false)}
+                    onSaved={async () => { setShowCreate(false); await onChanged(); }}
+                />
+            )}
+            {editing && (
+                <ReminderLevelEditorModal
+                    level={editing}
+                    onClose={() => setEditing(null)}
+                    onSaved={async () => { setEditing(null); await onChanged(); }}
+                />
+            )}
+        </div>
+    );
+}
+
+function ReminderLevelEditorModal({ level, onClose, onSaved }: { level?: PugReminderLevel; onClose: () => void; onSaved: () => void }) {
+    const { t } = useTranslation();
+    const isEdit = !!level;
+    const [daysBefore, setDaysBefore] = useState<number>(level?.days_before ?? 7);
+    const [isEnabled, setIsEnabled] = useState<boolean>(level?.is_enabled ?? true);
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState('');
+
+    const submit = async () => {
+        if (!Number.isInteger(daysBefore)) { setErr(t('pug_config.name_required')); return; }
+        setSaving(true); setErr('');
+        try {
+            if (isEdit) {
+                await pugAdminApi.updateReminderLevel(level!.id, { days_before: daysBefore, is_enabled: isEnabled });
+            } else {
+                await pugAdminApi.createReminderLevel({ days_before: daysBefore, is_enabled: isEnabled });
+            }
+            onSaved();
+        } catch (e: any) {
+            const apiErr = e.response?.data?.error;
+            if (e.response?.status === 409) {
+                setErr(t('pug_reminders.duplicate_error'));
+            } else {
+                setErr(apiErr ?? t('common.error_saving'));
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Modal title={isEdit ? t('common.edit') : t('pug_reminders.add')} onClose={onClose} err={err}>
+            <Field label={t('pug_reminders.field_days_before')}>
+                <input
+                    type="number"
+                    value={daysBefore}
+                    onChange={(e) => setDaysBefore(parseInt(e.target.value || '0', 10))}
+                    className={inputCls}
+                />
+                <p className="text-xs text-navy-400 mt-1">{formatDaysBefore(t, daysBefore)}</p>
+            </Field>
+            <CheckboxRow label={t('pug_reminders.field_enabled')} checked={isEnabled} onChange={setIsEnabled} />
+            <p className="text-xs text-navy-400">{t('pug_reminders.help_text')}</p>
+            <ModalActions onClose={onClose} onSubmit={submit} saving={saving} isEdit={isEdit} />
         </Modal>
     );
 }
