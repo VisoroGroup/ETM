@@ -17,7 +17,7 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
         return;
     }
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -93,7 +93,7 @@ router.delete('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest
         return;
     }
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }

@@ -11,15 +11,25 @@ router.delete('/attachments/:attachmentId', authMiddleware, asyncHandler(async (
     const { id: taskId, attachmentId } = req.params;
     const userRole = req.user?.role;
     const userId = req.user?.id;
+    const companyId = req.activeCompanyId;
 
     // Task-level access check (uses shared middleware — includes manager role)
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Tenant + parent guard: attachment must belong to :taskId AND active company
     const { rows: existing } = await pool.query(
-        'SELECT uploaded_by FROM task_attachments WHERE id = $1', [attachmentId]
+        `SELECT a.uploaded_by FROM task_attachments a
+         JOIN tasks t ON t.id = a.task_id
+         WHERE a.id = $1 AND a.task_id = $2 AND t.company_id = $3`,
+        [attachmentId, taskId, companyId]
     );
 
     if (existing.length === 0) {

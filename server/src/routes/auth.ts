@@ -358,10 +358,46 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         const { id } = req.params;
         const { departments, role } = req.body;
 
+        const callerRole = req.user!.role;
+        const isSuperadmin = callerRole === 'superadmin';
+        const isAdmin = callerRole === 'admin';
+
         // Only admin can change roles/departments
-        if (req.user!.role !== 'admin' && req.user!.role !== 'superadmin' && req.user!.id !== id) {
+        if (!isAdmin && !isSuperadmin && req.user!.id !== id) {
             res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
             return;
+        }
+
+        // Privilege-escalation guard: only superadmin can grant the superadmin role,
+        // and a regular admin can only assign 'user' or 'manager' (never 'admin' or 'superadmin').
+        if (role) {
+            if (role === 'superadmin' && !isSuperadmin) {
+                res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+                return;
+            }
+            if (isAdmin && !['user', 'manager'].includes(role)) {
+                res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+                return;
+            }
+        }
+
+        // Department change scope guard: a non-superadmin admin can only modify users
+        // who share at least one company with them (via user_companies).
+        if (departments && isAdmin && !isSuperadmin && req.user!.id !== id) {
+            const { rows: shared } = await pool.query(
+                `SELECT 1
+                   FROM user_companies uc_target
+                   JOIN user_companies uc_caller
+                     ON uc_caller.company_id = uc_target.company_id
+                  WHERE uc_target.user_id = $1
+                    AND uc_caller.user_id = $2
+                  LIMIT 1`,
+                [id, req.user!.id]
+            );
+            if (shared.length === 0) {
+                res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
+                return;
+            }
         }
 
         const updates: string[] = [];
@@ -370,14 +406,14 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
 
         if (departments) {
             // Only admin/superadmin can modify departments (prevent scope escalation)
-            if (req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
+            if (!isAdmin && !isSuperadmin) {
                 res.status(403).json({ error: 'Doar administratorii pot modifica departamentele.' });
                 return;
             }
             updates.push(`departments = $${paramIndex++}`);
             values.push(departments);
         }
-        if (role && (req.user!.role === 'admin' || req.user!.role === 'superadmin')) {
+        if (role && (isAdmin || isSuperadmin)) {
             updates.push(`role = $${paramIndex++}`);
             values.push(role);
         }

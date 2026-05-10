@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Send, CheckCircle, XCircle, RefreshCw, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
 import { emailApi } from '../../services/api';
 
@@ -18,6 +19,7 @@ interface EmailLog {
 
 export default function EmailLogsPage() {
     const { user } = useAuth();
+    const { activeCompany } = useCompany();
     const { t } = useTranslation();
     const [logs, setLogs] = useState<EmailLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +28,7 @@ export default function EmailLogsPage() {
     const [testEmail, setTestEmail] = useState('');
 
     const load = async () => {
+        if (!activeCompany) return;
         setLoading(true);
         try {
             const data = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'manager'
@@ -39,7 +42,7 @@ export default function EmailLogsPage() {
         }
     };
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); /* eslint-disable-next-line */ }, [activeCompany?.id]);
 
     const sendTest = async () => {
         setTestLoading(true);

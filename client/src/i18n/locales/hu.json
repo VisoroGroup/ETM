@@ -40,7 +40,8 @@
         "logout": "Kijelentkezés",
         "logout_confirm_title": "Kijelentkezés",
         "logout_confirm_body": "Biztosan ki szeretnél jelentkezni?",
-        "edit_profile": "Profil szerkesztése"
+        "edit_profile": "Profil szerkesztése",
+        "no_active_company": "Nincs aktív cég"
     },
     "nav": {
         "dashboard": "Áttekintés",

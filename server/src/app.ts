@@ -40,7 +40,6 @@ import adminCompaniesRoutes from './routes/adminCompanies';
 import pugAdminRoutes from './routes/pugAdmin';
 import pugProjectsRoutes from './routes/pugProjects';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
-import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
 import { startPugStageReminderScheduler } from './cron/pugStageReminders';
@@ -75,9 +74,13 @@ app.use('/api', globalLimiter);
 // File serving from PostgreSQL (persistent across deploys)
 app.use('/api/files', filesRoutes);
 
-// Legacy static file serving for any remaining filesystem-based files (fallback)
-app.use('/uploads/avatars', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads', 'avatars')));
-app.use('/uploads', authMiddleware, express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')));
+// NOTE (security): the legacy /uploads and /uploads/avatars static mounts have been
+// removed. They served raw filesystem files by basename, with no tenant scoping —
+// any logged-in user could fetch any company's attachments, and avatars were
+// publicly listable. All binary content now lives in PostgreSQL and is served by
+// /api/files/* (see routes/files.ts), which enforces auth + company scoping.
+// Old /uploads/* and /uploads/avatars/* URLs intentionally 404 by design — there
+// is no safe way to keep them working alongside multi-tenant storage.
 
 // Routes (auth + upload get stricter limits)
 app.use('/api/auth', authLimiter, authRoutes);

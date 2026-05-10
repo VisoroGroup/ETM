@@ -10,7 +10,7 @@ const router = Router({ mergeParams: true });
 router.get('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -37,6 +37,7 @@ router.get('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest
 // POST /api/tasks/:id/dependencies — add dependency
 router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { blocking_task_id, blocked_task_id } = req.body;
+    const companyId = req.activeCompanyId;
 
     if (!blocking_task_id || !blocked_task_id) {
         res.status(400).json({ error: 'blocking_task_id și blocked_task_id sunt obligatorii.' });
@@ -54,17 +55,18 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
         return;
     }
 
-    // Check access to both tasks
-    if (!await checkTaskAccess(blocking_task_id, req.user!.id, req.user!.role) ||
-        !await checkTaskAccess(blocked_task_id, req.user!.id, req.user!.role)) {
+    // Check access to both tasks (tenant-scoped via 4th param)
+    if (!await checkTaskAccess(blocking_task_id, req.user!.id, req.user!.role, companyId) ||
+        !await checkTaskAccess(blocked_task_id, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
 
-    // Check both tasks exist and not deleted
+    // Check both tasks exist and not deleted — and live in the same active tenant
     const { rows: tasks } = await pool.query(
-        `SELECT id, title, assigned_to FROM tasks WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL`,
-        [[blocking_task_id, blocked_task_id]]
+        `SELECT id, title, assigned_to FROM tasks
+         WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND company_id = $2`,
+        [[blocking_task_id, blocked_task_id], companyId]
     );
     if (tasks.length < 2) {
         res.status(404).json({ error: 'Unul sau ambele task-uri nu au fost găsite.' });
@@ -94,9 +96,9 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 
     // Insert dependency
     const { rows: [dep] } = await pool.query(`
-        INSERT INTO task_dependencies (blocking_task_id, blocked_task_id, created_by)
-        VALUES ($1, $2, $3) RETURNING *
-    `, [blocking_task_id, blocked_task_id, req.user!.id]);
+        INSERT INTO task_dependencies (blocking_task_id, blocked_task_id, created_by, company_id)
+        VALUES ($1, $2, $3, $4) RETURNING *
+    `, [blocking_task_id, blocked_task_id, req.user!.id, companyId]);
 
     const blockingTask = tasks.find(t => t.id === blocking_task_id);
     const blockedTask = tasks.find(t => t.id === blocked_task_id);
@@ -104,24 +106,25 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
     // Activity log on both tasks
     await Promise.all([
         pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'dependency_added', $3)`,
-            [blocking_task_id, req.user!.id, JSON.stringify({ blocks: blocked_task_id, blocked_task_title: blockedTask?.title })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+             VALUES ($1, $2, 'dependency_added', $3, $4)`,
+            [blocking_task_id, req.user!.id, JSON.stringify({ blocks: blocked_task_id, blocked_task_title: blockedTask?.title }), companyId]
         ),
         pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'dependency_added', $3)`,
-            [blocked_task_id, req.user!.id, JSON.stringify({ blocked_by: blocking_task_id, blocking_task_title: blockingTask?.title })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+             VALUES ($1, $2, 'dependency_added', $3, $4)`,
+            [blocked_task_id, req.user!.id, JSON.stringify({ blocked_by: blocking_task_id, blocking_task_title: blockingTask?.title }), companyId]
         ),
     ]);
 
     // Notification to blocked task assignee
     if (blockedTask?.assigned_to) {
         await pool.query(
-            `INSERT INTO notifications (user_id, task_id, type, message)
-             VALUES ($1, $2, 'dependency_added', $3)`,
+            `INSERT INTO notifications (user_id, task_id, type, message, company_id)
+             VALUES ($1, $2, 'dependency_added', $3, $4)`,
             [blockedTask.assigned_to, blocked_task_id,
-             `„${blockingTask?.title}" acum blochează sarcina ta: „${blockedTask?.title}"`]
+             `„${blockingTask?.title}" acum blochează sarcina ta: „${blockedTask?.title}"`,
+             companyId]
         );
     }
 
@@ -131,9 +134,28 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 // DELETE /api/tasks/:id/dependencies/:depId — remove dependency
 router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, depId } = req.params;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        return;
+    }
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Tenant + parent guard: dependency row must reference :taskId AND live in active tenant
+    const { rows: depCheck } = await pool.query(
+        `SELECT td.* FROM task_dependencies td
+         JOIN tasks t ON (t.id = td.blocking_task_id OR t.id = td.blocked_task_id)
+         WHERE td.id = $1 AND (td.blocking_task_id = $2 OR td.blocked_task_id = $2)
+           AND t.company_id = $3
+         LIMIT 1`,
+        [depId, taskId, companyId]
+    );
+    if (depCheck.length === 0) {
+        res.status(404).json({ error: 'Dependența nu a fost găsită.' });
         return;
     }
 
@@ -151,9 +173,9 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-         VALUES ($1, $2, 'dependency_removed', $3)`,
-        [dep.blocking_task_id, req.user!.id, JSON.stringify({ unblocked: dep.blocked_task_id })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+         VALUES ($1, $2, 'dependency_removed', $3, $4)`,
+        [dep.blocking_task_id, req.user!.id, JSON.stringify({ unblocked: dep.blocked_task_id }), companyId]
     );
 
     res.json({ message: 'Dependența a fost eliminată.' });

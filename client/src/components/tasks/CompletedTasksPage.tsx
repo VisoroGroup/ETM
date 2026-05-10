@@ -28,6 +28,7 @@ export default function CompletedTasksPage() {
     const [userFilter, setUserFilter] = useState<string>('');
 
     const loadTasks = useCallback(async () => {
+        if (!activeCompany) return;
         try {
             setLoading(true);
             const result = await tasksApi.list({
@@ -42,7 +43,7 @@ export default function CompletedTasksPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, showToast, t]);
+    }, [searchQuery, showToast, t, activeCompany?.id]);
 
     useEffect(() => { loadTasks(); }, [loadTasks]);
 

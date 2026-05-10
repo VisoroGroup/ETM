@@ -6,6 +6,7 @@ import { tasksApi, notificationsApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
 import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue } from '../../utils/helpers';
 import {
@@ -42,7 +43,13 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const [activeTab, setActiveTab] = useState<Tab>('subtasks');
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
     const { user, users } = useAuth();
+    const { activeCompany } = useCompany();
     const { showToast } = useToast();
+    // Visoro Global ('full') has the legacy department/section/post org structure.
+    // Hungary ('simple') and Neo Plan ('project') don't — so the OrgAssignmentEditor
+    // would be empty and confusing, and any department_label badge would show a
+    // Romanian enum label that means nothing to those users.
+    const isFullTemplate = activeCompany?.template_type === 'full';
 
     // Modals
     const [showBlockedModal, setShowBlockedModal] = useState(false);
@@ -370,8 +377,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             )}
                         </div>
 
-                        {/* Org structure: Department / Subdepartament / Post */}
-                        <OrgAssignmentEditor task={task} onUpdate={onUpdate} />
+                        {/* Org structure: Department / Subdepartament / Post — only for 'full' template (Visoro Global).
+                            Hungary / Neo Plan use the inline assignee picker below instead. */}
+                        {isFullTemplate && (
+                            <OrgAssignmentEditor task={task} onUpdate={onUpdate} />
+                        )}
 
                         {/* Subtask progress */}
                         {totalSubtasks > 0 && (

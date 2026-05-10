@@ -4,6 +4,7 @@ import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENT
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
@@ -31,13 +32,18 @@ export default function DashboardPage() {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { activeCompany } = useCompany();
     const { t } = useTranslation();
 
     useEffect(() => {
+        // Skip until we know which company to query — the X-Active-Company
+        // header would otherwise be missing and the API would 400.
+        if (!activeCompany) return;
         let cancelled = false;
 
         async function loadDashboard() {
             try {
+                setLoading(true);
                 const [s, c, tasks, alerts, prefs] = await Promise.all([
                     dashboardApi.stats(),
                     dashboardApi.charts(),
@@ -61,7 +67,7 @@ export default function DashboardPage() {
 
         loadDashboard();
         return () => { cancelled = true; };
-    }, []);
+    }, [activeCompany?.id]);
 
     if (loading) {
         return (

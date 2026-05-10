@@ -10,7 +10,7 @@ const router = Router({ mergeParams: true });
 router.get('/activity', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId } = req.params;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }

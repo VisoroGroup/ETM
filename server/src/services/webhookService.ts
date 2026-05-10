@@ -10,11 +10,26 @@ export async function dispatchWebhook(
     eventType: WebhookEventType,
     data: Record<string, any>
 ): Promise<void> {
-    // 1. Get active subscriptions for this event
+    // Tenant isolation: derive company_id from the payload so we only fan out
+    // this event to subscriptions belonging to the same company. Without this,
+    // a webhook subscribed by company A would receive task events from company B.
+    const companyId =
+        (data as any)?.task?.company_id ??
+        (data as any)?.company_id ??
+        null;
+
+    if (companyId === null || companyId === undefined) {
+        console.warn(
+            `[WEBHOOK] Refusing to dispatch '${eventType}' — payload has no company_id (task.company_id / company_id). Dropping to prevent cross-tenant leak.`
+        );
+        return;
+    }
+
+    // 1. Get active subscriptions for this event, scoped to the originating company
     const { rows: subscriptions } = await pool.query(
         `SELECT id, url, secret FROM webhook_subscriptions
-         WHERE event_type = $1 AND is_active = true`,
-        [eventType]
+         WHERE event_type = $1 AND company_id = $2 AND is_active = true`,
+        [eventType, companyId]
     );
 
     if (subscriptions.length === 0) return;
@@ -31,9 +46,9 @@ export async function dispatchWebhook(
     for (const sub of subscriptions) {
         const deliveryId = crypto.randomUUID();
         await pool.query(
-            `INSERT INTO webhook_deliveries (id, subscription_id, event_type, payload, status)
-             VALUES ($1, $2, $3, $4, 'pending')`,
-            [deliveryId, sub.id, eventType, JSON.stringify(payload)]
+            `INSERT INTO webhook_deliveries (id, subscription_id, event_type, payload, status, company_id)
+             VALUES ($1, $2, $3, $4, 'pending', $5)`,
+            [deliveryId, sub.id, eventType, JSON.stringify(payload), companyId]
         );
         // Fire-and-forget — don't block the main request
         sendWebhook(deliveryId, sub.url, sub.secret, payload, 1).catch(err =>

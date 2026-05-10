@@ -167,25 +167,51 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
 
         const policyId = rows[0].id;
 
-        // Link to departments
+        // Link to departments — verify each dept belongs to the active company
+        // before inserting, otherwise a crafted payload could attach a policy
+        // to another tenant's department.
         if (scope === 'DEPARTMENT' && department_ids) {
-            const deptIds = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
-            for (const deptId of deptIds) {
-                await client.query(
-                    'INSERT INTO policy_departments (policy_id, department_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-                    [policyId, deptId, companyId]
+            const deptIds: string[] = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
+            if (Array.isArray(deptIds) && deptIds.length > 0) {
+                const { rows: validDepts } = await client.query<{ id: string }>(
+                    'SELECT id FROM departments WHERE id = ANY($1::uuid[]) AND company_id = $2',
+                    [deptIds, companyId]
                 );
+                const validSet = new Set(validDepts.map((r) => r.id));
+                if (deptIds.some((d) => !validSet.has(d))) {
+                    await client.query('ROLLBACK');
+                    res.status(400).json({ error: 'Unul sau mai multe departamente nu aparțin companiei active.' });
+                    return;
+                }
+                for (const deptId of deptIds) {
+                    await client.query(
+                        'INSERT INTO policy_departments (policy_id, department_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                        [policyId, deptId, companyId]
+                    );
+                }
             }
         }
 
-        // Link to posts
+        // Link to posts — same tenant verification.
         if (scope === 'POST' && post_ids) {
-            const pIds = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
-            for (const postId of pIds) {
-                await client.query(
-                    'INSERT INTO policy_posts (policy_id, post_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-                    [policyId, postId, companyId]
+            const pIds: string[] = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
+            if (Array.isArray(pIds) && pIds.length > 0) {
+                const { rows: validPosts } = await client.query<{ id: string }>(
+                    'SELECT id FROM posts WHERE id = ANY($1::uuid[]) AND company_id = $2',
+                    [pIds, companyId]
                 );
+                const validSet = new Set(validPosts.map((r) => r.id));
+                if (pIds.some((p) => !validSet.has(p))) {
+                    await client.query('ROLLBACK');
+                    res.status(400).json({ error: 'Unul sau mai multe posturi nu aparțin companiei active.' });
+                    return;
+                }
+                for (const postId of pIds) {
+                    await client.query(
+                        'INSERT INTO policy_posts (policy_id, post_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                        [policyId, postId, companyId]
+                    );
+                }
             }
         }
 
@@ -231,14 +257,29 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
             return;
         }
 
-        // Update department links if provided
+        // Update department links if provided. Verify tenant ownership before
+        // touching the table — reject the whole update if any dept is from a
+        // different company.
         if (department_ids !== undefined) {
+            const deptIds: string[] = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
+            const safeDeptIds: string[] = Array.isArray(deptIds) ? deptIds : [];
+            if (safeDeptIds.length > 0) {
+                const { rows: validDepts } = await client.query<{ id: string }>(
+                    'SELECT id FROM departments WHERE id = ANY($1::uuid[]) AND company_id = $2',
+                    [safeDeptIds, companyId]
+                );
+                const validSet = new Set(validDepts.map((r) => r.id));
+                if (safeDeptIds.some((d) => !validSet.has(d))) {
+                    await client.query('ROLLBACK');
+                    res.status(400).json({ error: 'Unul sau mai multe departamente nu aparțin companiei active.' });
+                    return;
+                }
+            }
             await client.query(
                 'DELETE FROM policy_departments WHERE policy_id = $1 AND company_id = $2',
                 [id, companyId]
             );
-            const deptIds = typeof department_ids === 'string' ? JSON.parse(department_ids) : department_ids;
-            for (const deptId of (deptIds || [])) {
+            for (const deptId of safeDeptIds) {
                 await client.query(
                     'INSERT INTO policy_departments (policy_id, department_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
                     [id, deptId, companyId]
@@ -246,14 +287,27 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
             }
         }
 
-        // Update post links if provided
+        // Update post links if provided — same tenant verification.
         if (post_ids !== undefined) {
+            const pIds: string[] = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
+            const safePostIds: string[] = Array.isArray(pIds) ? pIds : [];
+            if (safePostIds.length > 0) {
+                const { rows: validPosts } = await client.query<{ id: string }>(
+                    'SELECT id FROM posts WHERE id = ANY($1::uuid[]) AND company_id = $2',
+                    [safePostIds, companyId]
+                );
+                const validSet = new Set(validPosts.map((r) => r.id));
+                if (safePostIds.some((p) => !validSet.has(p))) {
+                    await client.query('ROLLBACK');
+                    res.status(400).json({ error: 'Unul sau mai multe posturi nu aparțin companiei active.' });
+                    return;
+                }
+            }
             await client.query(
                 'DELETE FROM policy_posts WHERE policy_id = $1 AND company_id = $2',
                 [id, companyId]
             );
-            const pIds = typeof post_ids === 'string' ? JSON.parse(post_ids) : post_ids;
-            for (const postId of (pIds || [])) {
+            for (const postId of safePostIds) {
                 await client.query(
                     'INSERT INTO policy_posts (policy_id, post_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
                     [id, postId, companyId]

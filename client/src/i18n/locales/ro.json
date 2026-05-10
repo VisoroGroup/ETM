@@ -40,7 +40,8 @@
         "logout": "Deconectare",
         "logout_confirm_title": "Deconectare",
         "logout_confirm_body": "Sigur vrei să te deconectezi din cont?",
-        "edit_profile": "Editează profil"
+        "edit_profile": "Editează profil",
+        "no_active_company": "Fără companie activă"
     },
     "nav": {
         "dashboard": "Dashboard",

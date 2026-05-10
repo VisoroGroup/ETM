@@ -4,9 +4,26 @@ import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { validateCreateComment } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
-import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail, escapeHtml } from '../services/notificationEmailService';
+import {
+    getSpecificStakeholders,
+    buildNotificationHtml,
+    sendNotificationEmail,
+    escapeHtml,
+    resolveRecipientLocale,
+} from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
+
+// Helper: confirm a child resource (comment) belongs to :taskId AND active tenant.
+async function getCommentInTenant(commentId: string, taskId: string, companyId: number) {
+    const { rows } = await pool.query(
+        `SELECT c.* FROM task_comments c
+         JOIN tasks t ON t.id = c.task_id
+         WHERE c.id = $1 AND c.task_id = $2 AND t.company_id = $3 AND t.deleted_at IS NULL`,
+        [commentId, taskId, companyId]
+    );
+    return rows[0] || null;
+}
 
 // GET /api/tasks/:id/comments
 router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -14,7 +31,7 @@ router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, re
         const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 200);
         const offset = parseInt(req.query.offset as string, 10) || 0;
 
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
@@ -59,8 +76,9 @@ router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, re
 router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId } = req.params;
         const { content, mentions = [], parent_comment_id = null } = req.body;
+        const companyId = req.activeCompanyId;
 
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
@@ -81,11 +99,13 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
             }
         }
 
-        // Validate parent_comment_id belongs to this task
+        // Validate parent_comment_id belongs to this task (and tenant)
         if (parent_comment_id) {
             const { rows: parentCheck } = await pool.query(
-                'SELECT 1 FROM task_comments WHERE id = $1 AND task_id = $2',
-                [parent_comment_id, taskId]
+                `SELECT 1 FROM task_comments c
+                 JOIN tasks t ON t.id = c.task_id
+                 WHERE c.id = $1 AND c.task_id = $2 AND t.company_id = $3`,
+                [parent_comment_id, taskId, companyId]
             );
             if (parentCheck.length === 0) {
                 res.status(400).json({ error: 'Parent comment not found in this task.' });
@@ -94,19 +114,19 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         }
 
         const { rows } = await pool.query(
-            `INSERT INTO task_comments (task_id, author_id, content, mentions, parent_comment_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [taskId, req.user!.id, content, mentions, parent_comment_id]
+            `INSERT INTO task_comments (task_id, author_id, content, mentions, parent_comment_id, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [taskId, req.user!.id, content, mentions, parent_comment_id, companyId]
         );
 
         // Activity log
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'comment_added', $3)`,
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+       VALUES ($1, $2, 'comment_added', $3, $4)`,
             [taskId, req.user!.id, JSON.stringify({
                 comment_preview: content.substring(0, 100),
                 mentions
-            })]
+            }), companyId]
         );
 
         // NOTIFICATIONS: notify mentioned users + task creator + task assignee
@@ -136,14 +156,15 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
             for (const userId of notifyUsers) {
                 const isMention = mentions && mentions.includes(userId);
                 await pool.query(
-                    `INSERT INTO notifications (user_id, task_id, type, message, created_by)
-                     VALUES ($1, $2, $3, $4, $5)`,
+                    `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
                     [userId, taskId,
                         isMention ? 'mention' : 'comment',
                         isMention
                             ? `${req.user!.display_name} te-a menționat într-un comentariu`
                             : `${req.user!.display_name} a adăugat un comentariu la sarcina: "${taskTitle}"`,
-                        req.user!.id]
+                        req.user!.id,
+                        companyId]
                 );
             }
 
@@ -153,6 +174,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                 const stakeholders = await getSpecificStakeholders(allNotifyIds, req.user!.id);
                 for (const su of stakeholders) {
                     const isMention = mentions && mentions.includes(su.id);
+                    const language = await resolveRecipientLocale(su.id, companyId);
                     const htmlBody = buildNotificationHtml({
                         recipientName: su.display_name,
                         subtitle: isMention ? 'Mențiune nouă' : 'Comentariu nou',
@@ -166,6 +188,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                         ],
                         taskId,
                         taskTitle,
+                        language,
                     });
 
                     sendNotificationEmail({
@@ -176,6 +199,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                         subject: `[ETM] ${isMention ? 'Mențiune' : 'Comentariu nou'} — ${taskTitle}`,
                         htmlBody,
                         emailType: isMention ? 'mention' : 'comment',
+                        companyId,
                     }).catch(err => console.error(`[${isMention ? 'MENTION' : 'COMMENT'}] Email error:`, err));
                 }
             }
@@ -194,23 +218,25 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
 router.put('/comments/:commentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, commentId } = req.params;
         const { content } = req.body;
+        const companyId = req.activeCompanyId;
 
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
-        // Only author can edit
-        const { rows: existing } = await pool.query(
-            'SELECT author_id FROM task_comments WHERE id = $1', [commentId]
-        );
-
-        if (existing.length === 0) {
+        // Tenant + parent guard: comment must belong to :taskId AND active company
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+        const existing = await getCommentInTenant(commentId, taskId, companyId);
+        if (!existing) {
             res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
             return;
         }
 
-        if (existing[0].author_id !== req.user!.id) {
+        if (existing.author_id !== req.user!.id) {
             res.status(403).json({ error: 'Poți edita doar propriile comentarii.' });
             return;
         }
@@ -230,22 +256,24 @@ router.put('/comments/:commentId', authMiddleware, asyncHandler(async (req: Auth
 // DELETE /api/tasks/:id/comments/:commentId
 router.delete('/comments/:commentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, commentId } = req.params;
+        const companyId = req.activeCompanyId;
 
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
 
-        const { rows: existing } = await pool.query(
-            'SELECT author_id FROM task_comments WHERE id = $1', [commentId]
-        );
-
-        if (existing.length === 0) {
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+        const existing = await getCommentInTenant(commentId, taskId, companyId);
+        if (!existing) {
             res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
             return;
         }
 
-        if (existing[0].author_id !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
+        if (existing.author_id !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
             res.status(403).json({ error: 'Poți șterge doar propriile comentarii.' });
             return;
         }
@@ -258,9 +286,21 @@ router.delete('/comments/:commentId', authMiddleware, asyncHandler(async (req: A
 router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, commentId } = req.params;
         const reaction = req.body.reaction || '👍';
+        const companyId = req.activeCompanyId;
 
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            return;
+        }
+
+        // Tenant + parent guard: comment must belong to :taskId AND active company
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+        const parentComment = await getCommentInTenant(commentId, taskId, companyId);
+        if (!parentComment) {
+            res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
             return;
         }
 
@@ -277,8 +317,8 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
         } else {
             // Add reaction
             await pool.query(
-                'INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES ($1, $2, $3)',
-                [commentId, req.user!.id, reaction]
+                'INSERT INTO comment_reactions (comment_id, user_id, reaction, company_id) VALUES ($1, $2, $3, $4)',
+                [commentId, req.user!.id, reaction, companyId]
             );
 
             // Notify comment author about the reaction
@@ -293,14 +333,15 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
 
                     // In-app notification
                     await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message, created_by)
-                         VALUES ($1, $2, 'comment', $3, $4)`,
-                        [authorId, taskId, `${req.user!.display_name} a reacționat ${reaction} la comentariul tău`, req.user!.id]
+                        `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+                         VALUES ($1, $2, 'comment', $3, $4, $5)`,
+                        [authorId, taskId, `${req.user!.display_name} a reacționat ${reaction} la comentariul tău`, req.user!.id, companyId]
                     );
 
                     // Email notification
                     const stakeholders = await getSpecificStakeholders([authorId], req.user!.id);
                     for (const su of stakeholders) {
+                        const language = await resolveRecipientLocale(su.id, companyId);
                         const htmlBody = buildNotificationHtml({
                             recipientName: su.display_name,
                             subtitle: 'Reacție nouă',
@@ -309,11 +350,13 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                             ],
                             taskId,
                             taskTitle,
+                            language,
                         });
                         sendNotificationEmail({
                             userId: su.id, userEmail: su.email, userName: su.display_name,
                             taskId, subject: `[ETM] Reacție ${reaction} — ${taskTitle}`,
                             htmlBody, emailType: 'reaction',
+                            companyId,
                         }).catch(err => console.error('[REACTION] Email error:', err));
                     }
                 }

@@ -4,6 +4,7 @@ import { Folder, Plus, Loader2, RefreshCw, X, Calendar, MapPin, Building2, Archi
 import { pugProjectsApi, pugAdminApi, PugProject, PugWorkType, authApi } from '../../services/api';
 import { useTranslation } from '../../i18n/I18nContext';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import UserAvatar from '../ui/UserAvatar';
 
 const STATUS_BADGE: Record<PugProject['status'], { label: string; cls: string }> = {
@@ -15,6 +16,7 @@ const STATUS_BADGE: Record<PugProject['status'], { label: string; cls: string }>
 export default function ProjectsListPage() {
     const { t } = useTranslation();
     const { user } = useAuth();
+    const { activeCompany } = useCompany();
     const navigate = useNavigate();
     const [projects, setProjects] = useState<PugProject[]>([]);
     const [workTypes, setWorkTypes] = useState<PugWorkType[]>([]);
@@ -27,6 +29,7 @@ export default function ProjectsListPage() {
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
     const load = async () => {
+        if (!activeCompany) return;
         setLoading(true);
         setError('');
         try {
@@ -45,7 +48,7 @@ export default function ProjectsListPage() {
         }
     };
 
-    useEffect(() => { load(); /* eslint-disable-next-line */ }, [showArchived]);
+    useEffect(() => { load(); /* eslint-disable-next-line */ }, [showArchived, activeCompany?.id]);
 
     const onArchive = async (p: PugProject) => {
         try {

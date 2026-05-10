@@ -6,9 +6,23 @@ import { asyncHandler } from '../middleware/errorHandler';
 const router = Router();
 router.use(authMiddleware);
 
-// GET /api/notifications — get unread notifications for current user (within active company)
+// Resolve the list of company IDs the user can see notifications for.
+// Admins/superadmins typically have access to multiple companies; the bell
+// renders cross-company notifications with per-company tinted backgrounds
+// (Q34) and switches the active company on click. Regular users have a
+// single-element array (their active company), so behavior is unchanged.
+function accessibleCompanyIds(req: AuthRequest): number[] {
+    const ids = Array.isArray(req.userCompanyIds) ? req.userCompanyIds : [];
+    if (ids.length > 0) return ids;
+    if (req.activeCompanyId !== undefined) return [req.activeCompanyId];
+    return [];
+}
+
+// GET /api/notifications — get notifications for current user across every
+// company the user has access to (so admins see all, regular users see one).
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
-    if (req.activeCompanyId === undefined) {
+    const companyIds = accessibleCompanyIds(req);
+    if (companyIds.length === 0) {
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
@@ -19,10 +33,10 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
             FROM notifications n
             LEFT JOIN users u ON n.created_by = u.id
             LEFT JOIN tasks t ON n.task_id = t.id
-            WHERE n.user_id = $1 AND n.company_id = $2
+            WHERE n.user_id = $1 AND n.company_id = ANY($2::int[])
             ORDER BY n.created_at DESC
             LIMIT 50
-        `, [req.user!.id, req.activeCompanyId]);
+        `, [req.user!.id, companyIds]);
         res.json(rows);
     } catch (err) {
         console.error('Notifications error:', err);
@@ -30,17 +44,18 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     }
 }));
 
-// GET /api/notifications/unread-count
+// GET /api/notifications/unread-count — total unread across accessible companies.
 router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response) => {
-    if (req.activeCompanyId === undefined) {
+    const companyIds = accessibleCompanyIds(req);
+    if (companyIds.length === 0) {
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
     try {
         const { rows: [{ count }] } = await pool.query(
             `SELECT COUNT(*) FROM notifications
-             WHERE user_id = $1 AND is_read = false AND company_id = $2`,
-            [req.user!.id, req.activeCompanyId]
+             WHERE user_id = $1 AND is_read = false AND company_id = ANY($2::int[])`,
+            [req.user!.id, companyIds]
         );
         res.json({ count: parseInt(count, 10) });
     } catch (err) {
@@ -50,15 +65,16 @@ router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response)
 
 // PATCH /api/notifications/:id/read — mark single as read
 router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) => {
-    if (req.activeCompanyId === undefined) {
+    const companyIds = accessibleCompanyIds(req);
+    if (companyIds.length === 0) {
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
     try {
         await pool.query(
             `UPDATE notifications SET is_read = true
-             WHERE id = $1 AND user_id = $2 AND company_id = $3`,
-            [req.params.id, req.user!.id, req.activeCompanyId]
+             WHERE id = $1 AND user_id = $2 AND company_id = ANY($3::int[])`,
+            [req.params.id, req.user!.id, companyIds]
         );
         res.json({ success: true });
     } catch (err) {
@@ -66,17 +82,18 @@ router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) =
     }
 }));
 
-// PATCH /api/notifications/read-all — mark all as read
+// PATCH /api/notifications/read-all — mark all as read across accessible companies
 router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) => {
-    if (req.activeCompanyId === undefined) {
+    const companyIds = accessibleCompanyIds(req);
+    if (companyIds.length === 0) {
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
     try {
         await pool.query(
             `UPDATE notifications SET is_read = true
-             WHERE user_id = $1 AND is_read = false AND company_id = $2`,
-            [req.user!.id, req.activeCompanyId]
+             WHERE user_id = $1 AND is_read = false AND company_id = ANY($2::int[])`,
+            [req.user!.id, companyIds]
         );
         res.json({ success: true });
     } catch (err) {
@@ -89,7 +106,8 @@ router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) =
 // are marked read. Used when a user opens a task drawer / switches to a tab:
 // that action proves they saw the corresponding notification type.
 router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res: Response) => {
-    if (req.activeCompanyId === undefined) {
+    const companyIds = accessibleCompanyIds(req);
+    if (companyIds.length === 0) {
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
@@ -109,8 +127,8 @@ router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res
                 AND task_id = $2
                 AND type = ANY($3::text[])
                 AND is_read = false
-                AND company_id = $4`,
-            [req.user!.id, taskId, types, req.activeCompanyId]
+                AND company_id = ANY($4::int[])`,
+            [req.user!.id, taskId, types, companyIds]
         );
         res.json({ success: true, updated: rowCount ?? 0 });
     } catch (err) {

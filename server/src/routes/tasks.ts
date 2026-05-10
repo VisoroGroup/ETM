@@ -8,7 +8,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
-import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail } from '../services/notificationEmailService';
+import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail, resolveRecipientLocale } from '../services/notificationEmailService';
 import { getCompletionReportRecipients, buildCompletionReportHtml } from '../services/taskCompletionReportService';
 import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
 import taskSubtaskRoutes from './taskSubtasks';
@@ -257,15 +257,10 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
-    const task = await taskService.createTask(req.body, req.user!.id);
-    // Multi-tenant scoping: assign newly created task to the active company.
-    // The service's INSERT relies on the column DEFAULT (=1) — we override it here
-    // so the task lands in the caller's active tenant.
-    const { rows: scoped } = await pool.query(
-        `UPDATE tasks SET company_id = $1 WHERE id = $2 RETURNING *`,
-        [req.activeCompanyId, task.id]
-    );
-    res.status(201).json(scoped[0] ?? task);
+    // The service now writes company_id directly in the initial INSERT, so
+    // side-effect inserts (activity_log, notifications) all see the right tenant.
+    const task = await taskService.createTask(req.body, req.user!.id, req.activeCompanyId);
+    res.status(201).json(task);
 }));
 
 // GET /api/tasks/:id — task details
@@ -291,7 +286,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
         return;
     }
 
-    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -316,7 +311,7 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
         return;
     }
 
-    const result = await taskService.updateTask(req.params.id, req.body, req.user!.id);
+    const result = await taskService.updateTask(req.params.id, req.body, req.user!.id, req.activeCompanyId);
     if (result === null) {
         res.status(400).json({ error: 'Nimic de actualizat.' });
         return;
@@ -338,7 +333,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             return;
         }
 
-        if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
@@ -374,16 +369,16 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
         // Log status change
         await pool.query(
-            `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by)
-       VALUES ($1, $2, $3, $4, $5)`,
-            [id, oldStatus, status, reason || null, req.user!.id]
+            `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, oldStatus, status, reason || null, req.user!.id, req.activeCompanyId]
         );
 
         // Activity log
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'status_changed', $3)`,
-            [id, req.user!.id, JSON.stringify({ old_status: oldStatus, new_status: status, reason: reason || null })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+       VALUES ($1, $2, 'status_changed', $3, $4)`,
+            [id, req.user!.id, JSON.stringify({ old_status: oldStatus, new_status: status, reason: reason || null }), req.activeCompanyId]
         );
 
         // If status changed to 'terminat', auto-resolve all alerts
@@ -458,9 +453,9 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
                     for (const st of oldSubtasks) {
                         await client.query(
-                            `INSERT INTO subtasks (task_id, title, assigned_to, order_index)
-                             VALUES ($1, $2, $3, $4)`,
-                            [newTaskId, st.title, st.assigned_to, st.order_index]
+                            `INSERT INTO subtasks (task_id, title, assigned_to, order_index, company_id)
+                             VALUES ($1, $2, $3, $4, $5)`,
+                            [newTaskId, st.title, st.assigned_to, st.order_index, task.company_id ?? req.activeCompanyId]
                         );
                     }
 
@@ -473,13 +468,13 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
                     // Activity log for recurring creation
                     await client.query(
-                        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-                         VALUES ($1, $2, 'recurring_created', $3)`,
+                        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+                         VALUES ($1, $2, 'recurring_created', $3, $4)`,
                         [newTaskId, req.user!.id, JSON.stringify({
                             source_task_id: id,
                             frequency: recurring.frequency,
                             new_due_date: toLocalDateStr(nextDueDate)
-                        })]
+                        }), task.company_id ?? req.activeCompanyId]
                     );
 
                     await client.query('COMMIT');
@@ -504,16 +499,17 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             const completedTaskTitle = rows[0].title;
             for (const bt of blockedTasks) {
                 await pool.query(
-                    `INSERT INTO activity_log (task_id, user_id, action_type, details)
-                     VALUES ($1, $2, 'dependency_resolved', $3)`,
-                    [bt.blocked_task_id, req.user!.id, JSON.stringify({ resolved_by_task: id, resolved_task_title: completedTaskTitle })]
+                    `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+                     VALUES ($1, $2, 'dependency_resolved', $3, $4)`,
+                    [bt.blocked_task_id, req.user!.id, JSON.stringify({ resolved_by_task: id, resolved_task_title: completedTaskTitle }), req.activeCompanyId]
                 );
                 if (bt.assigned_to) {
                     await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message)
-                         VALUES ($1, $2, 'dependency_resolved', $3)`,
+                        `INSERT INTO notifications (user_id, task_id, type, message, company_id)
+                         VALUES ($1, $2, 'dependency_resolved', $3, $4)`,
                         [bt.assigned_to, bt.blocked_task_id,
-                         `\u201E${completedTaskTitle}\u201D s-a finalizat \u2014 sarcina ta \u201E${bt.title}\u201D este deblocat\u0103!`]
+                         `\u201E${completedTaskTitle}\u201D s-a finalizat \u2014 sarcina ta \u201E${bt.title}\u201D este deblocat\u0103!`,
+                         req.activeCompanyId]
                     );
                 }
             }
@@ -542,17 +538,20 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                         bodyLines.push(`<p style="color: #EF4444; font-size: 13px; margin-top: 8px;">📝 Motiv: ${reason}</p>`);
                     }
                     for (const user of stakeholders) {
+                        const language = await resolveRecipientLocale(user.id, req.activeCompanyId);
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
                             subtitle: `Status schimbat → ${newLabel}`,
                             bodyLines,
                             taskId: id,
                             taskTitle,
+                            language,
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,
                             taskId: id, subject: `[ETM] Status: ${newLabel} — ${taskTitle}`,
                             htmlBody, emailType: 'status_changed',
+                            companyId: req.activeCompanyId,
                         }).catch(err => console.error('[status_changed] Email error:', err));
                     }
                 } catch (err) {
@@ -576,6 +575,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                                     subject: `[ETM] Raport finalizare — ${taskTitle}`,
                                     htmlBody: reportHtml,
                                     emailType: 'completion_report',
+                                    companyId: req.activeCompanyId,
                                 }).catch(err => console.error('[completion_report] Email error:', err));
                             }
                         }
@@ -618,7 +618,7 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             return;
         }
 
-        if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
@@ -670,21 +670,21 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
 
         // Log due date change
         await pool.query(
-            `INSERT INTO task_due_date_changes (task_id, old_date, new_date, reason, changed_by)
-       VALUES ($1, $2, $3, $4, $5)`,
-            [id, oldDate, due_date, reason, req.user!.id]
+            `INSERT INTO task_due_date_changes (task_id, old_date, new_date, reason, changed_by, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, oldDate, due_date, reason, req.user!.id, req.activeCompanyId]
         );
 
         // Activity log
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'due_date_changed', $3)`,
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+       VALUES ($1, $2, 'due_date_changed', $3, $4)`,
             [id, req.user!.id, JSON.stringify({
                 old_date: oldDate,
                 new_date: due_date,
                 reason,
                 recurring_realigned: recurringRealigned
-            })]
+            }), req.activeCompanyId]
         );
 
         // Auto-comment: make the date change reason visible in the Comments tab
@@ -695,20 +695,20 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             commentContent += `\n🔁 Recurența a fost realiniată: și următoarele instanțe vor pornî de la noua dată.`;
         }
         await pool.query(
-            `INSERT INTO task_comments (task_id, author_id, content, mentions)
-       VALUES ($1, $2, $3, $4)`,
-            [id, req.user!.id, commentContent, []]
+            `INSERT INTO task_comments (task_id, author_id, content, mentions, company_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+            [id, req.user!.id, commentContent, [], req.activeCompanyId]
         );
 
         // Activity log for the auto-comment
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'comment_added', $3)`,
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+       VALUES ($1, $2, 'comment_added', $3, $4)`,
             [id, req.user!.id, JSON.stringify({
                 comment_preview: commentContent.substring(0, 100),
                 mentions: [],
                 auto_generated: true
-            })]
+            }), req.activeCompanyId]
         );
 
         res.json(rows[0]);
@@ -731,7 +731,7 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
         return;
     }
 
-    const result = await taskService.softDeleteTask(req.params.id, req.user!.id, req.user!.role);
+    const result = await taskService.softDeleteTask(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId);
     if ('error' in result) {
         if (result.error === 'not_found') {
             res.status(404).json({ error: 'Task-ul nu a fost găsit sau a fost deja șters.' });
@@ -760,17 +760,12 @@ router.post('/:id/duplicate', authMiddleware, asyncHandler(async (req: AuthReque
         return;
     }
 
-    const newTask = await taskService.duplicateTask(req.params.id, req.user!.id);
+    const newTask = await taskService.duplicateTask(req.params.id, req.user!.id, req.activeCompanyId);
     if (!newTask) {
         res.status(404).json({ error: 'Task negăsit.' });
         return;
     }
-    // Ensure the duplicate lands in the active tenant (the service may rely on DEFAULT 1).
-    const { rows: scoped } = await pool.query(
-        `UPDATE tasks SET company_id = $1 WHERE id = $2 RETURNING *`,
-        [req.activeCompanyId, newTask.id]
-    );
-    res.status(201).json(scoped[0] ?? newTask);
+    res.status(201).json(newTask);
 }));
 
 // === SUB-ROUTERS (mounted on /:id) ===

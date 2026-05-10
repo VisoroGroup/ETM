@@ -66,8 +66,8 @@ function AppRoutes() {
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><CompaniesAdminPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/admin/pug" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PugConfigPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/proiecte" element={<ErrorBoundary><ProjectsListPage /></ErrorBoundary>} />
-        <Route path="/proiecte/:id" element={<ErrorBoundary><ProjectDetailPage /></ErrorBoundary>} />
+        <Route path="/proiecte" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectsListPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/proiecte/:id" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />

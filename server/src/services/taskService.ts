@@ -2,7 +2,12 @@ import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
 import { dispatchWebhook } from './webhookService';
-import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail } from './notificationEmailService';
+import {
+    getSpecificStakeholders,
+    buildNotificationHtml,
+    sendNotificationEmail,
+    resolveRecipientLocale,
+} from './notificationEmailService';
 
 // ------- GET /:id — full task detail with related data -------
 
@@ -178,7 +183,8 @@ export async function createTask(
         assigned_section_id?: string;
         assigned_department_id?: string;
     },
-    userId: string
+    userId: string,
+    companyId: number
 ) {
     const { title, description, due_date, department_label, assigned_post_id, assigned_section_id, assigned_department_id } = data;
     let { assigned_to } = data;
@@ -208,20 +214,24 @@ export async function createTask(
         }
     }
 
+    // CRITICAL: include company_id in the initial INSERT so the new row is born
+    // in the right tenant. Side-effect inserts that follow MUST use the same id.
     const { rows } = await pool.query(
         `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
-                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id,
+                            company_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
         [taskId, title, description || null, due_date, userId, department_label,
-         assigned_to || null, assigned_post_id || null, assigned_section_id || null, assigned_department_id || null]
+         assigned_to || null, assigned_post_id || null, assigned_section_id || null, assigned_department_id || null,
+         companyId]
     );
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-       VALUES ($1, $2, 'created', $3)`,
-        [taskId, userId, JSON.stringify({ title, description, department_label, assigned_to, due_date })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+       VALUES ($1, $2, 'created', $3, $4)`,
+        [taskId, userId, JSON.stringify({ title, description, department_label, assigned_to, due_date }), companyId]
     );
 
     // Webhook: task.created
@@ -238,9 +248,9 @@ export async function createTask(
 
         // In-app notification
         await pool.query(
-            `INSERT INTO notifications (user_id, task_id, type, message, created_by)
-             VALUES ($1, $2, 'task_assigned', $3, $4)`,
-            [assigned_to, taskId, `${creatorName} ți-a atribuit o sarcină nouă: "${title}"`, userId]
+            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+             VALUES ($1, $2, 'task_assigned', $3, $4, $5)`,
+            [assigned_to, taskId, `${creatorName} ți-a atribuit o sarcină nouă: "${title}"`, userId, companyId]
         );
 
         // Email notification (fire-and-forget)
@@ -248,6 +258,7 @@ export async function createTask(
             try {
                 const stakeholders = await getSpecificStakeholders([assigned_to], userId);
                 for (const user of stakeholders) {
+                    const language = await resolveRecipientLocale(user.id, companyId);
                     const htmlBody = buildNotificationHtml({
                         recipientName: user.display_name,
                         subtitle: 'Sarcină nouă atribuită',
@@ -256,11 +267,13 @@ export async function createTask(
                         ],
                         taskId,
                         taskTitle: title,
+                        language,
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,
                         taskId, subject: `[ETM] Sarcină nouă atribuită — ${title}`,
                         htmlBody, emailType: 'task_created_assigned',
+                        companyId,
                     }).catch(err => console.error('[task_created_assigned] Email error:', err));
                 }
             } catch (err) {
@@ -285,7 +298,8 @@ export async function updateTask(
         assigned_section_id?: string;
         assigned_department_id?: string;
     },
-    userId: string
+    userId: string,
+    companyId?: number
 ) {
     // Use transaction with FOR UPDATE to prevent concurrent update races
     const client = await pool.connect();
@@ -396,27 +410,30 @@ export async function updateTask(
     }
 
     const rows = [updatedTask];
+    // Use the loaded task's tenant for any side-effect inserts so they always
+    // land in the correct company even if caller didn't pass companyId.
+    const taskCompanyId: number | undefined = oldTask.company_id ?? companyId;
 
     // --- Audit logging: log each field change separately ---
     if (data.title !== undefined && data.title !== oldTask.title) {
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'title_changed', $3)`,
-            [id, userId, JSON.stringify({ old_value: oldTask.title, new_value: data.title })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'title_changed', $3, $4)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.title, new_value: data.title }), taskCompanyId]
         );
     }
     if (data.description !== undefined && data.description !== oldTask.description) {
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'description_changed', $3)`,
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'description_changed', $3, $4)`,
             [id, userId, JSON.stringify({
                 old_value: (oldTask.description || '').substring(0, 200),
                 new_value: (data.description || '').substring(0, 200)
-            })]
+            }), taskCompanyId]
         );
     }
     if (data.department_label !== undefined && data.department_label !== oldTask.department_label) {
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'department_changed', $3)`,
-            [id, userId, JSON.stringify({ old_value: oldTask.department_label, new_value: data.department_label })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'department_changed', $3, $4)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.department_label, new_value: data.department_label }), taskCompanyId]
         );
     }
     if (data.assigned_to !== undefined && (data.assigned_to || null) !== oldTask.assigned_to) {
@@ -430,17 +447,17 @@ export async function updateTask(
             newName = u[0]?.display_name;
         }
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'assigned_to_changed', $3)`,
-            [id, userId, JSON.stringify({ old_value: oldTask.assigned_to, old_name: oldName, new_value: data.assigned_to || null, new_name: newName })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'assigned_to_changed', $3, $4)`,
+            [id, userId, JSON.stringify({ old_value: oldTask.assigned_to, old_name: oldName, new_value: data.assigned_to || null, new_name: newName }), taskCompanyId]
         );
         // Notification to new assignee
         if (data.assigned_to && data.assigned_to !== userId) {
             const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
             const creatorName = creator[0]?.display_name || 'Cineva';
             await pool.query(
-                `INSERT INTO notifications (user_id, task_id, type, message, created_by)
-                 VALUES ($1, $2, 'task_assigned', $3, $4)`,
-                [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId]
+                `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+                 VALUES ($1, $2, 'task_assigned', $3, $4, $5)`,
+                [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId, taskCompanyId]
             );
 
             // EMAIL: notify new assignee (fire-and-forget)
@@ -449,6 +466,7 @@ export async function updateTask(
                     const stakeholders = await getSpecificStakeholders([data.assigned_to!], userId);
                     const taskTitle = data.title || oldTask.title;
                     for (const user of stakeholders) {
+                        const language = await resolveRecipientLocale(user.id, taskCompanyId ?? null);
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
                             subtitle: 'Sarcină atribuită',
@@ -457,11 +475,13 @@ export async function updateTask(
                             ],
                             taskId: id,
                             taskTitle,
+                            language,
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,
                             taskId: id, subject: `[ETM] Sarcină atribuită — ${taskTitle}`,
                             htmlBody, emailType: 'task_assigned',
+                            companyId: taskCompanyId,
                         }).catch(err => console.error('[task_assigned] Email error:', err));
                     }
                 } catch (err) {
@@ -482,8 +502,8 @@ export async function updateTask(
 
 // ------- DELETE /:id — soft delete -------
 
-export async function softDeleteTask(id: string, userId: string, userRole: string) {
-    const { rows } = await pool.query('SELECT created_by, assigned_to, title FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
+export async function softDeleteTask(id: string, userId: string, userRole: string, companyId?: number) {
+    const { rows } = await pool.query('SELECT created_by, assigned_to, title, company_id FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
     if (rows.length === 0) return { error: 'not_found' as const };
 
     const isCreator = rows[0].created_by === userId;
@@ -494,11 +514,13 @@ export async function softDeleteTask(id: string, userId: string, userRole: strin
         return { error: 'forbidden' as const };
     }
 
+    const taskCompanyId: number | undefined = rows[0].company_id ?? companyId;
+
     // Audit log (non-blocking — don't let enum errors block the actual delete)
     try {
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_deleted', $3)`,
-            [id, userId, JSON.stringify({ title: rows[0].title })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'task_deleted', $3, $4)`,
+            [id, userId, JSON.stringify({ title: rows[0].title }), taskCompanyId]
         );
     } catch (err) {
         console.error('[softDeleteTask] Audit log failed (enum may be missing):', err);
@@ -510,7 +532,7 @@ export async function softDeleteTask(id: string, userId: string, userRole: strin
 
 // ------- POST /:id/duplicate — duplicate task with subtasks -------
 
-export async function duplicateTask(id: string, userId: string) {
+export async function duplicateTask(id: string, userId: string, companyId: number) {
     const { rows: [original] } = await pool.query(
         'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]
     );
@@ -520,14 +542,17 @@ export async function duplicateTask(id: string, userId: string) {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);
 
+    // Duplicate INSERT lands in the active tenant directly — no follow-up UPDATE.
     await pool.query(
         `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label,
-                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id)
-         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8, $9, $10)`,
+                            assigned_to, assigned_post_id, assigned_section_id, assigned_department_id,
+                            company_id)
+         VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8, $9, $10, $11)`,
         [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0],
          userId, original.department_label,
          original.assigned_to, original.assigned_post_id,
-         original.assigned_section_id, original.assigned_department_id]
+         original.assigned_section_id, original.assigned_department_id,
+         companyId]
     );
 
     // Copy subtasks (reset checkboxes, clear assigned_to)
@@ -536,21 +561,21 @@ export async function duplicateTask(id: string, userId: string) {
     );
     for (const st of subtasks) {
         await pool.query(
-            'INSERT INTO subtasks (task_id, title, is_completed, assigned_to, order_index) VALUES ($1, $2, false, NULL, $3)',
-            [newId, st.title, st.order_index]
+            'INSERT INTO subtasks (task_id, title, is_completed, assigned_to, order_index, company_id) VALUES ($1, $2, false, NULL, $3, $4)',
+            [newId, st.title, st.order_index, companyId]
         );
     }
 
     // Activity log on new task
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'created', $3)`,
-        [newId, userId, JSON.stringify({ duplicated_from: id, original_title: original.title })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'created', $3, $4)`,
+        [newId, userId, JSON.stringify({ duplicated_from: id, original_title: original.title }), companyId]
     );
 
-    // Activity log on original task
+    // Activity log on original task (uses original's tenant — usually the same)
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details) VALUES ($1, $2, 'task_duplicated', $3)`,
-        [id, userId, JSON.stringify({ duplicated_to: newId })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id) VALUES ($1, $2, 'task_duplicated', $3, $4)`,
+        [id, userId, JSON.stringify({ duplicated_to: newId }), original.company_id ?? companyId]
     );
 
     const { rows: [newTask] } = await pool.query('SELECT * FROM tasks WHERE id = $1', [newId]);

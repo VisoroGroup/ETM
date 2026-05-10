@@ -3,14 +3,31 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
-import { getSpecificStakeholders, buildNotificationHtml, sendNotificationEmail, escapeHtml } from '../services/notificationEmailService';
+import {
+    getSpecificStakeholders,
+    buildNotificationHtml,
+    sendNotificationEmail,
+    escapeHtml,
+    resolveRecipientLocale,
+} from '../services/notificationEmailService';
 
 const router = Router({ mergeParams: true });
+
+// Helper: confirm a checklist item belongs to :taskId AND active tenant.
+async function getChecklistItemInTenant(itemId: string, taskId: string, companyId: number) {
+    const { rows } = await pool.query(
+        `SELECT ci.* FROM task_checklist_items ci
+         JOIN tasks t ON t.id = ci.task_id
+         WHERE ci.id = $1 AND ci.task_id = $2 AND t.company_id = $3 AND t.deleted_at IS NULL`,
+        [itemId, taskId, companyId]
+    );
+    return rows[0] || null;
+}
 
 // GET /api/tasks/:id/checklist
 router.get('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -24,8 +41,9 @@ router.get('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, r
 // POST /api/tasks/:id/checklist
 router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -40,10 +58,10 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
         return;
     }
 
-    // Verify task exists and is not deleted
+    // Verify task exists and is not deleted (tenant-scoped)
     const { rows: taskCheck } = await pool.query(
-        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
-        [taskId]
+        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL AND company_id = $2',
+        [taskId, companyId]
     );
     if (taskCheck.length === 0) {
         res.status(404).json({ error: 'A task nem létezik vagy törölve lett.' });
@@ -57,17 +75,17 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
     );
 
     const { rows: [item] } = await pool.query(
-        `INSERT INTO task_checklist_items (task_id, title, order_index, created_by)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [taskId, title.trim(), next_idx, req.user!.id]
+        `INSERT INTO task_checklist_items (task_id, title, order_index, created_by, company_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [taskId, title.trim(), next_idx, req.user!.id, companyId]
     );
 
     // Activity log (non-blocking — don't let enum errors block the actual add)
     try {
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'checklist_updated', $3)`,
-            [taskId, req.user!.id, JSON.stringify({ action: 'item_added', title: title.trim() })]
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+             VALUES ($1, $2, 'checklist_updated', $3, $4)`,
+            [taskId, req.user!.id, JSON.stringify({ action: 'item_added', title: title.trim() }), companyId]
         );
     } catch (err) {
         console.error('[checklist] Activity log failed (enum may be missing):', err);
@@ -80,22 +98,23 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
 router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { title, is_checked } = req.body;
     const { id: taskId, itemId } = req.params;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
 
-    // Get old value for completion detection
-    const { rows: oldRows } = await pool.query(
-        'SELECT is_checked, title FROM task_checklist_items WHERE id = $1 AND task_id = $2',
-        [itemId, taskId]
-    );
-    if (oldRows.length === 0) {
+    // Tenant + parent guard
+    const oldItem = await getChecklistItemInTenant(itemId, taskId, companyId);
+    if (!oldItem) {
         res.status(404).json({ error: 'Elementul nu a fost găsit.' });
         return;
     }
-    const oldItem = oldRows[0];
 
     const sets: string[] = [];
     const vals: any[] = [];
@@ -131,6 +150,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
                 const itemTitle = title || oldItem.title;
                 const stakeholders = await getSpecificStakeholders([task.created_by, task.assigned_to], req.user!.id);
                 for (const user of stakeholders) {
+                    const language = await resolveRecipientLocale(user.id, companyId);
                     const htmlBody = buildNotificationHtml({
                         recipientName: user.display_name,
                         subtitle: 'Element checklist finalizat',
@@ -140,11 +160,13 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
                         ],
                         taskId,
                         taskTitle: task.title,
+                        language,
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,
                         taskId, subject: `[ETM] Checklist bifat — ${itemTitle}`,
                         htmlBody, emailType: 'checklist_checked',
+                        companyId,
                     }).catch(err => console.error('[checklist_checked] Email error:', err));
                 }
             } catch (err) {
@@ -160,7 +182,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
 router.put('/checklist-reorder', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -187,9 +209,21 @@ router.put('/checklist-reorder', authMiddleware, asyncHandler(async (req: AuthRe
 // DELETE /api/tasks/:id/checklist/:itemId
 router.delete('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, itemId } = req.params;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        return;
+    }
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Tenant + parent guard
+    const existing = await getChecklistItemInTenant(itemId, taskId, companyId);
+    if (!existing) {
+        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
         return;
     }
 

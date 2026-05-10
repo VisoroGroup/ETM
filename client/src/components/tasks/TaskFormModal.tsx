@@ -161,6 +161,12 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
         try {
             setSaving(true);
+            // department_label is a Romanian-Visoro-only concept (legacy enum). The DB
+            // column is NOT NULL, so for non-'full' templates (Hungary, Neo Plan) we
+            // still send the default value 'departament_1' — but the UI for those
+            // templates never reads it, so the value is harmless. For 'full' template
+            // it carries the org-mapped enum chosen by the user via the cascading
+            // department picker.
             const task = await tasksApi.create({
                 title: title.trim(),
                 description: description.trim() || null,

@@ -88,9 +88,15 @@ router.put('/stages/:id', requireRole('superadmin'), asyncHandler(async (req: Au
 router.delete('/stages/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
-    // Prevent delete if any project has this stage attached.
+    // Prevent delete if any project IN THIS COMPANY has this stage attached.
+    // Filtering by company_id avoids a cross-tenant reference blocking the delete.
     const { rowCount } = await pool.query(
-        'SELECT 1 FROM pug_project_stages WHERE stage_catalog_id = $1 LIMIT 1', [id]
+        `SELECT 1
+           FROM pug_project_stages ps
+           JOIN pug_projects p ON p.id = ps.project_id
+          WHERE ps.stage_catalog_id = $1 AND p.company_id = $2
+          LIMIT 1`,
+        [id, cid]
     );
     if (rowCount && rowCount > 0) {
         res.status(409).json({ error: 'Etapa este folosită într-un proiect. Dezactiveaz-o în loc.' });
@@ -162,6 +168,21 @@ router.put('/statuses/:id', requireRole('superadmin'), asyncHandler(async (req: 
 router.delete('/statuses/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
+    // Prevent delete if any project stage in this company uses this status.
+    // FK on pug_project_stages.status_id is SET NULL — without this guard a
+    // delete would silently null out the status across many projects.
+    const { rowCount: usageCount } = await pool.query(
+        `SELECT 1
+           FROM pug_project_stages ps
+           JOIN pug_projects p ON p.id = ps.project_id
+          WHERE ps.status_id = $1 AND p.company_id = $2
+          LIMIT 1`,
+        [id, cid]
+    );
+    if (usageCount && usageCount > 0) {
+        res.status(409).json({ error: 'Acest status este folosit în proiecte. Dezactivează-l (is_active=false) în loc.' });
+        return;
+    }
     const result = await pool.query('DELETE FROM pug_status_catalog WHERE id=$1 AND company_id=$2', [id, cid]);
     if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Status inexistent.' }); return; }
     res.status(204).end();
@@ -224,6 +245,17 @@ router.put('/work-types/:id', requireRole('superadmin'), asyncHandler(async (req
 router.delete('/work-types/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
+    // Prevent delete if any project in this company references this work type.
+    // FK on pug_projects.work_type_id is SET NULL — without this guard a delete
+    // would silently strip the type from existing projects.
+    const { rowCount: usageCount } = await pool.query(
+        'SELECT 1 FROM pug_projects WHERE work_type_id = $1 AND company_id = $2 LIMIT 1',
+        [id, cid]
+    );
+    if (usageCount && usageCount > 0) {
+        res.status(409).json({ error: 'Acest tip este folosit în proiecte. Dezactivează-l (is_active=false) în loc.' });
+        return;
+    }
     const result = await pool.query('DELETE FROM pug_work_types WHERE id=$1 AND company_id=$2', [id, cid]);
     if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Tip inexistent.' }); return; }
     res.status(204).end();
@@ -298,6 +330,20 @@ router.put('/custom-fields/:id', requireRole('superadmin'), asyncHandler(async (
 router.delete('/custom-fields/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
+    // Prevent delete if any project in this company has values stored for this field.
+    // FK on pug_custom_field_values.field_id is CASCADE — without this guard a
+    // delete would silently destroy the data across all projects.
+    const { rows: usageRows } = await pool.query<{ c: string }>(
+        `SELECT COUNT(*)::text AS c
+           FROM pug_custom_field_values v
+           JOIN pug_projects p ON p.id = v.project_id
+          WHERE v.field_id = $1 AND p.company_id = $2`,
+        [id, cid]
+    );
+    if (Number(usageRows[0]?.c ?? '0') > 0) {
+        res.status(409).json({ error: 'Acest câmp are valori salvate în proiecte. Dezactivează-l în loc.' });
+        return;
+    }
     const result = await pool.query('DELETE FROM pug_custom_fields WHERE id=$1 AND company_id=$2', [id, cid]);
     if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Câmp inexistent.' }); return; }
     res.status(204).end();
@@ -326,6 +372,12 @@ router.post('/reminder-levels', requireRole('superadmin'), asyncHandler(async (r
         return;
     }
     const dbVal = Number(days_before);
+    // Sanity range — reject obviously bogus values like 999 days or -365.
+    // Negative numbers are valid (post-deadline reminders) but capped at -180.
+    if (dbVal < -180 || dbVal > 180) {
+        res.status(400).json({ error: 'Numărul de zile trebuie să fie între -180 și 180.' });
+        return;
+    }
     try {
         const { rows } = await pool.query(
             `INSERT INTO pug_reminder_settings (company_id, days_before, is_enabled)
@@ -353,7 +405,12 @@ router.put('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(async
             res.status(400).json({ error: 'days_before trebuie să fie un număr întreg.' });
             return;
         }
-        vals.push(Number(days_before)); sets.push(`days_before=$${vals.length}`);
+        const dbVal = Number(days_before);
+        if (dbVal < -180 || dbVal > 180) {
+            res.status(400).json({ error: 'Numărul de zile trebuie să fie între -180 și 180.' });
+            return;
+        }
+        vals.push(dbVal); sets.push(`days_before=$${vals.length}`);
     }
     if (typeof is_enabled === 'boolean') { vals.push(is_enabled); sets.push(`is_enabled=$${vals.length}`); }
     if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }

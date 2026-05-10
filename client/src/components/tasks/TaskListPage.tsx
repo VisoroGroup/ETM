@@ -4,6 +4,7 @@ import { tasksApi, savedFiltersApi, userPreferencesApi, departmentsApi } from '.
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS, OrgDepartment } from '../../types';
 import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
@@ -53,6 +54,7 @@ export default function TaskListPage() {
     const [savingView, setSavingView] = useState(false);
     const [viewName, setViewName] = useState('');
     const { user } = useAuth();
+    const { activeCompany } = useCompany();
     const { showToast } = useToast();
     const { t } = useTranslation();
     const location = useLocation();
@@ -178,18 +180,20 @@ export default function TaskListPage() {
     }
 
     useEffect(() => {
+        if (!activeCompany) return;
         loadTasks();
-    }, [filters]);
+    }, [filters, activeCompany?.id]);
 
     // Load org structure (departments → sections → posts)
     useEffect(() => {
+        if (!activeCompany) return;
         departmentsApi.list()
             .then(data => {
                 setOrgDepartments(data.departments || []);
                 setCompanyPolicyCount(data.company_policy_count || 0);
             })
             .catch(err => console.error('Failed to load departments:', err));
-    }, []);
+    }, [activeCompany?.id]);
 
     // Open-task event (fired by dependency graph navigation)
     useEffect(() => {

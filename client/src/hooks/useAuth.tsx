@@ -80,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     function logout() {
         safeLocalStorage.remove('visoro_token');
+        // Clear active company so the next user on a shared browser doesn't inherit it
+        safeLocalStorage.remove('visoro_active_company_id');
         setUser(null);
         setUsers([]);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { activityFeedApi, authApi } from '../../services/api';
 import { DEPARTMENTS, Department } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { timeAgo } from '../../utils/helpers';
 import {
     Activity, Filter, Loader2, User as UserIcon, Tag, ChevronDown,
@@ -66,6 +67,7 @@ export default function ActivityFeedPage() {
     const { t } = useTranslation();
     const ACTION_LABELS = makeActionLabels(t);
     const { user } = useAuth();
+    const { activeCompany } = useCompany();
     const [items, setItems] = useState<FeedItem[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -82,6 +84,7 @@ export default function ActivityFeedPage() {
     useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, []);
 
     const loadFeed = useCallback(async (pageNum: number, append = false) => {
+        if (!activeCompany) return;
         if (append) setLoadingMore(true);
         else setLoading(true);
 
@@ -105,7 +108,7 @@ export default function ActivityFeedPage() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [filterUser, filterDept, filterAction]);
+    }, [filterUser, filterDept, filterAction, activeCompany?.id]);
 
     useEffect(() => { loadFeed(1); }, [loadFeed]);
 

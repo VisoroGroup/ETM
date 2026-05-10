@@ -128,7 +128,7 @@ export default function Layout() {
                         <div className="ml-3 overflow-hidden flex-1">
                             <h1 className="text-base font-bold truncate tracking-tight">Sarcinator Visoro</h1>
                             <p className={`text-[10px] ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
-                                {activeCompany?.name ?? 'Visoro Global SRL'}
+                                {activeCompany?.name ?? t('sidebar.no_active_company')}
                             </p>
                         </div>
                     )}

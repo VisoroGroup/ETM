@@ -107,12 +107,44 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     const { id } = req.params;
     const { role, departments, email } = req.body;
 
-    const allowed_roles = ['admin', 'manager', 'user'];
+    const callerRole = req.user!.role;
+    const isSuperadmin = callerRole === 'superadmin';
+    const isAdmin = callerRole === 'admin';
+
+    // Superadmin may set any role; a regular admin can only set 'user' or 'manager'.
+    const allowed_roles = isSuperadmin
+        ? ['superadmin', 'admin', 'manager', 'user']
+        : ['user', 'manager'];
     const allowed_departments = ['departament_1', 'departament_2', 'departament_3', 'departament_4', 'departament_5', 'departament_6', 'departament_7'];
 
-    if (role && !allowed_roles.includes(role)) {
-        res.status(400).json({ error: 'Rol invalid.' });
-        return;
+    if (role) {
+        if (role === 'superadmin' && !isSuperadmin) {
+            res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+            return;
+        }
+        if (!allowed_roles.includes(role)) {
+            res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+            return;
+        }
+    }
+
+    // Department change scope guard for non-superadmin admins:
+    // they may only modify users with whom they share at least one company.
+    if (departments && isAdmin && !isSuperadmin && req.user!.id !== id) {
+        const { rows: shared } = await pool.query(
+            `SELECT 1
+               FROM user_companies uc_target
+               JOIN user_companies uc_caller
+                 ON uc_caller.company_id = uc_target.company_id
+              WHERE uc_target.user_id = $1
+                AND uc_caller.user_id = $2
+              LIMIT 1`,
+            [id, req.user!.id]
+        );
+        if (shared.length === 0) {
+            res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
+            return;
+        }
     }
 
     if (departments) {
@@ -176,7 +208,24 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
         return;
     }
 
-    const allowed_roles = ['admin', 'manager', 'user'];
+    const callerRole = req.user!.role;
+    const isSuperadmin = callerRole === 'superadmin';
+
+    // Superadmin may grant any role; a regular admin can only create users with role 'user' or 'manager'.
+    const allowed_roles = isSuperadmin
+        ? ['superadmin', 'admin', 'manager', 'user']
+        : ['user', 'manager'];
+
+    if (role) {
+        if (role === 'superadmin' && !isSuperadmin) {
+            res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+            return;
+        }
+        if (!allowed_roles.includes(role)) {
+            res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+            return;
+        }
+    }
     const userRole = role && allowed_roles.includes(role) ? role : 'user';
 
     // Check if email already exists (including deactivated)

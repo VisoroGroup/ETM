@@ -46,7 +46,15 @@ function hexToRgba(hex: string | undefined | null, alpha: number): string | null
 
 export default function NotificationBell({ collapsed, darkMode }: Props) {
     const { t } = useTranslation();
-    const { companies } = useCompany();
+    const { companies, activeCompany, setActiveCompany } = useCompany();
+
+    // Switch the active company before opening a task whose notification
+    // belongs to a different company. Without this, the task fetch on the
+    // tasks page would 404 (it filters by active company). Safe to call
+    // even when the IDs match — the hook noops if the value is unchanged.
+    const ensureActiveCompany = (companyId: number) => {
+        if (activeCompany?.id !== companyId) setActiveCompany(companyId);
+    };
     const [count, setCount] = useState(0);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
@@ -233,6 +241,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                             onClick={() => {
                                                 if (!n.is_read) markRead(n.id);
                                                 if (n.task_id) {
+                                                    ensureActiveCompany(n.company_id);
                                                     setOpen(false);
                                                     navigate('/tasks', { state: { openTaskId: n.task_id } });
                                                 }
@@ -324,6 +333,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            ensureActiveCompany(group.company_id);
                                                             setOpen(false);
                                                             navigate('/tasks', { state: { openTaskId: group.task_id } });
                                                         }}
@@ -338,6 +348,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         onClick={() => {
                                                             if (!n.is_read) markRead(n.id);
                                                             if (n.task_id) {
+                                                                ensureActiveCompany(n.company_id);
                                                                 setOpen(false);
                                                                 navigate('/tasks', { state: { openTaskId: n.task_id } });
                                                             }

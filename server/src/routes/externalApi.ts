@@ -10,6 +10,11 @@
  *  - Add comment to task
  *  - Summary/overview stats
  *  - List users (for filters)
+ *
+ * Tenant scoping: every endpoint requires `req.activeCompanyId` (loaded by
+ * apiTokenAuth from the X-Active-Company header, falling back to the user's
+ * first company). All SELECT/INSERT/UPDATE/DELETE statements MUST include
+ * `company_id = $activeCompanyId` to prevent cross-tenant leaks.
  */
 import { Router, Response } from 'express';
 import pool from '../config/database';
@@ -20,7 +25,6 @@ import * as taskService from '../services/taskService';
 import { getAttachmentContent, getMimeType } from '../services/attachmentContentService';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
 
 const router = Router();
 
@@ -36,6 +40,20 @@ const apiRateLimiter = rateLimit({
 router.use(apiTokenAuth);
 router.use(apiRateLimiter);
 
+/**
+ * Guard: every endpoint requires an active company. Returns 400 with a
+ * Romanian error message if the header was missing/invalid AND the token's
+ * user has no companies (apiTokenAuth would normally 401 in that case, but we
+ * defend in depth here for any sub-route that might bypass that path).
+ */
+function requireActiveCompany(req: ApiAuthRequest, res: Response): number | null {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return null;
+    }
+    return req.activeCompanyId;
+}
+
 // ==========================================
 // GET /api/v1/projects — list departments as "projects"
 // ==========================================
@@ -49,15 +67,19 @@ router.get('/projects', (_req: ApiAuthRequest, res: Response) => {
 });
 
 // ==========================================
-// GET /api/v1/users — list active users
+// GET /api/v1/users — list active users in the active company
 // ==========================================
-router.get('/users', asyncHandler(async (_req: ApiAuthRequest, res: Response) => {
+router.get('/users', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const { rows } = await pool.query(`
-        SELECT id, display_name, email, role, departments
-        FROM users
-        WHERE is_active = true
-        ORDER BY display_name ASC
-    `);
+        SELECT u.id, u.display_name, u.email, u.role, u.departments
+        FROM users u
+        JOIN user_companies uc ON uc.user_id = u.id
+        WHERE u.is_active = true AND uc.company_id = $1
+        ORDER BY u.display_name ASC
+    `, [companyId]);
     res.json({ users: rows });
 }));
 
@@ -65,6 +87,9 @@ router.get('/users', asyncHandler(async (_req: ApiAuthRequest, res: Response) =>
 // GET /api/v1/tasks — list tasks with filters
 // ==========================================
 router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const {
         status,
         department,
@@ -77,9 +102,10 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
         limit = '50'
     } = req.query;
 
-    const conditions: string[] = ['t.deleted_at IS NULL'];
-    const values: any[] = [];
-    let paramIndex = 1;
+    // Tenant scope first — every SELECT must filter by company_id.
+    const conditions: string[] = ['t.deleted_at IS NULL', 't.company_id = $1'];
+    const values: any[] = [companyId];
+    let paramIndex = 2;
 
     // Exclude completed by default, unless explicitly requested
     if (include_completed !== 'true') {
@@ -146,14 +172,14 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
             COALESCE(sub.total, 0) AS subtask_total,
             COALESCE(sub.completed, 0) AS subtask_completed,
             (SELECT tsc.reason FROM task_status_changes tsc
-             WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
+             WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat' AND tsc.company_id = t.company_id
              ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason
         FROM tasks t
         JOIN users u ON t.created_by = u.id
         LEFT JOIN users au ON t.assigned_to = au.id
         LEFT JOIN (
             SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
-            FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
+            FROM subtasks WHERE deleted_at IS NULL AND company_id = $1 GROUP BY task_id
         ) sub ON sub.task_id = t.id
         ${whereClause}
         ORDER BY
@@ -167,7 +193,7 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
 
     const { rows } = await pool.query(query, values);
 
-    // Count total
+    // Count total (uses the same WHERE clause + params, minus LIMIT/OFFSET)
     const countQuery = `SELECT COUNT(*) FROM tasks t ${whereClause}`;
     const countValues = values.slice(0, -2);
     const { rows: countRows } = await pool.query(countQuery, countValues);
@@ -191,7 +217,7 @@ router.get('/tasks', asyncHandler(async (req: ApiAuthRequest, res: Response) => 
 
 // GET /api/v1/tasks/summary — redirect to /summary (common MCP mistake)
 // MUST be before /tasks/:id to avoid matching 'summary' as a UUID
-router.get('/tasks/summary', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+router.get('/tasks/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) => {
     res.redirect(307, '/api/v1/summary');
 }));
 
@@ -199,13 +225,29 @@ router.get('/tasks/summary', asyncHandler(async (req: ApiAuthRequest, res: Respo
 // GET /api/v1/tasks/:id — task details
 // ==========================================
 router.get('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
+    // Tenant guard FIRST: confirm the task belongs to the active company before
+    // we hand its id to the (currently company-blind) taskService.
+    const { rows: tenantRows } = await pool.query(
+        'SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [req.params.id, companyId]
+    );
+    if (tenantRows.length === 0) {
+        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        return;
+    }
+
     const task = await taskService.getTaskById(req.params.id);
     if (!task) {
         res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
         return;
     }
 
-    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role)) {
+    // checkTaskAccess will receive companyId once Agent 1 lands; for now the
+    // tenant guard above already proves the task belongs to the active company.
+    if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Access denied to this task.' });
         return;
     }
@@ -225,10 +267,23 @@ router.get('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 // PUT /api/v1/tasks/:id — update task (status, assignee)
 // ==========================================
 router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const { id } = req.params;
     const { status, assigned_to, reason } = req.body;
 
-    if (!await checkTaskAccess(id, req.user!.id, req.user!.role)) {
+    // Tenant guard before anything else.
+    const { rows: tenantRows } = await pool.query(
+        'SELECT 1 FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [id, companyId]
+    );
+    if (tenantRows.length === 0) {
+        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        return;
+    }
+
+    if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Access denied to this task.' });
         return;
     }
@@ -256,8 +311,11 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
             return;
         }
 
-        // Get current status
-        const { rows: current } = await pool.query('SELECT status FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
+        // Get current status — tenant-scoped.
+        const { rows: current } = await pool.query(
+            'SELECT status FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+            [id, companyId]
+        );
         if (current.length === 0) {
             res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
             return;
@@ -265,33 +323,37 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 
         const oldStatus = current[0].status;
 
-        // Update status
-        await pool.query('UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2', [status, id]);
+        // Update status — tenant-scoped.
+        await pool.query(
+            'UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3',
+            [status, id, companyId]
+        );
 
         // Log status change
         await pool.query(
-            `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [id, oldStatus, status, reason || null, req.user!.id]
+            `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by, company_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, oldStatus, status, reason || null, req.user!.id, companyId]
         );
 
         // Activity log
         await pool.query(
-            `INSERT INTO activity_log (task_id, user_id, action_type, details)
-             VALUES ($1, $2, 'status_changed', $3)`,
+            `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+             VALUES ($1, $2, 'status_changed', $3, $4)`,
             [id, req.user!.id, JSON.stringify({
                 old_status: oldStatus,
                 new_status: status,
                 reason: reason || null,
                 via: 'api_v1'
-            })]
+            }), companyId]
         );
 
         // Auto-resolve alerts when completing
         if (status === 'terminat') {
             await pool.query(
-                `UPDATE task_alerts SET is_resolved = true, resolved_at = NOW() WHERE task_id = $1 AND is_resolved = false`,
-                [id]
+                `UPDATE task_alerts SET is_resolved = true, resolved_at = NOW()
+                 WHERE task_id = $1 AND is_resolved = false AND company_id = $2`,
+                [id, companyId]
             );
         }
     }
@@ -320,6 +382,9 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 // POST /api/v1/tasks/:id/comments — add comment
 // ==========================================
 router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const { id: taskId } = req.params;
     const { content } = req.body;
 
@@ -328,33 +393,36 @@ router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res:
         return;
     }
 
-    // Verify task exists
-    const { rows: taskRows } = await pool.query('SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL', [taskId]);
+    // Verify task exists IN THE ACTIVE COMPANY.
+    const { rows: taskRows } = await pool.query(
+        'SELECT id FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [taskId, companyId]
+    );
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
         return;
     }
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Access denied to this task.' });
         return;
     }
 
     const { rows } = await pool.query(
-        `INSERT INTO task_comments (task_id, author_id, content, mentions)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [taskId, req.user!.id, content, []]
+        `INSERT INTO task_comments (task_id, author_id, content, mentions, company_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [taskId, req.user!.id, content, [], companyId]
     );
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-         VALUES ($1, $2, 'comment_added', $3)`,
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+         VALUES ($1, $2, 'comment_added', $3, $4)`,
         [taskId, req.user!.id, JSON.stringify({
             comment_preview: content.substring(0, 100),
             mentions: [],
             via: 'api_v1'
-        })]
+        }), companyId]
     );
 
     rows[0].author_name = req.user!.display_name;
@@ -362,19 +430,22 @@ router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res:
 }));
 
 // ==========================================
-// GET /api/v1/summary — overview stats
+// GET /api/v1/summary — overview stats (scoped to active company)
 // ==========================================
-router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) => {
+router.get('/summary', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const today = new Date().toISOString().split('T')[0];
 
     // Status breakdown
     const { rows: statusBreakdown } = await pool.query(`
         SELECT status, COUNT(*)::int AS count
         FROM tasks
-        WHERE deleted_at IS NULL
+        WHERE deleted_at IS NULL AND company_id = $1
         GROUP BY status
         ORDER BY status
-    `);
+    `, [companyId]);
 
     // Overdue tasks
     const { rows: overdueRows } = await pool.query(`
@@ -383,12 +454,13 @@ router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) 
                (CURRENT_DATE - t.due_date::date) AS days_overdue
         FROM tasks t
         LEFT JOIN users au ON t.assigned_to = au.id
-        WHERE t.due_date < $1 AND t.status NOT IN ('terminat') AND t.deleted_at IS NULL
+        WHERE t.due_date < $1 AND t.status NOT IN ('terminat')
+              AND t.deleted_at IS NULL AND t.company_id = $2
         ORDER BY t.due_date ASC
         LIMIT 20
-    `, [today]);
+    `, [today, companyId]);
 
-    // Per-user workload
+    // Per-user workload — restrict users to those in the active company.
     const { rows: userWorkload } = await pool.query(`
         SELECT u.id, u.display_name,
                COUNT(t.id)::int AS total_tasks,
@@ -397,12 +469,16 @@ router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) 
                COUNT(t.id) FILTER (WHERE t.status = 'blocat')::int AS blocked,
                COUNT(t.id) FILTER (WHERE t.due_date < $1 AND t.status != 'terminat')::int AS overdue
         FROM users u
-        LEFT JOIN tasks t ON t.assigned_to = u.id AND t.deleted_at IS NULL AND t.status != 'terminat'
+        JOIN user_companies uc ON uc.user_id = u.id AND uc.company_id = $2
+        LEFT JOIN tasks t ON t.assigned_to = u.id
+                          AND t.deleted_at IS NULL
+                          AND t.status != 'terminat'
+                          AND t.company_id = $2
         WHERE u.is_active = true
         GROUP BY u.id, u.display_name
         HAVING COUNT(t.id) > 0
         ORDER BY total_tasks DESC
-    `, [today]);
+    `, [today, companyId]);
 
     // Totals
     const { rows: [totals] } = await pool.query(`
@@ -412,8 +488,8 @@ router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) 
             COUNT(*) FILTER (WHERE status = 'terminat')::int AS completed,
             COUNT(*) FILTER (WHERE status = 'blocat')::int AS blocked,
             COUNT(*) FILTER (WHERE due_date < $1 AND status != 'terminat')::int AS overdue
-        FROM tasks WHERE deleted_at IS NULL
-    `, [today]);
+        FROM tasks WHERE deleted_at IS NULL AND company_id = $2
+    `, [today, companyId]);
 
     // Add human-readable labels to status breakdown
     const statusWithLabels = statusBreakdown.map(s => ({
@@ -441,12 +517,15 @@ router.get('/summary', asyncHandler(async (_req: ApiAuthRequest, res: Response) 
 // GET /api/v1/tasks/:taskId/attachments — list attachments
 // ==========================================
 router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const { taskId } = req.params;
 
-    // Verify task exists
+    // Verify task exists IN THE ACTIVE COMPANY.
     const { rows: taskRows } = await pool.query(
-        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
-        [taskId]
+        'SELECT id FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [taskId, companyId]
     );
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
@@ -458,9 +537,9 @@ router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest
                 u.display_name AS uploaded_by
          FROM task_attachments a
          JOIN users u ON a.uploaded_by = u.id
-         WHERE a.task_id = $1
+         WHERE a.task_id = $1 AND a.company_id = $2
          ORDER BY a.created_at DESC`,
-        [taskId]
+        [taskId, companyId]
     );
 
     const attachments = rows.map(a => ({
@@ -480,19 +559,22 @@ router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest
 // GET /api/v1/attachments/:attachmentId/content — get file content
 // ==========================================
 router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
     const { attachmentId } = req.params;
     const format = (req.query.format as string) === 'base64' ? 'base64' : 'text';
     const offset = parseInt(req.query.offset as string, 10) || 0;
     const limit = Math.min(100000, Math.max(1, parseInt(req.query.limit as string, 10) || 100000));
 
-    // Look up attachment
+    // Look up attachment — tenant-scoped via the attachment's company_id.
     const { rows } = await pool.query(
         `SELECT a.id, a.task_id, a.file_name, a.file_url, a.file_size,
                 u.display_name AS uploaded_by
          FROM task_attachments a
          JOIN users u ON a.uploaded_by = u.id
-         WHERE a.id = $1`,
-        [attachmentId]
+         WHERE a.id = $1 AND a.company_id = $2`,
+        [attachmentId, companyId]
     );
 
     if (rows.length === 0) {
@@ -502,10 +584,10 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
 
     const attachment = rows[0];
 
-    // Verify parent task still exists
+    // Verify parent task still exists in the active company.
     const { rows: taskRows } = await pool.query(
-        'SELECT id FROM tasks WHERE id = $1 AND deleted_at IS NULL',
-        [attachment.task_id]
+        'SELECT id FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [attachment.task_id, companyId]
     );
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Sarcina părinte a fost ștearsă.' });
@@ -513,7 +595,7 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
     }
 
     // Check task access for the API token user
-    if (!await checkTaskAccess(attachment.task_id, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(attachment.task_id, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -531,14 +613,14 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
         // Activity log (non-blocking)
         try {
             await pool.query(
-                `INSERT INTO activity_log (task_id, user_id, action_type, details)
-                 VALUES ($1, $2, 'attachment_read', $3)`,
+                `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+                 VALUES ($1, $2, 'attachment_read', $3, $4)`,
                 [attachment.task_id, req.user!.id, JSON.stringify({
                     attachment_id: attachment.id,
                     filename: attachment.file_name,
                     format,
                     via: 'api_v1'
-                })]
+                }), companyId]
             );
         } catch (logErr) {
             console.error('[externalApi] attachment_read log failed:', logErr);

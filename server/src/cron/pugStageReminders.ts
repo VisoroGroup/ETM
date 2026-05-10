@@ -252,6 +252,7 @@ async function runPugStageReminderJob() {
             JOIN pug_stage_catalog sc  ON sc.id = ps.stage_catalog_id
             LEFT JOIN pug_status_catalog st ON st.id = ps.status_id
             WHERE p.is_archived = false
+              AND c.is_archived = false
               AND c.template_type = 'project'
               AND ps.deadline IS NOT NULL
               AND (st.id IS NULL OR st.is_terminal = false)

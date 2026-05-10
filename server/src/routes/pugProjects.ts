@@ -1,6 +1,6 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import pool from '../config/database';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 
 /**
@@ -17,6 +17,28 @@ function ensureCompany(req: AuthRequest, res: Response): number | null {
         return null;
     }
     return id as number;
+}
+
+/**
+ * Middleware: verify the active company has template_type='project'.
+ * Applied to every mutation so non-project companies can't have PUG data
+ * created/updated/deleted in them.
+ */
+async function ensureProjectTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    const cid = req.activeCompanyId;
+    if (!Number.isFinite(cid)) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+    const { rows } = await pool.query(
+        `SELECT template_type FROM companies WHERE id = $1`,
+        [cid]
+    );
+    if (rows.length === 0 || rows[0].template_type !== 'project') {
+        res.status(400).json({ error: 'Această companie nu suportă proiecte (PUG).' });
+        return;
+    }
+    next();
 }
 
 /** Compute the rolled-up status of a project from its stages. */
@@ -148,7 +170,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 // ---------------------------------------------------------------------------
 // CREATE
 // ---------------------------------------------------------------------------
-router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const {
         title, work_type_id, client_name, location, contract_number, contract_date,
@@ -218,7 +240,7 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 // ---------------------------------------------------------------------------
 // UPDATE main fields
 // ---------------------------------------------------------------------------
-router.put('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
     const fields = [
@@ -247,7 +269,7 @@ router.put('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 // ---------------------------------------------------------------------------
 // ARCHIVE / RESTORE
 // ---------------------------------------------------------------------------
-router.patch('/:id/archive', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.patch('/:id/archive', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const archive = req.body?.archive !== false;
     const { rowCount } = await pool.query(
@@ -261,7 +283,7 @@ router.patch('/:id/archive', asyncHandler(async (req: AuthRequest, res: Response
 // ---------------------------------------------------------------------------
 // STAGE management on a project
 // ---------------------------------------------------------------------------
-router.post('/:id/stages', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/:id/stages', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id: projectId } = req.params;
     const { stage_catalog_id, status_id, deadline, sort_order, notes } = req.body ?? {};
@@ -271,6 +293,26 @@ router.post('/:id/stages', asyncHandler(async (req: AuthRequest, res: Response) 
     );
     if ((pCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
     if (!stage_catalog_id) { res.status(400).json({ error: 'stage_catalog_id obligatoriu.' }); return; }
+    // Verify stage_catalog_id belongs to the active company — prevents
+    // crafted payloads from referencing another company's catalog rows.
+    const { rowCount: stageCatCount } = await pool.query(
+        'SELECT 1 FROM pug_stage_catalog WHERE id = $1 AND company_id = $2',
+        [stage_catalog_id, cid]
+    );
+    if ((stageCatCount ?? 0) === 0) {
+        res.status(400).json({ error: 'Etapa nu aparține companiei active.' });
+        return;
+    }
+    if (status_id) {
+        const { rowCount: statusCount } = await pool.query(
+            'SELECT 1 FROM pug_status_catalog WHERE id = $1 AND company_id = $2',
+            [status_id, cid]
+        );
+        if ((statusCount ?? 0) === 0) {
+            res.status(400).json({ error: 'Statusul nu aparține companiei active.' });
+            return;
+        }
+    }
     try {
         const { rows } = await pool.query(
             `INSERT INTO pug_project_stages (project_id, stage_catalog_id, status_id, deadline, sort_order, notes)
@@ -288,10 +330,21 @@ router.post('/:id/stages', asyncHandler(async (req: AuthRequest, res: Response) 
     }
 }));
 
-router.put('/:projectId/stages/:stageId', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { projectId, stageId } = req.params;
     const { status_id, deadline, sort_order, notes } = req.body ?? {};
+    // Verify status_id belongs to the active company if a non-null value is supplied.
+    if (status_id) {
+        const { rowCount: statusCount } = await pool.query(
+            'SELECT 1 FROM pug_status_catalog WHERE id = $1 AND company_id = $2',
+            [status_id, cid]
+        );
+        if ((statusCount ?? 0) === 0) {
+            res.status(400).json({ error: 'Statusul nu aparține companiei active.' });
+            return;
+        }
+    }
     const sets: string[] = []; const vals: any[] = [];
     if (status_id !== undefined) { vals.push(status_id || null); sets.push(`status_id=$${vals.length}`); }
     if (deadline !== undefined) { vals.push(deadline || null); sets.push(`deadline=$${vals.length}`); }
@@ -314,7 +367,7 @@ router.put('/:projectId/stages/:stageId', asyncHandler(async (req: AuthRequest, 
     res.json({ ok: true });
 }));
 
-router.delete('/:projectId/stages/:stageId', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.delete('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { projectId, stageId } = req.params;
     const tenant = await pool.query(
@@ -333,7 +386,7 @@ router.delete('/:projectId/stages/:stageId', asyncHandler(async (req: AuthReques
 // ---------------------------------------------------------------------------
 // Custom field values bulk-set
 // ---------------------------------------------------------------------------
-router.put('/:id/custom-fields', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put('/:id/custom-fields', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id: projectId } = req.params;
     const values = req.body?.values; // { [field_id]: any }
@@ -345,6 +398,21 @@ router.put('/:id/custom-fields', asyncHandler(async (req: AuthRequest, res: Resp
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2', [projectId, cid]
     );
     if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    // Verify every field_id belongs to the active company. Reject all if any
+    // is invalid — partial saves would leave the project in a half-set state.
+    const fieldIds = Object.keys(values);
+    if (fieldIds.length > 0) {
+        const { rows: validFields } = await pool.query<{ id: string }>(
+            'SELECT id FROM pug_custom_fields WHERE id = ANY($1::uuid[]) AND company_id = $2',
+            [fieldIds, cid]
+        );
+        const validSet = new Set(validFields.map((r) => r.id));
+        const invalid = fieldIds.filter((fid) => !validSet.has(fid));
+        if (invalid.length > 0) {
+            res.status(400).json({ error: 'Unul sau mai multe câmpuri nu aparțin companiei active.' });
+            return;
+        }
+    }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -370,7 +438,7 @@ router.put('/:id/custom-fields', asyncHandler(async (req: AuthRequest, res: Resp
 // ---------------------------------------------------------------------------
 // Responsibles
 // ---------------------------------------------------------------------------
-router.put('/:id/responsibles', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id: projectId } = req.params;
     const ids = Array.isArray(req.body?.user_ids) ? req.body.user_ids : null;

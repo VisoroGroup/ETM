@@ -6,11 +6,22 @@ import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router({ mergeParams: true });
 
+// Helper: confirm an alert belongs to :taskId AND active tenant.
+async function getAlertInTenant(alertId: string, taskId: string, companyId: number) {
+    const { rows } = await pool.query(
+        `SELECT a.* FROM task_alerts a
+         JOIN tasks t ON t.id = a.task_id
+         WHERE a.id = $1 AND a.task_id = $2 AND t.company_id = $3`,
+        [alertId, taskId, companyId]
+    );
+    return rows[0] || null;
+}
+
 // GET /api/tasks/:id/alerts
 router.get('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId } = req.params;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -32,8 +43,9 @@ router.get('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res:
 router.post('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId } = req.params;
     const { content } = req.body;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
@@ -44,16 +56,16 @@ router.post('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res
     }
 
     const { rows } = await pool.query(
-        `INSERT INTO task_alerts (task_id, created_by, content)
-         VALUES ($1, $2, $3) RETURNING *`,
-        [taskId, req.user!.id, content.trim()]
+        `INSERT INTO task_alerts (task_id, created_by, content, company_id)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [taskId, req.user!.id, content.trim(), companyId]
     );
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-         VALUES ($1, $2, 'alert_added', $3)`,
-        [taskId, req.user!.id, JSON.stringify({ content: content.substring(0, 100) })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+         VALUES ($1, $2, 'alert_added', $3, $4)`,
+        [taskId, req.user!.id, JSON.stringify({ content: content.substring(0, 100) }), companyId]
     );
 
     rows[0].creator_name = req.user!.display_name;
@@ -65,16 +77,20 @@ router.post('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res
 // PUT /api/tasks/:id/alerts/:alertId/resolve
 router.put('/alerts/:alertId/resolve', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, alertId } = req.params;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
 
-    const { rows: existing } = await pool.query(
-        'SELECT * FROM task_alerts WHERE id = $1', [alertId]
-    );
-    if (existing.length === 0) {
+    // Tenant + parent guard
+    const existing = await getAlertInTenant(alertId, taskId, companyId);
+    if (!existing) {
         res.status(404).json({ error: 'Alerta nu a fost găsită.' });
         return;
     }
@@ -88,9 +104,9 @@ router.put('/alerts/:alertId/resolve', authMiddleware, asyncHandler(async (req: 
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-         VALUES ($1, $2, 'alert_resolved', $3)`,
-        [existing[0].task_id, req.user!.id, JSON.stringify({ alert_content: existing[0].content.substring(0, 100) })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+         VALUES ($1, $2, 'alert_resolved', $3, $4)`,
+        [existing.task_id, req.user!.id, JSON.stringify({ alert_content: existing.content.substring(0, 100) }), companyId]
     );
 
     rows[0].resolved_by_name = req.user!.display_name;
@@ -100,21 +116,25 @@ router.put('/alerts/:alertId/resolve', authMiddleware, asyncHandler(async (req: 
 // DELETE /api/tasks/:id/alerts/:alertId
 router.delete('/alerts/:alertId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId, alertId } = req.params;
+    const companyId = req.activeCompanyId;
 
-    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
 
-    const { rows: existing } = await pool.query(
-        'SELECT created_by FROM task_alerts WHERE id = $1', [alertId]
-    );
-    if (existing.length === 0) {
+    // Tenant + parent guard
+    const existing = await getAlertInTenant(alertId, taskId, companyId);
+    if (!existing) {
         res.status(404).json({ error: 'Alerta nu a fost găsită.' });
         return;
     }
 
-    if (existing[0].created_by !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
+    if (existing.created_by !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
         res.status(403).json({ error: 'Poți șterge doar propriile alerte.' });
         return;
     }

@@ -33,12 +33,14 @@ export const createTaskSchema = z.object({
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
 }).refine(
     (d) => {
-        // 'full' template companies (Visoro Global) require exactly one scope
-        // (post / section / department). 'simple' and 'project' template
-        // companies have no org structure and may submit zero scopes — the
-        // route handler still enforces the right rule based on the active
-        // company's template_type, but the middleware can't know that yet
-        // (no DB call here), so we accept 0 or 1.
+        // Template-aware design: Zod middleware can only check the shape of
+        // the payload — it cannot run a DB lookup to know the active
+        // company's template_type. So this layer enforces the *upper bound*
+        // (at most one of post / section / department), and the route
+        // handler in tasks.ts enforces the template-specific rule:
+        //   - 'full' (Visoro Global): exactly one scope is required
+        //   - 'simple' / 'project': zero scopes allowed (no org structure)
+        // Keeping the rule at the route handler keeps middleware stateless.
         const set = [d.assigned_post_id, d.assigned_section_id, d.assigned_department_id].filter(Boolean).length;
         return set <= 1;
     },

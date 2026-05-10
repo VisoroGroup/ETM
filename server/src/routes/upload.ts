@@ -78,7 +78,7 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
         const taskCompanyId = taskRows[0].company_id;
 
         // Check task access
-        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
+        if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
             res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
             return;
         }
