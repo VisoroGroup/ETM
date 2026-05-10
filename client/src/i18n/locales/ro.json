@@ -192,7 +192,7 @@
         "select_section": "Alege subdepartamentul",
         "select_post": "Alege postul",
         "select_responsible": "Alege responsabilul",
-        "assign_to_head": "Vezetőjének: {{name}}",
+        "assign_to_head": "Conducătorului: {{name}}",
         "auto_assignee": "Responsabil automat",
         "dept_head_role": "conducător departament",
         "section_head_role": "conducător subdepartament",

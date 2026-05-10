@@ -211,6 +211,13 @@ export default function WeekViewPage() {
                             </tr>
                         </thead>
                         <tbody>
+                            {allUsers.length === 0 && (
+                                <tr>
+                                    <td colSpan={week.days.length + 1} className="px-4 py-8 text-center text-xs text-navy-400">
+                                        Niciun coleg de afișat. Adaugă utilizatori companiei active sau verifică accesul.
+                                    </td>
+                                </tr>
+                            )}
                             {allUsers.map(u => (
                                 <tr key={u.id} className="border-t border-navy-700/30">
                                     <td className="px-3 py-2 align-top">

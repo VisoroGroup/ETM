@@ -128,6 +128,13 @@ export default function CompaniesAdminPage() {
                                 </tr>
                             </thead>
                             <tbody>
+                                {companies.length === 0 && (
+                                    <tr>
+                                        <td colSpan={isSuperAdmin ? 6 : 5} className="px-4 py-8 text-center text-xs text-navy-400">
+                                            {t('admin_companies.create')}
+                                        </td>
+                                    </tr>
+                                )}
                                 {companies.map((c) => (
                                     <tr key={c.id} className="border-b border-navy-700/30 hover:bg-navy-700/20">
                                         <td className="px-4 py-3">

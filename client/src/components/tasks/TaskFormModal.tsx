@@ -3,6 +3,7 @@ import { tasksApi, authApi, departmentsApi, postsApi } from '../../services/api'
 import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User, OrgDepartment, OrgSection, OrgPost } from '../../types';
 import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase, Plus } from 'lucide-react';
 import { useTranslation } from '../../i18n/I18nContext';
+import { useCompany } from '../../hooks/useCompany';
 
 interface Props {
     onClose: () => void;
@@ -11,6 +12,11 @@ interface Props {
 
 export default function TaskFormModal({ onClose, onCreated }: Props) {
     const { t } = useTranslation();
+    const { activeCompany } = useCompany();
+    // Visoro Global ('full') uses the legacy department / section / post flow.
+    // Hungary ('simple') and Neo Plan ('project') don't have an org structure —
+    // they use a flat form with a direct assignee picker.
+    const useFlatForm = activeCompany?.template_type !== 'full';
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -78,8 +84,13 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
 
     useEffect(() => {
         authApi.users().then(setUsers).catch(() => {});
-        reloadOrgStructure().catch(() => {});
-    }, []);
+        // Only fetch the org tree for 'full' template companies. Hungary/Neo Plan
+        // don't have departments, so the call would return an empty list anyway.
+        if (!useFlatForm) {
+            reloadOrgStructure().catch(() => {});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [useFlatForm]);
 
     // When department changes, reset section and post
     const selectedDept = orgDepts.find(d => d.id === selectedDeptId);
@@ -120,27 +131,31 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
             setError(t('task_form.error_title_and_due_required'));
             return;
         }
-        if (!selectedDeptId) {
-            setError(t('task_form.error_department_required'));
-            return;
-        }
-        // Build the scope payload depending on which level the user stopped at.
+        // Org-structure validation only applies to 'full' template companies.
+        // For 'simple' (Hungary) and 'project' (Neo Plan), the only required
+        // assignee is the direct user; no department / section / post is needed.
         const scopePayload: any = {};
-        if (isDeptHeadScope) {
-            scopePayload.assigned_department_id = selectedDeptId;
-        } else {
-            if (!selectedSectionId) {
-                setError(t('task_form.error_section_required'));
+        if (!useFlatForm) {
+            if (!selectedDeptId) {
+                setError(t('task_form.error_department_required'));
                 return;
             }
-            if (isSectionHeadScope) {
-                scopePayload.assigned_section_id = selectedSectionId;
+            if (isDeptHeadScope) {
+                scopePayload.assigned_department_id = selectedDeptId;
             } else {
-                if (!assignedPostId) {
-                    setError(t('task_form.error_post_required'));
+                if (!selectedSectionId) {
+                    setError(t('task_form.error_section_required'));
                     return;
                 }
-                scopePayload.assigned_post_id = assignedPostId;
+                if (isSectionHeadScope) {
+                    scopePayload.assigned_section_id = selectedSectionId;
+                } else {
+                    if (!assignedPostId) {
+                        setError(t('task_form.error_post_required'));
+                        return;
+                    }
+                    scopePayload.assigned_post_id = assignedPostId;
+                }
             }
         }
 
@@ -232,7 +247,28 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                         />
                     </div>
 
-                    {/* Org structure: Department → Section → Post — all required */}
+                    {/* Flat assignee picker — only for non-'full' templates (Hungary, Neo Plan).
+                        Visoro Global keeps the org-structure flow below this. */}
+                    {useFlatForm && (
+                        <div>
+                            <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                                <UserCircle className="w-3.5 h-3.5 inline mr-1" /> {t('tasks.assigned_to')}
+                            </label>
+                            <select
+                                value={assignedTo}
+                                onChange={e => setAssignedTo(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                            >
+                                <option value="">— {t('tasks.unassigned')} —</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Org structure: Department → Section → Post — all required for 'full' template */}
+                    {!useFlatForm && (
                     <div className="space-y-3">
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">
@@ -384,6 +420,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Recurring */}
                     <div className="bg-navy-800/30 rounded-lg p-3">

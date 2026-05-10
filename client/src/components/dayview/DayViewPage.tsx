@@ -199,7 +199,12 @@ export default function DayViewPage() {
             )}
 
             {/* User sections — drag to reorder */}
-            {!isLoading && !error && (
+            {!isLoading && !error && sortedUsers.length === 0 && (
+                <div className="text-center py-16 text-navy-400 text-sm">
+                    Niciun coleg de afișat pentru această companie. Adaugă utilizatori sau verifică accesul.
+                </div>
+            )}
+            {!isLoading && !error && sortedUsers.length > 0 && (
                 <DragDropContext onDragEnd={onDragEnd}>
                     <Droppable droppableId="users">
                         {(provided) => (

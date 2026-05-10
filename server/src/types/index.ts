@@ -148,6 +148,8 @@ export interface Subtask {
     assigned_to_name?: string;
     assigned_to_avatar?: string | null;
     order_index: number;
+    due_date?: string | null;
+    priority?: 'low' | 'medium' | 'high';
     created_at: Date;
     updated_at: Date;
 }
@@ -160,6 +162,8 @@ export interface TaskComment {
     author_avatar?: string | null;
     content: string;
     mentions: string[];
+    parent_comment_id?: string | null;
+    reactions?: { user_id: string; display_name: string; reaction: string }[];
     created_at: Date;
     updated_at: Date;
 }
