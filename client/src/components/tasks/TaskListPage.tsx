@@ -412,7 +412,7 @@ export default function TaskListPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
-                        onClick={() => exportToCSV(tasks)}
+                        onClick={() => exportToCSV(tasks, 'tasks', t)}
                         className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                         title={t('tasks.export_csv_tooltip')}
                     >

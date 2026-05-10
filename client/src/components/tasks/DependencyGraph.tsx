@@ -1,5 +1,6 @@
 import React from 'react';
 import { STATUSES, TaskStatus } from '../../types';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Node {
     id: string;
@@ -47,18 +48,20 @@ export default function DependencyGraph({
     currentTaskId, currentTaskTitle, currentTaskStatus,
     blockedBy, blocks, onNodeClick
 }: Props) {
+    const { t } = useTranslation();
+    const untitled = t('dep_graph.untitled');
     // Build node list
     const nodes: Node[] = [
         { id: currentTaskId, title: currentTaskTitle, status: currentTaskStatus, level: 0 },
         ...blockedBy.map(d => ({
             id: d.blocking_task_id,
-            title: d.blocking_task_title || '(fără titlu)',
+            title: d.blocking_task_title || untitled,
             status: (d.blocking_task_status || 'de_rezolvat') as TaskStatus,
             level: -1,
         })),
         ...blocks.map(d => ({
             id: d.blocked_task_id,
-            title: d.blocked_task_title || '(fără titlu)',
+            title: d.blocked_task_title || untitled,
             status: (d.blocked_task_status || 'de_rezolvat') as TaskStatus,
             level: 1,
         })),
@@ -114,7 +117,7 @@ export default function DependencyGraph({
     if (blockedBy.length === 0 && blocks.length === 0) {
         return (
             <div className="text-center py-6 text-xs text-navy-500 italic">
-                Nu există dependențe pentru această sarcină.
+                {t('dep_graph.empty')}
             </div>
         );
     }
@@ -224,7 +227,7 @@ export default function DependencyGraph({
                                             textAlign: 'right',
                                         }}
                                     >
-                                        ACTUAL
+                                        {t('dep_graph.current')}
                                     </div>
                                 </foreignObject>
                             )}
@@ -234,10 +237,10 @@ export default function DependencyGraph({
             </svg>
             <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-navy-400">
                 <span className="flex items-center gap-1">
-                    <span className="inline-block w-4 h-0.5 bg-red-400" /> blochează
+                    <span className="inline-block w-4 h-0.5 bg-red-400" /> {t('dep_graph.blocks')}
                 </span>
                 <span className="flex items-center gap-1">
-                    <span className="inline-block w-4 h-0.5 bg-green-400 opacity-50" style={{ borderTop: '1px dashed #4ade80' }} /> rezolvat
+                    <span className="inline-block w-4 h-0.5 bg-green-400 opacity-50" style={{ borderTop: '1px dashed #4ade80' }} /> {t('dep_graph.resolved')}
                 </span>
             </div>
         </div>

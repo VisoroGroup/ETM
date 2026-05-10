@@ -388,7 +388,7 @@ export default function AdminPage() {
                                     type="email"
                                     value={newUser.email}
                                     onChange={e => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                                    placeholder="nev@visoro-global.ro"
+                                    placeholder="nume@visoro-global.ro"
                                     className="w-full px-3 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                 />
                             </div>

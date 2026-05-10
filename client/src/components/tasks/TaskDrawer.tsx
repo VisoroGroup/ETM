@@ -4,7 +4,7 @@ import { useTranslation } from '../../i18n/I18nContext';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
 import { tasksApi, notificationsApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
-import { STATUSES, DEPARTMENTS, FREQUENCIES } from '../../types';
+import { STATUSES, DEPARTMENTS } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
@@ -365,7 +365,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                     }`}
                             >
                                 <RefreshCw className="w-3 h-3" />
-                                {task.is_recurring ? FREQUENCIES[task.recurring_frequency!] || t('task_drawer.recurring') : t('task_drawer.recurring')}
+                                {task.is_recurring && task.recurring_frequency
+                                    ? t(`task_form.frequency_${task.recurring_frequency}`)
+                                    : t('task_drawer.recurring')}
                             </button>
 
                             {/* Blocked reason badge */}

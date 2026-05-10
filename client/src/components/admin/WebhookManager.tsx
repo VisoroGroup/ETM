@@ -2,38 +2,47 @@ import { useState } from 'react';
 import { Link2, Plus, Pencil, Trash2, Play, X, Loader2, ChevronDown, ExternalLink, RefreshCw } from 'lucide-react';
 import { useWebhooks, useWebhookDeliveries, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useTestWebhook } from '../../hooks/useWebhooks';
 import { useToast } from '../../hooks/useToast';
+import { useTranslation, type TFunction } from '../../i18n/I18nContext';
 import type { WebhookSubscription, WebhookDelivery, WebhookEventType } from '../../types';
 
-const EVENT_LABELS: Record<string, string> = {
-    'task.created': 'Sarcină creată',
-    'task.completed': 'Sarcină finalizată',
-    'task.status_changed': 'Status sarcină modificat',
-    'task.assigned': 'Sarcină atribuită',
-    'task.overdue': 'Sarcină depășită',
-};
+function buildEventLabels(t: TFunction): Record<string, string> {
+    return {
+        'task.created': t('webhooks.event_task_created'),
+        'task.completed': t('webhooks.event_task_completed'),
+        'task.status_changed': t('webhooks.event_task_status_changed'),
+        'task.assigned': t('webhooks.event_task_assigned'),
+        'task.overdue': t('webhooks.event_task_overdue'),
+    };
+}
 
-const STATUS_BADGES: Record<string, { bg: string; text: string; label: string }> = {
-    delivered: { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Livrat' },
-    failed: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Eșuat' },
-    retrying: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Reîncercare' },
-    pending: { bg: 'bg-navy-600/40', text: 'text-navy-300', label: 'În așteptare' },
-    sending: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Se trimite' },
-};
+function buildStatusBadges(t: TFunction): Record<string, { bg: string; text: string; label: string }> {
+    return {
+        delivered: { bg: 'bg-green-500/20', text: 'text-green-400', label: t('webhooks.status_delivered') },
+        failed: { bg: 'bg-red-500/20', text: 'text-red-400', label: t('webhooks.status_failed') },
+        retrying: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: t('webhooks.status_retrying') },
+        pending: { bg: 'bg-navy-600/40', text: 'text-navy-300', label: t('webhooks.status_pending') },
+        sending: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: t('webhooks.status_sending') },
+    };
+}
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: TFunction): string {
     const d = new Date(dateStr);
     const now = Date.now();
     const diffMs = now - d.getTime();
     const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return 'acum';
-    if (mins < 60) return `${mins} min`;
+    if (mins < 1) return t('webhooks.time_now');
+    if (mins < 60) return t('webhooks.time_minutes', { mins });
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h`;
-    return `${Math.floor(hrs / 24)}z`;
+    if (hrs < 24) return t('webhooks.time_hours', { hrs });
+    return t('webhooks.time_days', { days: Math.floor(hrs / 24) });
 }
 
 // === Main Component ===
 export default function WebhookManager() {
+    const { t } = useTranslation();
+    const EVENT_LABELS = buildEventLabels(t);
+    const STATUS_BADGES = buildStatusBadges(t);
+
     const [tab, setTab] = useState<'subscriptions' | 'deliveries'>('subscriptions');
     const [showForm, setShowForm] = useState(false);
     const [editingSub, setEditingSub] = useState<WebhookSubscription | null>(null);
@@ -52,31 +61,31 @@ export default function WebhookManager() {
         try {
             const result = await testMut.mutateAsync(id);
             if (result.success) {
-                showToast(`Test reușit! (HTTP ${result.status})`, 'success');
+                showToast(t('webhooks.test_success', { status: result.status }), 'success');
             } else {
-                showToast(`Test eșuat: ${result.error || `HTTP ${result.status}`}`, 'error');
+                showToast(t('webhooks.test_failed', { detail: result.error || `HTTP ${result.status}` }), 'error');
             }
         } catch {
-            showToast('Eroare la test', 'error');
+            showToast(t('webhooks.test_error'), 'error');
         }
     }
 
     async function handleToggle(sub: WebhookSubscription) {
         try {
             await updateMut.mutateAsync({ id: sub.id, data: { is_active: !sub.is_active } });
-            showToast(sub.is_active ? 'Webhook dezactivat' : 'Webhook activat', 'success');
+            showToast(sub.is_active ? t('webhooks.toast_disabled') : t('webhooks.toast_enabled'), 'success');
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('webhooks.toast_generic_error'), 'error');
         }
     }
 
     async function handleDelete(id: string) {
-        if (!confirm('Sigur vrei să ștergi acest webhook?')) return;
+        if (!confirm(t('webhooks.confirm_delete'))) return;
         try {
             await deleteMut.mutateAsync(id);
-            showToast('Webhook șters', 'success');
+            showToast(t('webhooks.toast_deleted'), 'success');
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('webhooks.toast_generic_error'), 'error');
         }
     }
 
@@ -89,14 +98,14 @@ export default function WebhookManager() {
                         <Link2 className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold">Integrări & Webhook-uri</h2>
-                        <p className="text-xs text-navy-400">Configurează notificări automate către sisteme externe</p>
+                        <h2 className="text-lg font-bold">{t('webhooks.title')}</h2>
+                        <p className="text-xs text-navy-400">{t('webhooks.subtitle')}</p>
                     </div>
                 </div>
                 {tab === 'subscriptions' && (
                     <button onClick={() => { setEditingSub(null); setShowForm(true); }}
                         className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg text-sm font-medium transition-colors">
-                        <Plus className="w-4 h-4" /> Adaugă webhook
+                        <Plus className="w-4 h-4" /> {t('webhooks.add_webhook')}
                     </button>
                 )}
             </div>
@@ -105,11 +114,11 @@ export default function WebhookManager() {
             <div className="flex gap-1 bg-navy-900/50 rounded-lg p-1 w-fit">
                 <button onClick={() => setTab('subscriptions')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${tab === 'subscriptions' ? 'bg-navy-700 text-white' : 'text-navy-400 hover:text-white'}`}>
-                    Webhook-uri ({webhooks.length})
+                    {t('webhooks.tab_subscriptions', { count: webhooks.length })}
                 </button>
                 <button onClick={() => setTab('deliveries')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${tab === 'deliveries' ? 'bg-navy-700 text-white' : 'text-navy-400 hover:text-white'}`}>
-                    Jurnal livrări
+                    {t('webhooks.tab_deliveries')}
                 </button>
             </div>
 
@@ -121,8 +130,8 @@ export default function WebhookManager() {
                     ) : webhooks.length === 0 ? (
                         <div className="text-center py-12 bg-navy-900/30 rounded-xl border border-navy-700/50">
                             <Link2 className="w-10 h-10 text-navy-600 mx-auto mb-3" />
-                            <p className="text-navy-400 text-sm">Niciun webhook configurat.</p>
-                            <p className="text-navy-500 text-xs mt-1">Adaugă un webhook pentru a primi notificări automate.</p>
+                            <p className="text-navy-400 text-sm">{t('webhooks.empty_title')}</p>
+                            <p className="text-navy-500 text-xs mt-1">{t('webhooks.empty_hint')}</p>
                         </div>
                     ) : (
                         webhooks.map((sub: WebhookSubscription) => (
@@ -148,22 +157,22 @@ export default function WebhookManager() {
                                             {sub.description && <span>{sub.description}</span>}
                                             <span>✅ {sub.success_count || 0}</span>
                                             <span>❌ {sub.fail_count || 0}</span>
-                                            {sub.last_success && <span>Ultima: {timeAgo(sub.last_success)}</span>}
+                                            {sub.last_success && <span>{t('webhooks.last_success', { time: timeAgo(sub.last_success, t) })}</span>}
                                         </div>
                                     </div>
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-1.5">
                                         <button onClick={() => handleTest(sub.id)} disabled={testMut.isPending}
-                                            className="p-1.5 rounded-lg text-navy-400 hover:text-green-400 hover:bg-green-500/10 transition-all" title="Test">
+                                            className="p-1.5 rounded-lg text-navy-400 hover:text-green-400 hover:bg-green-500/10 transition-all" title={t('webhooks.action_test')}>
                                             {testMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                                         </button>
                                         <button onClick={() => { setEditingSub(sub); setShowForm(true); }}
-                                            className="p-1.5 rounded-lg text-navy-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title="Editare">
+                                            className="p-1.5 rounded-lg text-navy-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title={t('common.edit')}>
                                             <Pencil className="w-3.5 h-3.5" />
                                         </button>
                                         <button onClick={() => handleDelete(sub.id)}
-                                            className="p-1.5 rounded-lg text-navy-400 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Șterge">
+                                            className="p-1.5 rounded-lg text-navy-400 hover:text-red-400 hover:bg-red-500/10 transition-all" title={t('common.delete')}>
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -179,23 +188,23 @@ export default function WebhookManager() {
                     <div className="flex gap-3">
                         <select value={deliveryFilter.event_type || ''} onChange={e => setDeliveryFilter(f => ({ ...f, event_type: e.target.value || undefined }))}
                             className="bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white">
-                            <option value="">Toate evenimentele</option>
+                            <option value="">{t('webhooks.filter_all_events')}</option>
                             {Object.entries(EVENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
                         <select value={deliveryFilter.status || ''} onChange={e => setDeliveryFilter(f => ({ ...f, status: e.target.value || undefined }))}
                             className="bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white">
-                            <option value="">Toate stările</option>
+                            <option value="">{t('webhooks.filter_all_statuses')}</option>
                             {Object.entries(STATUS_BADGES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                         </select>
                         <div className="flex items-center gap-1.5 text-[11px] text-navy-500 ml-auto">
-                            <RefreshCw className="w-3 h-3" /> Auto-refresh 30s
+                            <RefreshCw className="w-3 h-3" /> {t('webhooks.auto_refresh')}
                         </div>
                     </div>
 
                     {loadingDeliveries ? (
                         <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-navy-500" /></div>
                     ) : deliveries.length === 0 ? (
-                        <div className="text-center py-8 text-navy-500 text-sm">Niciun rezultat</div>
+                        <div className="text-center py-8 text-navy-500 text-sm">{t('webhooks.no_results')}</div>
                     ) : (
                         <div className="space-y-1.5">
                             {deliveries.map((d: WebhookDelivery) => {
@@ -206,7 +215,7 @@ export default function WebhookManager() {
                                         <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-navy-800/30 transition-all"
                                             onClick={() => setExpandedDelivery(isExpanded ? null : d.id)}>
                                             <ChevronDown className={`w-3.5 h-3.5 text-navy-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                            <span className="text-[11px] text-navy-500 w-16 flex-shrink-0">{timeAgo(d.created_at)}</span>
+                                            <span className="text-[11px] text-navy-500 w-16 flex-shrink-0">{timeAgo(d.created_at, t)}</span>
                                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium flex-shrink-0">
                                                 {EVENT_LABELS[d.event_type] || d.event_type}
                                             </span>
@@ -224,7 +233,7 @@ export default function WebhookManager() {
                                                     </div>
                                                 )}
                                                 <div className="text-[11px] text-navy-500">
-                                                    <span className="font-medium text-navy-400">Payload:</span>
+                                                    <span className="font-medium text-navy-400">{t('webhooks.payload_label')}</span>
                                                     <pre className="mt-1 bg-navy-900 rounded-lg p-2 overflow-x-auto max-h-40 text-[10px]">
                                                         {JSON.stringify(d.payload, null, 2)}
                                                     </pre>
@@ -248,15 +257,15 @@ export default function WebhookManager() {
                         try {
                             if (editingSub) {
                                 await updateMut.mutateAsync({ id: editingSub.id, data });
-                                showToast('Webhook actualizat', 'success');
+                                showToast(t('webhooks.toast_updated'), 'success');
                             } else {
                                 await createMut.mutateAsync(data);
-                                showToast('Webhook creat', 'success');
+                                showToast(t('webhooks.toast_created'), 'success');
                             }
                             setShowForm(false);
                             setEditingSub(null);
                         } catch {
-                            showToast('Nu a funcționat — încearcă din nou', 'error');
+                            showToast(t('webhooks.toast_generic_error'), 'error');
                         }
                     }}
                 />
@@ -271,6 +280,8 @@ function WebhookFormModal({ initial, onClose, onSave }: {
     onClose: () => void;
     onSave: (data: any) => Promise<void>;
 }) {
+    const { t } = useTranslation();
+    const EVENT_LABELS = buildEventLabels(t);
     const [url, setUrl] = useState(initial?.url || '');
     const [eventType, setEventType] = useState(initial?.event_type || 'task.created');
     const [description, setDescription] = useState(initial?.description || '');
@@ -290,38 +301,38 @@ function WebhookFormModal({ initial, onClose, onSave }: {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
             <div className="w-full max-w-md bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
-                    <h3 className="text-base font-bold">{initial ? 'Editare webhook' : 'Adaugă webhook'}</h3>
-                    <button onClick={onClose} className="text-navy-400 hover:text-white"><X className="w-5 h-5" /></button>
+                    <h3 className="text-base font-bold">{initial ? t('webhooks.form_title_edit') : t('webhooks.form_title_add')}</h3>
+                    <button onClick={onClose} className="text-navy-400 hover:text-white" title={t('common.close')}><X className="w-5 h-5" /></button>
                 </div>
                 <form onSubmit={submit} className="p-5 space-y-4">
                     <div>
-                        <label className="block text-xs text-navy-400 mb-1">URL *</label>
+                        <label className="block text-xs text-navy-400 mb-1">{t('webhooks.field_url')}</label>
                         <input value={url} onChange={e => setUrl(e.target.value)} required type="url" placeholder="https://example.com/webhook"
                             className="w-full bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-navy-600 focus:outline-none focus:border-blue-500/50" />
                     </div>
                     <div>
-                        <label className="block text-xs text-navy-400 mb-1">Tip eveniment *</label>
+                        <label className="block text-xs text-navy-400 mb-1">{t('webhooks.field_event_type')}</label>
                         <select value={eventType} onChange={e => setEventType(e.target.value as WebhookEventType)}
                             className="w-full bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50">
                             {Object.entries(EVENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs text-navy-400 mb-1">Descriere</label>
-                        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Opțional"
+                        <label className="block text-xs text-navy-400 mb-1">{t('webhooks.field_description')}</label>
+                        <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('webhooks.field_optional')}
                             className="w-full bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-navy-600 focus:outline-none focus:border-blue-500/50" />
                     </div>
                     <div>
-                        <label className="block text-xs text-navy-400 mb-1">Secret</label>
-                        <input value={secret} onChange={e => setSecret(e.target.value)} type="password" placeholder="Opțional — pentru semnătură HMAC"
+                        <label className="block text-xs text-navy-400 mb-1">{t('webhooks.field_secret')}</label>
+                        <input value={secret} onChange={e => setSecret(e.target.value)} type="password" placeholder={t('webhooks.field_secret_placeholder')}
                             className="w-full bg-navy-800 border border-navy-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-navy-600 focus:outline-none focus:border-blue-500/50" />
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-navy-400 hover:text-white transition-colors">Anulare</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-navy-400 hover:text-white transition-colors">{t('common.cancel')}</button>
                         <button type="submit" disabled={saving}
                             className="px-5 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2">
                             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {initial ? 'Salvează' : 'Creează'}
+                            {initial ? t('common.save') : t('common.create')}
                         </button>
                     </div>
                 </form>

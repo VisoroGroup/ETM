@@ -225,14 +225,19 @@ export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: st
     blocat: { label: 'Blocat', color: '#F87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.4)' },
 };
 
-export const FREQUENCIES: Record<RecurringFrequency, string> = {
-    daily: 'Zilnic',
-    weekly: 'Săptămânal',
-    biweekly: 'Bisăptămânal',
-    monthly: 'Lunar',
-    quarterly: 'Trimestrial',
-    yearly: 'Anual',
-};
+/**
+ * Frequency keys for recurring tasks.
+ * Labels are translated via `t('task_form.frequency_<key>')` at the usage site.
+ * Order matters: it controls the dropdown order in TaskFormModal.
+ */
+export const FREQUENCIES: RecurringFrequency[] = [
+    'daily',
+    'weekly',
+    'biweekly',
+    'monthly',
+    'quarterly',
+    'yearly',
+];
 
 // --- ORG STRUCTURE TYPES (Department → Section → Post) ---
 
@@ -321,16 +326,28 @@ export interface WidgetConfig {
     size: 'full' | 'half';
 }
 
-export const AVAILABLE_WIDGETS: Record<string, { label: string; description: string; adminOnly?: boolean }> = {
-    global_stats: { label: 'Statistici globale', description: 'Numărul total de sarcini active, restante, blocate și completate' },
-    my_stats: { label: 'Sarcinile mele', description: 'Statisticile sarcinilor tale personale' },
-    status_chart: { label: 'Distribuție status', description: 'Grafic cu distribuția statusurilor sarcinilor' },
-    dept_chart: { label: 'Distribuție departamente', description: 'Grafic pe departamente' },
-    trend_chart: { label: 'Trend completare', description: 'Graficul completărilor din ultimele 4 săptămâni' },
-    urgent_tasks: { label: 'Sarcini urgente', description: 'Top 10 sarcini cu termen apropiat' },
-    active_alerts: { label: 'Alerte active', description: 'Alertele nerezolvate din sistem' },
-    bottlenecks: { label: 'Blocaje critice', description: 'Sarcinile care blochează cele mai multe altele' },
-    calendar: { label: 'Calendar', description: 'Vizualizare calendar cu termenele sarcinilor' },
+/**
+ * Available dashboard widgets.
+ *
+ * Labels and descriptions are i18n keys: `dashboard.widgets.<id>.label`
+ * and `dashboard.widgets.<id>.description`. The metadata here is static
+ * (only `adminOnly` for now); the human-readable strings are resolved
+ * via `t()` at the call site (DashboardCustomizer).
+ */
+export interface WidgetMeta {
+    adminOnly?: boolean;
+}
+
+export const AVAILABLE_WIDGETS: Record<string, WidgetMeta> = {
+    global_stats: {},
+    my_stats: {},
+    status_chart: {},
+    dept_chart: {},
+    trend_chart: {},
+    urgent_tasks: {},
+    active_alerts: {},
+    bottlenecks: {},
+    calendar: {},
 };
 
 export type WebhookEventType =

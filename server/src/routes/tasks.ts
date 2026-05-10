@@ -9,6 +9,7 @@ import { checkTaskAccess } from '../middleware/taskAccess';
 import * as taskService from '../services/taskService';
 import { dispatchWebhook } from '../services/webhookService';
 import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail, resolveRecipientLocale } from '../services/notificationEmailService';
+import { tServer } from '../i18n/serverI18n';
 import { getCompletionReportRecipients, buildCompletionReportHtml } from '../services/taskCompletionReportService';
 import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
 import taskSubtaskRoutes from './taskSubtasks';
@@ -517,31 +518,29 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
         // EMAIL: notify stakeholders about status change
         {
-            const statusLabels: Record<string, string> = {
-                de_rezolvat: 'De rezolvat', in_realizare: 'În realizare',
-                terminat: 'Terminat', blocat: 'Blocat',
-            };
-            const newLabel = statusLabels[status] || status;
             const taskTitle = rows[0].title;
+            const actor = req.user!.display_name;
 
             (async () => {
                 try {
                     const stakeholders = await getTaskStakeholders(id, req.user!.id);
-                    const bodyLines = [
-                        `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a schimbat statusul sarcinii:</p>`,
-                        `<p style="font-size: 14px; margin: 8px 0;">
-                            <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${statusLabels[oldStatus] || oldStatus}</span>
-                            → <span style="background: ${status === 'terminat' ? '#d1fae5' : status === 'blocat' ? '#fee2e2' : '#dbeafe'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
-                        </p>`,
-                    ];
-                    if (status === 'blocat' && reason) {
-                        bodyLines.push(`<p style="color: #EF4444; font-size: 13px; margin-top: 8px;">📝 Motiv: ${reason}</p>`);
-                    }
                     for (const user of stakeholders) {
                         const language = await resolveRecipientLocale(user.id, req.activeCompanyId);
+                        const newLabel = tServer(language, `notif_email.status_${status}`);
+                        const oldLabel = tServer(language, `notif_email.status_${oldStatus}`);
+                        const bodyLines = [
+                            `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_changed_status', { actor })}</p>`,
+                            `<p style="font-size: 14px; margin: 8px 0;">
+                                <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${oldLabel}</span>
+                                → <span style="background: ${status === 'terminat' ? '#d1fae5' : status === 'blocat' ? '#fee2e2' : '#dbeafe'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
+                            </p>`,
+                        ];
+                        if (status === 'blocat' && reason) {
+                            bodyLines.push(`<p style="color: #EF4444; font-size: 13px; margin-top: 8px;">📝 ${reason}</p>`);
+                        }
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
-                            subtitle: `Status schimbat → ${newLabel}`,
+                            subtitle: tServer(language, 'notif_email.sub_status_changed', { status: newLabel }),
                             bodyLines,
                             taskId: id,
                             taskTitle,
@@ -549,7 +548,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,
-                            taskId: id, subject: `[ETM] Status: ${newLabel} — ${taskTitle}`,
+                            taskId: id, subject: tServer(language, 'notif_email.subj_status_changed', { status: newLabel, title: taskTitle }),
                             htmlBody, emailType: 'status_changed',
                             companyId: req.activeCompanyId,
                         }).catch(err => console.error('[status_changed] Email error:', err));
@@ -567,12 +566,13 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                         if (recipients.length > 0) {
                             const reportHtml = await buildCompletionReportHtml(id);
                             for (const recipient of recipients) {
+                                const language = await resolveRecipientLocale(recipient.id, req.activeCompanyId);
                                 sendNotificationEmail({
                                     userId: recipient.id,
                                     userEmail: recipient.email,
                                     userName: recipient.display_name,
                                     taskId: id,
-                                    subject: `[ETM] Raport finalizare — ${taskTitle}`,
+                                    subject: tServer(language, 'notif_email.subj_completion_report', { title: taskTitle }),
                                     htmlBody: reportHtml,
                                     emailType: 'completion_report',
                                     companyId: req.activeCompanyId,

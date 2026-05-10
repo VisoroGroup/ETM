@@ -448,7 +448,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                     aria-label={t('task_form.recurrence_frequency')}
                                     className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
-                                    {(Object.keys(FREQUENCIES) as RecurringFrequency[]).map(f => (
+                                    {FREQUENCIES.map(f => (
                                         <option key={f} value={f}>{t(`task_form.frequency_${f}`)}</option>
                                     ))}
                                 </select>

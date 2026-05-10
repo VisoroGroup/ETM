@@ -5,6 +5,7 @@ import UserAvatar from '../ui/UserAvatar';
 import TaskDrawer from '../tasks/TaskDrawer';
 import { useToast } from '../../hooks/useToast';
 import { useCompany } from '../../hooks/useCompany';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
 interface Task {
     id: string;
@@ -25,10 +26,10 @@ interface Task {
  *   section scope  → section name + " (conducător)" — it's a leadership task
  *   dept scope     → department name + " (conducător)" — same
  */
-function scopeLabel(t: Task): string {
-    if (t.assigned_scope === 'post') return t.assigned_post_name || '—';
-    if (t.assigned_scope === 'section') return `${t.assigned_section_name || '—'} (conducător)`;
-    if (t.assigned_scope === 'department') return `${t.assigned_department_name || '—'} (conducător)`;
+function scopeLabel(task: Task, t: TFunction): string {
+    if (task.assigned_scope === 'post') return task.assigned_post_name || '—';
+    if (task.assigned_scope === 'section') return `${task.assigned_section_name || '—'} (${t('week_view.leader_suffix')})`;
+    if (task.assigned_scope === 'department') return `${task.assigned_department_name || '—'} (${t('week_view.leader_suffix')})`;
     return '—';
 }
 interface DayUser {
@@ -54,12 +55,11 @@ const STATUS_COLOR: Record<string, string> = {
     blocat: '#ef4444',
     terminat: '#10b981',
 };
-const STATUS_LABEL: Record<string, string> = {
-    de_rezolvat: 'De rezolvat',
-    in_realizare: 'În realizare',
-    blocat: 'Blocat',
-    terminat: 'Terminat',
-};
+function statusLabel(status: string, t: TFunction): string {
+    // Reuse existing task_status namespace; falls back to the raw key for unknowns.
+    const translated = t(`task_status.${status}`);
+    return translated === `task_status.${status}` ? status : translated;
+}
 
 // Local-date ISO string (YYYY-MM-DD). We deliberately avoid toISOString() because
 // it converts to UTC first — in timezones east of UTC (e.g. Europe/Bucharest, +3)
@@ -82,8 +82,6 @@ function mondayOf(date: Date): Date {
     return d;
 }
 
-const DAY_LABELS = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'];
-
 export default function WeekViewPage() {
     const [start, setStart] = useState(() => mondayOf(new Date()));
     const [week, setWeek] = useState<WeekResponse | null>(null);
@@ -92,6 +90,20 @@ export default function WeekViewPage() {
     const [mode, setMode] = useState<'by-user' | 'by-day'>('by-user');
     const { showToast } = useToast();
     const { activeCompany } = useCompany();
+    const { t } = useTranslation();
+    const dateLocale = activeCompany?.language === 'hu' ? 'hu-HU' : 'ro-RO';
+    // Build day labels through Intl for proper locale capitalization & inflection.
+    const DAY_LABELS = React.useMemo(() => {
+        const fmt = new Intl.DateTimeFormat(dateLocale, { weekday: 'long' });
+        // Pick a reference Monday (any Monday works) — Jan 5, 2026 is a Monday.
+        const ref = new Date(2026, 0, 5);
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(ref);
+            d.setDate(ref.getDate() + i);
+            const s = fmt.format(d);
+            return s.charAt(0).toLocaleUpperCase(dateLocale) + s.slice(1);
+        });
+    }, [dateLocale]);
     // 'full' (Visoro) keeps the post/section/department scope label above each task.
     // Other templates render a flat per-user grid with just the task title.
     const isFull = activeCompany?.template_type === 'full';
@@ -100,7 +112,7 @@ export default function WeekViewPage() {
         setLoading(true);
         dayViewApi.getWeek(toIsoDate(start))
             .then((w: WeekResponse) => setWeek(w))
-            .catch(() => showToast('Eroare la încărcare', 'error'))
+            .catch(() => showToast(t('week_view.load_error'), 'error'))
             .finally(() => setLoading(false));
     }, [start]);
 
@@ -147,10 +159,10 @@ export default function WeekViewPage() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <CalendarRange className="w-6 h-6 text-cyan-400" />
-                        Vedere săptămânală
+                        {t('week_view.title')}
                     </h1>
                     <p className="text-navy-400 text-sm mt-1">
-                        {week ? `${week.start} — ${week.end}` : 'Încărcare…'}
+                        {week ? `${week.start} — ${week.end}` : t('week_view.loading')}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -162,7 +174,7 @@ export default function WeekViewPage() {
                                 mode === 'by-user' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                             }`}
                         >
-                            Pe colegi
+                            {t('week_view.mode_by_user')}
                         </button>
                         <button
                             onClick={() => setMode('by-day')}
@@ -170,25 +182,25 @@ export default function WeekViewPage() {
                                 mode === 'by-day' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                             }`}
                         >
-                            Pe zile
+                            {t('week_view.mode_by_day')}
                         </button>
                     </div>
                     {/* Nav */}
                     <button onClick={() => shiftWeek(-7)} className="flex items-center gap-1 px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs hover:bg-navy-700/50">
-                        <ChevronLeft className="w-3 h-3" /> Săpt. anterioară
+                        <ChevronLeft className="w-3 h-3" /> {t('week_view.prev_week')}
                     </button>
                     <button onClick={jumpToThisWeek} className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-xs font-medium text-blue-300 hover:bg-blue-500/30">
-                        Această săpt.
+                        {t('week_view.this_week')}
                     </button>
                     <button onClick={() => shiftWeek(7)} className="flex items-center gap-1 px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs hover:bg-navy-700/50">
-                        Săpt. următoare <ChevronRight className="w-3 h-3" />
+                        {t('week_view.next_week')} <ChevronRight className="w-3 h-3" />
                     </button>
                 </div>
             </div>
 
             {loading && (
                 <div className="flex items-center justify-center py-16 text-navy-400">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" /> Se încarcă…
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('week_view.loading')}
                 </div>
             )}
 
@@ -197,7 +209,7 @@ export default function WeekViewPage() {
                     <table className="w-full text-sm min-w-[1000px]">
                         <thead>
                             <tr className="bg-navy-800/60 border-b border-navy-700/50">
-                                <th className="text-left px-3 py-2 text-[10px] uppercase tracking-wider text-navy-400 font-semibold w-[180px]">Coleg</th>
+                                <th className="text-left px-3 py-2 text-[10px] uppercase tracking-wider text-navy-400 font-semibold w-[180px]">{t('week_view.col_user')}</th>
                                 {week.days.map((d, i) => (
                                     <th
                                         key={d.date}
@@ -214,7 +226,7 @@ export default function WeekViewPage() {
                             {allUsers.length === 0 && (
                                 <tr>
                                     <td colSpan={week.days.length + 1} className="px-4 py-8 text-center text-xs text-navy-400">
-                                        Niciun coleg de afișat. Adaugă utilizatori companiei active sau verifică accesul.
+                                        {t('week_view.empty_state')}
                                     </td>
                                 </tr>
                             )}
@@ -239,35 +251,35 @@ export default function WeekViewPage() {
                                                     <span className="text-[10px] text-navy-600">—</span>
                                                 ) : (
                                                     <div className="space-y-1">
-                                                        {tasks.slice(0, 4).map(t => (
+                                                        {tasks.slice(0, 4).map(tk => (
                                                             <button
-                                                                key={t.id}
-                                                                onClick={() => setSelectedTaskId(t.id)}
+                                                                key={tk.id}
+                                                                onClick={() => setSelectedTaskId(tk.id)}
                                                                 className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
-                                                                title={isFull ? `${scopeLabel(t)} · ${STATUS_LABEL[t.status] || t.status} — ${t.title}` : `${STATUS_LABEL[t.status] || t.status} — ${t.title}`}
+                                                                title={isFull ? `${scopeLabel(tk, t)} · ${statusLabel(tk.status, t)} — ${tk.title}` : `${statusLabel(tk.status, t)} — ${tk.title}`}
                                                             >
                                                                 {/* Post / scope name — above, smaller but prominent in cyan.
                                                                     Only shown for 'full' template; other templates have no org structure. */}
                                                                 {isFull && (
                                                                     <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
-                                                                        {scopeLabel(t)}
+                                                                        {scopeLabel(tk, t)}
                                                                     </span>
                                                                 )}
                                                                 {/* Task title — below */}
                                                                 <div className="flex items-center gap-1">
                                                                     <span
                                                                         className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                                                        style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
+                                                                        style={{ backgroundColor: STATUS_COLOR[tk.status] || '#9ca3af' }}
                                                                     />
-                                                                    {t.is_recurring && (
+                                                                    {tk.is_recurring && (
                                                                         <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />
                                                                     )}
-                                                                    <span className="text-[11px] truncate">{t.title}</span>
+                                                                    <span className="text-[11px] truncate">{tk.title}</span>
                                                                 </div>
                                                             </button>
                                                         ))}
                                                         {tasks.length > 4 && (
-                                                            <p className="text-[9px] text-navy-500 pl-2">+{tasks.length - 4} mai multe</p>
+                                                            <p className="text-[9px] text-navy-500 pl-2">{t('week_view.more_tasks', { count: tasks.length - 4 })}</p>
                                                         )}
                                                     </div>
                                                 )}
@@ -300,33 +312,33 @@ export default function WeekViewPage() {
                                     </span>
                                     <span className="text-[10px] text-navy-500">{d.date.slice(5)}</span>
                                 </div>
-                                <p className="text-[10px] text-navy-500 mb-2">{totalTasks} {totalTasks === 1 ? 'sarcină' : 'sarcini'}</p>
+                                <p className="text-[10px] text-navy-500 mb-2">{t(totalTasks === 1 ? 'week_view.task_count_one' : 'week_view.task_count_many', { count: totalTasks })}</p>
                                 <div className="space-y-1.5">
-                                    {d.users.flatMap(u => u.tasks.map(t => ({ ...t, user: u }))).slice(0, 20).map(t => (
+                                    {d.users.flatMap(u => u.tasks.map(tk => ({ ...tk, user: u }))).slice(0, 20).map(tk => (
                                         <button
-                                            key={`${t.user.id}-${t.id}`}
-                                            onClick={() => setSelectedTaskId(t.id)}
+                                            key={`${tk.user.id}-${tk.id}`}
+                                            onClick={() => setSelectedTaskId(tk.id)}
                                             className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
-                                            title={isFull ? `${scopeLabel(t)} — ${t.title}` : t.title}
+                                            title={isFull ? `${scopeLabel(tk, t)} — ${tk.title}` : tk.title}
                                         >
                                             {/* Post / scope above — only for 'full' template. */}
                                             {isFull && (
                                                 <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
-                                                    {scopeLabel(t)}
+                                                    {scopeLabel(tk, t)}
                                                 </span>
                                             )}
                                             <div className="flex items-start gap-1.5">
                                                 <span
                                                     className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1"
-                                                    style={{ backgroundColor: STATUS_COLOR[t.status] || '#9ca3af' }}
+                                                    style={{ backgroundColor: STATUS_COLOR[tk.status] || '#9ca3af' }}
                                                 />
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[11px] truncate leading-tight flex items-center gap-1">
-                                                        {t.is_recurring && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />}
-                                                        <span className="truncate">{t.title}</span>
+                                                        {tk.is_recurring && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />}
+                                                        <span className="truncate">{tk.title}</span>
                                                     </p>
                                                     {/* Responsible user — smaller, below title */}
-                                                    <p className="text-[9px] text-navy-500 truncate">{t.user.display_name}</p>
+                                                    <p className="text-[9px] text-navy-500 truncate">{tk.user.display_name}</p>
                                                 </div>
                                             </div>
                                         </button>

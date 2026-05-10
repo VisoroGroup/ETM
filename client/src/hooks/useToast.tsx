@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { CheckCircle, AlertCircle, Info, X, Undo2 } from 'lucide-react';
+import { useTranslation } from '../i18n/I18nContext';
 
 interface Toast {
     id: string;
@@ -15,6 +16,7 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType>({ showToast: () => { } });
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+    const { t } = useTranslation();
     const [toasts, setToasts] = useState<Toast[]>([]);
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', undoAction?: () => void) => {
@@ -65,12 +67,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             <button
                                 onClick={() => { toast.undoAction?.(); removeToast(toast.id); }}
                                 className="ml-1 flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs font-medium transition-colors"
-                                aria-label="Anulează acțiunea"
+                                aria-label={t('toast.undo_action')}
                             >
-                                <Undo2 className="w-3 h-3" /> Anulează
+                                <Undo2 className="w-3 h-3" /> {t('common.cancel')}
                             </button>
                         )}
-                        <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70" aria-label="Închide notificarea">
+                        <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70" aria-label={t('toast.close_notification')}>
                             <X className="w-4 h-4" />
                         </button>
                     </div>

@@ -9,6 +9,7 @@ import {
     sendNotificationEmail,
     resolveRecipientLocale,
 } from '../services/notificationEmailService';
+import { tServer } from '../i18n/serverI18n';
 
 const router = Router({ mergeParams: true });
 
@@ -99,11 +100,12 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
                         const stakeholders = await getSpecificStakeholders([assigned_to], req.user!.id);
                         for (const user of stakeholders) {
                             const language = await resolveRecipientLocale(user.id, companyId);
+                            const actor = req.user!.display_name;
                             const htmlBody = buildNotificationHtml({
                                 recipientName: user.display_name,
-                                subtitle: 'Sub-sarcină atribuită',
+                                subtitle: tServer(language, 'notif_email.sub_subtask_assigned'),
                                 bodyLines: [
-                                    `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ți-a atribuit o sub-sarcină:</p>`,
+                                    `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_assigned_subtask', { actor })}</p>`,
                                     `<p style="color: #333; font-size: 14px; font-weight: bold; margin: 8px 0;">📌 ${title}</p>`,
                                 ],
                                 taskId,
@@ -112,7 +114,7 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
                             });
                             sendNotificationEmail({
                                 userId: user.id, userEmail: user.email, userName: user.display_name,
-                                taskId, subject: `[ETM] Sub-sarcină atribuită — ${title}`,
+                                taskId, subject: tServer(language, 'notif_email.subj_subtask_assigned', { title }),
                                 htmlBody, emailType: 'subtask_assigned',
                                 companyId,
                             }).catch(err => console.error('[subtask_assigned] Email error:', err));
@@ -185,11 +187,12 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                             const stakeholders = await getSpecificStakeholders(recipientIds, req.user!.id);
                             for (const user of stakeholders) {
                                 const language = await resolveRecipientLocale(user.id, companyId);
+                                const actor = req.user!.display_name;
                                 const htmlBody = buildNotificationHtml({
                                     recipientName: user.display_name,
-                                    subtitle: 'Sub-sarcină finalizată',
+                                    subtitle: tServer(language, 'notif_email.sub_subtask_completed'),
                                     bodyLines: [
-                                        `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a finalizat o sub-sarcină:</p>`,
+                                        `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_completed_subtask', { actor })}</p>`,
                                         `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">✅ ${oldRows[0].title}</p>`,
                                     ],
                                     taskId,
@@ -198,7 +201,7 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                                 });
                                 sendNotificationEmail({
                                     userId: user.id, userEmail: user.email, userName: user.display_name,
-                                    taskId, subject: `[ETM] Sub-sarcină finalizată — ${oldRows[0].title}`,
+                                    taskId, subject: tServer(language, 'notif_email.subj_subtask_completed', { title: oldRows[0].title }),
                                     htmlBody, emailType: 'subtask_completed',
                                     companyId,
                                 }).catch(err => console.error('[subtask_completed] Email error:', err));
@@ -243,11 +246,12 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                             const stakeholders = await getSpecificStakeholders([assigned_to], req.user!.id);
                             for (const user of stakeholders) {
                                 const language = await resolveRecipientLocale(user.id, companyId);
+                                const actor = req.user!.display_name;
                                 const htmlBody = buildNotificationHtml({
                                     recipientName: user.display_name,
-                                    subtitle: 'Sub-sarcină atribuită',
+                                    subtitle: tServer(language, 'notif_email.sub_subtask_assigned'),
                                     bodyLines: [
-                                        `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ți-a atribuit o sub-sarcină:</p>`,
+                                        `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_assigned_subtask', { actor })}</p>`,
                                         `<p style="color: #333; font-size: 14px; font-weight: bold; margin: 8px 0;">📌 ${oldRows[0].title}</p>`,
                                     ],
                                     taskId,
@@ -256,7 +260,7 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                                 });
                                 sendNotificationEmail({
                                     userId: user.id, userEmail: user.email, userName: user.display_name,
-                                    taskId, subject: `[ETM] Sub-sarcină atribuită — ${oldRows[0].title}`,
+                                    taskId, subject: tServer(language, 'notif_email.subj_subtask_assigned', { title: oldRows[0].title }),
                                     htmlBody, emailType: 'subtask_assigned',
                                     companyId,
                                 }).catch(err => console.error('[subtask_assigned] Email error:', err));

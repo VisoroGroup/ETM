@@ -3,6 +3,7 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../../utils/cropImage';
 import { X, Check } from 'lucide-react';
 import { Area } from 'react-easy-crop';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface AvatarCropperProps {
     imageSrc: string;
@@ -11,6 +12,7 @@ interface AvatarCropperProps {
 }
 
 export default function AvatarCropper({ imageSrc, onCancel, onSave }: AvatarCropperProps) {
+    const { t } = useTranslation();
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -29,7 +31,7 @@ export default function AvatarCropper({ imageSrc, onCancel, onSave }: AvatarCrop
         } catch (e) {
             console.error('Cropping error:', e);
             setIsSaving(false);
-            alert('A apărut o eroare la decuparea imaginii.');
+            alert(t('avatar_cropper.crop_error'));
         }
     };
 
@@ -39,7 +41,7 @@ export default function AvatarCropper({ imageSrc, onCancel, onSave }: AvatarCrop
                 
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-navy-700/50 bg-navy-800/50">
-                    <h3 className="text-lg font-bold text-white">Selectează vizualizarea</h3>
+                    <h3 className="text-lg font-bold text-white">{t('avatar_cropper.title')}</h3>
                     <button onClick={onCancel} className="text-navy-400 hover:text-white transition-colors p-1">
                         <X className="w-5 h-5" />
                     </button>
@@ -65,14 +67,14 @@ export default function AvatarCropper({ imageSrc, onCancel, onSave }: AvatarCrop
                     
                     {/* Zoom slider */}
                     <div className="flex items-center justify-center gap-4">
-                        <span className="text-xs text-navy-400 font-medium">Zoom</span>
+                        <span className="text-xs text-navy-400 font-medium">{t('avatar_cropper.zoom')}</span>
                         <input
                             type="range"
                             value={zoom}
                             min={1}
                             max={3}
                             step={0.1}
-                            aria-labelledby="Zoom"
+                            aria-label={t('avatar_cropper.zoom')}
                             onChange={(e) => setZoom(Number(e.target.value))}
                             className="w-1/2 h-1 bg-navy-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
@@ -85,17 +87,17 @@ export default function AvatarCropper({ imageSrc, onCancel, onSave }: AvatarCrop
                             disabled={isSaving}
                             className="px-4 py-2 text-sm text-navy-300 hover:text-white hover:bg-navy-700 rounded-lg transition-colors font-medium"
                         >
-                            Anulează
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
                             className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
                         >
-                            {isSaving ? 'Se decupează...' : (
+                            {isSaving ? t('avatar_cropper.cropping') : (
                                 <>
                                     <Check className="w-4 h-4" />
-                                    Salvează Avatarul
+                                    {t('avatar_cropper.save_avatar')}
                                 </>
                             )}
                         </button>

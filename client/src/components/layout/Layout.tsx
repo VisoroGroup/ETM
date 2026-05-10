@@ -283,7 +283,7 @@ export default function Layout() {
                             avatarUrl={user.avatar_url}
                             size="xs"
                         />
-                        <span>Profil</span>
+                        <span>{t('nav.profile')}</span>
                     </button>
                 )}
             </nav>

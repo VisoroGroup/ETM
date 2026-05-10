@@ -105,8 +105,8 @@ export default function DashboardCustomizer({ isOpen, onClose, layout, onSave }:
                                                             <GripVertical className="w-4 h-4" />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium">{meta.label}</p>
-                                                            <p className="text-[11px] text-navy-500 truncate">{meta.description}</p>
+                                                            <p className="text-sm font-medium">{t(`dashboard.widgets.${widget.widget_id}.label`)}</p>
+                                                            <p className="text-[11px] text-navy-500 truncate">{t(`dashboard.widgets.${widget.widget_id}.description`)}</p>
                                                         </div>
                                                         <button
                                                             onClick={() => toggleVisible(widget.widget_id)}

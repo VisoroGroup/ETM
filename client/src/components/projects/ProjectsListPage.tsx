@@ -7,10 +7,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import UserAvatar from '../ui/UserAvatar';
 
-const STATUS_BADGE: Record<PugProject['status'], { label: string; cls: string }> = {
-    new: { label: 'Nou', cls: 'bg-blue-500/20 text-blue-300' },
-    active: { label: 'Activ', cls: 'bg-amber-500/20 text-amber-300' },
-    closed: { label: 'Închis', cls: 'bg-green-500/20 text-green-300' },
+const STATUS_BADGE: Record<PugProject['status'], { labelKey: string; cls: string }> = {
+    new: { labelKey: 'projects.status_new', cls: 'bg-blue-500/20 text-blue-300' },
+    active: { labelKey: 'projects.status_active', cls: 'bg-amber-500/20 text-amber-300' },
+    closed: { labelKey: 'projects.status_closed', cls: 'bg-green-500/20 text-green-300' },
 };
 
 export default function ProjectsListPage() {
@@ -128,7 +128,7 @@ export default function ProjectsListPage() {
                                     )}
                                 </div>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[p.status].cls}`}>
-                                    {STATUS_BADGE[p.status].label}
+                                    {t(STATUS_BADGE[p.status].labelKey)}
                                 </span>
                             </div>
 

@@ -11,6 +11,7 @@ import {
     escapeHtml,
     resolveRecipientLocale,
 } from '../services/notificationEmailService';
+import { tServer } from '../i18n/serverI18n';
 
 const router = Router({ mergeParams: true });
 
@@ -175,13 +176,15 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                 for (const su of stakeholders) {
                     const isMention = mentions && mentions.includes(su.id);
                     const language = await resolveRecipientLocale(su.id, companyId);
+                    const actor = req.user!.display_name;
+                    const subtitleKey = isMention ? 'notif_email.sub_mention' : 'notif_email.sub_comment';
+                    const bodyKey = isMention ? 'notif_email.body_user_mentioned_you' : 'notif_email.body_user_commented';
+                    const subjectKey = isMention ? 'notif_email.subj_mention' : 'notif_email.subj_comment';
                     const htmlBody = buildNotificationHtml({
                         recipientName: su.display_name,
-                        subtitle: isMention ? 'Mențiune nouă' : 'Comentariu nou',
+                        subtitle: tServer(language, subtitleKey),
                         bodyLines: [
-                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> ${
-                                isMention ? 'te-a menționat într-un comentariu' : 'a adăugat un comentariu'
-                            } la sarcina:</p>`,
+                            `<p style="color: #555; font-size: 14px;">${tServer(language, bodyKey, { actor })}</p>`,
                             `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0;">
                                 <p style="margin: 0; color: #555; font-size: 14px; font-style: italic;">"${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}"</p>
                             </div>`,
@@ -196,7 +199,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                         userEmail: su.email,
                         userName: su.display_name,
                         taskId,
-                        subject: `[ETM] ${isMention ? 'Mențiune' : 'Comentariu nou'} — ${taskTitle}`,
+                        subject: tServer(language, subjectKey, { title: taskTitle }),
                         htmlBody,
                         emailType: isMention ? 'mention' : 'comment',
                         companyId,
@@ -342,11 +345,12 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                     const stakeholders = await getSpecificStakeholders([authorId], req.user!.id);
                     for (const su of stakeholders) {
                         const language = await resolveRecipientLocale(su.id, companyId);
+                        const actor = req.user!.display_name;
                         const htmlBody = buildNotificationHtml({
                             recipientName: su.display_name,
-                            subtitle: 'Reacție nouă',
+                            subtitle: tServer(language, 'notif_email.sub_reaction'),
                             bodyLines: [
-                                `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a reacționat ${reaction} la comentariul tău la sarcina:</p>`,
+                                `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_reacted', { actor, reaction })}</p>`,
                             ],
                             taskId,
                             taskTitle,
@@ -354,7 +358,7 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                         });
                         sendNotificationEmail({
                             userId: su.id, userEmail: su.email, userName: su.display_name,
-                            taskId, subject: `[ETM] Reacție ${reaction} — ${taskTitle}`,
+                            taskId, subject: tServer(language, 'notif_email.subj_reaction', { reaction, title: taskTitle }),
                             htmlBody, emailType: 'reaction',
                             companyId,
                         }).catch(err => console.error('[REACTION] Email error:', err));

@@ -8,6 +8,7 @@ import {
     sendNotificationEmail,
     resolveRecipientLocale,
 } from './notificationEmailService';
+import { tServer } from '../i18n/serverI18n';
 
 // ------- GET /:id — full task detail with related data -------
 
@@ -261,9 +262,9 @@ export async function createTask(
                     const language = await resolveRecipientLocale(user.id, companyId);
                     const htmlBody = buildNotificationHtml({
                         recipientName: user.display_name,
-                        subtitle: 'Sarcină nouă atribuită',
+                        subtitle: tServer(language, 'notif_email.sub_task_reassigned'),
                         bodyLines: [
-                            `<p style="color: #555; font-size: 14px;"><strong>${creatorName}</strong> ți-a atribuit o sarcină nouă:</p>`,
+                            `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_assigned_new_task', { actor: creatorName })}</p>`,
                         ],
                         taskId,
                         taskTitle: title,
@@ -271,7 +272,7 @@ export async function createTask(
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,
-                        taskId, subject: `[ETM] Sarcină nouă atribuită — ${title}`,
+                        taskId, subject: tServer(language, 'notif_email.subj_task_reassigned', { title }),
                         htmlBody, emailType: 'task_created_assigned',
                         companyId,
                     }).catch(err => console.error('[task_created_assigned] Email error:', err));
@@ -469,9 +470,9 @@ export async function updateTask(
                         const language = await resolveRecipientLocale(user.id, taskCompanyId ?? null);
                         const htmlBody = buildNotificationHtml({
                             recipientName: user.display_name,
-                            subtitle: 'Sarcină atribuită',
+                            subtitle: tServer(language, 'notif_email.sub_task_assigned'),
                             bodyLines: [
-                                `<p style="color: #555; font-size: 14px;"><strong>${creatorName}</strong> ți-a atribuit o sarcină:</p>`,
+                                `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_assigned_task', { actor: creatorName })}</p>`,
                             ],
                             taskId: id,
                             taskTitle,
@@ -479,7 +480,7 @@ export async function updateTask(
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,
-                            taskId: id, subject: `[ETM] Sarcină atribuită — ${taskTitle}`,
+                            taskId: id, subject: tServer(language, 'notif_email.subj_task_assigned', { title: taskTitle }),
                             htmlBody, emailType: 'task_assigned',
                             companyId: taskCompanyId,
                         }).catch(err => console.error('[task_assigned] Email error:', err));

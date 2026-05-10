@@ -3,6 +3,7 @@ import { User } from '../types';
 import { authApi } from '../services/api';
 import axios from 'axios';
 import { safeLocalStorage } from '../utils/storage';
+import { makeT } from '../i18n/I18nContext';
 
 interface AuthContextType {
     user: User | null;
@@ -49,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (oauthError) {
             console.error('OAuth error:', oauthError);
             if (oauthError === 'user_deactivated') {
-                alert('Contul tău a fost dezactivat. Contactează administratorul.');
+                const t = makeT('ro');
+                alert(t('auth_errors.user_deactivated'));
             }
             window.history.replaceState({}, '', '/');
             setLoading(false);

@@ -88,6 +88,46 @@ const RO: Dict = {
         greeting: 'Bună, {{name}}!',
         cta_open_task: 'Deschide sarcina',
         footer: 'Această notificare a fost generată automat de ETM.',
+
+        // Subjects (used as `[ETM] {{subject}} — {{title}}`)
+        subj_task_assigned: '[ETM] Sarcină atribuită — {{title}}',
+        subj_task_reassigned: '[ETM] Sarcină nouă atribuită — {{title}}',
+        subj_comment: '[ETM] Comentariu nou — {{title}}',
+        subj_mention: '[ETM] Mențiune — {{title}}',
+        subj_reaction: '[ETM] Reacție {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[ETM] Sub-sarcină atribuită — {{title}}',
+        subj_subtask_completed: '[ETM] Sub-sarcină finalizată — {{title}}',
+        subj_checklist_checked: '[ETM] Checklist bifat — {{title}}',
+        subj_status_changed: '[ETM] Status: {{status}} — {{title}}',
+        subj_completion_report: '[ETM] Raport finalizare — {{title}}',
+
+        // Subtitles (short header lines in the email body)
+        sub_task_assigned: 'Sarcină atribuită',
+        sub_task_reassigned: 'Sarcină nouă atribuită',
+        sub_comment: 'Comentariu nou',
+        sub_mention: 'Mențiune nouă',
+        sub_reaction: 'Reacție nouă',
+        sub_subtask_assigned: 'Sub-sarcină atribuită',
+        sub_subtask_completed: 'Sub-sarcină finalizată',
+        sub_checklist_checked: 'Element checklist finalizat',
+        sub_status_changed: 'Status schimbat → {{status}}',
+
+        // First body line (the main user-visible sentence)
+        body_user_assigned_new_task: '<strong>{{actor}}</strong> ți-a atribuit o sarcină nouă:',
+        body_user_assigned_task: '<strong>{{actor}}</strong> ți-a atribuit o sarcină:',
+        body_user_commented: '<strong>{{actor}}</strong> a adăugat un comentariu la sarcina:',
+        body_user_mentioned_you: '<strong>{{actor}}</strong> te-a menționat într-un comentariu la sarcina:',
+        body_user_reacted: '<strong>{{actor}}</strong> a reacționat {{reaction}} la comentariul tău la sarcina:',
+        body_user_assigned_subtask: '<strong>{{actor}}</strong> ți-a atribuit o sub-sarcină:',
+        body_user_completed_subtask: '<strong>{{actor}}</strong> a finalizat o sub-sarcină:',
+        body_user_checked_item: '<strong>{{actor}}</strong> a bifat un element din checklist:',
+        body_user_changed_status: '<strong>{{actor}}</strong> a schimbat statusul sarcinii:',
+
+        // Status labels (mirror client STATUSES)
+        status_de_rezolvat: 'De rezolvat',
+        status_in_realizare: 'În realizare',
+        status_terminat: 'Terminat',
+        status_blocat: 'Blocat',
     },
 };
 
@@ -166,6 +206,46 @@ const HU: Dict = {
         greeting: 'Szia, {{name}}!',
         cta_open_task: 'Feladat megnyitása',
         footer: 'Ezt az értesítést automatikusan az ETM küldte.',
+
+        // Subjects
+        subj_task_assigned: '[ETM] Feladat hozzárendelve — {{title}}',
+        subj_task_reassigned: '[ETM] Új feladat hozzárendelve — {{title}}',
+        subj_comment: '[ETM] Új hozzászólás — {{title}}',
+        subj_mention: '[ETM] Említés — {{title}}',
+        subj_reaction: '[ETM] Reakció {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[ETM] Részfeladat hozzárendelve — {{title}}',
+        subj_subtask_completed: '[ETM] Részfeladat befejezve — {{title}}',
+        subj_checklist_checked: '[ETM] Ellenőrzőlista pipálva — {{title}}',
+        subj_status_changed: '[ETM] Állapot: {{status}} — {{title}}',
+        subj_completion_report: '[ETM] Befejezési jelentés — {{title}}',
+
+        // Subtitles
+        sub_task_assigned: 'Feladat hozzárendelve',
+        sub_task_reassigned: 'Új feladat hozzárendelve',
+        sub_comment: 'Új hozzászólás',
+        sub_mention: 'Új említés',
+        sub_reaction: 'Új reakció',
+        sub_subtask_assigned: 'Részfeladat hozzárendelve',
+        sub_subtask_completed: 'Részfeladat befejezve',
+        sub_checklist_checked: 'Ellenőrzőlista elem befejezve',
+        sub_status_changed: 'Állapot megváltoztatva → {{status}}',
+
+        // Body lines
+        body_user_assigned_new_task: '<strong>{{actor}}</strong> új feladatot rendelt hozzád:',
+        body_user_assigned_task: '<strong>{{actor}}</strong> feladatot rendelt hozzád:',
+        body_user_commented: '<strong>{{actor}}</strong> hozzászólt a feladathoz:',
+        body_user_mentioned_you: '<strong>{{actor}}</strong> megemlített téged egy hozzászólásban a feladatnál:',
+        body_user_reacted: '<strong>{{actor}}</strong> {{reaction}} reakciót adott a hozzászólásodhoz a feladatnál:',
+        body_user_assigned_subtask: '<strong>{{actor}}</strong> részfeladatot rendelt hozzád:',
+        body_user_completed_subtask: '<strong>{{actor}}</strong> befejezett egy részfeladatot:',
+        body_user_checked_item: '<strong>{{actor}}</strong> kipipált egy ellenőrzőlista elemet:',
+        body_user_changed_status: '<strong>{{actor}}</strong> megváltoztatta a feladat állapotát:',
+
+        // Status labels
+        status_de_rezolvat: 'Megoldandó',
+        status_in_realizare: 'Folyamatban',
+        status_terminat: 'Befejezve',
+        status_blocat: 'Blokkolva',
     },
 };
 
@@ -243,6 +323,46 @@ const EN: Dict = {
         greeting: 'Hi {{name}}!',
         cta_open_task: 'Open task',
         footer: 'This notification was generated automatically by ETM.',
+
+        // Subjects
+        subj_task_assigned: '[ETM] Task assigned — {{title}}',
+        subj_task_reassigned: '[ETM] New task assigned — {{title}}',
+        subj_comment: '[ETM] New comment — {{title}}',
+        subj_mention: '[ETM] Mention — {{title}}',
+        subj_reaction: '[ETM] Reaction {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[ETM] Subtask assigned — {{title}}',
+        subj_subtask_completed: '[ETM] Subtask completed — {{title}}',
+        subj_checklist_checked: '[ETM] Checklist checked — {{title}}',
+        subj_status_changed: '[ETM] Status: {{status}} — {{title}}',
+        subj_completion_report: '[ETM] Completion report — {{title}}',
+
+        // Subtitles
+        sub_task_assigned: 'Task assigned',
+        sub_task_reassigned: 'New task assigned',
+        sub_comment: 'New comment',
+        sub_mention: 'New mention',
+        sub_reaction: 'New reaction',
+        sub_subtask_assigned: 'Subtask assigned',
+        sub_subtask_completed: 'Subtask completed',
+        sub_checklist_checked: 'Checklist item completed',
+        sub_status_changed: 'Status changed → {{status}}',
+
+        // Body lines
+        body_user_assigned_new_task: '<strong>{{actor}}</strong> assigned you a new task:',
+        body_user_assigned_task: '<strong>{{actor}}</strong> assigned you a task:',
+        body_user_commented: '<strong>{{actor}}</strong> added a comment on the task:',
+        body_user_mentioned_you: '<strong>{{actor}}</strong> mentioned you in a comment on the task:',
+        body_user_reacted: '<strong>{{actor}}</strong> reacted {{reaction}} to your comment on the task:',
+        body_user_assigned_subtask: '<strong>{{actor}}</strong> assigned you a subtask:',
+        body_user_completed_subtask: '<strong>{{actor}}</strong> completed a subtask:',
+        body_user_checked_item: '<strong>{{actor}}</strong> checked an item from the checklist:',
+        body_user_changed_status: '<strong>{{actor}}</strong> changed the task status:',
+
+        // Status labels
+        status_de_rezolvat: 'To do',
+        status_in_realizare: 'In progress',
+        status_terminat: 'Completed',
+        status_blocat: 'Blocked',
     },
 };
 

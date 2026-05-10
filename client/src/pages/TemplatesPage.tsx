@@ -3,6 +3,7 @@ import { templatesApi, authApi } from '../services/api';
 import { DEPARTMENTS, Department } from '../types';
 import { Plus, Trash2, LayoutTemplate, X, Loader2, BookCopy } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import { useTranslation } from '../i18n/I18nContext';
 
 interface Template {
     id: string;
@@ -22,6 +23,7 @@ export default function TemplatesPage() {
     const [showForm, setShowForm] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
     const { showToast } = useToast();
+    const { t } = useTranslation();
 
     // Form state
     const [title, setTitle] = useState('');
@@ -45,7 +47,7 @@ export default function TemplatesPage() {
     }, []);
 
     async function handleCreate() {
-        if (!title.trim()) return showToast('Titlul este obligatoriu', 'error');
+        if (!title.trim()) return showToast(t('templates.toast_title_required'), 'error');
         setSaving(true);
         try {
             await templatesApi.create({
@@ -55,21 +57,21 @@ export default function TemplatesPage() {
                 assigned_to: assignedTo || null,
                 subtasks: subtasks.filter(s => s.trim()).map(s => ({ title: s.trim() })),
             });
-            showToast('Sablon creat!');
+            showToast(t('templates.toast_created'));
             resetForm();
             load();
         } catch (e: any) {
-            showToast(e.response?.data?.error || 'Eroare', 'error');
+            showToast(e.response?.data?.error || t('templates.toast_error'), 'error');
         } finally { setSaving(false); }
     }
 
     async function handleDelete(id: string) {
-        if (!confirm('Ștergi acest sablon?')) return;
+        if (!confirm(t('templates.confirm_delete'))) return;
         try {
             await templatesApi.delete(id);
-            showToast('Sablon șters');
+            showToast(t('templates.toast_deleted'));
             load();
-        } catch { showToast('Nu a funcționat — încearcă din nou', 'error'); }
+        } catch { showToast(t('templates.toast_delete_failed'), 'error'); }
     }
 
     function resetForm() {
@@ -86,15 +88,15 @@ export default function TemplatesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <LayoutTemplate className="w-6 h-6 text-blue-400" /> Șabloane
+                        <LayoutTemplate className="w-6 h-6 text-blue-400" /> {t('templates.title')}
                     </h1>
-                    <p className="text-navy-400 text-sm mt-1">Creează sarcini rapid din șabloane predefinite</p>
+                    <p className="text-navy-400 text-sm mt-1">{t('templates.subtitle')}</p>
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium shadow-lg transition-all self-start sm:self-auto"
                 >
-                    <Plus className="w-4 h-4" /> Șablon nou
+                    <Plus className="w-4 h-4" /> {t('templates.new_template')}
                 </button>
             </div>
 
@@ -103,10 +105,10 @@ export default function TemplatesPage() {
             ) : templates.length === 0 ? (
                 <div className="text-center py-20">
                     <BookCopy className="w-16 h-16 text-navy-700 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-navy-400 mb-1">Niciun șablon</h3>
-                    <p className="text-sm text-navy-500 mb-4">Creează primul șablon pentru a accelera crearea task-urilor.</p>
+                    <h3 className="text-lg font-medium text-navy-400 mb-1">{t('templates.empty_title')}</h3>
+                    <p className="text-sm text-navy-500 mb-4">{t('templates.empty_subtitle')}</p>
                     <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm">
-                        <Plus className="w-4 h-4 inline mr-1" /> Șablon nou
+                        <Plus className="w-4 h-4 inline mr-1" /> {t('templates.new_template')}
                     </button>
                 </div>
             ) : (
@@ -142,14 +144,14 @@ export default function TemplatesPage() {
                                         </div>
                                     ))}
                                     {tpl.subtasks.length > 3 && (
-                                        <div className="text-[11px] text-navy-500">+{tpl.subtasks.length - 3} subtask-uri</div>
+                                        <div className="text-[11px] text-navy-500">{t('templates.more_subtasks', { count: tpl.subtasks.length - 3 })}</div>
                                     )}
                                 </div>
                             )}
 
                             <div className="flex items-center justify-between pt-2 border-t border-navy-800">
                                 <span className="text-[11px] text-navy-500">
-                                    {tpl.creator_name && `Creat de ${tpl.creator_name}`}
+                                    {tpl.creator_name && t('templates.created_by', { name: tpl.creator_name })}
                                 </span>
                                 {tpl.assignee_name && (
                                     <span className="text-[11px] text-purple-400 flex items-center gap-1">
@@ -171,37 +173,37 @@ export default function TemplatesPage() {
                     <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl animate-slide-up max-h-[90vh] flex flex-col">
                         <div className="flex items-center justify-between p-5 border-b border-navy-700/50 flex-shrink-0">
                             <h2 className="text-base font-bold flex items-center gap-2">
-                                <LayoutTemplate className="w-4 h-4 text-blue-400" /> Șablon nou
+                                <LayoutTemplate className="w-4 h-4 text-blue-400" /> {t('templates.new_template')}
                             </h2>
                             <button onClick={resetForm} className="text-navy-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
                         </div>
 
                         <div className="p-5 space-y-4 overflow-y-auto flex-1">
                             <div>
-                                <label className="text-xs font-medium text-navy-300 block mb-1.5">Titlu *</label>
+                                <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_title')}</label>
                                 <input
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
-                                    placeholder="Ex: Audit financiar lunar"
+                                    placeholder={t('templates.field_title_placeholder')}
                                     autoFocus
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-xs font-medium text-navy-300 block mb-1.5">Descriere</label>
+                                <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_description')}</label>
                                 <textarea
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}
                                     rows={2}
-                                    placeholder="Opțional..."
+                                    placeholder={t('templates.field_description_placeholder')}
                                     className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs font-medium text-navy-300 block mb-1.5">Departament</label>
+                                    <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_department')}</label>
                                     <select
                                         value={dept}
                                         onChange={e => setDept(e.target.value as Department)}
@@ -213,13 +215,13 @@ export default function TemplatesPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-medium text-navy-300 block mb-1.5">Responsabil implicit</label>
+                                    <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_default_assignee')}</label>
                                     <select
                                         value={assignedTo}
                                         onChange={e => setAssignedTo(e.target.value)}
                                         className="w-full px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
                                     >
-                                        <option value="">— Neasignat —</option>
+                                        <option value="">{t('templates.unassigned_option')}</option>
                                         {users.map(u => (
                                             <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
                                         ))}
@@ -229,7 +231,7 @@ export default function TemplatesPage() {
 
                             {/* Subtasks */}
                             <div>
-                                <label className="text-xs font-medium text-navy-300 block mb-2">Subtask-uri predefinite</label>
+                                <label className="text-xs font-medium text-navy-300 block mb-2">{t('templates.field_subtasks')}</label>
                                 <div className="space-y-2">
                                     {subtasks.map((s, i) => (
                                         <div key={i} className="flex items-center gap-2">
@@ -237,7 +239,7 @@ export default function TemplatesPage() {
                                                 value={s}
                                                 onChange={e => updateSubtask(i, e.target.value)}
                                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
-                                                placeholder={`Subtask ${i + 1}`}
+                                                placeholder={t('templates.subtask_placeholder', { n: i + 1 })}
                                                 className="flex-1 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                                             />
                                             {subtasks.length > 1 && (
@@ -248,7 +250,7 @@ export default function TemplatesPage() {
                                         </div>
                                     ))}
                                     <button onClick={addSubtask} className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1">
-                                        <Plus className="w-3.5 h-3.5" /> Adaugă subtask
+                                        <Plus className="w-3.5 h-3.5" /> {t('templates.add_subtask')}
                                     </button>
                                 </div>
                             </div>
@@ -256,14 +258,14 @@ export default function TemplatesPage() {
 
                         <div className="flex justify-end gap-2 p-5 border-t border-navy-700/50 flex-shrink-0">
                             <button onClick={resetForm} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">
-                                Anulează
+                                {t('templates.cancel')}
                             </button>
                             <button
                                 onClick={handleCreate}
                                 disabled={!title.trim() || saving}
                                 className="px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-medium disabled:opacity-40 transition-all"
                             >
-                                {saving ? 'Se salvează...' : 'Creează șablon'}
+                                {saving ? t('templates.saving') : t('templates.create_template')}
                             </button>
                         </div>
                     </div>

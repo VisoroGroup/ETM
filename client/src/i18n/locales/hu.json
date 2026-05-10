@@ -57,7 +57,8 @@
         "orphan_tasks": "Árva feladatok",
         "email_log": "E-mail napló",
         "completed": "Elvégzett",
-        "pug_config": "PUG beállítások"
+        "pug_config": "PUG beállítások",
+        "profile": "Profil"
     },
     "admin_companies": {
         "title": "Cégek",
@@ -273,7 +274,45 @@
         "prefs_saved": "Beállítások mentve!",
         "reset_done": "Visszaállítva az alapértelmezettre",
         "try_again": "Nem sikerült — próbáld újra",
-        "reset": "Alaphelyzet"
+        "reset": "Alaphelyzet",
+        "widgets": {
+            "global_stats": {
+                "label": "Globális statisztikák",
+                "description": "Az aktív, lejárt, blokkolt és befejezett feladatok teljes száma"
+            },
+            "my_stats": {
+                "label": "Saját feladataim",
+                "description": "Személyes feladataid statisztikája"
+            },
+            "status_chart": {
+                "label": "Állapot szerinti megoszlás",
+                "description": "Diagram a feladatok állapot szerinti megoszlásáról"
+            },
+            "dept_chart": {
+                "label": "Osztály szerinti megoszlás",
+                "description": "Diagram osztályok szerint"
+            },
+            "trend_chart": {
+                "label": "Befejezési trend",
+                "description": "Az elmúlt 4 hét befejezéseinek diagramja"
+            },
+            "urgent_tasks": {
+                "label": "Sürgős feladatok",
+                "description": "A 10 leghamarabb lejáró feladat"
+            },
+            "active_alerts": {
+                "label": "Aktív riasztások",
+                "description": "A rendszer megoldatlan riasztásai"
+            },
+            "bottlenecks": {
+                "label": "Kritikus szűk keresztmetszetek",
+                "description": "A legtöbb másikat blokkoló feladatok"
+            },
+            "calendar": {
+                "label": "Naptár",
+                "description": "Naptáros nézet a feladatok határidőivel"
+            }
+        }
     },
     "calendar": {
         "today": "Ma",
@@ -698,7 +737,35 @@
         "action_recurring_created": "ismétlődést állított be",
         "action_marked_paid": "kifizetettnek jelölte",
         "action_date_changed": "esedékességi dátumot módosított",
-        "action_category_changed": "kategóriát módosított"
+        "action_category_changed": "kategóriát módosított",
+        "action_created_full": "létrehozta a feladatot",
+        "action_status_changed_full": "a státuszt \"{{old}}\"-ról \"{{new}}\"-ra változtatta",
+        "action_status_changed_full_with_reason": "a státuszt \"{{old}}\"-ról \"{{new}}\"-ra változtatta — Indok: {{reason}}",
+        "action_due_date_changed_full": "a határidőt {{old}}-ról {{new}}-ra változtatta — Indok: {{reason}}",
+        "action_comment_added_full": "hozzászólást fűzött",
+        "action_subtask_added_full": "hozzáadta a(z) \"{{title}}\" alfeladatot",
+        "action_subtask_completed_full": "elvégezte a(z) \"{{title}}\" alfeladatot",
+        "action_subtask_unchecked_full": "visszavonta a(z) \"{{title}}\" alfeladatot",
+        "action_subtask_assigned_full": "a(z) \"{{title}}\" alfeladatot {{name}}-hez rendelte",
+        "no_one": "senki",
+        "action_attachment_added_full": "csatolta a(z) \"{{name}}\" fájlt",
+        "action_label_changed_full": "az osztályt \"{{old}}\"-ról \"{{new}}\"-ra változtatta",
+        "action_recurring_created_full": "ismétlődővé tette a feladatot ({{frequency}})",
+        "action_alert_added_full": "figyelmeztetést adott hozzá a \"Figyelmébe\" listához",
+        "action_alert_resolved_full": "figyelmeztetést oldott meg a \"Figyelmébe\" listából",
+        "action_title_changed_full": "módosította a címet: „{{old}}\" → „{{new}}\"",
+        "action_description_changed_full": "módosította a leírást",
+        "action_assigned_full": "{{name}}-hez rendelte a feladatot",
+        "action_unassigned_full": "megszüntette a hozzárendelést (volt: {{old}})",
+        "action_department_changed_full": "átmozgatta a feladatot: {{old}} → {{new}}",
+        "action_task_deleted_full": "törölte a feladatot",
+        "action_task_duplicated_full": "duplikálta a feladatot",
+        "action_checklist_item_added_full": "hozzáadta a checklist-hez: „{{title}}\"",
+        "action_checklist_updated_full": "frissítette a checklist-et",
+        "action_dependency_added_full": "függőséget adott hozzá",
+        "action_dependency_removed_full": "függőséget távolított el",
+        "action_dependency_resolved_full": "függőséget oldott fel",
+        "empty_inline": "Még nincs aktivitás"
     },
     "policy": {
         "title_default": "Működési irányelvek",
@@ -765,5 +832,175 @@
         "block_reason_placeholder": "Pl.: Hiányzó információ az ügyféltől, jóváhagyásra várunk...",
         "confirm_block": "Blokkolás megerősítése",
         "blocked_by": "{{count}} feladat blokkolja"
+    },
+    "webhooks": {
+        "title": "Integrációk és Webhookok",
+        "subtitle": "Automatikus értesítések beállítása külső rendszerek felé",
+        "add_webhook": "Webhook hozzáadása",
+        "tab_subscriptions": "Webhookok ({{count}})",
+        "tab_deliveries": "Kézbesítési napló",
+        "empty_title": "Nincs beállított webhook.",
+        "empty_hint": "Adj hozzá egy webhookot az automatikus értesítésekhez.",
+        "action_test": "Teszt",
+        "last_success": "Utolsó: {{time}}",
+        "filter_all_events": "Összes esemény",
+        "filter_all_statuses": "Összes állapot",
+        "auto_refresh": "Automatikus frissítés 30 mp",
+        "no_results": "Nincs találat",
+        "payload_label": "Payload:",
+        "form_title_edit": "Webhook szerkesztése",
+        "form_title_add": "Webhook hozzáadása",
+        "field_url": "URL *",
+        "field_event_type": "Esemény típusa *",
+        "field_description": "Leírás",
+        "field_optional": "Opcionális",
+        "field_secret": "Titkos kulcs",
+        "field_secret_placeholder": "Opcionális — HMAC aláíráshoz",
+        "event_task_created": "Feladat létrehozva",
+        "event_task_completed": "Feladat befejezve",
+        "event_task_status_changed": "Feladat állapota módosult",
+        "event_task_assigned": "Feladat hozzárendelve",
+        "event_task_overdue": "Lejárt feladat",
+        "status_delivered": "Kézbesítve",
+        "status_failed": "Sikertelen",
+        "status_retrying": "Újrapróbálkozás",
+        "status_pending": "Várakozik",
+        "status_sending": "Küldés folyamatban",
+        "time_now": "most",
+        "time_minutes": "{{mins}} perc",
+        "time_hours": "{{hrs}} ó",
+        "time_days": "{{days}} n",
+        "test_success": "Teszt sikeres! (HTTP {{status}})",
+        "test_failed": "Teszt sikertelen: {{detail}}",
+        "test_error": "Hiba a teszt során",
+        "toast_enabled": "Webhook aktiválva",
+        "toast_disabled": "Webhook deaktiválva",
+        "toast_created": "Webhook létrehozva",
+        "toast_updated": "Webhook frissítve",
+        "toast_deleted": "Webhook törölve",
+        "toast_generic_error": "Nem sikerült — próbáld újra",
+        "confirm_delete": "Biztosan törölni szeretnéd ezt a webhookot?"
+    },
+    "api_tokens": {
+        "title": "API tokenek",
+        "active_count_one": "{{count}} aktív",
+        "active_count_many": "{{count}} aktív",
+        "generate_hint": "Generálj egy tokent külső hozzáféréshez (API / MCP). A token csak egyszer jelenik meg!",
+        "name_placeholder": "Token neve (pl. Antigravity MCP)",
+        "generate": "Generálás",
+        "generating": "Generálás...",
+        "generated_success": "Token sikeresen létrehozva! Másold ki most — később már nem lesz látható.",
+        "show": "Mutatás",
+        "hide": "Elrejtés",
+        "copy": "Másolás",
+        "copied": "Másolva!",
+        "empty_state": "Nincsenek API tokenek. Generálj egyet a külső hozzáférés engedélyezéséhez.",
+        "created_label": "Létrehozva: {{date}}",
+        "last_used_label": "Utolsó használat: {{date}}",
+        "revoke": "Visszavonás",
+        "revoke_tooltip": "Token visszavonása",
+        "revoked_section": "Visszavonva",
+        "confirm_revoke": "Visszavonod a(z) \"{{name}}\" tokent? Az API ezzel a tokennel nem fog többé működni.",
+        "error_loading": "A tokenek betöltése nem sikerült.",
+        "error_generating": "Hiba a token generálása során.",
+        "error_revoking": "Hiba a token visszavonása során."
+    },
+    "templates": {
+        "title": "Sablonok",
+        "subtitle": "Hozz létre feladatokat gyorsan előre definiált sablonokból",
+        "new_template": "Új sablon",
+        "empty_title": "Nincs sablon",
+        "empty_subtitle": "Hozd létre az első sablont, hogy gyorsabban készíthess feladatokat.",
+        "more_subtasks": "+{{count}} alfeladat",
+        "created_by": "Készítette: {{name}}",
+        "field_title": "Cím *",
+        "field_title_placeholder": "Pl.: Havi pénzügyi audit",
+        "field_description": "Leírás",
+        "field_description_placeholder": "Opcionális...",
+        "field_department": "Osztály",
+        "field_default_assignee": "Alapértelmezett felelős",
+        "unassigned_option": "— Nincs hozzárendelve —",
+        "field_subtasks": "Előre definiált alfeladatok",
+        "subtask_placeholder": "{{n}}. alfeladat",
+        "add_subtask": "Alfeladat hozzáadása",
+        "cancel": "Mégse",
+        "create_template": "Sablon létrehozása",
+        "saving": "Mentés...",
+        "confirm_delete": "Törlöd ezt a sablont?",
+        "toast_title_required": "A cím kötelező",
+        "toast_created": "Sablon létrehozva!",
+        "toast_deleted": "Sablon törölve",
+        "toast_error": "Hiba",
+        "toast_delete_failed": "Nem sikerült — próbáld újra"
+    },
+    "day_view": {
+        "title": "Napi nézet",
+        "prev_day": "Tegnap",
+        "today": "Ma",
+        "next_day": "Holnap",
+        "colleagues_count": "{{count}} kolléga",
+        "total_tasks_count": "{{count}} feladat összesen",
+        "free_count": "{{count}} ráér",
+        "error_loading": "Hiba történt az adatok betöltésekor.",
+        "empty_state": "Nincs megjeleníthető kolléga ehhez a céghez. Adj hozzá felhasználót vagy ellenőrizd a hozzáférést.",
+        "free_badge": "Ráér",
+        "task_one": "feladat",
+        "task_many": "feladat",
+        "download_pdf": "PDF letöltése",
+        "leader_suffix": "vezető",
+        "recurring_tooltip": "Ismétlődő feladat — befejezéskor automatikusan újragenerálódik",
+        "subtasks_progress": "Részfeladatok ({{done}}/{{total}})",
+        "subtasks_more": "+{{count}} további...",
+        "no_tasks_today": "Nincs feladat erre a napra"
+    },
+    "week_view": {
+        "title": "Heti nézet",
+        "loading": "Betöltés…",
+        "load_error": "Hiba a betöltéskor",
+        "mode_by_user": "Kollégák szerint",
+        "mode_by_day": "Napok szerint",
+        "prev_week": "Előző hét",
+        "this_week": "Ez a hét",
+        "next_week": "Következő hét",
+        "col_user": "Kolléga",
+        "empty_state": "Nincs megjeleníthető kolléga. Adj hozzá felhasználót az aktív céghez vagy ellenőrizd a hozzáférést.",
+        "more_tasks": "+{{count}} további",
+        "task_count_one": "{{count}} feladat",
+        "task_count_many": "{{count}} feladat",
+        "leader_suffix": "vezető"
+    },
+    "error_boundary": {
+        "title": "Hiba történt",
+        "fallback_message": "Váratlan hiba történt.",
+        "reload": "Újratöltés"
+    },
+    "auth_errors": {
+        "user_deactivated": "A fiókodat letiltották. Lépj kapcsolatba az adminisztrátorral."
+    },
+    "toast": {
+        "undo_action": "Művelet visszavonása",
+        "close_notification": "Értesítés bezárása"
+    },
+    "avatar_cropper": {
+        "title": "Válaszd ki a megjelenítést",
+        "zoom": "Nagyítás",
+        "cropping": "Vágás folyamatban…",
+        "save_avatar": "Avatar mentése",
+        "crop_error": "Hiba történt a kép vágásakor."
+    },
+    "dep_graph": {
+        "empty": "Ehhez a feladathoz nincsenek függőségek.",
+        "untitled": "(cím nélkül)",
+        "current": "JELENLEGI",
+        "blocks": "blokkolja",
+        "resolved": "megoldva"
+    },
+    "export": {
+        "col_title": "Cím",
+        "col_status": "Állapot",
+        "col_due_date": "Határidő",
+        "col_department": "Osztály",
+        "col_creator": "Létrehozta",
+        "col_subtasks": "Részfeladatok"
     }
 }

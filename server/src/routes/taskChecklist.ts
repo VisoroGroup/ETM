@@ -10,6 +10,7 @@ import {
     escapeHtml,
     resolveRecipientLocale,
 } from '../services/notificationEmailService';
+import { tServer } from '../i18n/serverI18n';
 
 const router = Router({ mergeParams: true });
 
@@ -151,11 +152,12 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
                 const stakeholders = await getSpecificStakeholders([task.created_by, task.assigned_to], req.user!.id);
                 for (const user of stakeholders) {
                     const language = await resolveRecipientLocale(user.id, companyId);
+                    const actor = req.user!.display_name;
                     const htmlBody = buildNotificationHtml({
                         recipientName: user.display_name,
-                        subtitle: 'Element checklist finalizat',
+                        subtitle: tServer(language, 'notif_email.sub_checklist_checked'),
                         bodyLines: [
-                            `<p style="color: #555; font-size: 14px;"><strong>${req.user!.display_name}</strong> a bifat un element din checklist:</p>`,
+                            `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_checked_item', { actor })}</p>`,
                             `<p style="color: #065f46; font-size: 14px; font-weight: bold; margin: 8px 0;">☑️ ${escapeHtml(itemTitle)}</p>`,
                         ],
                         taskId,
@@ -164,7 +166,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,
-                        taskId, subject: `[ETM] Checklist bifat — ${itemTitle}`,
+                        taskId, subject: tServer(language, 'notif_email.subj_checklist_checked', { title: itemTitle }),
                         htmlBody, emailType: 'checklist_checked',
                         companyId,
                     }).catch(err => console.error('[checklist_checked] Email error:', err));

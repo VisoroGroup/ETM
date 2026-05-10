@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { CompanyProvider } from './hooks/useCompany';
-import { I18nProvider } from './i18n/I18nContext';
+import { I18nProvider, useTranslation } from './i18n/I18nContext';
 import { ToastProvider } from './hooks/useToast';
 import LoginPage from './components/auth/LoginPage';
 import Layout from './components/layout/Layout';
@@ -37,6 +37,7 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
@@ -45,7 +46,7 @@ function AppRoutes() {
           <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-xl font-bold text-white">V</span>
           </div>
-          <p className="text-navy-400 text-sm">Se încarcă...</p>
+          <p className="text-navy-400 text-sm">{t('common.loading')}</p>
         </div>
       </div>
     );

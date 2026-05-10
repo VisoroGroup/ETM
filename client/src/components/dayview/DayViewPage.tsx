@@ -10,6 +10,7 @@ import {
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
 import { useCompany } from '../../hooks/useCompany';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface DaySubtask {
     title: string;
@@ -53,6 +54,8 @@ export default function DayViewPage() {
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [downloading, setDownloading] = useState<string | null>(null);
     const { activeCompany } = useCompany();
+    const { t } = useTranslation();
+    const dateLocale = activeCompany?.language === 'hu' ? 'hu-HU' : 'ro-RO';
     // 'full' (Visoro) shows department badges + post/section/department scope labels.
     // 'project' / 'simple' (Neo Plan, Hungary) are flat per-user — no departments exist.
     const isFull = activeCompany?.template_type === 'full';
@@ -108,7 +111,7 @@ export default function DayViewPage() {
         }
     }
 
-    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('ro-RO', {
+    const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString(dateLocale, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -126,7 +129,7 @@ export default function DayViewPage() {
                         <CalendarClock className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold">Vedere zilnică</h1>
+                        <h1 className="text-xl font-bold">{t('day_view.title')}</h1>
                         <p className="text-sm text-navy-400 capitalize">{formattedDate}</p>
                     </div>
                 </div>
@@ -141,7 +144,7 @@ export default function DayViewPage() {
                         }}
                         className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
                     >
-                        ← Ieri
+                        ← {t('day_view.prev_day')}
                     </button>
                     <input
                         type="date"
@@ -153,7 +156,7 @@ export default function DayViewPage() {
                         onClick={() => setDate(new Date().toISOString().split('T')[0])}
                         className="px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
                     >
-                        Azi
+                        {t('day_view.today')}
                     </button>
                     <button
                         onClick={() => {
@@ -163,7 +166,7 @@ export default function DayViewPage() {
                         }}
                         className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
                     >
-                        Mâine →
+                        {t('day_view.next_day')} →
                     </button>
                 </div>
             </div>
@@ -172,13 +175,13 @@ export default function DayViewPage() {
             {!isLoading && (
                 <div className="mb-6 flex gap-3 flex-wrap">
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-navy-800 text-navy-300">
-                        {sortedUsers.length} colegi
+                        {t('day_view.colleagues_count', { count: sortedUsers.length })}
                     </span>
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400">
-                        {totalTasks} sarcini în total
+                        {t('day_view.total_tasks_count', { count: totalTasks })}
                     </span>
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
-                        {sortedUsers.filter(u => u.tasks.length === 0).length} liberi
+                        {t('day_view.free_count', { count: sortedUsers.filter(u => u.tasks.length === 0).length })}
                     </span>
                 </div>
             )}
@@ -194,14 +197,14 @@ export default function DayViewPage() {
             {error && (
                 <div className="text-center py-12">
                     <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                    <p className="text-red-400 text-sm">A apărut o eroare la încărcarea datelor.</p>
+                    <p className="text-red-400 text-sm">{t('day_view.error_loading')}</p>
                 </div>
             )}
 
             {/* User sections — drag to reorder */}
             {!isLoading && !error && sortedUsers.length === 0 && (
                 <div className="text-center py-16 text-navy-400 text-sm">
-                    Niciun coleg de afișat pentru această companie. Adaugă utilizatori sau verifică accesul.
+                    {t('day_view.empty_state')}
                 </div>
             )}
             {!isLoading && !error && sortedUsers.length > 0 && (
@@ -237,7 +240,9 @@ export default function DayViewPage() {
                                                                 ? 'bg-green-500/15 text-green-400'
                                                                 : 'bg-blue-500/15 text-blue-400'
                                                         }`}>
-                                                            {user.tasks.length === 0 ? 'Liber' : `${user.tasks.length} ${user.tasks.length === 1 ? 'sarcină' : 'sarcini'}`}
+                                                            {user.tasks.length === 0
+                                                                ? t('day_view.free_badge')
+                                                                : `${user.tasks.length} ${user.tasks.length === 1 ? t('day_view.task_one') : t('day_view.task_many')}`}
                                                         </span>
                                                         {collapsed[user.id]
                                                             ? <ChevronRight className="w-4 h-4 text-navy-500" />
@@ -249,7 +254,7 @@ export default function DayViewPage() {
                                                             onClick={() => handleDownloadPdf(user.id)}
                                                             disabled={downloading === user.id}
                                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors disabled:opacity-50"
-                                                            title="Descarcă PDF"
+                                                            title={t('day_view.download_pdf')}
                                                         >
                                                             {downloading === user.id
                                                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -280,11 +285,11 @@ export default function DayViewPage() {
                                                                             Only relevant for the 'full' template (Visoro Global) which has the
                                                                             department/section/post hierarchy. Hidden for project/simple templates. */}
                                                                         {isFull && (() => {
-                                                                            const t: any = task;
+                                                                            const tk: any = task;
                                                                             let label: string | null = null;
-                                                                            if (t.assigned_scope === 'post' && t.assigned_post_name) label = t.assigned_post_name;
-                                                                            else if (t.assigned_scope === 'section' && t.assigned_section_name) label = `${t.assigned_section_name} (conducător)`;
-                                                                            else if (t.assigned_scope === 'department' && t.assigned_department_name) label = `${t.assigned_department_name} (conducător)`;
+                                                                            if (tk.assigned_scope === 'post' && tk.assigned_post_name) label = tk.assigned_post_name;
+                                                                            else if (tk.assigned_scope === 'section' && tk.assigned_section_name) label = `${tk.assigned_section_name} (${t('day_view.leader_suffix')})`;
+                                                                            else if (tk.assigned_scope === 'department' && tk.assigned_department_name) label = `${tk.assigned_department_name} (${t('day_view.leader_suffix')})`;
                                                                             return label ? (
                                                                                 <p className="text-[10px] text-cyan-300 font-semibold uppercase tracking-wide mb-0.5">
                                                                                     {label}
@@ -294,7 +299,7 @@ export default function DayViewPage() {
                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                             {(task as any).is_recurring && (
                                                                                 <span
-                                                                                    title="Sarcină recurentă — se regenerează automat la finalizare"
+                                                                                    title={t('day_view.recurring_tooltip')}
                                                                                     className="inline-flex flex-shrink-0 text-cyan-400"
                                                                                 >
                                                                                     <RefreshCw className="w-3 h-3" />
@@ -329,7 +334,7 @@ export default function DayViewPage() {
                                                                         {task.subtasks.length > 0 && (
                                                                             <div className="mt-2 space-y-1">
                                                                                 <span className="text-[10px] text-navy-500 font-medium">
-                                                                                    Subsarcini ({task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length})
+                                                                                    {t('day_view.subtasks_progress', { done: task.subtasks.filter(s => s.is_completed).length, total: task.subtasks.length })}
                                                                                 </span>
                                                                                 {task.subtasks.slice(0, 5).map((sub, si) => (
                                                                                     <div key={si} className="flex items-center gap-1.5 text-xs">
@@ -344,7 +349,7 @@ export default function DayViewPage() {
                                                                                 ))}
                                                                                 {task.subtasks.length > 5 && (
                                                                                     <span className="text-[10px] text-navy-500">
-                                                                                        +{task.subtasks.length - 5} în plus...
+                                                                                        {t('day_view.subtasks_more', { count: task.subtasks.length - 5 })}
                                                                                     </span>
                                                                                 )}
                                                                             </div>
@@ -359,7 +364,7 @@ export default function DayViewPage() {
                                                 {/* Empty state */}
                                                 {!collapsed[user.id] && user.tasks.length === 0 && (
                                                     <div className="border-t border-navy-700/40 px-5 py-4 text-center">
-                                                        <p className="text-xs text-navy-500">Nicio sarcină pentru această zi</p>
+                                                        <p className="text-xs text-navy-500">{t('day_view.no_tasks_today')}</p>
                                                     </div>
                                                 )}
                                             </div>

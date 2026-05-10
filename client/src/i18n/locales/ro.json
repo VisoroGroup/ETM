@@ -57,7 +57,8 @@
         "orphan_tasks": "Sarcini orfane",
         "email_log": "Jurnal emailuri",
         "completed": "Terminate",
-        "pug_config": "Configurări PUG"
+        "pug_config": "Configurări PUG",
+        "profile": "Profil"
     },
     "admin_companies": {
         "title": "Companii",
@@ -273,7 +274,45 @@
         "prefs_saved": "Preferințe salvate!",
         "reset_done": "Resetat la implicit",
         "try_again": "Nu a funcționat — încearcă din nou",
-        "reset": "Resetare"
+        "reset": "Resetare",
+        "widgets": {
+            "global_stats": {
+                "label": "Statistici globale",
+                "description": "Numărul total de sarcini active, restante, blocate și completate"
+            },
+            "my_stats": {
+                "label": "Sarcinile mele",
+                "description": "Statisticile sarcinilor tale personale"
+            },
+            "status_chart": {
+                "label": "Distribuție status",
+                "description": "Grafic cu distribuția statusurilor sarcinilor"
+            },
+            "dept_chart": {
+                "label": "Distribuție departamente",
+                "description": "Grafic pe departamente"
+            },
+            "trend_chart": {
+                "label": "Trend completare",
+                "description": "Graficul completărilor din ultimele 4 săptămâni"
+            },
+            "urgent_tasks": {
+                "label": "Sarcini urgente",
+                "description": "Top 10 sarcini cu termen apropiat"
+            },
+            "active_alerts": {
+                "label": "Alerte active",
+                "description": "Alertele nerezolvate din sistem"
+            },
+            "bottlenecks": {
+                "label": "Blocaje critice",
+                "description": "Sarcinile care blochează cele mai multe altele"
+            },
+            "calendar": {
+                "label": "Calendar",
+                "description": "Vizualizare calendar cu termenele sarcinilor"
+            }
+        }
     },
     "calendar": {
         "today": "Azi",
@@ -698,7 +737,35 @@
         "action_recurring_created": "a setat recurența",
         "action_marked_paid": "a marcat ca plătit",
         "action_date_changed": "a schimbat data scadentă",
-        "action_category_changed": "a schimbat categoria"
+        "action_category_changed": "a schimbat categoria",
+        "action_created_full": "a creat task-ul",
+        "action_status_changed_full": "a schimbat statusul din \"{{old}}\" în \"{{new}}\"",
+        "action_status_changed_full_with_reason": "a schimbat statusul din \"{{old}}\" în \"{{new}}\" — Motiv: {{reason}}",
+        "action_due_date_changed_full": "a schimbat data limită din {{old}} în {{new}} — Motiv: {{reason}}",
+        "action_comment_added_full": "a adăugat un comentariu",
+        "action_subtask_added_full": "a adăugat subtask-ul \"{{title}}\"",
+        "action_subtask_completed_full": "a completat subtask-ul \"{{title}}\"",
+        "action_subtask_unchecked_full": "a debifat subtask-ul \"{{title}}\"",
+        "action_subtask_assigned_full": "a asignat subtask-ul \"{{title}}\" lui {{name}}",
+        "no_one": "nimeni",
+        "action_attachment_added_full": "a atașat fișierul \"{{name}}\"",
+        "action_label_changed_full": "a schimbat departamentul din \"{{old}}\" în \"{{new}}\"",
+        "action_recurring_created_full": "a setat task-ul ca recurent ({{frequency}})",
+        "action_alert_added_full": "a adăugat o alertă în \"În Atenție\"",
+        "action_alert_resolved_full": "a rezolvat o alertă din \"În Atenție\"",
+        "action_title_changed_full": "a modificat titlul: „{{old}}\" → „{{new}}\"",
+        "action_description_changed_full": "a modificat descrierea",
+        "action_assigned_full": "a atribuit sarcina lui {{name}}",
+        "action_unassigned_full": "a eliminat atribuirea (era: {{old}})",
+        "action_department_changed_full": "a mutat sarcina: {{old}} → {{new}}",
+        "action_task_deleted_full": "a șters sarcina",
+        "action_task_duplicated_full": "a duplicat sarcina",
+        "action_checklist_item_added_full": "a adăugat în checklist: „{{title}}\"",
+        "action_checklist_updated_full": "a actualizat checklist-ul",
+        "action_dependency_added_full": "a adăugat o dependență",
+        "action_dependency_removed_full": "a eliminat o dependență",
+        "action_dependency_resolved_full": "a rezolvat o dependență",
+        "empty_inline": "Nicio activitate încă"
     },
     "policy": {
         "title_default": "Directive de funcționare",
@@ -765,5 +832,175 @@
         "block_reason_placeholder": "Ex: Lipsă informații de la client, așteptăm approval...",
         "confirm_block": "Confirmă blocare",
         "blocked_by": "Blocat de {{count}}"
+    },
+    "webhooks": {
+        "title": "Integrări & Webhook-uri",
+        "subtitle": "Configurează notificări automate către sisteme externe",
+        "add_webhook": "Adaugă webhook",
+        "tab_subscriptions": "Webhook-uri ({{count}})",
+        "tab_deliveries": "Jurnal livrări",
+        "empty_title": "Niciun webhook configurat.",
+        "empty_hint": "Adaugă un webhook pentru a primi notificări automate.",
+        "action_test": "Test",
+        "last_success": "Ultima: {{time}}",
+        "filter_all_events": "Toate evenimentele",
+        "filter_all_statuses": "Toate stările",
+        "auto_refresh": "Auto-refresh 30s",
+        "no_results": "Niciun rezultat",
+        "payload_label": "Payload:",
+        "form_title_edit": "Editare webhook",
+        "form_title_add": "Adaugă webhook",
+        "field_url": "URL *",
+        "field_event_type": "Tip eveniment *",
+        "field_description": "Descriere",
+        "field_optional": "Opțional",
+        "field_secret": "Secret",
+        "field_secret_placeholder": "Opțional — pentru semnătură HMAC",
+        "event_task_created": "Sarcină creată",
+        "event_task_completed": "Sarcină finalizată",
+        "event_task_status_changed": "Status sarcină modificat",
+        "event_task_assigned": "Sarcină atribuită",
+        "event_task_overdue": "Sarcină depășită",
+        "status_delivered": "Livrat",
+        "status_failed": "Eșuat",
+        "status_retrying": "Reîncercare",
+        "status_pending": "În așteptare",
+        "status_sending": "Se trimite",
+        "time_now": "acum",
+        "time_minutes": "{{mins}} min",
+        "time_hours": "{{hrs}}h",
+        "time_days": "{{days}}z",
+        "test_success": "Test reușit! (HTTP {{status}})",
+        "test_failed": "Test eșuat: {{detail}}",
+        "test_error": "Eroare la test",
+        "toast_enabled": "Webhook activat",
+        "toast_disabled": "Webhook dezactivat",
+        "toast_created": "Webhook creat",
+        "toast_updated": "Webhook actualizat",
+        "toast_deleted": "Webhook șters",
+        "toast_generic_error": "Nu a funcționat — încearcă din nou",
+        "confirm_delete": "Sigur vrei să ștergi acest webhook?"
+    },
+    "api_tokens": {
+        "title": "Token-uri API",
+        "active_count_one": "{{count}} activ",
+        "active_count_many": "{{count}} active",
+        "generate_hint": "Generează un token pentru acces extern (API / MCP). Token-ul se afișează o singură dată!",
+        "name_placeholder": "Numele token-ului (ex: Antigravity MCP)",
+        "generate": "Generare",
+        "generating": "Se generează...",
+        "generated_success": "Token generat cu succes! Copiază-l acum — nu va mai fi afișat.",
+        "show": "Arată",
+        "hide": "Ascunde",
+        "copy": "Copiază",
+        "copied": "Copiat!",
+        "empty_state": "Nu există token-uri API. Generează unul pentru a activa accesul extern.",
+        "created_label": "Creat: {{date}}",
+        "last_used_label": "Ultima utilizare: {{date}}",
+        "revoke": "Revocare",
+        "revoke_tooltip": "Revocare token",
+        "revoked_section": "Revocate",
+        "confirm_revoke": "Revoci token-ul \"{{name}}\"? API-ul nu va mai funcționa cu acest token.",
+        "error_loading": "Nu s-au putut încărca token-urile.",
+        "error_generating": "Eroare la generarea token-ului.",
+        "error_revoking": "Eroare la revocarea token-ului."
+    },
+    "templates": {
+        "title": "Șabloane",
+        "subtitle": "Creează sarcini rapid din șabloane predefinite",
+        "new_template": "Șablon nou",
+        "empty_title": "Niciun șablon",
+        "empty_subtitle": "Creează primul șablon pentru a accelera crearea task-urilor.",
+        "more_subtasks": "+{{count}} subtask-uri",
+        "created_by": "Creat de {{name}}",
+        "field_title": "Titlu *",
+        "field_title_placeholder": "Ex: Audit financiar lunar",
+        "field_description": "Descriere",
+        "field_description_placeholder": "Opțional...",
+        "field_department": "Departament",
+        "field_default_assignee": "Responsabil implicit",
+        "unassigned_option": "— Neasignat —",
+        "field_subtasks": "Subtask-uri predefinite",
+        "subtask_placeholder": "Subtask {{n}}",
+        "add_subtask": "Adaugă subtask",
+        "cancel": "Anulează",
+        "create_template": "Creează șablon",
+        "saving": "Se salvează...",
+        "confirm_delete": "Ștergi acest șablon?",
+        "toast_title_required": "Titlul este obligatoriu",
+        "toast_created": "Șablon creat!",
+        "toast_deleted": "Șablon șters",
+        "toast_error": "Eroare",
+        "toast_delete_failed": "Nu a funcționat — încearcă din nou"
+    },
+    "day_view": {
+        "title": "Vedere zilnică",
+        "prev_day": "Ieri",
+        "today": "Azi",
+        "next_day": "Mâine",
+        "colleagues_count": "{{count}} colegi",
+        "total_tasks_count": "{{count}} sarcini în total",
+        "free_count": "{{count}} liberi",
+        "error_loading": "A apărut o eroare la încărcarea datelor.",
+        "empty_state": "Niciun coleg de afișat pentru această companie. Adaugă utilizatori sau verifică accesul.",
+        "free_badge": "Liber",
+        "task_one": "sarcină",
+        "task_many": "sarcini",
+        "download_pdf": "Descarcă PDF",
+        "leader_suffix": "conducător",
+        "recurring_tooltip": "Sarcină recurentă — se regenerează automat la finalizare",
+        "subtasks_progress": "Subsarcini ({{done}}/{{total}})",
+        "subtasks_more": "+{{count}} în plus...",
+        "no_tasks_today": "Nicio sarcină pentru această zi"
+    },
+    "week_view": {
+        "title": "Vedere săptămânală",
+        "loading": "Încărcare…",
+        "load_error": "Eroare la încărcare",
+        "mode_by_user": "Pe colegi",
+        "mode_by_day": "Pe zile",
+        "prev_week": "Săpt. anterioară",
+        "this_week": "Această săpt.",
+        "next_week": "Săpt. următoare",
+        "col_user": "Coleg",
+        "empty_state": "Niciun coleg de afișat. Adaugă utilizatori companiei active sau verifică accesul.",
+        "more_tasks": "+{{count}} mai multe",
+        "task_count_one": "{{count}} sarcină",
+        "task_count_many": "{{count}} sarcini",
+        "leader_suffix": "conducător"
+    },
+    "error_boundary": {
+        "title": "Ceva a mers greșit",
+        "fallback_message": "A apărut o eroare neașteptată.",
+        "reload": "Reîncarcă"
+    },
+    "auth_errors": {
+        "user_deactivated": "Contul tău a fost dezactivat. Contactează administratorul."
+    },
+    "toast": {
+        "undo_action": "Anulează acțiunea",
+        "close_notification": "Închide notificarea"
+    },
+    "avatar_cropper": {
+        "title": "Selectează vizualizarea",
+        "zoom": "Zoom",
+        "cropping": "Se decupează…",
+        "save_avatar": "Salvează Avatarul",
+        "crop_error": "A apărut o eroare la decuparea imaginii."
+    },
+    "dep_graph": {
+        "empty": "Nu există dependențe pentru această sarcină.",
+        "untitled": "(fără titlu)",
+        "current": "ACTUAL",
+        "blocks": "blochează",
+        "resolved": "rezolvat"
+    },
+    "export": {
+        "col_title": "Titlu",
+        "col_status": "Status",
+        "col_due_date": "Data limită",
+        "col_department": "Departament",
+        "col_creator": "Creat de",
+        "col_subtasks": "Subtask-uri"
     }
 }
