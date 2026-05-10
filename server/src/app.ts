@@ -43,6 +43,7 @@ import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimi
 import { authMiddleware } from './middleware/auth';
 import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
+import { startPugStageReminderScheduler } from './cron/pugStageReminders';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -253,6 +254,9 @@ const server = app.listen(PORT, async () => {
 
     // Start email scheduler
     startEmailScheduler();
+
+    // Start PUG stage deadline reminder scheduler
+    startPugStageReminderScheduler();
 
     // Start webhook retry processor (DB-based, survives restarts)
     startWebhookRetryProcessor();
