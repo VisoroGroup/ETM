@@ -9,22 +9,25 @@ import {
     AlertTriangle, Banknote
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
-const ACTION_LABELS: Record<string, string> = {
-    created: 'a creat',
-    status_changed: 'a schimbat statusul',
-    due_date_changed: 'a schimbat data limită',
-    comment_added: 'a adăugat un comentariu',
-    subtask_added: 'a adăugat un subtask',
-    subtask_completed: 'a completat un subtask',
-    subtask_assigned: 'a asignat un subtask',
-    attachment_added: 'a atașat un fișier',
-    label_changed: 'a schimbat departamentul',
-    recurring_created: 'a setat recurența',
-    marked_paid: 'a marcat ca plătit',
-    date_changed: 'a schimbat data scadentă',
-    category_changed: 'a schimbat categoria',
-};
+function makeActionLabels(t: TFunction): Record<string, string> {
+    return {
+        created: t('activity_feed.action_created'),
+        status_changed: t('activity_feed.action_status_changed'),
+        due_date_changed: t('activity_feed.action_due_date_changed'),
+        comment_added: t('activity_feed.action_comment_added'),
+        subtask_added: t('activity_feed.action_subtask_added'),
+        subtask_completed: t('activity_feed.action_subtask_completed'),
+        subtask_assigned: t('activity_feed.action_subtask_assigned'),
+        attachment_added: t('activity_feed.action_attachment_added'),
+        label_changed: t('activity_feed.action_label_changed'),
+        recurring_created: t('activity_feed.action_recurring_created'),
+        marked_paid: t('activity_feed.action_marked_paid'),
+        date_changed: t('activity_feed.action_date_changed'),
+        category_changed: t('activity_feed.action_category_changed'),
+    };
+}
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
     created: <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />,
@@ -60,6 +63,8 @@ interface FeedItem {
 }
 
 export default function ActivityFeedPage() {
+    const { t } = useTranslation();
+    const ACTION_LABELS = makeActionLabels(t);
     const { user } = useAuth();
     const [items, setItems] = useState<FeedItem[]>([]);
     const [total, setTotal] = useState(0);
@@ -113,8 +118,8 @@ export default function ActivityFeedPage() {
                 <div className="flex items-center gap-3">
                     <Activity className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
                     <div>
-                        <h1 className="text-xl md:text-2xl font-bold">Activitate</h1>
-                        <p className="text-navy-400 text-xs md:text-sm mt-0.5">{total} activități</p>
+                        <h1 className="text-xl md:text-2xl font-bold">{t('activity_feed.title')}</h1>
+                        <p className="text-navy-400 text-xs md:text-sm mt-0.5">{t('activity_feed.total_count', { count: total })}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -122,7 +127,7 @@ export default function ActivityFeedPage() {
                         onClick={() => loadFeed(1)}
                         className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                     >
-                        <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" /> Reîncarcă
+                        <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" /> {t('email_log.reload')}
                     </button>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
@@ -132,7 +137,7 @@ export default function ActivityFeedPage() {
                                 : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
                         }`}
                     >
-                        <Filter className="w-3.5 h-3.5 md:w-4 md:h-4" /> Filtre
+                        <Filter className="w-3.5 h-3.5 md:w-4 md:h-4" /> {t('task_filters.filters')}
                     </button>
                 </div>
             </div>
@@ -141,35 +146,35 @@ export default function ActivityFeedPage() {
             {showFilters && (
                 <div className="mb-4 bg-navy-900/50 border border-navy-700/50 rounded-xl p-3 md:p-4 animate-slide-up grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Utilizator</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">{t('common.user')}</label>
                         <select
                             value={filterUser}
                             onChange={e => setFilterUser(e.target.value)}
                             className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
-                            <option value="">Toți</option>
+                            <option value="">{t('activity_feed.all_users')}</option>
                             {users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Departament</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">{t('tasks.department')}</label>
                         <select
                             value={filterDept}
                             onChange={e => setFilterDept(e.target.value)}
                             className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
-                            <option value="">Toate</option>
+                            <option value="">{t('activity_feed.all_depts')}</option>
                             {DEPT_KEYS.map(d => <option key={d} value={d}>{DEPARTMENTS[d].label}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">Tip acțiune</label>
+                        <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">{t('activity_feed.action_type')}</label>
                         <select
                             value={filterAction}
                             onChange={e => setFilterAction(e.target.value)}
                             className="w-full bg-navy-800 border border-navy-600 rounded px-2 py-1.5 text-xs text-white outline-none"
                         >
-                            <option value="">Toate</option>
+                            <option value="">{t('activity_feed.all_actions')}</option>
                             {ACTION_TYPES.map(a => <option key={a} value={a}>{ACTION_LABELS[a] || a}</option>)}
                         </select>
                     </div>
@@ -179,7 +184,7 @@ export default function ActivityFeedPage() {
                                 onClick={() => { setFilterUser(''); setFilterDept(''); setFilterAction(''); }}
                                 className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1.5"
                             >
-                                Resetează filtrele
+                                {t('task_filters.clear_filters')}
                             </button>
                         </div>
                     )}
@@ -194,8 +199,8 @@ export default function ActivityFeedPage() {
             ) : items.length === 0 ? (
                 <div className="text-center py-16">
                     <Activity className="w-12 h-12 text-navy-700 mx-auto mb-3" />
-                    <p className="text-navy-400 text-sm">Nicio activitate găsită</p>
-                    <p className="text-navy-500 text-xs mt-2">Activitățile apar aici pe măsură ce se creează, comentează sau finalizează sarcini.</p>
+                    <p className="text-navy-400 text-sm">{t('activity_feed.empty_title')}</p>
+                    <p className="text-navy-500 text-xs mt-2">{t('activity_feed.empty_subtitle')}</p>
                 </div>
             ) : (
                 <div className="space-y-0">
@@ -256,9 +261,9 @@ export default function ActivityFeedPage() {
                                 className="flex items-center gap-2 px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors disabled:opacity-50"
                             >
                                 {loadingMore ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" /> Se încarcă...</>
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> {t('common.loading')}</>
                                 ) : (
-                                    <>Mai multe ({items.length}/{total})</>
+                                    <>{t('activity_feed.load_more', { loaded: items.length, total })}</>
                                 )}
                             </button>
                         </div>

@@ -143,17 +143,24 @@ const updateWebhookSchema = z.object({
 
 // GET /api/webhooks/deliveries — delivery log (admin only)
 router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const { event_type, status, subscription_id, limit = '50', offset = '0' } = req.query;
 
-    const conditions: string[] = [];
-    const values: any[] = [];
-    let idx = 1;
+    // Always start with the tenant filter so wd.company_id is guaranteed.
+    const conditions: string[] = ['wd.company_id = $1', 'ws.company_id = $1'];
+    const values: any[] = [companyId];
+    let idx = 2;
 
     if (event_type) { conditions.push(`wd.event_type = $${idx++}`); values.push(event_type); }
     if (status) { conditions.push(`wd.status = $${idx++}`); values.push(status); }
     if (subscription_id) { conditions.push(`wd.subscription_id = $${idx++}`); values.push(subscription_id); }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where = `WHERE ${conditions.join(' AND ')}`;
 
     values.push(Math.min(parseInt(limit as string, 10) || 50, 100));
     values.push(parseInt(offset as string, 10) || 0);
@@ -174,21 +181,34 @@ router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: Au
 
 // GET /api/webhooks — list (admin only)
 router.get('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const { rows } = await pool.query(`
         SELECT ws.*,
                u.display_name as creator_name,
-               (SELECT COUNT(*) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'delivered') as success_count,
-               (SELECT COUNT(*) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'failed') as fail_count,
-               (SELECT MAX(wd.delivered_at) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'delivered') as last_success
+               (SELECT COUNT(*) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'delivered' AND wd.company_id = $1) as success_count,
+               (SELECT COUNT(*) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'failed' AND wd.company_id = $1) as fail_count,
+               (SELECT MAX(wd.delivered_at) FROM webhook_deliveries wd WHERE wd.subscription_id = ws.id AND wd.status = 'delivered' AND wd.company_id = $1) as last_success
         FROM webhook_subscriptions ws
         JOIN users u ON u.id = ws.created_by
+        WHERE ws.company_id = $1
         ORDER BY ws.created_at DESC
-    `);
+    `, [companyId]);
     res.json(rows);
 }));
 
 // POST /api/webhooks — create subscription (admin only)
 router.post('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const parsed = createWebhookSchema.parse(req.body);
 
     // Async DNS validation — block internal/private IPs
@@ -199,15 +219,21 @@ router.post('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest
     }
 
     const { rows } = await pool.query(`
-        INSERT INTO webhook_subscriptions (url, event_type, secret, description, created_by)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO webhook_subscriptions (url, event_type, secret, description, created_by, company_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
-    `, [parsed.url, parsed.event_type, parsed.secret || null, parsed.description || null, req.user!.id]);
+    `, [parsed.url, parsed.event_type, parsed.secret || null, parsed.description || null, req.user!.id, companyId]);
     res.status(201).json(rows[0]);
 }));
 
 // PUT /api/webhooks/:id — update (admin only)
 router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const parsed = updateWebhookSchema.parse(req.body);
     const fields: string[] = [];
     const values: any[] = [];
@@ -234,9 +260,12 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
 
     fields.push(`updated_at = NOW()`);
     values.push(req.params.id);
+    const idIdx = idx++;
+    values.push(companyId);
+    const companyIdx = idx++;
 
     const { rows } = await pool.query(
-        `UPDATE webhook_subscriptions SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        `UPDATE webhook_subscriptions SET ${fields.join(', ')} WHERE id = $${idIdx} AND company_id = $${companyIdx} RETURNING *`,
         values
     );
 
@@ -249,8 +278,15 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
 
 // DELETE /api/webhooks/:id — delete (admin only)
 router.delete('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const { rowCount } = await pool.query(
-        `DELETE FROM webhook_subscriptions WHERE id = $1`, [req.params.id]
+        `DELETE FROM webhook_subscriptions WHERE id = $1 AND company_id = $2`,
+        [req.params.id, companyId]
     );
     if (rowCount === 0) {
         res.status(404).json({ error: 'Webhook nu a fost găsit' });
@@ -261,6 +297,22 @@ router.delete('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRe
 
 // POST /api/webhooks/:id/test — test send (admin only)
 router.post('/:id/test', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
+    // Verify the subscription belongs to the active company before triggering a send.
+    const { rows } = await pool.query(
+        `SELECT 1 FROM webhook_subscriptions WHERE id = $1 AND company_id = $2`,
+        [req.params.id, companyId]
+    );
+    if (rows.length === 0) {
+        res.status(404).json({ error: 'Webhook nu a fost găsit' });
+        return;
+    }
+
     const result = await testWebhook(req.params.id);
     res.json(result);
 }));

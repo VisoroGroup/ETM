@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
 import { useTranslation } from '../../i18n/I18nContext';
+import { useCompany } from '../../hooks/useCompany';
 
 export default function CompletedTasksPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -20,6 +21,11 @@ export default function CompletedTasksPage() {
     const [reactivatingId, setReactivatingId] = useState<string | null>(null);
     const { showToast } = useToast();
     const { t } = useTranslation();
+    const { activeCompany } = useCompany();
+    // Only Visoro Global ('full') has the department concept — other companies hide that column.
+    const isFull = activeCompany?.template_type === 'full';
+    // Per-user filter for non-'full' templates: replaces the department filter.
+    const [userFilter, setUserFilter] = useState<string>('');
 
     const loadTasks = useCallback(async () => {
         try {
@@ -76,7 +82,12 @@ export default function CompletedTasksPage() {
 
     useEffect(() => {
         const map = new Map<string, { name: string; avatar?: string; tasks: Task[] }>();
-        for (const task of tasks) {
+        // For non-'full' templates we apply the per-user filter at the grouping
+        // step — much simpler than a separate filtered task list.
+        const sourceTasks = (!isFull && userFilter)
+            ? tasks.filter(x => (x.assignee_name || t('tasks.unassigned')) === userFilter)
+            : tasks;
+        for (const task of sourceTasks) {
             const key = task.assignee_name || t('tasks.unassigned');
             let group = map.get(key);
             if (!group) {
@@ -101,11 +112,21 @@ export default function CompletedTasksPage() {
         });
         ordered.push(...remaining);
         setGroupedTasksOrder(ordered);
-    }, [tasks, savedGroupOrder]);
+    }, [tasks, savedGroupOrder, isFull, userFilter, t]);
 
     function handleSearch() {
         setSearchQuery(searchText);
     }
+
+    // Unique list of assignee display names — populates the per-user filter
+    // dropdown for non-'full' templates (replaces the department filter).
+    const uniqueAssignees = useMemo(() => {
+        const set = new Set<string>();
+        for (const task of tasks) {
+            set.add(task.assignee_name || t('tasks.unassigned'));
+        }
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [tasks, t]);
 
     async function reactivateTask(taskId: string) {
         setReactivatingId(taskId);
@@ -155,6 +176,20 @@ export default function CompletedTasksPage() {
                 >
                     {t('common.search')}
                 </button>
+                {/* Per-user filter — only shown for non-'full' templates. Replaces the
+                    department filter that doesn't apply to those companies. */}
+                {!isFull && uniqueAssignees.length > 0 && (
+                    <select
+                        value={userFilter}
+                        onChange={e => setUserFilter(e.target.value)}
+                        className="px-3 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                    >
+                        <option value="">{t('tasks.filter_all_users')}</option>
+                        {uniqueAssignees.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                )}
             </div>
 
             {/* Task List */}
@@ -201,7 +236,7 @@ export default function CompletedTasksPage() {
                                                             <Calendar className="w-3 h-3" />
                                                             {formatDate(task.due_date)}
                                                         </span>
-                                                        {task.department_label && DEPARTMENTS[task.department_label] && (
+                                                        {isFull && task.department_label && DEPARTMENTS[task.department_label] && (
                                                             <span
                                                                 className="px-2 py-0.5 rounded-full text-[10px] font-medium border"
                                                                 style={{
@@ -264,10 +299,10 @@ export default function CompletedTasksPage() {
 
                                 {/* Header + rows — only if expanded */}
                                 {expandedGroups.has(group.name) && <>
-                                <div className="grid grid-cols-[1fr_120px_140px_100px_120px] gap-3 px-4 py-2.5 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50">
+                                <div className={`grid ${isFull ? 'grid-cols-[1fr_120px_140px_100px_120px]' : 'grid-cols-[1fr_120px_100px_120px]'} gap-3 px-4 py-2.5 bg-navy-800/30 text-xs font-medium text-navy-400 border-b border-navy-700/50`}>
                                     <span>{t('tasks.col_title')}</span>
                                     <span>{t('tasks.due_date_long')}</span>
-                                    <span>{t('tasks.department')}</span>
+                                    {isFull && <span>{t('tasks.department')}</span>}
                                     <span>{t('task_status.terminat')}</span>
                                     <span></span>
                                 </div>
@@ -276,7 +311,7 @@ export default function CompletedTasksPage() {
                                 {group.tasks.map((task, index) => (
                                     <div
                                         key={task.id}
-                                        className="grid grid-cols-[1fr_120px_140px_100px_120px] gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center bg-emerald-500/5"
+                                        className={`grid ${isFull ? 'grid-cols-[1fr_120px_140px_100px_120px]' : 'grid-cols-[1fr_120px_100px_120px]'} gap-3 px-4 py-3.5 border-b border-navy-800/50 cursor-pointer transition-all hover:bg-navy-800/30 items-center bg-emerald-500/5`}
                                         style={{ animationDelay: `${index * 20}ms` }}
                                     >
                                         {/* Title */}
@@ -292,21 +327,23 @@ export default function CompletedTasksPage() {
                                             </span>
                                         </div>
 
-                                        {/* Department */}
-                                        <div>
-                                            {task.department_label && DEPARTMENTS[task.department_label] && (
-                                                <span
-                                                    className="inline-flex px-2.5 py-1 rounded-full text-[11px] font-medium border"
-                                                    style={{
-                                                        background: DEPARTMENTS[task.department_label].bg,
-                                                        color: DEPARTMENTS[task.department_label].color,
-                                                        borderColor: DEPARTMENTS[task.department_label].border
-                                                    }}
-                                                >
-                                                    {DEPARTMENTS[task.department_label].label}
-                                                </span>
-                                            )}
-                                        </div>
+                                        {/* Department — only for 'full' template */}
+                                        {isFull && (
+                                            <div>
+                                                {task.department_label && DEPARTMENTS[task.department_label] && (
+                                                    <span
+                                                        className="inline-flex px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                                        style={{
+                                                            background: DEPARTMENTS[task.department_label].bg,
+                                                            color: DEPARTMENTS[task.department_label].color,
+                                                            borderColor: DEPARTMENTS[task.department_label].border
+                                                        }}
+                                                    >
+                                                        {DEPARTMENTS[task.department_label].label}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {/* Last activity / completed time */}
                                         <div>

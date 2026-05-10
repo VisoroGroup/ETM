@@ -41,6 +41,19 @@ interface DayViewUser {
     tasks: DayViewTask[];
 }
 
+type TemplateType = 'full' | 'project' | 'simple';
+
+// Look up the active company's template_type. Defaults to 'full' if missing
+// so behavior matches Visoro Global out of the box.
+async function getTemplateType(companyId: number | undefined): Promise<TemplateType> {
+    if (companyId === undefined) return 'full';
+    const { rows } = await pool.query<{ template_type: TemplateType }>(
+        `SELECT template_type FROM companies WHERE id = $1`,
+        [companyId]
+    );
+    return rows[0]?.template_type ?? 'full';
+}
+
 // GET /api/day-view/week?start=YYYY-MM-DD — 7 days starting at `start`
 // Returns { days: [{ date, users: [...] }, ...] } where each day uses the same
 // shape as /day-view so the client can re-use renderers.
@@ -65,12 +78,14 @@ router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(asyn
         dates.push(`${y}-${m}-${dd}`);
     }
 
+    const templateType = await getTemplateType(req.activeCompanyId);
+
     // Query each day in parallel
     const days = await Promise.all(
-        dates.map(async (date) => ({ date, users: await getDayViewData(date) }))
+        dates.map(async (date) => ({ date, users: await getDayViewData(date, req.activeCompanyId, templateType) }))
     );
 
-    res.json({ start: dates[0], end: dates[dates.length - 1], days });
+    res.json({ start: dates[0], end: dates[dates.length - 1], days, template_type: templateType });
 }));
 
 // GET /api/day-view?date=YYYY-MM-DD
@@ -83,8 +98,9 @@ router.get('/', authMiddleware, requireRole('superadmin'), asyncHandler(async (r
         return;
     }
 
-    const users = await getDayViewData(date);
-    res.json({ date, users });
+    const templateType = await getTemplateType(req.activeCompanyId);
+    const users = await getDayViewData(date, req.activeCompanyId, templateType);
+    res.json({ date, users, template_type: templateType });
 }));
 
 // GET /api/day-view/pdf/:userId?date=YYYY-MM-DD
@@ -97,8 +113,10 @@ router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandl
         return;
     }
 
+    const templateType = await getTemplateType(req.activeCompanyId);
+
     // Get single user data
-    const allUsers = await getDayViewData(date);
+    const allUsers = await getDayViewData(date, req.activeCompanyId, templateType);
     const userData = allUsers.find(u => u.id === userId);
 
     if (!userData) {
@@ -106,13 +124,28 @@ router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandl
         return;
     }
 
-    await generateDayViewPDF(res, userData, date);
+    await generateDayViewPDF(res, userData, date, templateType);
 }));
 
-async function getDayViewData(date: string): Promise<DayViewUser[]> {
-    // Batch query 1: all active users
+async function getDayViewData(date: string, companyId: number | undefined, templateType: TemplateType): Promise<DayViewUser[]> {
+    // Multi-tenant scoping: only show tasks belonging to the active company.
+    // If no active company is resolved, return an empty list rather than leaking
+    // tasks from other tenants.
+    if (companyId === undefined) return [];
+
+    // For non-'full' templates we don't show post/section/department scope labels —
+    // those companies don't have that org structure. We still fetch the columns but
+    // they'll be NULL because the join returns nothing for unset assignments.
+    const isFull = templateType === 'full';
+    // Batch query 1: all active users that belong to the active company.
     const { rows: users } = await pool.query(
-        `SELECT id, display_name, email, avatar_url FROM users WHERE is_active = true ORDER BY display_name`
+        `SELECT u.id, u.display_name, u.email, u.avatar_url
+           FROM users u
+           JOIN user_companies uc ON uc.user_id = u.id
+          WHERE u.is_active = true
+            AND uc.company_id = $1
+          ORDER BY u.display_name`,
+        [companyId]
     );
 
     // Batch query 2: all tasks due on this date (with assigned user)
@@ -137,6 +170,7 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
         LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
         LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
         WHERE t.deleted_at IS NULL
+          AND t.company_id = $2
           AND t.status != 'terminat'
           AND t.due_date::date = $1::date
         ORDER BY
@@ -146,7 +180,7 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
                 WHEN 'de_rezolvat' THEN 3
             END,
             t.due_date ASC
-    `, [date]);
+    `, [date, companyId]);
 
     // Batch query 3: all subtask-based tasks for this date (user has subtask due, but task not directly assigned)
     const { rows: subtaskTasks } = await pool.query(`
@@ -171,12 +205,33 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
         LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
         LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
         WHERE t.deleted_at IS NULL
+          AND t.company_id = $2
           AND t.status != 'terminat'
           AND s.is_completed = false
           AND s.due_date::date = $1::date
           AND s.deleted_at IS NULL
         ORDER BY t.title
-    `, [date]);
+    `, [date, companyId]);
+
+    // For non-'full' templates we strip post/section/department metadata from each task.
+    // The rows still have the columns (we kept the joins to keep the SQL one-shape) but
+    // we null them out so the frontend renders the per-user variant cleanly.
+    if (!isFull) {
+        for (const t of allTasks) {
+            t.department_label = null;
+            t.assigned_scope = null;
+            t.assigned_post_name = null;
+            t.assigned_section_name = null;
+            t.assigned_department_name = null;
+        }
+        for (const t of subtaskTasks) {
+            t.department_label = null;
+            t.assigned_scope = null;
+            t.assigned_post_name = null;
+            t.assigned_section_name = null;
+            t.assigned_department_name = null;
+        }
+    }
 
     // Batch query 4: all subtasks for relevant task IDs
     const allTaskIds = new Set([...allTasks.map(t => t.id), ...subtaskTasks.map(t => t.id)]);
@@ -227,7 +282,7 @@ async function getDayViewData(date: string): Promise<DayViewUser[]> {
     }));
 }
 
-async function generateDayViewPDF(res: Response, userData: DayViewUser, date: string) {
+async function generateDayViewPDF(res: Response, userData: DayViewUser, date: string, templateType: TemplateType = 'full') {
     const dateObj = new Date(date + 'T00:00:00');
     const formattedDate = isNaN(dateObj.getTime())
         ? date
@@ -291,12 +346,18 @@ async function generateDayViewPDF(res: Response, userData: DayViewUser, date: st
 
             // Status + Department + Due date row
             const statusLabel = STATUS_LABELS[task.status] || task.status;
-            const deptLabel = DEPT_LABELS[task.department_label] || task.department_label;
+            const deptLabel = task.department_label
+                ? (DEPT_LABELS[task.department_label] || task.department_label)
+                : null;
             const dueDateObj = new Date(task.due_date + 'T00:00:00');
             const dueDate = isNaN(dueDateObj.getTime()) ? task.due_date : dueDateObj.toLocaleDateString('ro-RO');
 
+            // Non-'full' templates have no departments — skip the department segment.
+            const headerLine = (templateType === 'full' && deptLabel)
+                ? `Status: ${statusLabel}  •  Departament: ${deptLabel}  •  Termen: ${dueDate}`
+                : `Status: ${statusLabel}  •  Termen: ${dueDate}`;
             doc.fontSize(9).font('Helvetica').fillColor('#486581')
-                .text(`Status: ${statusLabel}  •  Departament: ${deptLabel}  •  Termen: ${dueDate}`, 65, doc.y);
+                .text(headerLine, 65, doc.y);
             doc.moveDown(0.3);
 
             // Description

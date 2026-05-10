@@ -19,6 +19,12 @@ router.use(authMiddleware);
  * Available to admin and superadmin (managers don't manage org structure).
  */
 router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const { rows } = await pool.query(`
         SELECT t.id, t.title, t.status,
                t.department_label,
@@ -32,7 +38,9 @@ router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res:
                ua.avatar_url AS assignee_avatar,
                EXISTS (
                    SELECT 1 FROM recurring_tasks rt
-                   WHERE rt.template_task_id = t.id AND rt.is_active = true
+                   WHERE rt.template_task_id = t.id
+                     AND rt.is_active = true
+                     AND rt.company_id = $1
                ) AS is_recurring_template
         FROM tasks t
         LEFT JOIN users uc ON t.created_by = uc.id
@@ -42,8 +50,9 @@ router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res:
           AND t.assigned_department_id IS NULL
           AND t.deleted_at IS NULL
           AND t.status != 'terminat'
+          AND t.company_id = $1
         ORDER BY is_recurring_template DESC, t.created_at DESC
-    `);
+    `, [companyId]);
 
     res.json({ tasks: rows, total: rows.length });
 }));

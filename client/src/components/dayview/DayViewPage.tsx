@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
+import { useCompany } from '../../hooks/useCompany';
 
 interface DaySubtask {
     title: string;
@@ -51,6 +52,10 @@ export default function DayViewPage() {
     const [userOrder, setUserOrder] = useState<string[]>(getStoredOrder);
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [downloading, setDownloading] = useState<string | null>(null);
+    const { activeCompany } = useCompany();
+    // 'full' (Visoro) shows department badges + post/section/department scope labels.
+    // 'project' / 'simple' (Neo Plan, Hungary) are flat per-user — no departments exist.
+    const isFull = activeCompany?.template_type === 'full';
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['day-view', date],
@@ -266,8 +271,10 @@ export default function DayViewPage() {
                                                                         }
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
-                                                                        {/* Post / scope label above the title — teaches post-based thinking */}
-                                                                        {(() => {
+                                                                        {/* Post / scope label above the title — teaches post-based thinking.
+                                                                            Only relevant for the 'full' template (Visoro Global) which has the
+                                                                            department/section/post hierarchy. Hidden for project/simple templates. */}
+                                                                        {isFull && (() => {
                                                                             const t: any = task;
                                                                             let label: string | null = null;
                                                                             if (t.assigned_scope === 'post' && t.assigned_post_name) label = t.assigned_post_name;
@@ -299,7 +306,7 @@ export default function DayViewPage() {
                                                                             >
                                                                                 {STATUSES[task.status]?.label}
                                                                             </span>
-                                                                            {task.department_label && DEPARTMENTS[task.department_label] && (
+                                                                            {isFull && task.department_label && DEPARTMENTS[task.department_label] && (
                                                                                 <span
                                                                                     className="text-[10px] px-1.5 py-0.5 rounded"
                                                                                     style={{

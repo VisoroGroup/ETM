@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SkeletonDrawer } from '../ui/Skeleton';
+import { useTranslation } from '../../i18n/I18nContext';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
 import { tasksApi, notificationsApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
@@ -34,6 +35,7 @@ interface Props {
 type Tab = 'subtasks' | 'checklist' | 'comments' | 'files' | 'activity' | 'alerts' | 'dependencies';
 
 export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
+    const { t } = useTranslation();
     const td = useTaskDetail(taskId);
     const task = td.task;
     const loading = td.loading;
@@ -94,16 +96,16 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         }
 
         td.changeStatus.mutate({ status: newStatus }, {
-            onSuccess: () => { showToast(`Status schimbat în "${STATUSES[newStatus].label}"`); onUpdate(); },
-            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+            onSuccess: () => { showToast(t('task_drawer.toast_status_changed', { status: STATUSES[newStatus].label })); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || t('common.error'), 'error'),
         });
     }
 
     async function confirmBlockedStatus() {
         if (!blockedReason.trim()) return;
         td.changeStatus.mutate({ status: 'blocat', reason: blockedReason.trim() }, {
-            onSuccess: () => { showToast('Task marcat ca Blocat'); setShowBlockedModal(false); onUpdate(); },
-            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+            onSuccess: () => { showToast(t('task_drawer.toast_marked_blocked')); setShowBlockedModal(false); onUpdate(); },
+            onError: (err: any) => showToast(err.response?.data?.error || t('common.error'), 'error'),
         });
     }
 
@@ -123,11 +125,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             { date: newDueDate, reason: dueDateReason.trim(), realignRecurring },
             {
                 onSuccess: () => {
-                    showToast(realignRecurring ? 'Data limită schimbată — recurență realiniată' : 'Data limită schimbată');
+                    showToast(realignRecurring ? t('task_drawer.toast_due_date_changed_realigned') : t('task_drawer.toast_due_date_changed'));
                     setShowDueDateModal(false);
                     onUpdate();
                 },
-                onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+                onError: (err: any) => showToast(err.response?.data?.error || t('common.error'), 'error'),
             }
         );
     }
@@ -140,8 +142,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             return;
         }
         td.updateTask.mutate({ title: editTitleValue.trim() }, {
-            onSuccess: () => { setIsEditingTitle(false); showToast('Titlu actualizat!'); onUpdate(); },
-            onError: () => showToast('Eroare la actualizarea titlului', 'error'),
+            onSuccess: () => { setIsEditingTitle(false); showToast(t('task_drawer.toast_title_updated')); onUpdate(); },
+            onError: () => showToast(t('task_drawer.toast_title_update_error'), 'error'),
         });
     }
 
@@ -154,16 +156,16 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             return;
         }
         td.updateTask.mutate({ description: newDesc }, {
-            onSuccess: () => { setIsEditingDesc(false); showToast('Descriere actualizată!'); onUpdate(); },
-            onError: () => showToast('Eroare la actualizarea descrierii', 'error'),
+            onSuccess: () => { setIsEditingDesc(false); showToast(t('task_drawer.toast_description_updated')); onUpdate(); },
+            onError: () => showToast(t('task_drawer.toast_description_update_error'), 'error'),
         });
     }
 
     // Department change
     async function handleDeptChange(dept: Department) {
         td.updateTask.mutate({ department_label: dept }, {
-            onSuccess: () => { showToast('Departament schimbat'); onUpdate(); },
-            onError: () => showToast('Eroare la schimbarea departamentului', 'error'),
+            onSuccess: () => { showToast(t('task_drawer.toast_department_changed')); onUpdate(); },
+            onError: () => showToast(t('task_drawer.toast_department_change_error'), 'error'),
         });
     }
 
@@ -172,11 +174,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         setShowDeleteConfirm(false);
         td.deleteTask.mutate(undefined, {
             onSuccess: () => {
-                showToast('Task șters');
+                showToast(t('task_drawer.toast_task_deleted'));
                 onClose();
                 setTimeout(() => onUpdate(), 300);
             },
-            onError: (err: any) => showToast(err.response?.data?.error || 'Eroare', 'error'),
+            onError: (err: any) => showToast(err.response?.data?.error || t('common.error'), 'error'),
         });
     }
 
@@ -184,8 +186,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     async function toggleRecurring() {
         if (!task) return;
         td.toggleRecurring.mutate(undefined, {
-            onSuccess: () => showToast(task.is_recurring ? 'Recurență dezactivată' : 'Recurență activată (săptămânal)'),
-            onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
+            onSuccess: () => showToast(task.is_recurring ? t('task_drawer.toast_recurring_off') : t('task_drawer.toast_recurring_on')),
+            onError: () => showToast(t('tasks.try_again'), 'error'),
         });
     }
 
@@ -206,26 +208,26 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const activeAlerts = task.alerts?.filter((a: TaskAlert) => !a.is_resolved) ?? [];
 
     const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number; alertActive?: boolean }[] = [
-        { key: 'subtasks', label: 'Subtask-uri', icon: <CheckCircle2 className="w-3.5 h-3.5" />, count: totalSubtasks },
+        { key: 'subtasks', label: t('task_drawer.tab_subtasks'), icon: <CheckCircle2 className="w-3.5 h-3.5" />, count: totalSubtasks },
         {
             key: 'checklist' as Tab,
-            label: 'Checklist',
+            label: t('task_drawer.tab_checklist'),
             icon: <ListChecks className="w-3.5 h-3.5" />,
             count: task.checklist?.length ?? 0,
         },
-        { key: 'comments', label: 'Comentarii', icon: <MessageSquare className="w-3.5 h-3.5" />, count: task.comments.length },
-        { key: 'files', label: 'Fișiere', icon: <Paperclip className="w-3.5 h-3.5" />, count: task.attachments.length },
-        { key: 'activity', label: 'Activitate', icon: <Activity className="w-3.5 h-3.5" />, count: task.activity.length },
+        { key: 'comments', label: t('task_drawer.tab_comments'), icon: <MessageSquare className="w-3.5 h-3.5" />, count: task.comments.length },
+        { key: 'files', label: t('task_drawer.tab_files'), icon: <Paperclip className="w-3.5 h-3.5" />, count: task.attachments.length },
+        { key: 'activity', label: t('task_drawer.tab_activity'), icon: <Activity className="w-3.5 h-3.5" />, count: task.activity.length },
         {
             key: 'alerts',
-            label: 'În Atenție',
+            label: t('task_drawer.tab_alerts'),
             icon: <AlertTriangle className="w-3.5 h-3.5" />,
             count: activeAlerts.length,
             alertActive: activeAlerts.length > 0,
         },
         {
             key: 'dependencies' as Tab,
-            label: 'Dependențe',
+            label: t('task_drawer.tab_dependencies'),
             icon: <Link2 className="w-3.5 h-3.5" />,
             count: (task.dependencies?.blocks?.length ?? 0) + (task.dependencies?.blocked_by?.length ?? 0),
         },
@@ -263,7 +265,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                             setIsEditingTitle(true);
                                         }}
                                         className="text-lg font-bold leading-snug cursor-text hover:bg-navy-800/50 rounded px-1 -ml-1 transition-colors border border-transparent hover:border-navy-600/50"
-                                        title="Click pentru a edita titlul"
+                                        title={t('task_drawer.click_to_edit_title')}
                                     >
                                         {task.title}
                                     </h2>
@@ -282,7 +284,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                         }}
                                         rows={3}
                                         autoFocus
-                                        placeholder="Adaugă o descriere..."
+                                        placeholder={t('task_drawer.add_description_placeholder')}
                                         className="w-full mt-1 bg-navy-800 border border-blue-500/50 rounded px-2 py-1.5 text-sm text-navy-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-navy-500"
                                     />
                                 ) : (
@@ -292,9 +294,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                             setIsEditingDesc(true);
                                         }}
                                         className="text-sm text-navy-400 mt-1 cursor-text hover:bg-navy-800/50 rounded px-1 -ml-1 py-0.5 transition-colors border border-transparent hover:border-navy-600/50 flex items-center gap-1 group"
-                                        title="Click pentru a edita descrierea"
+                                        title={t('task_drawer.click_to_edit_description')}
                                     >
-                                        {task.description || <span className="text-navy-600 italic">Adaugă o descriere...</span>}
+                                        {task.description || <span className="text-navy-600 italic">{t('task_drawer.add_description_placeholder')}</span>}
                                         <Pencil className="w-3 h-3 text-navy-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                     </p>
                                 )}
@@ -345,7 +347,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             >
                                 <Calendar className="w-3.5 h-3.5" />
                                 {formatDate(task.due_date)}
-                                {dueStat === 'overdue' && <span className="text-[10px]">(depășit {getDaysOverdue(task.due_date)}z)</span>}
+                                {dueStat === 'overdue' && <span className="text-[10px]">{t('task_drawer.overdue_days', { days: getDaysOverdue(task.due_date) })}</span>}
                             </button>
 
 
@@ -356,7 +358,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                     }`}
                             >
                                 <RefreshCw className="w-3 h-3" />
-                                {task.is_recurring ? FREQUENCIES[task.recurring_frequency!] || 'Recurent' : 'Recurent'}
+                                {task.is_recurring ? FREQUENCIES[task.recurring_frequency!] || t('task_drawer.recurring') : t('task_drawer.recurring')}
                             </button>
 
                             {/* Blocked reason badge */}
@@ -375,7 +377,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                         {totalSubtasks > 0 && (
                             <div className="mt-3">
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs text-navy-400">{completedSubtasks}/{totalSubtasks} completate</span>
+                                    <span className="text-xs text-navy-400">{t('task_drawer.subtasks_completed', { completed: completedSubtasks, total: totalSubtasks })}</span>
                                     <span className="text-xs text-navy-400">{Math.round((completedSubtasks / totalSubtasks) * 100)}%</span>
                                 </div>
                                 <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
@@ -394,25 +396,25 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 avatarUrl={task.creator_avatar}
                                 size="xs"
                             />
-                            Creat de {task.creator_name} · {timeAgo(task.created_at)}
+                            {t('task_drawer.created_by', { name: task.creator_name || '' })} · {timeAgo(task.created_at)}
                         </div>
 
                         {/* Assignee */}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className="text-xs text-navy-500">Responsabil:</span>
+                            <span className="text-xs text-navy-500">{t('task_drawer.assignee_label')}:</span>
                             <select
                                 value={task.assigned_to || ''}
                                 onChange={(e) => {
                                     const val = e.target.value || null;
                                     td.updateTask.mutate({ assigned_to: val }, {
-                                        onSuccess: () => { showToast(val ? 'Responsabil setat' : 'Responsabil eliminat'); onUpdate(); },
-                                        onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
+                                        onSuccess: () => { showToast(val ? t('task_drawer.toast_assignee_set') : t('task_drawer.toast_assignee_cleared')); onUpdate(); },
+                                        onError: () => showToast(t('tasks.try_again'), 'error'),
                                     });
                                 }}
-                                aria-label="Schimbă responsabilul"
+                                aria-label={t('task_drawer.change_assignee_aria')}
                                 className="flex-1 max-w-[200px] px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50"
                             >
-                                <option value="">— Neasignat —</option>
+                                <option value="">— {t('tasks.unassigned')} —</option>
                                 {users.map(u => (
                                     <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
                                 ))}
@@ -490,7 +492,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     <div className="flex-shrink-0 p-4 border-t border-navy-700/50 flex justify-between">
                         <div className="flex items-center gap-3">
                             <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
-                                <Trash2 className="w-3.5 h-3.5" /> Șterge
+                                <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                             </button>
                             <button
                                 disabled={duplicating}
@@ -498,18 +500,18 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                     setDuplicating(true);
                                     try {
                                         await tasksApi.duplicate(taskId);
-                                        showToast('Task duplicat cu succes!');
+                                        showToast(t('task_drawer.toast_duplicated'));
                                         onUpdate();
-                                    } catch { showToast('Eroare la duplicare', 'error'); }
+                                    } catch { showToast(t('task_drawer.toast_duplicate_error'), 'error'); }
                                     finally { setDuplicating(false); }
                                 }}
                                 className="text-xs text-navy-400 hover:text-blue-400 flex items-center gap-1 transition-colors disabled:opacity-40"
                             >
-                                {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />} Duplică
+                                {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />} {t('task_drawer.duplicate')}
                             </button>
                         </div>
                         <button onClick={onClose} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">
-                            Închide
+                            {t('common.close')}
                         </button>
                     </div>
                 </div>
@@ -524,25 +526,25 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 <Trash2 className="w-5 h-5 text-red-400" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white">Șterge task</h3>
-                                <p className="text-xs text-navy-400">Acțiunea este ireversibilă</p>
+                                <h3 className="font-semibold text-white">{t('task_drawer.delete_task_title')}</h3>
+                                <p className="text-xs text-navy-400">{t('tasks.delete_confirm_irreversible')}</p>
                             </div>
                         </div>
                         <p className="text-sm text-navy-300 mb-6">
-                            Ești sigur că vrei să ștergi <strong className="text-white">"{task.title}"</strong>?
+                            {t('task_drawer.delete_confirm_question')} <strong className="text-white">"{task.title}"</strong>?
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-navy-700 hover:bg-navy-600 text-navy-300 transition-colors"
                             >
-                                Anulează
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={handleDeleteTask}
                                 className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
                             >
-                                Șterge definitiv
+                                {t('tasks.delete_permanent')}
                             </button>
                         </div>
                     </div>
@@ -555,29 +557,29 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     <div className="w-full max-w-md bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-2 mb-4">
                             <Ban className="w-5 h-5 text-red-400" />
-                            <h3 className="text-lg font-bold">Motiv blocare</h3>
+                            <h3 className="text-lg font-bold">{t('tasks.block_reason')}</h3>
                         </div>
                         <p className="text-sm text-navy-400 mb-4">
-                            Explică de ce acest task este blocat. Câmpul este <strong className="text-red-400">obligatoriu</strong>.
+                            {t('task_drawer.block_reason_explain_pre')} <strong className="text-red-400">{t('task_drawer.block_reason_required_word')}</strong>.
                         </p>
                         <textarea
                             value={blockedReason}
                             onChange={e => setBlockedReason(e.target.value)}
                             rows={3}
                             autoFocus
-                            placeholder="Motivul blocării..."
+                            placeholder={t('task_drawer.block_reason_placeholder')}
                             className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-red-500/50 resize-none"
                         />
                         <div className="flex justify-end gap-2 mt-4">
                             <button onClick={() => setShowBlockedModal(false)} className="px-4 py-2 text-sm text-navy-300 hover:bg-navy-800 rounded-lg transition-colors">
-                                Anulează
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={confirmBlockedStatus}
                                 disabled={!blockedReason.trim()}
                                 className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-lg text-sm disabled:opacity-30 transition-all"
                             >
-                                Confirmă blocare
+                                {t('task_drawer.confirm_block')}
                             </button>
                         </div>
                     </div>
@@ -590,17 +592,17 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                     <div className="w-full max-w-md bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-2 mb-4">
                             <Calendar className="w-5 h-5 text-orange-400" />
-                            <h3 className="text-lg font-bold">Schimbă data limită</h3>
+                            <h3 className="text-lg font-bold">{t('task_drawer.change_due_date_title')}</h3>
                         </div>
 
                         <div className="flex items-center gap-3 mb-4 p-3 bg-navy-800/50 rounded-lg">
                             <div className="text-center flex-1">
-                                <p className="text-[10px] text-navy-500 mb-1">DATA VECHE</p>
+                                <p className="text-[10px] text-navy-500 mb-1">{t('task_drawer.old_date_label')}</p>
                                 <p className="text-sm font-medium text-red-400">{formatDateFull(task.due_date)}</p>
                             </div>
                             <ArrowRight className="w-4 h-4 text-navy-500" />
                             <div className="text-center flex-1">
-                                <p className="text-[10px] text-navy-500 mb-1">DATA NOUĂ</p>
+                                <p className="text-[10px] text-navy-500 mb-1">{t('task_drawer.new_date_label')}</p>
                                 <input
                                     type="date"
                                     value={newDueDate}
@@ -613,7 +615,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                         {task.is_recurring && (
                             <div className="mb-4">
                                 <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                    Acest task se repetă. Ce vrei să muți?
+                                    {t('task_drawer.recurring_move_question')}
                                 </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <button
@@ -625,8 +627,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                                 : 'bg-navy-800/40 border-navy-700/50 text-navy-300 hover:bg-navy-800/70'
                                         }`}
                                     >
-                                        <div className="font-semibold mb-0.5">Doar această ocurență</div>
-                                        <div className="text-[10px] text-navy-400 leading-snug">Mută doar această dată. Următoarele instanțe rămân pe programul existent.</div>
+                                        <div className="font-semibold mb-0.5">{t('task_drawer.recurring_only_this_title')}</div>
+                                        <div className="text-[10px] text-navy-400 leading-snug">{t('task_drawer.recurring_only_this_hint')}</div>
                                     </button>
                                     <button
                                         type="button"
@@ -637,8 +639,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                                 : 'bg-navy-800/40 border-navy-700/50 text-navy-300 hover:bg-navy-800/70'
                                         }`}
                                     >
-                                        <div className="font-semibold mb-0.5">Această și următoarele</div>
-                                        <div className="text-[10px] text-navy-400 leading-snug">Realiniază tot programul: și instanțele viitoare vor pornî de la noua dată.</div>
+                                        <div className="font-semibold mb-0.5">{t('task_drawer.recurring_this_and_future_title')}</div>
+                                        <div className="text-[10px] text-navy-400 leading-snug">{t('task_drawer.recurring_this_and_future_hint')}</div>
                                     </button>
                                 </div>
                             </div>
@@ -646,21 +648,21 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
                         <div>
                             <label className="text-xs font-medium text-navy-400 mb-1.5 block">
-                                Motivul reprogramării <span className="text-red-400">*</span>
+                                {t('task_drawer.reschedule_reason_label')} <span className="text-red-400">*</span>
                             </label>
                             <textarea
                                 value={dueDateReason}
                                 onChange={e => setDueDateReason(e.target.value)}
                                 rows={3}
                                 autoFocus
-                                placeholder="Explică de ce se schimbă data limită..."
+                                placeholder={t('task_drawer.reschedule_reason_placeholder')}
                                 className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-orange-500/50 resize-none"
                             />
                         </div>
 
                         <div className="flex justify-end gap-2 mt-4">
                             <button onClick={() => setShowDueDateModal(false)} className="px-4 py-2 text-sm text-navy-300 hover:bg-navy-800 rounded-lg transition-colors">
-                                Anulează
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={confirmDueDateChange}
@@ -668,7 +670,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg text-sm disabled:opacity-30 transition-all flex items-center gap-1.5"
                             >
                                 {td.changeDueDate.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                Confirmă schimbarea
+                                {t('task_drawer.confirm_change')}
                             </button>
                         </div>
                     </div>
@@ -681,6 +683,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 // ─── Org Assignment Editor (Department / Subdepartament / Post) ──────────────
 
 function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: () => void }) {
+    const { t } = useTranslation();
     const [editing, setEditing] = useState(false);
     const [orgDepts, setOrgDepts] = useState<any[]>([]);
     const [selectedDeptId, setSelectedDeptId] = useState('');
@@ -747,11 +750,11 @@ function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: (
                 updates.assigned_post_id = null;
             }
             await tasksApi.update(task.id, updates);
-            showToast('Organizare actualizată!');
+            showToast(t('task_drawer.toast_org_updated'));
             setEditing(false);
             onUpdate();
         } catch {
-            showToast('Eroare la actualizare.', 'error');
+            showToast(t('common.error_saving'), 'error');
         } finally {
             setSaving(false);
         }
@@ -793,16 +796,16 @@ function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: (
                 {isDelegated && (
                     <span
                         className="text-[10px] px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                        title={`Postul aparține de ${postUser.name || 'alt coleg'} — responsabilul actual este o delegare temporară.`}
+                        title={t('task_drawer.delegated_tooltip', { name: postUser.name || t('task_drawer.delegated_other_colleague') })}
                     >
-                        ⚠ Delegare temporară
+                        ⚠ {t('task_drawer.delegated_badge')}
                     </span>
                 )}
                 <button
                     onClick={() => setEditing(true)}
                     className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                    Schimbă
+                    {t('task_drawer.change_org')}
                 </button>
             </div>
         );
@@ -813,25 +816,25 @@ function OrgAssignmentEditor({ task, onUpdate }: { task: TaskDetail; onUpdate: (
     return (
         <div className="mt-3 p-3 bg-navy-800/30 rounded-lg border border-navy-700/30 space-y-2">
             <select value={selectedDeptId} onChange={e => { setSelectedDeptId(e.target.value); setSelectedSectionId(''); setSelectedPostId(''); }} className={selectCls}>
-                <option value="">— Departament —</option>
+                <option value="">— {t('tasks.department')} —</option>
                 {orgDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             {selectedDeptId && availableSections.length > 0 && (
                 <select value={selectedSectionId} onChange={e => { setSelectedSectionId(e.target.value); setSelectedPostId(''); }} className={selectCls}>
-                    <option value="">— Subdepartament —</option>
+                    <option value="">— {t('task_form.section')} —</option>
                     {availableSections.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
             )}
             {selectedSectionId && availablePosts.length > 0 && (
                 <select value={selectedPostId} onChange={e => setSelectedPostId(e.target.value)} className={selectCls}>
-                    <option value="">— Post —</option>
+                    <option value="">— {t('task_drawer.post_label')} —</option>
                     {availablePosts.map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.user_name ? ` → ${p.user_name}` : ''}</option>)}
                 </select>
             )}
             <div className="flex gap-2 justify-end">
-                <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs text-navy-400 hover:text-white">Anulează</button>
+                <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs text-navy-400 hover:text-white">{t('common.cancel')}</button>
                 <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 text-xs bg-blue-500 hover:bg-blue-400 text-white rounded-lg disabled:opacity-50">
-                    {saving ? 'Se salvează...' : 'Salvează'}
+                    {saving ? t('task_form.saving') : t('common.save')}
                 </button>
             </div>
         </div>

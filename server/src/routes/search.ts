@@ -20,6 +20,12 @@ router.use(authMiddleware);
  *   { tasks, comments, attachments, policies, users, posts, sections, departments }
  */
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const q = ((req.query.q as string) || '').trim();
     if (q.length < 1) {
         res.json({
@@ -40,17 +46,19 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         || req.user!.role === 'manager';
     const userId = req.user!.id;
 
+    // Params layout:
+    //   $1 = pattern, $2 = limit, $3 = companyId, $4 (optional) = userId
     // Task access clause (for comments/attachments): joins the parent task and
     // ensures a regular user only sees their own. Privileged roles see all.
     const taskAccessClause = isPrivileged
         ? ''
         : `AND (
-            t.created_by = $3
-            OR t.assigned_to = $3
-            OR EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = t.id AND st.assigned_to = $3)
+            t.created_by = $4
+            OR t.assigned_to = $4
+            OR EXISTS (SELECT 1 FROM subtasks st WHERE st.task_id = t.id AND st.assigned_to = $4)
           )`;
 
-    const params: any[] = [pattern, limit];
+    const params: any[] = [pattern, limit, companyId];
     if (!isPrivileged) params.push(userId);
 
     // Tasks (title, description)
@@ -70,6 +78,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         LEFT JOIN sections s ON p.section_id = s.id
         LEFT JOIN departments d ON s.department_id = d.id
         WHERE t.deleted_at IS NULL
+          AND t.company_id = $3
           AND (
               f_unaccent(lower(t.title)) LIKE f_unaccent($1)
               OR f_unaccent(lower(COALESCE(t.description, ''))) LIKE f_unaccent($1)
@@ -91,6 +100,8 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         JOIN tasks t ON tc.task_id = t.id
         JOIN users u ON tc.author_id = u.id
         WHERE t.deleted_at IS NULL
+          AND t.company_id = $3
+          AND tc.company_id = $3
           AND f_unaccent(lower(tc.content)) LIKE f_unaccent($1)
           ${taskAccessClause}
         ORDER BY tc.created_at DESC
@@ -109,14 +120,17 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         FROM task_attachments ta
         JOIN tasks t ON ta.task_id = t.id
         WHERE t.deleted_at IS NULL
+          AND t.company_id = $3
+          AND ta.company_id = $3
           AND f_unaccent(lower(ta.file_name)) LIKE f_unaccent($1)
           ${taskAccessClause}
         ORDER BY ta.created_at DESC
         LIMIT $2
     `, params);
 
-    // The remaining entities are metadata — no per-user scoping (privileged or not, everyone sees them)
-    const metaParams: any[] = [pattern, limit];
+    // The remaining entities are metadata — scoped to the active company.
+    // Params: $1 = pattern, $2 = limit, $3 = companyId
+    const metaParams: any[] = [pattern, limit, companyId];
 
     // Policies use content_html (HTML source) as the body column.
     // We strip tags for the match so searching for a plain word hits the text content.
@@ -126,6 +140,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
                p.updated_at
         FROM policies p
         WHERE p.is_active = true
+          AND p.company_id = $3
           AND (
               f_unaccent(lower(p.title)) LIKE f_unaccent($1)
               OR f_unaccent(lower(regexp_replace(COALESCE(p.content_html, ''), '<[^>]*>', ' ', 'g'))) LIKE f_unaccent($1)
@@ -134,10 +149,13 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         LIMIT $2
     `, metaParams);
 
+    // Users — limited to the active company via user_companies.
     const { rows: users } = await pool.query(`
         SELECT u.id, u.display_name, u.email, u.avatar_url, u.role
         FROM users u
+        JOIN user_companies uc ON uc.user_id = u.id
         WHERE u.is_active = true
+          AND uc.company_id = $3
           AND (
               f_unaccent(lower(u.display_name)) LIKE f_unaccent($1)
               OR f_unaccent(lower(u.email)) LIKE f_unaccent($1)
@@ -157,6 +175,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         JOIN sections s ON p.section_id = s.id
         JOIN departments d ON s.department_id = d.id
         WHERE p.is_active = true AND s.is_active = true AND d.is_active = true
+          AND p.company_id = $3 AND s.company_id = $3 AND d.company_id = $3
           AND (
               f_unaccent(lower(p.name)) LIKE f_unaccent($1)
               OR f_unaccent(lower(COALESCE(p.description, ''))) LIKE f_unaccent($1)
@@ -171,6 +190,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         FROM sections s
         JOIN departments d ON s.department_id = d.id
         WHERE s.is_active = true AND d.is_active = true
+          AND s.company_id = $3 AND d.company_id = $3
           AND (
               f_unaccent(lower(s.name)) LIKE f_unaccent($1)
               OR f_unaccent(lower(COALESCE(s.pfv, ''))) LIKE f_unaccent($1)
@@ -183,6 +203,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         SELECT d.id, d.name, d.pfv, d.color
         FROM departments d
         WHERE d.is_active = true
+          AND d.company_id = $3
           AND (
               f_unaccent(lower(d.name)) LIKE f_unaccent($1)
               OR f_unaccent(lower(COALESCE(d.pfv, ''))) LIKE f_unaccent($1)

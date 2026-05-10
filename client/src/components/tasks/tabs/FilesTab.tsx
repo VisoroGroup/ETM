@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from '../../../i18n/I18nContext';
 import { attachmentsApi } from '../../../services/api';
 import type { TaskDetail, TaskAttachment } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
@@ -33,6 +34,7 @@ function isPdf(filename: string) {
 }
 
 export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const { showToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,11 +51,11 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
         if (!file) return;
         try {
             await attachmentsApi.upload(taskId, file);
-            showToast('Fișier încărcat!');
+            showToast(t('attachments.toast_uploaded'));
             onReload();
             onUpdate();
         } catch {
-            showToast('Eroare la încărcare', 'error');
+            showToast(t('attachments.toast_upload_error'), 'error');
         }
         e.target.value = '';
     }
@@ -61,10 +63,10 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
     async function deleteAttachment(attachmentId: string) {
         try {
             await attachmentsApi.delete(taskId, attachmentId);
-            showToast('Fișier șters');
+            showToast(t('attachments.toast_deleted'));
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -85,13 +87,13 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-navy-700 rounded-lg text-sm text-navy-400 hover:border-blue-500/50 hover:text-blue-400 transition-all"
             >
-                <Upload className="w-4 h-4" /> Încarcă fișier
+                <Upload className="w-4 h-4" /> {t('attachments.upload_button')}
             </button>
 
             {task.attachments.length === 0 ? (
                 <div className="text-center py-8">
                     <Paperclip className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                    <p className="text-navy-500 text-sm">Niciun fișier atașat</p>
+                    <p className="text-navy-500 text-sm">{t('attachments.empty')}</p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -99,7 +101,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                     {images.length > 0 && (
                         <div>
                             <p className="text-xs text-navy-400 mb-2 flex items-center gap-1.5">
-                                <ImageIcon className="w-3 h-3" /> Imagini ({images.length})
+                                <ImageIcon className="w-3 h-3" /> {t('attachments.images_section', { count: images.length })}
                             </p>
                             <div className="grid grid-cols-3 gap-2">
                                 {images.map((att, idx) => (
@@ -136,7 +138,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                         <div>
                             {images.length > 0 && (
                                 <p className="text-xs text-navy-400 mb-2 flex items-center gap-1.5">
-                                    <FileText className="w-3 h-3" /> Documente ({otherFiles.length})
+                                    <FileText className="w-3 h-3" /> {t('attachments.documents_section', { count: otherFiles.length })}
                                 </p>
                             )}
                             <div className="space-y-2">
@@ -156,7 +158,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                                 onClick={() => setPdfPreview(pdfPreview === att.file_url ? null : att.file_url)}
                                                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                                             >
-                                                {pdfPreview === att.file_url ? 'Ascunde' : 'Previzualizare'}
+                                                {pdfPreview === att.file_url ? t('attachments.hide') : t('attachments.preview')}
                                             </button>
                                         )}
                                         <button
@@ -164,7 +166,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                                 try {
                                                     await downloadAuthedFile(att.file_url, att.file_name);
                                                 } catch {
-                                                    showToast('Eroare la descărcare', 'error');
+                                                    showToast(t('attachments.toast_download_error'), 'error');
                                                 }
                                             }}
                                             className="text-navy-500 hover:text-blue-400 transition-colors"
@@ -192,11 +194,11 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                 <iframe
                                     src={pdfPreviewBlob}
                                     className="w-full h-96 bg-white"
-                                    title="PDF previzualizare"
+                                    title={t('attachments.pdf_preview_title')}
                                 />
                             ) : (
                                 <div className="w-full h-96 bg-navy-900/40 flex items-center justify-center text-sm text-navy-400">
-                                    Se încarcă...
+                                    {t('common.loading')}
                                 </div>
                             )}
                         </div>
@@ -253,7 +255,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                 try {
                                     await downloadAuthedFile(images[lightboxIndex].file_url, images[lightboxIndex].file_name);
                                 } catch {
-                                    showToast('Eroare la descărcare', 'error');
+                                    showToast(t('attachments.toast_download_error'), 'error');
                                 }
                             }}
                             className="text-blue-400 hover:text-blue-300"

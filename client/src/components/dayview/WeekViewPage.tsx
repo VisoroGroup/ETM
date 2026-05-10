@@ -4,6 +4,7 @@ import { CalendarRange, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lu
 import UserAvatar from '../ui/UserAvatar';
 import TaskDrawer from '../tasks/TaskDrawer';
 import { useToast } from '../../hooks/useToast';
+import { useCompany } from '../../hooks/useCompany';
 
 interface Task {
     id: string;
@@ -90,6 +91,10 @@ export default function WeekViewPage() {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [mode, setMode] = useState<'by-user' | 'by-day'>('by-user');
     const { showToast } = useToast();
+    const { activeCompany } = useCompany();
+    // 'full' (Visoro) keeps the post/section/department scope label above each task.
+    // Other templates render a flat per-user grid with just the task title.
+    const isFull = activeCompany?.template_type === 'full';
 
     useEffect(() => {
         setLoading(true);
@@ -232,12 +237,15 @@ export default function WeekViewPage() {
                                                                 key={t.id}
                                                                 onClick={() => setSelectedTaskId(t.id)}
                                                                 className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
-                                                                title={`${scopeLabel(t)} · ${STATUS_LABEL[t.status] || t.status} — ${t.title}`}
+                                                                title={isFull ? `${scopeLabel(t)} · ${STATUS_LABEL[t.status] || t.status} — ${t.title}` : `${STATUS_LABEL[t.status] || t.status} — ${t.title}`}
                                                             >
-                                                                {/* Post / scope name — above, smaller but prominent in cyan */}
-                                                                <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
-                                                                    {scopeLabel(t)}
-                                                                </span>
+                                                                {/* Post / scope name — above, smaller but prominent in cyan.
+                                                                    Only shown for 'full' template; other templates have no org structure. */}
+                                                                {isFull && (
+                                                                    <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
+                                                                        {scopeLabel(t)}
+                                                                    </span>
+                                                                )}
                                                                 {/* Task title — below */}
                                                                 <div className="flex items-center gap-1">
                                                                     <span
@@ -292,12 +300,14 @@ export default function WeekViewPage() {
                                             key={`${t.user.id}-${t.id}`}
                                             onClick={() => setSelectedTaskId(t.id)}
                                             className="w-full text-left flex flex-col gap-0.5 px-1.5 py-1 rounded bg-navy-800/50 hover:bg-navy-700/70 transition-colors"
-                                            title={`${scopeLabel(t)} — ${t.title}`}
+                                            title={isFull ? `${scopeLabel(t)} — ${t.title}` : t.title}
                                         >
-                                            {/* Post / scope above */}
-                                            <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
-                                                {scopeLabel(t)}
-                                            </span>
+                                            {/* Post / scope above — only for 'full' template. */}
+                                            {isFull && (
+                                                <span className="text-[9px] text-cyan-300 font-semibold uppercase tracking-wide truncate leading-none">
+                                                    {scopeLabel(t)}
+                                                </span>
+                                            )}
                                             <div className="flex items-start gap-1.5">
                                                 <span
                                                     className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1"

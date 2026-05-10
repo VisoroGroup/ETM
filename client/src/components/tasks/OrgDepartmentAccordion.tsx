@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Settings, FileText, Users } from 'lucide-react';
 import { OrgDepartment, OrgSection, OrgPost, Task } from '../../types';
 import OrgPostRow from './OrgPostRow';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     department: OrgDepartment;
@@ -21,6 +22,7 @@ export default function OrgDepartmentAccordion({
     department, tasks, onTaskClick, darkMode, defaultExpanded = false,
     isSuperAdmin, onEditDepartment, onEditSection, onEditPost, onPolicyClick, onTaskStatusChange
 }: Props) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(defaultExpanded);
 
     // Count active tasks for this department
@@ -64,12 +66,12 @@ export default function OrgDepartmentAccordion({
                             <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                                 darkMode ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
                             }`}>
-                                {deptTaskCount} {deptTaskCount === 1 ? 'sarcină' : 'sarcini'}
+                                {deptTaskCount} {deptTaskCount === 1 ? t('tasks.task_count_one') : t('tasks.task_count_many')}
                             </span>
                         )}
                     </div>
                     <p className={`text-xs mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
-                        Responsabil: {department.head_user_name || '—'}
+                        {t('tasks.assigned_to')}: {department.head_user_name || '—'}
                     </p>
                 </div>
 
@@ -83,7 +85,7 @@ export default function OrgDepartmentAccordion({
                     }`}
                 >
                     <FileText className="w-3.5 h-3.5" />
-                    {(department.policy_count || 0) > 0 ? `${department.policy_count} dir.` : 'dir.'}
+                    {(department.policy_count || 0) > 0 ? `${department.policy_count} ${t('org.policy_short')}` : t('org.policy_short')}
                 </button>
 
                 {/* Edit button (superadmin) */}
@@ -128,10 +130,10 @@ export default function OrgDepartmentAccordion({
                         darkMode ? 'border-navy-700/30 text-navy-400/80' : 'border-gray-100 text-gray-500'
                     }`}>
                         {department.pfv && (
-                            <p className="leading-relaxed"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`} title="Privire Funcțional-Valorică — rezultatul vizat al acestei unități">PFV:</span> {department.pfv}</p>
+                            <p className="leading-relaxed"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`} title={t('org.pfv_tooltip')}>{t('org.pfv_label')}</span> {department.pfv}</p>
                         )}
                         {department.statistic_name && (
-                            <p className="mt-1"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>Statistică:</span> {department.statistic_name}</p>
+                            <p className="mt-1"><span className={`font-semibold ${darkMode ? 'text-navy-300' : 'text-gray-600'}`}>{t('org.statistic_label')}</span> {department.statistic_name}</p>
                         )}
                     </div>
                 </div>
@@ -155,6 +157,7 @@ function OrgSectionBlock({
     onTaskStatusChange?: () => void;
     onPolicyClick?: (scope: string, id?: string) => void;
 }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(true);
 
     return (
@@ -204,7 +207,7 @@ function OrgSectionBlock({
             {/* Section PFV */}
             {expanded && section.pfv && (
                 <div className={`px-6 py-1.5 text-[10px] italic ${darkMode ? 'text-navy-400/70' : 'text-gray-400'}`}>
-                    <span className={`font-medium not-italic ${darkMode ? 'text-navy-400' : 'text-gray-500'}`} title="Privire Funcțional-Valorică — rezultatul vizat al acestei unități">PFV:</span> {section.pfv}
+                    <span className={`font-medium not-italic ${darkMode ? 'text-navy-400' : 'text-gray-500'}`} title={t('org.pfv_tooltip')}>{t('org.pfv_label')}</span> {section.pfv}
                 </div>
             )}
         </div>

@@ -6,6 +6,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import UserAvatar from '../ui/UserAvatar';
 import TaskDrawer from '../tasks/TaskDrawer';
 import { timeAgo } from '../../utils/helpers';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
 /**
  * Global search page.
@@ -14,6 +15,7 @@ import { timeAgo } from '../../utils/helpers';
  * diacritics-insensitive (so "plati" finds "plăți", "sarcin" finds "sarcină").
  */
 export default function SearchPage() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const location = useLocation();
     const initialQ = new URLSearchParams(location.search).get('q') || '';
@@ -81,14 +83,14 @@ export default function SearchPage() {
     }
 
     const sections: { key: keyof GlobalSearchResult; label: string; icon: React.ReactNode }[] = [
-        { key: 'tasks', label: 'Sarcini', icon: <ListTodo className="w-4 h-4 text-blue-400" /> },
-        { key: 'comments', label: 'Comentarii', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
-        { key: 'attachments', label: 'Fișiere', icon: <Paperclip className="w-4 h-4 text-violet-400" /> },
-        { key: 'policies', label: 'Directive', icon: <FileText className="w-4 h-4 text-amber-400" /> },
-        { key: 'users', label: 'Utilizatori', icon: <UsersIcon className="w-4 h-4 text-green-400" /> },
-        { key: 'posts', label: 'Posturi', icon: <Briefcase className="w-4 h-4 text-purple-400" /> },
-        { key: 'sections', label: 'Subdepartamente', icon: <Layers className="w-4 h-4 text-orange-400" /> },
-        { key: 'departments', label: 'Departamente', icon: <Building2 className="w-4 h-4 text-red-400" /> },
+        { key: 'tasks', label: t('search_page.section_tasks'), icon: <ListTodo className="w-4 h-4 text-blue-400" /> },
+        { key: 'comments', label: t('search_page.section_comments'), icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
+        { key: 'attachments', label: t('search_page.section_attachments'), icon: <Paperclip className="w-4 h-4 text-violet-400" /> },
+        { key: 'policies', label: t('search_page.section_policies'), icon: <FileText className="w-4 h-4 text-amber-400" /> },
+        { key: 'users', label: t('search_page.section_users'), icon: <UsersIcon className="w-4 h-4 text-green-400" /> },
+        { key: 'posts', label: t('search_page.section_posts'), icon: <Briefcase className="w-4 h-4 text-purple-400" /> },
+        { key: 'sections', label: t('search_page.section_sections'), icon: <Layers className="w-4 h-4 text-orange-400" /> },
+        { key: 'departments', label: t('search_page.section_departments'), icon: <Building2 className="w-4 h-4 text-red-400" /> },
     ];
 
     return (
@@ -97,10 +99,10 @@ export default function SearchPage() {
             <div className="mb-4">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                     <Search className="w-6 h-6 text-blue-400" />
-                    Căutare
+                    {t('search_page.title')}
                 </h1>
                 <p className="text-navy-400 text-sm mt-1">
-                    Caută în sarcini, comentarii, fișiere, directive, utilizatori, posturi și departamente.
+                    {t('search_page.subtitle')}
                 </p>
             </div>
 
@@ -112,14 +114,14 @@ export default function SearchPage() {
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Scrie un cuvânt — diacriticele nu contează (ex: 'plati' găsește 'plăți')"
-                    aria-label="Caută global"
+                    placeholder={t('search_page.input_placeholder')}
+                    aria-label={t('search_page.aria_input')}
                     className="w-full pl-12 pr-12 py-4 bg-navy-800/50 border border-navy-700/50 rounded-xl text-base text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 shadow-lg"
                 />
                 {query && (
                     <button
                         onClick={() => setQuery('')}
-                        aria-label="Șterge căutarea"
+                        aria-label={t('search_page.aria_clear')}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-navy-400 hover:text-white"
                     >
                         <X className="w-4 h-4" />
@@ -131,7 +133,7 @@ export default function SearchPage() {
             {!query.trim() && (
                 <div className="text-center py-16 text-navy-400">
                     <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">Scrie un cuvânt ca să începi. Căutarea ignoră diacriticele.</p>
+                    <p className="text-sm">{t('search_page.empty_hint')}</p>
                 </div>
             )}
 
@@ -139,7 +141,7 @@ export default function SearchPage() {
             {query.trim() && loading && (
                 <div className="flex items-center justify-center py-12 text-navy-400">
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Se caută…
+                    {t('search_page.searching')}
                 </div>
             )}
 
@@ -148,12 +150,12 @@ export default function SearchPage() {
                 <>
                     {result.total === 0 ? (
                         <div className="text-center py-16 text-navy-400">
-                            <p className="text-sm">Niciun rezultat pentru „{query}".</p>
-                            <p className="text-xs text-navy-500 mt-1">Încearcă un cuvânt mai scurt sau verifică ortografia.</p>
+                            <p className="text-sm">{t('search_page.no_results_for', { query })}</p>
+                            <p className="text-xs text-navy-500 mt-1">{t('search_page.no_results_hint')}</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <p className="text-xs text-navy-400">{result.total} {result.total === 1 ? 'rezultat' : 'rezultate'}</p>
+                            <p className="text-xs text-navy-400">{result.total === 1 ? t('search_page.result_one', { count: result.total }) : t('search_page.result_many', { count: result.total })}</p>
 
                             {sections.map(({ key, label, icon }) => {
                                 const items = result[key] as any[];
@@ -166,7 +168,7 @@ export default function SearchPage() {
                                             <span className="text-xs text-navy-500">({items.length})</span>
                                         </div>
                                         <div className="divide-y divide-navy-700/30">
-                                            {items.map((item: any) => renderResult(key, item, query, highlight, navigate, setSelectedTaskId))}
+                                            {items.map((item: any) => renderResult(key, item, query, highlight, navigate, setSelectedTaskId, t))}
                                         </div>
                                     </div>
                                 );
@@ -198,9 +200,10 @@ function renderResult(
     kind: string,
     item: any,
     query: string,
-    highlight: (t: string, q: string) => React.ReactNode,
+    highlight: (text: string, q: string) => React.ReactNode,
     navigate: (to: string) => void,
-    openTask: (id: string) => void
+    openTask: (id: string) => void,
+    t: TFunction
 ): React.ReactNode {
     switch (kind) {
         case 'tasks':
@@ -240,7 +243,7 @@ function renderResult(
                         <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <p className="text-xs text-navy-500">
-                                pe sarcina: <span className="text-navy-300">{item.task_title}</span>
+                                {t('search_page.on_task')}: <span className="text-navy-300">{item.task_title}</span>
                             </p>
                             <p className="text-sm text-white mt-0.5 line-clamp-2">
                                 {highlight(item.content, query)}
@@ -263,7 +266,7 @@ function renderResult(
                         <Paperclip className="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">{highlight(item.filename, query)}</p>
-                            <p className="text-xs text-navy-500 mt-0.5">pe sarcina: {item.task_title}</p>
+                            <p className="text-xs text-navy-500 mt-0.5">{t('search_page.on_task')}: {item.task_title}</p>
                         </div>
                     </div>
                 </button>
@@ -275,7 +278,7 @@ function renderResult(
                         <FileText className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white">{highlight(item.title, query)}</p>
-                            <p className="text-[10px] text-navy-500 mt-0.5">scope: {item.scope}</p>
+                            <p className="text-[10px] text-navy-500 mt-0.5">{t('search_page.scope')}: {item.scope}</p>
                         </div>
                     </div>
                 </div>

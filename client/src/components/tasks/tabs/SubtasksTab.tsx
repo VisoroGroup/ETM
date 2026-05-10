@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from '../../../i18n/I18nContext';
 import { subtasksApi, notificationsApi } from '../../../services/api';
 import type { TaskDetail, Subtask, User } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props) {
+    const { t } = useTranslation();
     const { users } = useAuth();
     const { showToast } = useToast();
     const [newSubtask, setNewSubtask] = useState('');
@@ -45,7 +47,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -55,7 +57,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -65,7 +67,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -75,7 +77,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             onReload();
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -84,7 +86,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.update(taskId, subtaskId, { priority });
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -93,7 +95,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.update(taskId, subtaskId, { due_date });
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -107,7 +109,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             await subtasksApi.reorder(taskId, order);
             onReload();
         } catch {
-            showToast('Eroare la reordonare', 'error');
+            showToast(t('subtasks.reorder_error'), 'error');
         }
     }
 
@@ -119,7 +121,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                     value={newSubtask}
                     onChange={e => setNewSubtask(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addSubtask()}
-                    placeholder="Adaugă subtask..."
+                    placeholder={t('subtasks.add_placeholder')}
                     className="flex-1 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                 />
                 <button onClick={addSubtask} className="px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors">
@@ -163,9 +165,9 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                                 onClick={e => e.stopPropagation()}
                                                 className="px-1.5 py-0.5 bg-navy-800/50 border border-navy-700/50 rounded text-[10px] text-navy-400 focus:outline-none w-[70px]"
                                             >
-                                                <option value="low">⬇ Scăzut</option>
-                                                <option value="medium">➡ Mediu</option>
-                                                <option value="high">⬆ Ridicat</option>
+                                                <option value="low">⬇ {t('subtasks.priority_low')}</option>
+                                                <option value="medium">➡ {t('subtasks.priority_medium')}</option>
+                                                <option value="high">⬆ {t('subtasks.priority_high')}</option>
                                             </select>
 
                                             {/* Due date */}
@@ -183,7 +185,7 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                                 onChange={e => assignSubtask(subtask.id, e.target.value || null)}
                                                 className="px-2 py-1 bg-navy-800/50 border border-navy-700/50 rounded text-[11px] text-navy-300 focus:outline-none max-w-[120px]"
                                             >
-                                                <option value="">Neasignat</option>
+                                                <option value="">{t('tasks.unassigned')}</option>
                                                 {users.map(u => (
                                                     <option key={u.id} value={u.id}>{u.display_name}</option>
                                                 ))}
@@ -208,8 +210,8 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
             {task.subtasks.length === 0 && (
                 <div className="text-center py-8">
                     <CheckCircle2 className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                    <p className="text-navy-500 text-sm">Niciun subtask încă</p>
-                    <p className="text-navy-600 text-xs">Adaugă subtask-uri pentru a organiza task-ul.</p>
+                    <p className="text-navy-500 text-sm">{t('subtasks.empty_title')}</p>
+                    <p className="text-navy-600 text-xs">{t('subtasks.empty_subtitle')}</p>
                 </div>
             )}
         </div>

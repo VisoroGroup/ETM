@@ -7,15 +7,21 @@ const router = Router();
 router.use(authMiddleware);
 
 // GET /api/emails/logs — email log list (admin only)
-router.get('/logs', requireRole('admin', 'manager'), async (_req: AuthRequest, res: Response) => {
+router.get('/logs', requireRole('admin', 'manager'), async (req: AuthRequest, res: Response) => {
     try {
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
         const { rows } = await pool.query(`
             SELECT el.*, u.display_name, u.email as user_email
             FROM email_logs el
             JOIN users u ON el.user_id = u.id
+            WHERE el.company_id = $1
             ORDER BY el.sent_at DESC
             LIMIT 200
-        `);
+        `, [companyId]);
         res.json(rows);
     } catch (err) {
         console.error('Email logs error:', err);
@@ -26,12 +32,18 @@ router.get('/logs', requireRole('admin', 'manager'), async (_req: AuthRequest, r
 // GET /api/emails/logs/my — own email log
 router.get('/logs/my', async (req: AuthRequest, res: Response) => {
     try {
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
         const { rows } = await pool.query(`
             SELECT * FROM email_logs
             WHERE user_id = $1
+              AND company_id = $2
             ORDER BY sent_at DESC
             LIMIT 50
-        `, [req.user!.id]);
+        `, [req.user!.id, companyId]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: 'Eroare.' });
@@ -41,6 +53,11 @@ router.get('/logs/my', async (req: AuthRequest, res: Response) => {
 // POST /api/emails/test — send test email (admin only)
 router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Response) => {
     try {
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
         const { to, name } = req.body;
 
         const targetEmail = to || req.user!.email;
@@ -63,9 +80,9 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
 
         // Log it
         await pool.query(
-            `INSERT INTO email_logs (user_id, task_ids, email_type, status)
-             VALUES ($1, $2, 'daily_summary', 'sent')`,
-            [req.user!.id, []]
+            `INSERT INTO email_logs (user_id, task_ids, email_type, status, company_id)
+             VALUES ($1, $2, 'daily_summary', 'sent', $3)`,
+            [req.user!.id, [], companyId]
         );
 
         res.json({ success: true, message: `Email de test trimis la ${targetEmail}` });
@@ -74,9 +91,9 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
 
         // Log failure
         await pool.query(
-            `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message)
-             VALUES ($1, $2, 'daily_summary', 'failed', $3)`,
-            [req.user!.id, [], err.message || 'Unknown error']
+            `INSERT INTO email_logs (user_id, task_ids, email_type, status, error_message, company_id)
+             VALUES ($1, $2, 'daily_summary', 'failed', $3, $4)`,
+            [req.user!.id, [], err.message || 'Unknown error', req.activeCompanyId ?? 1]
         ).catch((logErr) => console.error('[EMAIL] Failed to log email error to DB:', logErr.message));
 
         res.status(500).json({

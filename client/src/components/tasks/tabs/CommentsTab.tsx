@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '../../../i18n/I18nContext';
 import { commentsApi, notificationsApi } from '../../../services/api';
 import type { TaskDetail, TaskComment, User } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
@@ -67,6 +68,7 @@ interface Props {
 }
 
 export default function CommentsTab({ task, taskId, onReload }: Props) {
+    const { t } = useTranslation();
     const { user, users } = useAuth();
     const { showToast } = useToast();
     const [newComment, setNewComment] = useState('');
@@ -130,7 +132,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             setReplyTo(null);
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -139,7 +141,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             await commentsApi.delete(taskId, commentId);
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -148,7 +150,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             await commentsApi.toggleReaction(taskId, commentId);
             onReload();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -248,7 +250,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                     />
                     <span className={`text-xs font-semibold ${isOwn ? 'text-blue-300' : 'text-white'}`}>
                         {comment.author_name}
-                        {isOwn && <span className="text-[9px] text-navy-500 ml-1 font-normal">(tu)</span>}
+                        {isOwn && <span className="text-[9px] text-navy-500 ml-1 font-normal">({t('comments.you')})</span>}
                     </span>
                     <span className="text-[10px] text-navy-500">{timeAgo(comment.created_at)}</span>
 
@@ -257,16 +259,16 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                         <button
                             onClick={() => startReply(comment)}
                             className="text-navy-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all px-1.5 py-0.5 rounded flex items-center gap-0.5 text-[10px]"
-                            title="Răspunde"
+                            title={t('comments.reply')}
                         >
                             <Reply className="w-3 h-3" />
-                            <span className="hidden sm:inline">Răspunde</span>
+                            <span className="hidden sm:inline">{t('comments.reply')}</span>
                         </button>
 
                         {/* Like button */}
                         <button
                             onClick={() => toggleReaction(comment.id)}
-                            title={likedByNames.length > 0 ? likedByNames.join(', ') : 'Like'}
+                            title={likedByNames.length > 0 ? likedByNames.join(', ') : t('comments.like')}
                             className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] transition-all ${
                                 iLiked
                                     ? 'bg-blue-500/20 text-blue-400'
@@ -314,7 +316,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                 {replyTo && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-t-lg text-xs">
                         <Reply className="w-3 h-3 text-blue-400" />
-                        <span className="text-blue-400">Răspuns pentru</span>
+                        <span className="text-blue-400">{t('comments.reply_to_label')}</span>
                         <span className="text-white font-medium">{replyTo.author_name}</span>
                         <span className="text-navy-500 truncate max-w-[200px]">"{replyTo.content.substring(0, 50)}{replyTo.content.length > 50 ? '...' : ''}"</span>
                         <button onClick={cancelReply} className="ml-auto text-navy-500 hover:text-white transition-colors">
@@ -328,7 +330,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
                     onChange={handleCommentInput}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                     rows={3}
-                    placeholder={replyTo ? `Scrie un răspuns pentru ${replyTo.author_name}...` : 'Scrie un comentariu... folosește @ pentru a menționa'}
+                    placeholder={replyTo ? t('comments.reply_placeholder', { name: replyTo.author_name || '' }) : t('comments.placeholder')}
                     className={`w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 ${replyTo ? 'rounded-b-lg border-t-0' : 'rounded-lg'} text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 resize-none`}
                 />
                 {showMentionDropdown && filteredMentionUsers.length > 0 && (
@@ -371,7 +373,7 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
             ) : (
                 <div className="text-center py-8">
                     <MessageSquare className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                    <p className="text-navy-500 text-sm">Niciun comentariu încă</p>
+                    <p className="text-navy-500 text-sm">{t('comments.empty')}</p>
                 </div>
             )}
         </div>

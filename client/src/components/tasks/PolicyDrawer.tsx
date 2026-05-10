@@ -5,6 +5,7 @@ import { Policy, PolicyScope } from '../../types';
 import { policiesApi, departmentsApi } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     open: boolean;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function PolicyDrawer({ open, onClose, scope, departmentId, postId, title, darkMode = true }: Props) {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const { showToast } = useToast();
     const [policies, setPolicies] = useState<Policy[]>([]);
@@ -56,20 +58,20 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
         : policies;
 
     const tabs: { key: PolicyScope; label: string; icon: React.ReactNode }[] = [
-        { key: 'COMPANY', label: 'Companie', icon: <Building2 className="w-3.5 h-3.5" /> },
-        { key: 'DEPARTMENT', label: 'Departament', icon: <Users className="w-3.5 h-3.5" /> },
-        { key: 'POST', label: 'Post', icon: <UserCircle className="w-3.5 h-3.5" /> },
+        { key: 'COMPANY', label: t('common.company'), icon: <Building2 className="w-3.5 h-3.5" /> },
+        { key: 'DEPARTMENT', label: t('tasks.department'), icon: <Users className="w-3.5 h-3.5" /> },
+        { key: 'POST', label: t('policy.scope_post'), icon: <UserCircle className="w-3.5 h-3.5" /> },
     ];
 
     const handleDelete = async (policyId: string) => {
-        if (!confirm('Sigur dorești să ștergi această directivă?')) return;
+        if (!confirm(t('policy.confirm_delete'))) return;
         try {
             await policiesApi.delete(policyId);
-            showToast('Directiva a fost ștearsă.');
+            showToast(t('policy.deleted'));
             setSelectedPolicy(null);
             loadPolicies();
         } catch (err) {
-            showToast('Eroare la ștergere.', 'error');
+            showToast(t('admin_users.error_delete'), 'error');
         }
     };
 
@@ -92,7 +94,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                             }`}
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Înapoi la listă
+                            {t('policy.back_to_list')}
                         </button>
                     ) : showUploadForm ? (
                         <button
@@ -102,12 +104,12 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                             }`}
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Înapoi la listă
+                            {t('policy.back_to_list')}
                         </button>
                     ) : (
                         <div className="flex items-center gap-2">
                             <FileText className="w-5 h-5 text-blue-400" />
-                            <h2 className="text-lg font-semibold">{title || 'Directive de funcționare'}</h2>
+                            <h2 className="text-lg font-semibold">{title || t('policy.title_default')}</h2>
                         </div>
                     )}
                     <button
@@ -133,7 +135,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                             setShowEditForm(false);
                             setSelectedPolicy(null);
                             loadPolicies();
-                            showToast(showEditForm ? 'Directiva a fost actualizată.' : 'Directiva a fost încărcată.');
+                            showToast(showEditForm ? t('policy.updated') : t('policy.uploaded'));
                         }}
                         onCancel={() => { setShowUploadForm(false); setShowEditForm(false); }}
                     />
@@ -145,9 +147,9 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                 <div>
                                     <h3 className="font-semibold text-sm">{selectedPolicy.title}</h3>
                                     <div className={`flex items-center gap-3 mt-1.5 text-xs ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
-                                        {selectedPolicy.directive_number && <span>Nr. {selectedPolicy.directive_number}</span>}
+                                        {selectedPolicy.directive_number && <span>{t('policy.number_label', { num: selectedPolicy.directive_number })}</span>}
                                         <span>{selectedPolicy.date}</span>
-                                        {selectedPolicy.creator_name && <span>de {selectedPolicy.creator_name}</span>}
+                                        {selectedPolicy.creator_name && <span>{t('policy.by_creator', { name: selectedPolicy.creator_name })}</span>}
                                     </div>
                                 </div>
                                 {isSuperAdmin && (
@@ -155,14 +157,14 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                         <button
                                             onClick={() => setShowEditForm(true)}
                                             className="p-2 rounded-lg text-navy-400 hover:text-blue-400 hover:bg-navy-800/50 transition-colors"
-                                            title="Editează"
+                                            title={t('common.edit')}
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(selectedPolicy.id)}
                                             className="p-2 rounded-lg text-navy-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                            title="Șterge"
+                                            title={t('common.delete')}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -207,7 +209,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                         type="text"
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        placeholder="Caută directivă..."
+                                        placeholder={t('policy.search_placeholder')}
                                         className={`w-full pl-9 pr-4 py-2 rounded-lg text-xs focus:outline-none ${
                                             darkMode
                                                 ? 'bg-navy-800/50 border border-navy-700/50 text-white placeholder:text-navy-500 focus:border-blue-500/50'
@@ -228,14 +230,14 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                 <div className={`text-center py-12 ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
                                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                     <p className="text-sm">
-                                        {searchQuery ? 'Nicio directivă găsită.' : 'Nicio directivă în această categorie.'}
+                                        {searchQuery ? t('policy.no_results') : t('policy.empty_category')}
                                     </p>
                                     {isSuperAdmin && !searchQuery && (
                                         <button
                                             onClick={() => setShowUploadForm(true)}
                                             className="mt-3 text-xs text-blue-400 hover:text-blue-300"
                                         >
-                                            + Adaugă prima directivă
+                                            + {t('policy.add_first')}
                                         </button>
                                     )}
                                 </div>
@@ -254,7 +256,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium truncate">{policy.title}</p>
                                             <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
-                                                {policy.directive_number && <span>Nr. {policy.directive_number}</span>}
+                                                {policy.directive_number && <span>{t('policy.number_label', { num: policy.directive_number })}</span>}
                                                 <span>{policy.date}</span>
                                             </div>
                                         </div>
@@ -272,7 +274,7 @@ export default function PolicyDrawer({ open, onClose, scope, departmentId, postI
                                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-400 text-white transition-colors"
                                 >
                                     <Upload className="w-4 h-4" />
-                                    Încarcă directivă
+                                    {t('policy.upload')}
                                 </button>
                             </div>
                         )}
@@ -294,6 +296,7 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
     onSaved: () => void;
     onCancel: () => void;
 }) {
+    const { t } = useTranslation();
     const [formTitle, setFormTitle] = useState(editPolicy?.title || '');
     const [directiveNumber, setDirectiveNumber] = useState(editPolicy?.directive_number?.toString() || '');
     const [date, setDate] = useState(editPolicy?.date || new Date().toISOString().split('T')[0]);
@@ -334,9 +337,9 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
     };
 
     const handleSubmit = async () => {
-        if (!formTitle.trim()) { setError('Titlul este obligatoriu.'); return; }
-        if (!date) { setError('Data este obligatorie.'); return; }
-        if (!htmlContent && !file) { setError('Conținutul HTML este obligatoriu.'); return; }
+        if (!formTitle.trim()) { setError(t('projects.title_required')); return; }
+        if (!date) { setError(t('policy.date_required')); return; }
+        if (!htmlContent && !file) { setError(t('policy.content_required')); return; }
 
         setSaving(true);
         setError('');
@@ -373,7 +376,7 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
             }
             onSaved();
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Eroare la salvare.');
+            setError(err.response?.data?.error || t('common.error_saving'));
         } finally {
             setSaving(false);
         }
@@ -388,38 +391,38 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
 
     return (
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            <h3 className="text-sm font-semibold">{editPolicy ? 'Editare directivă' : 'Directivă nouă'}</h3>
+            <h3 className="text-sm font-semibold">{editPolicy ? t('policy.edit_title') : t('policy.new_title')}</h3>
 
             {error && <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{error}</div>}
 
             <div>
-                <label className={labelCls}>Titlu *</label>
-                <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Titlul directivei" className={inputCls} />
+                <label className={labelCls}>{t('policy.field_title')}</label>
+                <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder={t('policy.field_title_placeholder')} className={inputCls} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className={labelCls}>Nr. directivă</label>
-                    <input type="number" value={directiveNumber} onChange={e => setDirectiveNumber(e.target.value)} placeholder="Ex: 1" className={inputCls} />
+                    <label className={labelCls}>{t('policy.field_number')}</label>
+                    <input type="number" value={directiveNumber} onChange={e => setDirectiveNumber(e.target.value)} placeholder={t('policy.field_number_placeholder')} className={inputCls} />
                 </div>
                 <div>
-                    <label className={labelCls}>Data *</label>
+                    <label className={labelCls}>{t('policy.field_date')}</label>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
                 </div>
             </div>
 
             <div>
-                <label className={labelCls}>Scope *</label>
+                <label className={labelCls}>{t('policy.field_scope')}</label>
                 <select value={formScope} onChange={e => setFormScope(e.target.value as PolicyScope)} className={inputCls}>
-                    <option value="COMPANY">Companie</option>
-                    <option value="DEPARTMENT">Departament</option>
-                    <option value="POST">Post</option>
+                    <option value="COMPANY">{t('common.company')}</option>
+                    <option value="DEPARTMENT">{t('tasks.department')}</option>
+                    <option value="POST">{t('policy.scope_post')}</option>
                 </select>
             </div>
 
             {formScope === 'DEPARTMENT' && (
                 <div>
-                    <label className={labelCls}>Departamente</label>
+                    <label className={labelCls}>{t('policy.field_departments')}</label>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                         {depts.map(d => (
                             <label key={d.id} className="flex items-center gap-2 text-xs cursor-pointer">
@@ -441,7 +444,7 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
 
             {formScope === 'POST' && (
                 <div>
-                    <label className={labelCls}>Posturi</label>
+                    <label className={labelCls}>{t('policy.field_posts')}</label>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                         {allPosts.map(p => (
                             <label key={p.id} className="flex items-center gap-2 text-xs cursor-pointer">
@@ -462,7 +465,7 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
             )}
 
             <div>
-                <label className={labelCls}>Fișier HTML</label>
+                <label className={labelCls}>{t('policy.field_html_file')}</label>
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -479,23 +482,23 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
                     }`}
                 >
                     <Upload className="w-4 h-4" />
-                    {file ? file.name : 'Alege fișier HTML (.html)'}
+                    {file ? file.name : t('policy.choose_html_file')}
                 </button>
                 {htmlContent && (
                     <p className={`text-[10px] mt-1 ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>
-                        {Math.round(htmlContent.length / 1024)} KB conținut HTML încărcat
+                        {t('policy.html_loaded', { kb: Math.round(htmlContent.length / 1024) })}
                     </p>
                 )}
             </div>
 
             {!file && !editPolicy && (
                 <div>
-                    <label className={labelCls}>Sau scrie HTML direct</label>
+                    <label className={labelCls}>{t('policy.field_html_inline')}</label>
                     <textarea
                         value={htmlContent}
                         onChange={e => setHtmlContent(e.target.value)}
                         rows={6}
-                        placeholder="<h1>Titlu</h1><p>Conținut...</p>"
+                        placeholder={t('policy.field_html_inline_placeholder')}
                         className={`${inputCls} resize-none font-mono text-xs`}
                     />
                 </div>
@@ -503,14 +506,14 @@ function PolicyUploadForm({ darkMode, scope, departmentId, postId, editPolicy, o
 
             <div className="flex justify-end gap-2 pt-2">
                 <button onClick={onCancel} className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'text-navy-300 hover:bg-navy-800' : 'text-gray-500 hover:bg-gray-100'}`}>
-                    Anulează
+                    {t('common.cancel')}
                 </button>
                 <button
                     onClick={handleSubmit}
                     disabled={saving}
                     className="px-5 py-2 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-50 transition-colors"
                 >
-                    {saving ? 'Se salvează...' : editPolicy ? 'Salvează' : 'Încarcă directiva'}
+                    {saving ? t('task_form.saving') : editPolicy ? t('common.save') : t('policy.upload')}
                 </button>
             </div>
         </div>

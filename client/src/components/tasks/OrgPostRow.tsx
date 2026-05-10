@@ -4,6 +4,7 @@ import { OrgPost, Task, TaskStatus, STATUSES } from '../../types';
 import { getDueDateStatus, formatDate } from '../../utils/helpers';
 import { tasksApi } from '../../services/api';
 import UserAvatar from '../ui/UserAvatar';
+import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
     post: OrgPost;
@@ -32,6 +33,7 @@ function getDateColorClass(dueDateStatus: string, darkMode: boolean): string {
 export default function OrgPostRow({
     post, tasks, onTaskClick, onTaskStatusChange, darkMode, isSuperAdmin, onEditPost, onPolicyClick
 }: Props) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
 
@@ -110,7 +112,7 @@ export default function OrgPostRow({
                             </span>
                         </>
                     ) : (
-                        <span className={`text-xs italic ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>Neocupat</span>
+                        <span className={`text-xs italic ${darkMode ? 'text-navy-500' : 'text-gray-400'}`}>{t('org.unoccupied')}</span>
                     )}
                 </div>
 
@@ -119,7 +121,7 @@ export default function OrgPostRow({
                     <span className={`text-[10px] px-2 py-0.5 rounded-full min-w-[48px] text-center font-medium ${
                         darkMode ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
                     }`}>
-                        {taskCount} {taskCount === 1 ? 'sarcină' : 'sarcini'}
+                        {taskCount} {taskCount === 1 ? t('tasks.task_count_one') : t('tasks.task_count_many')}
                     </span>
                 )}
 
@@ -131,7 +133,7 @@ export default function OrgPostRow({
                             ? darkMode ? 'text-blue-400' : 'text-blue-500'
                             : darkMode ? 'text-navy-600 hover:text-navy-400' : 'text-gray-300 hover:text-gray-500'
                     }`}
-                    title={`${policyCount} directiv${policyCount === 1 ? 'ă' : 'e'}`}
+                    title={policyCount === 1 ? t('org.policy_count_one', { count: policyCount }) : t('org.policy_count_many', { count: policyCount })}
                 >
                     <FileText className="w-3 h-3" />
                     {policyCount > 0 ? policyCount : ''}
@@ -181,7 +183,7 @@ export default function OrgPostRow({
                                             backgroundColor: statusConfig?.color + '20',
                                             color: statusConfig?.color,
                                         }}
-                                        title="Schimbă statutul"
+                                        title={t('org.change_status')}
                                     >
                                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusConfig?.color }} />
                                         {statusConfig?.label}
@@ -221,7 +223,7 @@ export default function OrgPostRow({
                                 {/* Recurring indicator — subtle chip before the title */}
                                 {task.is_recurring && (
                                     <span
-                                        title="Sarcină recurentă — se regenerează automat la finalizare"
+                                        title={t('dashboard.recurring_tooltip')}
                                         className="inline-flex items-center flex-shrink-0 text-cyan-400"
                                     >
                                         <RefreshCw className="w-3 h-3" />

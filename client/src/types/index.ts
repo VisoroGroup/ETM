@@ -376,3 +376,21 @@ export interface WebhookDelivery {
     subscription_description?: string;
 }
 
+// Notifications — multi-tenant: each notification carries the company_id
+// it belongs to so the UI can color-code items by company (Q34).
+export interface Notification {
+    id: string;
+    user_id: string;
+    company_id: number;
+    type: string;
+    message: string;
+    is_read: boolean;
+    task_id: string | null;
+    created_by: string | null;
+    created_at: string;
+    // Joined fields from the API
+    task_title?: string | null;
+    created_by_name?: string | null;
+    created_by_avatar?: string | null;
+}
+

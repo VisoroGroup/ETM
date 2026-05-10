@@ -14,6 +14,12 @@ const MONTH_NAMES = [
 
 // GET /api/reports/monthly?month=2026-03&format=pdf&sections=tasks,departments,users
 router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     const { month, format = 'pdf', sections: sectionsStr = 'tasks,departments,users' } = req.query as any;
 
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -39,8 +45,10 @@ router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHan
             COUNT(*) FILTER (WHERE status = 'terminat' AND updated_at >= $1 AND updated_at < $2) AS completed,
             COUNT(*) FILTER (WHERE due_date < $2 AND status != 'terminat' AND deleted_at IS NULL) AS overdue,
             COUNT(*) FILTER (WHERE status = 'blocat' AND deleted_at IS NULL) AS blocked
-        FROM tasks WHERE deleted_at IS NULL
-    `, [startDate, endDate]);
+        FROM tasks
+        WHERE deleted_at IS NULL
+          AND company_id = $3
+    `, [startDate, endDate, companyId]);
 
     // Department breakdown
     const { rows: deptBreakdown } = await pool.query(`
@@ -49,23 +57,28 @@ router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHan
             COUNT(*) FILTER (WHERE status = 'terminat') AS completed,
             COUNT(*) FILTER (WHERE due_date < NOW() AND status != 'terminat') AS overdue
         FROM tasks
-        WHERE deleted_at IS NULL AND created_at >= $1 AND created_at < $2
+        WHERE deleted_at IS NULL
+          AND company_id = $3
+          AND created_at >= $1 AND created_at < $2
         GROUP BY department_label ORDER BY department_label
-    `, [startDate, endDate]);
+    `, [startDate, endDate, companyId]);
 
-    // User breakdown
+    // User breakdown — limited to users that belong to the active company.
     const { rows: userBreakdown } = await pool.query(`
         SELECT u.display_name,
             COUNT(t.id) FILTER (WHERE t.status = 'terminat' AND t.updated_at >= $1 AND t.updated_at < $2) AS completed,
             COUNT(t.id) FILTER (WHERE t.due_date < $2 AND t.status != 'terminat') AS overdue,
             COUNT(t.id) AS total_assigned
         FROM users u
-        LEFT JOIN tasks t ON t.assigned_to = u.id AND t.deleted_at IS NULL
+        JOIN user_companies uc ON uc.user_id = u.id AND uc.company_id = $3
+        LEFT JOIN tasks t ON t.assigned_to = u.id
+            AND t.deleted_at IS NULL
+            AND t.company_id = $3
         WHERE u.is_active = true
         GROUP BY u.id, u.display_name
         HAVING COUNT(t.id) > 0
         ORDER BY completed DESC
-    `, [startDate, endDate]);
+    `, [startDate, endDate, companyId]);
 
     if (format === 'excel') {
         await generateExcel(res, { monthName, year, taskSummary, deptBreakdown, userBreakdown, sections, month });

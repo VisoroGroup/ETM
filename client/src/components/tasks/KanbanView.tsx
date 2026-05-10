@@ -6,6 +6,7 @@ import { Calendar, Ban, CheckCircle2, AlertTriangle, UserCircle, X, Link2 } from
 import { tasksApi, commentsApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import UserAvatar from '../ui/UserAvatar';
+import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
 interface Props {
     tasks: Task[];
@@ -13,14 +14,18 @@ interface Props {
     onUpdate: () => void;
 }
 
-const COLUMNS: { key: TaskStatus; label: string; color: string; bg: string; border: string }[] = [
-    { key: 'de_rezolvat', label: 'De rezolvat', color: '#2563EB', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.25)' },
-    { key: 'in_realizare', label: 'În realizare', color: '#D97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)' },
-    { key: 'blocat',       label: 'Blocat',       color: '#DC2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)' },
-    { key: 'terminat',     label: 'Terminat',     color: '#16A34A', bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)' },
-];
+function makeColumns(t: TFunction): { key: TaskStatus; label: string; color: string; bg: string; border: string }[] {
+    return [
+        { key: 'de_rezolvat', label: t('task_status.de_rezolvat'), color: '#2563EB', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.25)' },
+        { key: 'in_realizare', label: t('task_status.in_realizare'), color: '#D97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)' },
+        { key: 'blocat',       label: t('task_status.blocat'),       color: '#DC2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)' },
+        { key: 'terminat',     label: t('task_status.terminat'),     color: '#16A34A', bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)' },
+    ];
+}
 
 export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
+    const { t } = useTranslation();
+    const COLUMNS = makeColumns(t);
     const { showToast } = useToast();
     const [draggingId, setDraggingId] = useState<string | null>(null);
 
@@ -76,7 +81,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
         } catch (err: any) {
             // Revert on failure
             setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: previousStatus } : t));
-            showToast(err.response?.data?.error || 'Eroare la schimbarea statusului', 'error');
+            showToast(err.response?.data?.error || t('kanban.status_change_error'), 'error');
         } finally {
             setPendingDrags(prev => { const next = new Set(prev); next.delete(taskId); return next; });
         }
@@ -91,15 +96,15 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
             // Also save reason as a comment
             await commentsApi.create(
                 blocatModal.taskId,
-                `🔴 Blocat — Motiv: ${blocatReason.trim()}`,
+                `🔴 ${t('task_status.blocat')} — ${t('tasks.block_reason')}: ${blocatReason.trim()}`,
                 []
             );
-            showToast(`„${blocatModal.taskTitle}" → Blocat`);
+            showToast(`„${blocatModal.taskTitle}" → ${t('task_status.blocat')}`);
             setBlocatModal(null);
             setBlocatReason('');
             onUpdate();
         } catch (err: any) {
-            showToast(err.response?.data?.error || 'Eroare', 'error');
+            showToast(err.response?.data?.error || t('report.error_prefix'), 'error');
         } finally {
             setSaving(false);
         }
@@ -156,7 +161,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                                             {provided.placeholder}
                                             {colTasks.length === 0 && !snapshot.isDraggingOver && (
                                                 <div className="flex items-center justify-center py-8 text-xs opacity-40" style={{ color: col.color }}>
-                                                    Nicio sarcină
+                                                    {t('tasks.no_tasks')}
                                                 </div>
                                             )}
                                         </div>
@@ -175,7 +180,7 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                         <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
                             <div className="flex items-center gap-2">
                                 <Ban className="w-5 h-5 text-red-400" />
-                                <h2 className="text-base font-bold">Motiv blocare</h2>
+                                <h2 className="text-base font-bold">{t('tasks.block_reason')}</h2>
                             </div>
                             <button onClick={() => setBlocatModal(null)} className="text-navy-400 hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
@@ -183,14 +188,14 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                         </div>
                         <div className="p-5 space-y-4">
                             <p className="text-sm text-navy-300">
-                                <span className="font-medium text-white">„{blocatModal.taskTitle}"</span> — explică de ce e blocat:
+                                <span className="font-medium text-white">„{blocatModal.taskTitle}"</span> — {t('kanban.block_explain')}
                             </p>
                             <textarea
                                 value={blocatReason}
                                 onChange={e => setBlocatReason(e.target.value)}
                                 autoFocus
                                 rows={3}
-                                placeholder="Ex: Lipsă informații de la client, așteptăm approval..."
+                                placeholder={t('kanban.block_reason_placeholder')}
                                 className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-red-500/30 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-red-400/60 resize-none"
                             />
                             <div className="flex justify-end gap-2">
@@ -198,14 +203,14 @@ export default function KanbanView({ tasks, onTaskClick, onUpdate }: Props) {
                                     onClick={() => setBlocatModal(null)}
                                     className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors"
                                 >
-                                    Anulează
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={confirmBlocat}
                                     disabled={!blocatReason.trim() || saving}
                                     className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium disabled:opacity-40 transition-all"
                                 >
-                                    {saving ? 'Se salvează...' : 'Confirmă blocare'}
+                                    {saving ? t('task_form.saving') : t('kanban.confirm_block')}
                                 </button>
                             </div>
                         </div>
@@ -223,6 +228,7 @@ function KanbanCard({ task, index, isDragging, isPending, onClick }: {
     isPending: boolean;
     onClick: () => void;
 }) {
+    const { t } = useTranslation();
     const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
     const dept = DEPARTMENTS[task.department_label];
 
@@ -257,7 +263,7 @@ function KanbanCard({ task, index, isDragging, isPending, onClick }: {
                     {(task.dependency_count ?? 0) > 0 && (
                         <div className="flex items-center gap-1 mb-2">
                             <Link2 className="w-3 h-3 text-orange-400" />
-                            <span className="text-[10px] text-orange-400">Blocat de {task.dependency_count}</span>
+                            <span className="text-[10px] text-orange-400">{t('kanban.blocked_by', { count: task.dependency_count ?? 0 })}</span>
                         </div>
                     )}
 
@@ -281,7 +287,7 @@ function KanbanCard({ task, index, isDragging, isPending, onClick }: {
                                 <Calendar className="w-3 h-3" />
                             )}
                             {dueStat === 'overdue'
-                                ? `${getDaysOverdue(task.due_date)}z`
+                                ? `${getDaysOverdue(task.due_date)}${t('dashboard.days_short')}`
                                 : formatDate(task.due_date)}
                         </span>
 

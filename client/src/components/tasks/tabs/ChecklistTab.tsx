@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useTranslation } from '../../../i18n/I18nContext';
 import { checklistApi } from '../../../services/api';
 import { useToast } from '../../../hooks/useToast';
 import type { ChecklistItem } from '../../../types';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
+    const { t } = useTranslation();
     const { showToast } = useToast();
     const [newTitle, setNewTitle] = useState('');
     const [adding, setAdding] = useState(false);
@@ -28,7 +30,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             setNewTitle('');
             onUpdate();
         } catch {
-            showToast('Eroare la adăugare', 'error');
+            showToast(t('checklist.add_error'), 'error');
         } finally {
             setAdding(false);
         }
@@ -39,7 +41,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             await checklistApi.update(taskId, item.id, { is_checked: !item.is_checked });
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -48,7 +50,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             await checklistApi.remove(taskId, itemId);
             onUpdate();
         } catch {
-            showToast('Nu a funcționat — încearcă din nou', 'error');
+            showToast(t('tasks.try_again'), 'error');
         }
     }
 
@@ -62,7 +64,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             await checklistApi.reorder(taskId, order);
             onUpdate();
         } catch {
-            showToast('Eroare la reordonare', 'error');
+            showToast(t('checklist.reorder_error'), 'error');
         }
     }
 
@@ -72,7 +74,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             {total > 0 && (
                 <div>
                     <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-medium text-navy-400">{checked} / {total} completate</span>
+                        <span className="text-xs font-medium text-navy-400">{t('checklist.progress', { checked, total })}</span>
                         <span className="text-xs text-navy-500">{Math.round(pct)}%</span>
                     </div>
                     <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
@@ -91,7 +93,7 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
-                    placeholder="Adaugă element nou..."
+                    placeholder={t('checklist.add_placeholder')}
                     maxLength={500}
                     className="flex-1 px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                 />
@@ -161,8 +163,8 @@ export default function ChecklistTab({ taskId, checklist, onUpdate }: Props) {
             ) : (
                 <div className="text-center py-8">
                     <ListChecks className="w-10 h-10 text-navy-700 mx-auto mb-2" />
-                    <p className="text-navy-500 text-sm">Nicio verificare adăugată</p>
-                    <p className="text-navy-600 text-xs">Adaugă primul element!</p>
+                    <p className="text-navy-500 text-sm">{t('checklist.empty_title')}</p>
+                    <p className="text-navy-600 text-xs">{t('checklist.empty_subtitle')}</p>
                 </div>
             )}
         </div>

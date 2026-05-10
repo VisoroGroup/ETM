@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../../services/api';
+import { useTranslation } from '../../i18n/I18nContext';
+import { useCompany } from '../../hooks/useCompany';
 
 interface Props {
     collapsed: boolean;
@@ -10,6 +12,7 @@ interface Props {
 
 interface Notification {
     id: string;
+    company_id: number;
     type: string;
     message: string;
     is_read: boolean;
@@ -22,12 +25,28 @@ interface Notification {
 interface GroupedNotification {
     task_id: string | null;
     task_title: string | null;
+    company_id: number;
     notifications: Notification[];
     hasUnread: boolean;
     latestAt: string;
 }
 
+// Convert a hex color (#RRGGBB or #RGB) to rgba() with the given alpha.
+// Returns null for invalid input so callers can fall back to neutral styling.
+function hexToRgba(hex: string | undefined | null, alpha: number): string | null {
+    if (!hex) return null;
+    let h = hex.trim().replace(/^#/, '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export default function NotificationBell({ collapsed, darkMode }: Props) {
+    const { t } = useTranslation();
+    const { companies } = useCompany();
     const [count, setCount] = useState(0);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
@@ -116,6 +135,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                 map.set(key, {
                     task_id: n.task_id,
                     task_title: n.task_title,
+                    company_id: n.company_id,
                     notifications: [n],
                     hasUnread: !n.is_read,
                     latestAt: n.created_at,
@@ -129,6 +149,22 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         });
     })();
 
+    // Look up a notification's company by its company_id. Used for the
+    // per-company color-coded background in the dropdown (Q34).
+    const companyForId = (companyId: number) => companies.find(c => c.id === companyId);
+
+    // Build the inline style for a notification row. We tint the background
+    // with the company's color (heavier when unread, lighter when read) and
+    // add a thin colored left border as accent. Falls back to no inline
+    // style if the company isn't visible (e.g. user lost access) — Tailwind
+    // classes still provide a neutral default.
+    const companyTintStyle = (companyId: number, unread: boolean): React.CSSProperties => {
+        const color = companyForId(companyId)?.color;
+        const bg = hexToRgba(color, unread ? 0.22 : 0.08);
+        if (!bg || !color) return {};
+        return { backgroundColor: bg, borderLeft: `3px solid ${color}` };
+    };
+
     const toggleGroup = (taskId: string) => {
         setExpandedGroups(prev => {
             const next = new Set(prev);
@@ -141,12 +177,12 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
     const timeAgoShort = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
-        if (mins < 1) return 'acum';
+        if (mins < 1) return t('notif.now');
         if (mins < 60) return `${mins}m`;
         const hrs = Math.floor(mins / 60);
         if (hrs < 24) return `${hrs}h`;
         const days = Math.floor(hrs / 24);
-        return `${days}z`;
+        return `${days}${t('notif.days_short')}`;
     };
 
     return (
@@ -154,8 +190,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
             <button
                 onClick={handleOpen}
                 className={`relative flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-lg transition-all ${darkMode ? 'text-navy-300 hover:bg-navy-700/60' : 'text-gray-500 hover:bg-gray-100'}`}
-                aria-label={count > 0 ? `Notificări (${count} necitite)` : 'Notificări'}
-                title={count > 0 ? `${count} ${count === 1 ? 'notificare necitită' : 'notificări necitite'}` : 'Notificări'}
+                aria-label={count > 0 ? t('notif.aria_with_unread', { count }) : t('notif.title')}
+                title={count > 0 ? (count === 1 ? t('notif.title_count_one', { count }) : t('notif.title_count_many', { count })) : t('notif.title')}
             >
                 <Bell className="w-4 h-4" />
                 {count > 0 && (
@@ -168,17 +204,17 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
             {open && (
                 <div className={`absolute left-full top-0 ml-2 w-80 rounded-xl shadow-2xl border z-[100] ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
                     <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-600' : 'border-gray-100'}`}>
-                        <h3 className="text-sm font-semibold">Notificări</h3>
+                        <h3 className="text-sm font-semibold">{t('notif.title')}</h3>
                         {count > 0 && (
                             <button onClick={markAllRead} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                                Marchează toate citite
+                                {t('notif.mark_all_read')}
                             </button>
                         )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                         {grouped.length === 0 ? (
                             <p className={`text-center py-8 text-sm ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
-                                Nu ai notificări
+                                {t('notif.empty')}
                             </p>
                         ) : (
                             grouped.map(group => {
@@ -189,6 +225,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                 // Single notification (no task or only 1) — show directly
                                 if (isSingle || !group.task_id) {
                                     const n = group.notifications[0];
+                                    const company = companyForId(n.company_id);
+                                    const tint = companyTintStyle(n.company_id, !n.is_read);
                                     return (
                                         <div
                                             key={n.id}
@@ -199,13 +237,23 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                     navigate('/tasks', { state: { openTaskId: n.task_id } });
                                                 }
                                             }}
+                                            style={tint}
                                             className={`px-4 py-3 border-b last:border-0 cursor-pointer transition-colors ${
                                                 n.is_read
                                                     ? darkMode ? 'border-navy-700 hover:bg-navy-700/40' : 'border-gray-50 hover:bg-gray-50'
-                                                    : darkMode ? 'bg-amber-500/20 border-l-3 border-l-amber-400 border-b-amber-500/30 hover:bg-amber-500/25' : 'bg-amber-100 border-l-3 border-l-amber-400 border-b-amber-200 hover:bg-amber-200/50'
+                                                    : darkMode ? 'border-b-amber-500/30' : 'border-b-amber-200'
                                             }`}
                                         >
-                                            <p className={`text-xs ${n.is_read ? 'font-normal' : 'font-semibold'}`}>{n.message}</p>
+                                            <p className={`text-xs flex items-center gap-1.5 ${n.is_read ? 'font-normal' : 'font-semibold'}`}>
+                                                {company && (
+                                                    <span
+                                                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                                                        style={{ backgroundColor: company.color }}
+                                                        title={company.sidebar_name}
+                                                    />
+                                                )}
+                                                <span className="flex-1">{n.message}</span>
+                                            </p>
                                             {n.task_title && (
                                                 <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
                                                     {n.task_title}
@@ -221,12 +269,18 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
 
                                 // Grouped notifications for same task
                                 const unreadCount = group.notifications.filter(n => !n.is_read).length;
+                                const groupCompany = companyForId(group.company_id);
+                                const groupTint = companyTintStyle(group.company_id, group.hasUnread);
                                 return (
-                                    <div key={key} className={`border-b last:border-0 ${
-                                        group.hasUnread
-                                            ? darkMode ? 'bg-amber-500/20 border-l-3 border-l-amber-400 border-b-amber-500/30' : 'bg-amber-100 border-l-3 border-l-amber-400 border-b-amber-200'
-                                            : darkMode ? 'border-navy-700' : 'border-gray-50'
-                                    }`}>
+                                    <div
+                                        key={key}
+                                        style={groupTint}
+                                        className={`border-b last:border-0 ${
+                                            group.hasUnread
+                                                ? darkMode ? 'border-b-amber-500/30' : 'border-b-amber-200'
+                                                : darkMode ? 'border-navy-700' : 'border-gray-50'
+                                        }`}
+                                    >
                                         {/* Group header */}
                                         <div
                                             className="px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-navy-700/30 transition-colors"
@@ -234,12 +288,19 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                         >
                                             <ChevronRight className={`w-3 h-3 text-navy-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-xs truncate ${group.hasUnread ? 'font-semibold' : 'font-normal'}`}>
-                                                    {group.task_title}
+                                                <p className={`text-xs truncate flex items-center gap-1.5 ${group.hasUnread ? 'font-semibold' : 'font-normal'}`}>
+                                                    {groupCompany && (
+                                                        <span
+                                                            className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: groupCompany.color }}
+                                                            title={groupCompany.sidebar_name}
+                                                        />
+                                                    )}
+                                                    <span className="flex-1 truncate">{group.task_title}</span>
                                                 </p>
                                                 <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
-                                                    {group.notifications.length} notificăr{group.notifications.length === 1 ? 'e' : 'i'}
-                                                    {unreadCount > 0 && ` · ${unreadCount} necitit${unreadCount === 1 ? 'ă' : 'e'}`}
+                                                    {group.notifications.length === 1 ? t('notif.count_one', { count: group.notifications.length }) : t('notif.count_many', { count: group.notifications.length })}
+                                                    {unreadCount > 0 && ` · ${unreadCount === 1 ? t('notif.unread_one', { count: unreadCount }) : t('notif.unread_many', { count: unreadCount })}`}
                                                 </p>
                                             </div>
                                             <span className={`text-[10px] flex-shrink-0 ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>
@@ -257,7 +318,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                             onClick={(e) => { e.stopPropagation(); markGroupRead(group); }}
                                                             className="text-[10px] text-blue-400 hover:text-blue-300"
                                                         >
-                                                            Marchează citite
+                                                            {t('notif.mark_read')}
                                                         </button>
                                                     )}
                                                     <button
@@ -268,7 +329,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         }}
                                                         className="text-[10px] text-blue-400 hover:text-blue-300 ml-auto"
                                                     >
-                                                        Deschide sarcina →
+                                                        {t('notif.open_task')}
                                                     </button>
                                                 </div>
                                                 {group.notifications.map(n => (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '../../../i18n/I18nContext';
 import { useTaskDependencies } from '../../../hooks/useTaskDependencies';
 import { tasksApi } from '../../../services/api';
 import { useToast } from '../../../hooks/useToast';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: Props) {
+    const { t } = useTranslation();
     const [view, setView] = useState<'list' | 'graph'>('list');
     const { blocks, blockedBy, isLoading, addDependency, removeDependency, isAdding } = useTaskDependencies(taskId);
     const { showToast } = useToast();
@@ -55,14 +57,14 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
 
         addDependency(data, {
             onSuccess: () => {
-                showToast('Dependență adăugată!');
+                showToast(t('dependencies.toast_added'));
                 setShowSearch(false);
                 setSearchQuery('');
                 setSearchResults([]);
                 onReload();
             },
             onError: (err: any) => {
-                const msg = err.response?.data?.error || 'Eroare la adăugarea dependenței';
+                const msg = err.response?.data?.error || t('dependencies.toast_add_error');
                 showToast(msg, 'error');
             },
         });
@@ -71,10 +73,10 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
     function handleRemove(depId: string) {
         removeDependency(depId, {
             onSuccess: () => {
-                showToast('Dependență eliminată');
+                showToast(t('dependencies.toast_removed'));
                 onReload();
             },
-            onError: () => showToast('Nu a funcționat — încearcă din nou', 'error'),
+            onError: () => showToast(t('tasks.try_again'), 'error'),
         });
     }
 
@@ -120,7 +122,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                 <button
                     onClick={() => handleRemove(dep.id)}
                     className="opacity-0 group-hover:opacity-100 p-1 text-navy-500 hover:text-red-400 transition-all"
-                    title="Elimină dependența"
+                    title={t('dependencies.remove_tooltip')}
                 >
                     <X className="w-3.5 h-3.5" />
                 </button>
@@ -137,18 +139,18 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                     className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
                         view === 'list' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                     }`}
-                    aria-label="Vedere listă"
+                    aria-label={t('dependencies.view_list_aria')}
                 >
-                    <List className="w-3 h-3" /> Listă
+                    <List className="w-3 h-3" /> {t('dependencies.view_list')}
                 </button>
                 <button
                     onClick={() => setView('graph')}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
                         view === 'graph' ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
                     }`}
-                    aria-label="Vedere graf"
+                    aria-label={t('dependencies.view_graph_aria')}
                 >
-                    <Network className="w-3 h-3" /> Graf
+                    <Network className="w-3 h-3" /> {t('dependencies.view_graph')}
                 </button>
             </div>
 
@@ -167,28 +169,28 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
             {/* Blocked by section */}
             <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400/70 mb-2">
-                    🔒 Blocat de ({blockedBy.length})
+                    🔒 {t('dependencies.blocked_by_section', { count: blockedBy.length })}
                 </p>
                 {blockedBy.length > 0 ? (
                     <div className="space-y-1.5">
                         {blockedBy.map(dep => renderDep(dep, 'blocked_by'))}
                     </div>
                 ) : (
-                    <p className="text-xs text-navy-500 italic pl-1">Acest task nu este blocat de nimic</p>
+                    <p className="text-xs text-navy-500 italic pl-1">{t('dependencies.empty_blocked_by')}</p>
                 )}
             </div>
 
             {/* Blocks section */}
             <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400/70 mb-2">
-                    🚫 Blochează ({blocks.length})
+                    🚫 {t('dependencies.blocks_section', { count: blocks.length })}
                 </p>
                 {blocks.length > 0 ? (
                     <div className="space-y-1.5">
                         {blocks.map(dep => renderDep(dep, 'blocks'))}
                     </div>
                 ) : (
-                    <p className="text-xs text-navy-500 italic pl-1">Acest task nu blochează nimic</p>
+                    <p className="text-xs text-navy-500 italic pl-1">{t('dependencies.empty_blocks')}</p>
                 )}
             </div>
 
@@ -201,7 +203,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                     }}
                     className="flex items-center gap-1.5 w-full px-3 py-2.5 bg-navy-800/30 border border-dashed border-navy-600/50 rounded-lg text-xs text-navy-400 hover:text-blue-400 hover:border-blue-500/40 transition-colors"
                 >
-                    <Plus className="w-3.5 h-3.5" /> Adaugă dependență
+                    <Plus className="w-3.5 h-3.5" /> {t('dependencies.add_button')}
                 </button>
             ) : (
                 <div className="bg-navy-800/40 border border-navy-700/50 rounded-xl p-3 space-y-3">
@@ -213,7 +215,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                                 direction === 'blocked_by' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-navy-800/50 text-navy-400 border border-transparent'
                             }`}
                         >
-                            🔒 Blocat de...
+                            🔒 {t('dependencies.dir_blocked_by')}
                         </button>
                         <button
                             onClick={() => setDirection('blocks')}
@@ -221,7 +223,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                                 direction === 'blocks' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-navy-800/50 text-navy-400 border border-transparent'
                             }`}
                         >
-                            🚫 Blochează...
+                            🚫 {t('dependencies.dir_blocks')}
                         </button>
                     </div>
 
@@ -233,7 +235,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Caută task după titlu..."
+                            placeholder={t('dependencies.search_placeholder')}
                             className="w-full pl-9 pr-8 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50"
                         />
                         <button
@@ -271,7 +273,7 @@ export default function DependenciesTab({ taskId, onReload, task, onOpenTask }: 
                         </div>
                     )}
                     {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                        <p className="text-xs text-navy-500 text-center py-2">Nu s-au găsit task-uri</p>
+                        <p className="text-xs text-navy-500 text-center py-2">{t('dependencies.no_results')}</p>
                     )}
                 </div>
             )}

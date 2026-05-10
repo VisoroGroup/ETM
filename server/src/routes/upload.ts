@@ -60,12 +60,22 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
             return;
         }
 
-        // Check task exists
-        const { rows: taskRows } = await pool.query('SELECT id FROM tasks WHERE id = $1', [taskId]);
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+
+        // Check task exists in this company
+        const { rows: taskRows } = await pool.query(
+            'SELECT id, company_id FROM tasks WHERE id = $1 AND company_id = $2',
+            [taskId, companyId]
+        );
         if (taskRows.length === 0) {
             res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
             return;
         }
+        const taskCompanyId = taskRows[0].company_id;
 
         // Check task access
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
@@ -80,9 +90,9 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
 
             // Insert attachment with binary data
             const { rows } = await client.query(
-                `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by)
-                 VALUES ($1, $2, '', $3, $4, $5, $6) RETURNING id, task_id, file_name, file_url, file_size, uploaded_by, created_at`,
-                [taskId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id]
+                `INSERT INTO task_attachments (task_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by, company_id)
+                 VALUES ($1, $2, '', $3, $4, $5, $6, $7) RETURNING id, task_id, file_name, file_url, file_size, uploaded_by, created_at`,
+                [taskId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id, taskCompanyId]
             );
 
             // Set file_url using the generated ID
@@ -93,12 +103,12 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
 
             // Activity log
             await client.query(
-                `INSERT INTO activity_log (task_id, user_id, action_type, details)
-                 VALUES ($1, $2, 'attachment_added', $3)`,
+                `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+                 VALUES ($1, $2, 'attachment_added', $3, $4)`,
                 [taskId, req.user!.id, JSON.stringify({
                     file_name: file.originalname,
                     file_size: file.size
-                })]
+                }), taskCompanyId]
             );
 
             await client.query('COMMIT');

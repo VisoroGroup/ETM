@@ -11,6 +11,12 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
     const { id: taskId } = req.params;
     const { frequency, workdays_only = false } = req.body;
 
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
@@ -21,8 +27,11 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
         return;
     }
 
-    // Get task due date for calculating next run
-    const { rows: taskRows } = await pool.query('SELECT due_date FROM tasks WHERE id = $1', [taskId]);
+    // Get task due date for calculating next run (scoped to active company)
+    const { rows: taskRows } = await pool.query(
+        'SELECT due_date, company_id FROM tasks WHERE id = $1 AND company_id = $2',
+        [taskId, companyId]
+    );
     if (taskRows.length === 0) {
         res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
         return;
@@ -32,6 +41,8 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
         res.status(400).json({ error: 'Task-ul must have a due date to enable recurrence.' });
         return;
     }
+
+    const taskCompanyId = taskRows[0].company_id;
 
     let nextRunDate = new Date(taskRows[0].due_date);
     switch (frequency) {
@@ -50,8 +61,8 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
 
     // Atomic upsert — no race condition between concurrent requests
     const { rows } = await pool.query(`
-        INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, workdays_only, created_by)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO recurring_tasks (template_task_id, frequency, next_run_date, workdays_only, created_by, company_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (template_task_id) DO UPDATE SET
             frequency = EXCLUDED.frequency,
             next_run_date = EXCLUDED.next_run_date,
@@ -59,14 +70,14 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
             workdays_only = EXCLUDED.workdays_only,
             updated_at = NOW()
         RETURNING *
-    `, [taskId, frequency, nextRunDate.toISOString().split('T')[0], workdays_only, req.user!.id]);
+    `, [taskId, frequency, nextRunDate.toISOString().split('T')[0], workdays_only, req.user!.id, taskCompanyId]);
     const result = rows[0];
 
     // Activity log
     await pool.query(
-        `INSERT INTO activity_log (task_id, user_id, action_type, details)
-   VALUES ($1, $2, 'recurring_created', $3)`,
-        [taskId, req.user!.id, JSON.stringify({ frequency })]
+        `INSERT INTO activity_log (task_id, user_id, action_type, details, company_id)
+   VALUES ($1, $2, 'recurring_created', $3, $4)`,
+        [taskId, req.user!.id, JSON.stringify({ frequency }), taskCompanyId]
     );
 
     res.json(result);
@@ -76,14 +87,20 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
 router.delete('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id: taskId } = req.params;
 
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
+
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role)) {
         res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
         return;
     }
     await pool.query(
         `UPDATE recurring_tasks SET is_active = false, updated_at = NOW()
-   WHERE template_task_id = $1`,
-        [taskId]
+   WHERE template_task_id = $1 AND company_id = $2`,
+        [taskId, companyId]
     );
     res.json({ message: 'Recurența a fost dezactivată.' });
 }));

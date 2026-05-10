@@ -38,9 +38,15 @@ router.get('/avatar/:userId', async (req: Request, res: Response) => {
  */
 router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: 'Companie activă lipsește.' });
+            return;
+        }
+
         const { rows } = await pool.query(
-            'SELECT file_data, file_mime, file_name, task_id FROM task_attachments WHERE id = $1',
-            [req.params.attachmentId]
+            'SELECT file_data, file_mime, file_name, task_id FROM task_attachments WHERE id = $1 AND company_id = $2',
+            [req.params.attachmentId, companyId]
         );
 
         if (rows.length === 0 || !rows[0].file_data) {
@@ -52,14 +58,19 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
-        // Admin/superadmin can access all attachments
+        // Admin/superadmin can access all attachments within their company
         if (userRole !== 'admin' && userRole !== 'superadmin') {
             // Check if user is task creator, assignee, or subtask assignee
             const { rows: access } = await pool.query(`
-                SELECT 1 FROM tasks WHERE id = $1 AND deleted_at IS NULL AND (created_by = $2 OR assigned_to = $2)
+                SELECT 1 FROM tasks
+                  WHERE id = $1 AND deleted_at IS NULL AND company_id = $3
+                    AND (created_by = $2 OR assigned_to = $2)
                 UNION
-                SELECT 1 FROM subtasks WHERE task_id = $1 AND assigned_to = $2 AND deleted_at IS NULL
-            `, [task_id, userId]);
+                SELECT 1 FROM subtasks st
+                  JOIN tasks t ON t.id = st.task_id
+                  WHERE st.task_id = $1 AND st.assigned_to = $2 AND st.deleted_at IS NULL
+                    AND t.company_id = $3
+            `, [task_id, userId, companyId]);
 
             if (access.length === 0) {
                 res.status(403).json({ error: 'Nincs hozzáférésed ehhez a fájlhoz.' });
