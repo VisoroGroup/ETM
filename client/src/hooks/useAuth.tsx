@@ -38,15 +38,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const magicLinkToken = isMagicLinkRoute ? params.get('token') : null;
 
         if (magicLinkToken) {
-            // Clean URL immediately so the raw token isn't kept in history.
+            // Audit-3 H20: keep the token in sessionStorage until verify
+            // resolves. If the POST fails (network blip, tab crash), the
+            // user can refresh and try again with the same token — without
+            // this stash, the token is unrecoverable the moment we strip
+            // it from the URL.
+            sessionStorage.setItem('visoro_pending_magic_link', magicLinkToken);
             window.history.replaceState({}, '', '/');
             axios.post('/api/auth/magic-link/verify', { token: magicLinkToken })
                 .then(({ data }) => {
+                    sessionStorage.removeItem('visoro_pending_magic_link');
                     safeLocalStorage.set('visoro_token', data.token);
                     checkAuth();
                 })
                 .catch((err) => {
                     console.error('Magic link verify failed:', err);
+                    // Only drop the stash if the server confirmed the token
+                    // is unusable (4xx). Network errors leave it in place.
+                    if (err?.response?.status >= 400 && err?.response?.status < 500) {
+                        sessionStorage.removeItem('visoro_pending_magic_link');
+                    }
                     const tt = makeT('ro');
                     alert(tt('login.magic_link_verify_failed'));
                     setLoading(false);

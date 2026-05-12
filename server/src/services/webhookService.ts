@@ -198,6 +198,25 @@ export function startWebhookRetryProcessor(): void {
         let client: PoolClient | null = null;
         try {
             client = await pool.connect();
+
+            // Watchdog (audit-3 C16): recover deliveries stuck in 'sending'.
+            // The HTTP send has a 10s timeout (DELIVERY_TIMEOUT), so anything
+            // still 'sending' after 5 minutes means the worker process died
+            // mid-delivery (OOM, deploy, k8s eviction). Reset such rows to
+            // 'retrying' so the next tick (or another replica) picks them up.
+            // Without this, deliveries silently rot forever.
+            const stuck = await client.query(
+                `UPDATE webhook_deliveries
+                    SET status = 'retrying',
+                        next_retry_at = NOW(),
+                        updated_at = NOW(),
+                        error_message = COALESCE(error_message, '') || ' [recovered from sending-stuck state]'
+                  WHERE status = 'sending' AND updated_at < NOW() - INTERVAL '5 minutes'`
+            );
+            if ((stuck.rowCount ?? 0) > 0) {
+                console.log(`[WEBHOOK] watchdog recovered ${stuck.rowCount} stuck delivery row(s)`);
+            }
+
             await client.query('BEGIN');
             // Atomically claim a batch of due retries: SKIP LOCKED prevents
             // two replicas from processing the same delivery.

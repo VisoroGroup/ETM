@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { tasksApi, userPreferencesApi } from '../../services/api';
-import { Task, STATUSES, DEPARTMENTS } from '../../types';
+import { Task, STATUSES, DEPARTMENTS, departmentLabel } from '../../types';
 import { formatDate, timeAgo } from '../../utils/helpers';
 import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
@@ -246,7 +246,7 @@ export default function CompletedTasksPage() {
                                                                     borderColor: DEPARTMENTS[task.department_label].border
                                                                 }}
                                                             >
-                                                                {DEPARTMENTS[task.department_label].label}
+                                                                {departmentLabel(task.department_label, t)}
                                                             </span>
                                                         )}
                                                     </div>
@@ -340,7 +340,7 @@ export default function CompletedTasksPage() {
                                                             borderColor: DEPARTMENTS[task.department_label].border
                                                         }}
                                                     >
-                                                        {DEPARTMENTS[task.department_label].label}
+                                                        {departmentLabel(task.department_label, t)}
                                                     </span>
                                                 )}
                                             </div>

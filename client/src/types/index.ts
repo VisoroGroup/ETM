@@ -225,6 +225,33 @@ export const STATUSES: Record<TaskStatus, { label: string; color: string; bg: st
     blocat: { label: 'Blocat', color: '#F87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.4)' },
 };
 
+// i18n-aware label helpers (audit-3 H16). DEPARTMENTS / STATUSES above keep
+// their RO labels for backwards-compat with the many consumers that still
+// read `.label` directly. New code should prefer these helpers so HU/EN
+// users see translated text.
+//
+// Usage:
+//   const { t } = useTranslation();
+//   const label = departmentLabel('departament_1', t);
+export type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+export function departmentLabel(key: Department | string, t: TFn): string {
+    const translated = t(`departments.${key}`);
+    // If t() returned the raw key (no translation), fall back to the RO label.
+    if (translated === `departments.${key}`) {
+        return DEPARTMENTS[key as Department]?.label ?? String(key);
+    }
+    return translated;
+}
+
+export function statusLabel(key: TaskStatus | string, t: TFn): string {
+    const translated = t(`statuses.${key}`);
+    if (translated === `statuses.${key}`) {
+        return STATUSES[key as TaskStatus]?.label ?? String(key);
+    }
+    return translated;
+}
+
 /**
  * Frequency keys for recurring tasks.
  * Labels are translated via `t('task_form.frequency_<key>')` at the usage site.

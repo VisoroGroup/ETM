@@ -10,6 +10,7 @@ import {
     resolveRecipientLocale,
 } from '../services/notificationEmailService';
 import { tServer } from '../i18n/serverI18n';
+import { userIsInCompany } from '../utils/tenantGuard';
 
 const router = Router({ mergeParams: true });
 
@@ -37,6 +38,14 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
 
         if (!title) {
             res.status(400).json({ error: 'Titlul subtask-ului este obligatoriu.' });
+            return;
+        }
+
+        // Tenant guard on assigned_to (audit-3 C11): without this, a crafted
+        // user UUID from another tenant can be assigned as subtask owner
+        // (then receives notifications + email in the wrong company).
+        if (assigned_to && companyId !== undefined && !(await userIsInCompany(assigned_to, companyId))) {
+            res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
             return;
         }
 
@@ -152,6 +161,12 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
             return;
         }
         const oldRows = [oldSubtask];
+
+        // Tenant guard on assigned_to (audit-3 C11): reject UUIDs from other tenants.
+        if (assigned_to && companyId !== undefined && !(await userIsInCompany(assigned_to, companyId))) {
+            res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+            return;
+        }
 
         const updates: string[] = [];
         const values: any[] = [];

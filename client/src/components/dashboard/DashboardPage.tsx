@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { dashboardApi, tasksApi, alertsApi } from '../../services/api';
 import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
@@ -11,12 +11,26 @@ import {
     ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
-import CalendarView from './CalendarView';
-import ReportModal from './ReportModal';
-import DashboardCustomizer from './DashboardCustomizer';
-import TaskDrawer from '../tasks/TaskDrawer';
 import InlineStatusPill from '../tasks/InlineStatusPill';
 import type { WidgetConfig } from '../../types';
+
+// Lazy-load the heavy children (audit-3 H30). These three pull in
+// recharts, react-big-calendar, @hello-pangea/dnd, and react-easy-crop —
+// roughly 600 KB combined — into the main bundle even when the user
+// never opens the calendar/customizer/drawer. Lazy-loading drops the
+// dashboard's first-paint cost dramatically.
+const CalendarView = lazy(() => import('./CalendarView'));
+const ReportModal = lazy(() => import('./ReportModal'));
+const DashboardCustomizer = lazy(() => import('./DashboardCustomizer'));
+const TaskDrawer = lazy(() => import('../tasks/TaskDrawer'));
+
+function LazyLoadFallback() {
+    return (
+        <div className="flex items-center justify-center p-8">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+        </div>
+    );
+}
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -447,7 +461,9 @@ export default function DashboardPage() {
                         <CalendarDays className="w-4 h-4 text-blue-400" />
                         {t('dashboard.calendar_title')}
                     </h3>
-                    <CalendarView />
+                    <Suspense fallback={<LazyLoadFallback />}>
+                        <CalendarView />
+                    </Suspense>
                 </div>
             ) : (
                 <>
@@ -469,17 +485,27 @@ export default function DashboardPage() {
                     )}
                 </>
             )}
-            {showReport && <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />}
-            {showCustomizer && <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />}
+            {showReport && (
+                <Suspense fallback={<LazyLoadFallback />}>
+                    <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />
+                </Suspense>
+            )}
+            {showCustomizer && (
+                <Suspense fallback={<LazyLoadFallback />}>
+                    <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />
+                </Suspense>
+            )}
             {selectedTaskId && (
-                <TaskDrawer
-                    taskId={selectedTaskId}
-                    onClose={() => setSelectedTaskId(null)}
-                    onUpdate={() => {
-                        // Reload tasks after update
-                        tasksApi.list().then(res => setAllTasks(res.tasks || res)).catch(() => {});
-                    }}
-                />
+                <Suspense fallback={<LazyLoadFallback />}>
+                    <TaskDrawer
+                        taskId={selectedTaskId}
+                        onClose={() => setSelectedTaskId(null)}
+                        onUpdate={() => {
+                            // Reload tasks after update
+                            tasksApi.list().then(res => setAllTasks(res.tasks || res)).catch(() => {});
+                        }}
+                    />
+                </Suspense>
             )}
         </div>
     );

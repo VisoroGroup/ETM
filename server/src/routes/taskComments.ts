@@ -12,6 +12,7 @@ import {
     resolveRecipientLocale,
 } from '../services/notificationEmailService';
 import { tServer } from '../i18n/serverI18n';
+import { filterUsersInCompany } from '../utils/tenantGuard';
 
 const router = Router({ mergeParams: true });
 
@@ -91,6 +92,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
 
         // Validate mentions are valid UUIDs
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let cleanMentions: string[] = [];
         if (mentions && Array.isArray(mentions)) {
             for (const mid of mentions) {
                 if (!uuidRegex.test(mid)) {
@@ -98,7 +100,16 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                     return;
                 }
             }
+            // Tenant guard (audit-3 C12): drop any mention referring to a user
+            // who isn't a member of the active company. Otherwise a comment in
+            // company A could spawn an in-app + email notification for a user
+            // in company B (they'd see a task they can't access).
+            if (mentions.length > 0 && companyId !== undefined) {
+                cleanMentions = await filterUsersInCompany(mentions, companyId);
+            }
         }
+        // Use the filtered list everywhere below.
+        const mentionsToStore = cleanMentions;
 
         // Validate parent_comment_id belongs to this task (and tenant)
         if (parent_comment_id) {
@@ -117,7 +128,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         const { rows } = await pool.query(
             `INSERT INTO task_comments (task_id, author_id, content, mentions, parent_comment_id, company_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [taskId, req.user!.id, content, mentions, parent_comment_id, companyId]
+            [taskId, req.user!.id, content, mentionsToStore, parent_comment_id, companyId]
         );
 
         // Activity log
@@ -126,7 +137,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
        VALUES ($1, $2, 'comment_added', $3, $4)`,
             [taskId, req.user!.id, JSON.stringify({
                 comment_preview: content.substring(0, 100),
-                mentions
+                mentions: mentionsToStore
             }), companyId]
         );
 
@@ -134,9 +145,9 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         try {
             const notifyUsers = new Set<string>();
 
-            // Notify mentioned users
-            if (mentions && mentions.length > 0) {
-                for (const mentionedId of mentions) {
+            // Notify mentioned users (filtered to active-tenant members)
+            if (mentionsToStore.length > 0) {
+                for (const mentionedId of mentionsToStore) {
                     if (mentionedId !== req.user!.id) notifyUsers.add(mentionedId);
                 }
             }
@@ -155,7 +166,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
             const taskTitle = taskRows[0]?.title || 'Sarcină';
 
             for (const userId of notifyUsers) {
-                const isMention = mentions && mentions.includes(userId);
+                const isMention = mentionsToStore.includes(userId);
                 await pool.query(
                     `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
                      VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -174,7 +185,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
             if (allNotifyIds.length > 0) {
                 const stakeholders = await getSpecificStakeholders(allNotifyIds, req.user!.id);
                 for (const su of stakeholders) {
-                    const isMention = mentions && mentions.includes(su.id);
+                    const isMention = mentionsToStore.includes(su.id);
                     const language = await resolveRecipientLocale(su.id, companyId);
                     const actor = req.user!.display_name;
                     const subtitleKey = isMention ? 'notif_email.sub_mention' : 'notif_email.sub_comment';

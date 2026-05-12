@@ -30,7 +30,8 @@
     "error_loading": "Hiba a betöltés során.",
     "error_saving": "Hiba a mentés során.",
     "no_company_active": "Nincs aktív cég kiválasztva.",
-    "error": "Hiba"
+    "error": "Hiba",
+    "skip_to_main": "Ugrás a tartalomhoz"
   },
   "sidebar": {
     "no_companies": "Nincs elérhető cég.",
@@ -1014,5 +1015,20 @@
     "col_department": "Osztály",
     "col_creator": "Létrehozta",
     "col_subtasks": "Részfeladatok"
+  },
+  "departments": {
+    "departament_1": "1 - HR - Kommunikáció",
+    "departament_2": "2 - Értékesítés",
+    "departament_3": "3 - Pénzügy",
+    "departament_4": "4 - Termelés",
+    "departament_5": "5 - Minőség és képzés",
+    "departament_6": "6 - Bővítés",
+    "departament_7": "7 - Adminisztráció"
+  },
+  "statuses": {
+    "de_rezolvat": "Megoldandó",
+    "in_realizare": "Folyamatban",
+    "terminat": "Befejezve",
+    "blocat": "Blokkolva"
   }
 }

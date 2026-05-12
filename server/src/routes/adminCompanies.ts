@@ -28,15 +28,30 @@ function slugify(s: string): string {
         .slice(0, 50);
 }
 
-// GET /api/admin/companies — list ALL companies including archived. Both admin
-// and superadmin can read this.
-router.get('/', asyncHandler(async (_req: AuthRequest, res: Response) => {
-    const { rows } = await pool.query<Company>(
-        `SELECT id, name, sidebar_name, slug, language, template_type, color, icon,
-                sort_order, is_archived, created_at, updated_at
-           FROM companies
-          ORDER BY sort_order ASC, id ASC`
-    );
+// GET /api/admin/companies — list companies the caller can administer.
+// Superadmin sees every company (incl. archived). Admin sees only the
+// companies they're a member of (via user_companies). Without this scope a
+// Hungary admin could enumerate Visoro Global / Neo Plan metadata they have
+// no business seeing.
+router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const isSuperadmin = req.user!.role === 'superadmin';
+    const callerId = req.user!.id;
+    const { rows } = isSuperadmin
+        ? await pool.query<Company>(
+            `SELECT id, name, sidebar_name, slug, language, template_type, color, icon,
+                    sort_order, is_archived, created_at, updated_at
+               FROM companies
+              ORDER BY sort_order ASC, id ASC`
+        )
+        : await pool.query<Company>(
+            `SELECT c.id, c.name, c.sidebar_name, c.slug, c.language, c.template_type, c.color, c.icon,
+                    c.sort_order, c.is_archived, c.created_at, c.updated_at
+               FROM companies c
+               JOIN user_companies uc ON uc.company_id = c.id
+              WHERE uc.user_id = $1
+              ORDER BY c.sort_order ASC, c.id ASC`,
+            [callerId]
+        );
     res.json({ companies: rows });
 }));
 

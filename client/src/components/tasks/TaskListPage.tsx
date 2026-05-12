@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { tasksApi, savedFiltersApi, userPreferencesApi, departmentsApi } from '../../services/api';
-import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS, OrgDepartment } from '../../types';
+import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS, OrgDepartment, departmentLabel } from '../../types';
 import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
@@ -396,7 +396,7 @@ export default function TaskListPage() {
         if (failed.length > 0) {
             showToast(t('tasks.bulk_partial_failure', { ok: String(ok), fail: String(failed.length), titles: failed.join(', ') }), 'error');
         } else {
-            showToast(`${ok} task → ${DEPARTMENTS[dept].label}`);
+            showToast(`${ok} task → ${departmentLabel(dept, t)}`);
         }
         setSelectedIds(new Set());
         loadTasks();
@@ -564,7 +564,7 @@ export default function TaskListPage() {
                                                 }`}
                                             style={active ? { background: DEPARTMENTS[dept].color } : undefined}
                                         >
-                                            {DEPARTMENTS[dept].label}
+                                            {departmentLabel(dept, t)}
                                         </button>
                                     );
                                 })}
@@ -669,7 +669,7 @@ export default function TaskListPage() {
                                                 <span className="font-medium text-white truncate">{task.title}</span>
                                             </div>
                                             <div className="md:hidden mt-1 text-[10px] text-navy-400">
-                                                {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                                                {task.assigned_department_name || (task.department_label ? departmentLabel(task.department_label, t) : '—')}
                                                 {task.assigned_section_name && ` · ${task.assigned_section_name}`}
                                             </div>
                                         </td>

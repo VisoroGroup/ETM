@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { X, FileDown, Loader2 } from 'lucide-react';
 import { safeLocalStorage } from '../../utils/storage';
 import { useTranslation, TFunction } from '../../i18n/I18nContext';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 
 interface Props {
     isOpen: boolean;
@@ -28,6 +29,8 @@ function getLast12Months(t: TFunction): { value: string; label: string }[] {
 
 export default function ReportModal({ isOpen, onClose }: Props) {
     const { t } = useTranslation();
+    // Audit-3 H21/H24: Esc closes, focus restored on close.
+    useModalDismiss(isOpen, onClose);
     const months = useMemo(() => getLast12Months(t), [t]);
     const [month, setMonth] = useState(months[0].value);
     const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');

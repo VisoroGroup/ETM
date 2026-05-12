@@ -136,7 +136,7 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(clientBuildPath));
     app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
-            res.status(404).json({ error: 'API endpoint not found' });
+            res.status(404).json({ error: 'Endpoint API inexistent.' });
             return;
         }
         res.sendFile(path.join(clientBuildPath, 'index.html'));

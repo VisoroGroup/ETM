@@ -5,6 +5,7 @@ import { profileApi } from '../../services/api';
 import UserAvatar from '../ui/UserAvatar';
 import AvatarCropper from '../ui/AvatarCropper';
 import { useTranslation } from '../../i18n/I18nContext';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 
 interface Props {
     onClose: () => void;
@@ -14,6 +15,8 @@ interface Props {
 export default function ProfileModal({ onClose, darkMode }: Props) {
     const { t } = useTranslation();
     const { user, refreshUser } = useAuth();
+    // Audit-3 H21/H24: Esc closes, focus restored on close.
+    useModalDismiss(true, onClose);
     const [displayName, setDisplayName] = useState(user?.display_name || '');
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);

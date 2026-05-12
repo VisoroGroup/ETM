@@ -1,33 +1,39 @@
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import ro from './locales/ro.json';
 import hu from './locales/hu.json';
+import en from './locales/en.json';
 import { useCompany } from '../hooks/useCompany';
 import { CompanyLanguage } from '../types';
 
 type Translations = typeof ro;
 
+// EN is currently partial — most user-visible strings translated, the rest
+// fall back to RO. RO is the fully-populated master.  (audit-3 H15)
 const DICTIONARIES: Record<CompanyLanguage, Translations> = {
     ro,
     hu: hu as Translations,
-    en: ro, // fallback to Romanian for now
+    // `as unknown as Translations` because en.json is intentionally a
+    // partial translation — missing keys fall back to RO at lookup time.
+    en: en as unknown as Translations,
 };
+
+const FALLBACK_DICT: Translations = ro;
 
 /**
  * Resolve a dotted key (e.g. "sidebar.dark_mode") against a nested translation
- * object. Returns the key itself if missing — that makes typos easy to spot
- * during development.
+ * object. Returns null if missing so the caller can try the fallback dict.
  */
-function lookup(dict: any, dottedKey: string): string {
+function lookup(dict: any, dottedKey: string): string | null {
     const parts = dottedKey.split('.');
     let cur = dict;
     for (const p of parts) {
         if (cur && typeof cur === 'object' && p in cur) {
             cur = cur[p];
         } else {
-            return dottedKey;
+            return null;
         }
     }
-    return typeof cur === 'string' ? cur : dottedKey;
+    return typeof cur === 'string' ? cur : null;
 }
 
 /**
@@ -48,7 +54,12 @@ export type TFunction = (key: string, vars?: Record<string, string | number>) =>
  *  (e.g. one sidebar block per company in its own language). */
 export function makeT(language: CompanyLanguage): TFunction {
     const dict = DICTIONARIES[language] ?? ro;
-    return (key, vars) => interpolate(lookup(dict, key), vars);
+    return (key, vars) => {
+        // Try the requested language first, then fall back to RO (master),
+        // then return the raw key so missing translations are obvious in dev.
+        const value = lookup(dict, key) ?? lookup(FALLBACK_DICT, key) ?? key;
+        return interpolate(value, vars);
+    };
 }
 
 interface I18nContextType {

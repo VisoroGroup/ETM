@@ -193,21 +193,33 @@ export async function createTask(
 
     // Auto-resolve responsible user based on which scope was picked.
     // Priority: post.user_id > section.head_user_id > department.head_user_id
+    // CRITICAL: every lookup filters by company_id so a crafted UUID pointing
+    // at another tenant's post/section/department cannot leak that tenant's
+    // user_id into this task. (IDOR fix — audit-3 C8.)
     if (!assigned_to) {
         if (assigned_post_id) {
-            const { rows: postRows } = await pool.query('SELECT user_id FROM posts WHERE id = $1', [assigned_post_id]);
+            const { rows: postRows } = await pool.query(
+                'SELECT user_id FROM posts WHERE id = $1 AND company_id = $2',
+                [assigned_post_id, companyId]
+            );
             if (postRows[0]?.user_id) {
                 assigned_to = postRows[0].user_id;
                 console.log(`📧 [task_create] Auto-resolved post → user ${assigned_to}`);
             }
         } else if (assigned_section_id) {
-            const { rows: secRows } = await pool.query('SELECT head_user_id FROM sections WHERE id = $1', [assigned_section_id]);
+            const { rows: secRows } = await pool.query(
+                'SELECT head_user_id FROM sections WHERE id = $1 AND company_id = $2',
+                [assigned_section_id, companyId]
+            );
             if (secRows[0]?.head_user_id) {
                 assigned_to = secRows[0].head_user_id;
                 console.log(`📧 [task_create] Auto-resolved section head → user ${assigned_to}`);
             }
         } else if (assigned_department_id) {
-            const { rows: deptRows } = await pool.query('SELECT head_user_id FROM departments WHERE id = $1', [assigned_department_id]);
+            const { rows: deptRows } = await pool.query(
+                'SELECT head_user_id FROM departments WHERE id = $1 AND company_id = $2',
+                [assigned_department_id, companyId]
+            );
             if (deptRows[0]?.head_user_id) {
                 assigned_to = deptRows[0].head_user_id;
                 console.log(`📧 [task_create] Auto-resolved department head → user ${assigned_to}`);
@@ -369,16 +381,30 @@ export async function updateTask(
             updates.push(`assigned_department_id = $${paramIndex++}`);
             values.push(newDeptId);
 
-            // Auto-resolve assigned_to from the chosen scope if caller didn't set it explicitly
+            // Auto-resolve assigned_to from the chosen scope if caller didn't set it explicitly.
+            // Tenant filter on every post/section/department lookup so cross-
+            // tenant UUIDs cannot leak another company's user (audit-3 C8).
+            // Use the task's existing company_id (loaded into oldTask above)
+            // as the authoritative tenant.
             if (data.assigned_to === undefined) {
+                const taskCid = oldTask.company_id ?? companyId;
                 if (newPostId) {
-                    const { rows } = await client.query('SELECT user_id FROM posts WHERE id = $1', [newPostId]);
+                    const { rows } = await client.query(
+                        'SELECT user_id FROM posts WHERE id = $1 AND company_id = $2',
+                        [newPostId, taskCid]
+                    );
                     if (rows[0]?.user_id) resolvedAssignee = rows[0].user_id;
                 } else if (newSectionId) {
-                    const { rows } = await client.query('SELECT head_user_id FROM sections WHERE id = $1', [newSectionId]);
+                    const { rows } = await client.query(
+                        'SELECT head_user_id FROM sections WHERE id = $1 AND company_id = $2',
+                        [newSectionId, taskCid]
+                    );
                     if (rows[0]?.head_user_id) resolvedAssignee = rows[0].head_user_id;
                 } else if (newDeptId) {
-                    const { rows } = await client.query('SELECT head_user_id FROM departments WHERE id = $1', [newDeptId]);
+                    const { rows } = await client.query(
+                        'SELECT head_user_id FROM departments WHERE id = $1 AND company_id = $2',
+                        [newDeptId, taskCid]
+                    );
                     if (rows[0]?.head_user_id) resolvedAssignee = rows[0].head_user_id;
                 }
                 if (resolvedAssignee !== undefined) {

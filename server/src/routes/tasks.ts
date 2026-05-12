@@ -12,6 +12,7 @@ import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail, reso
 import { tServer } from '../i18n/serverI18n';
 import { getCompletionReportRecipients, buildCompletionReportHtml } from '../services/taskCompletionReportService';
 import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
+import { userIsInCompany, rowIsInCompany } from '../utils/tenantGuard';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
 import taskAttachmentRoutes from './taskAttachments';
@@ -209,24 +210,28 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
       LEFT JOIN departments direct_sec_dept ON direct_sec.department_id = direct_sec_dept.id
       -- Department scope (direct)
       LEFT JOIN departments direct_dept ON t.assigned_department_id = direct_dept.id
+      -- audit-3 H4: every aggregate subquery filters by company_id so it
+      -- doesn't scan all tenants' data before joining on task_id. At scale
+      -- this turned a cheap index seek into a full-table aggregate.
       LEFT JOIN (
         SELECT task_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE is_completed = true) AS completed
-        FROM subtasks WHERE deleted_at IS NULL GROUP BY task_id
+        FROM subtasks WHERE deleted_at IS NULL AND company_id = $1 GROUP BY task_id
       ) sub ON sub.task_id = t.id
       LEFT JOIN (
         SELECT task_id, MAX(created_at) AS last_activity
-        FROM activity_log GROUP BY task_id
+        FROM activity_log WHERE company_id = $1 GROUP BY task_id
       ) al ON al.task_id = t.id
-      LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id
+      LEFT JOIN recurring_tasks rt ON rt.template_task_id = t.id AND rt.company_id = $1
       LEFT JOIN (
-        SELECT blocked_task_id, COUNT(*) AS dep_count
+        SELECT td2.blocked_task_id, COUNT(*) AS dep_count
         FROM task_dependencies td2
         JOIN tasks bt2 ON td2.blocking_task_id = bt2.id AND bt2.status != 'terminat'
-        GROUP BY blocked_task_id
+        WHERE td2.company_id = $1
+        GROUP BY td2.blocked_task_id
       ) deps ON deps.blocked_task_id = t.id
       LEFT JOIN (
         SELECT blocking_task_id, COUNT(*) AS blocks_count
-        FROM task_dependencies
+        FROM task_dependencies WHERE company_id = $1
         GROUP BY blocking_task_id
       ) blks ON blks.blocking_task_id = t.id
       ${whereClause}
@@ -260,9 +265,31 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
         res.status(400).json({ error: 'Companie activă lipsește.' });
         return;
     }
+    // Tenant guard on referenced UUIDs (audit-3 C9 + C13): assigned_to,
+    // assigned_post_id, assigned_section_id, assigned_department_id are
+    // shape-validated by Zod but NOT tenant-validated. Without this, a
+    // crafted payload could bind another company's post/section/dept/user
+    // into a task in the active tenant.
+    const cid = req.activeCompanyId;
+    if (req.body.assigned_to && !(await userIsInCompany(req.body.assigned_to, cid))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_post_id && !(await rowIsInCompany('posts', req.body.assigned_post_id, cid))) {
+        res.status(400).json({ error: 'Postul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_section_id && !(await rowIsInCompany('sections', req.body.assigned_section_id, cid))) {
+        res.status(400).json({ error: 'Subdepartamentul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_department_id && !(await rowIsInCompany('departments', req.body.assigned_department_id, cid))) {
+        res.status(400).json({ error: 'Departamentul nu aparține acestei companii.' });
+        return;
+    }
     // The service now writes company_id directly in the initial INSERT, so
     // side-effect inserts (activity_log, notifications) all see the right tenant.
-    const task = await taskService.createTask(req.body, req.user!.id, req.activeCompanyId);
+    const task = await taskService.createTask(req.body, req.user!.id, cid);
     res.status(201).json(task);
 }));
 
@@ -314,6 +341,25 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
         return;
     }
 
+    // Tenant guard on referenced UUIDs in the body (audit-3 C9 + C13).
+    const cid2 = req.activeCompanyId;
+    if (req.body.assigned_to && !(await userIsInCompany(req.body.assigned_to, cid2))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_post_id && !(await rowIsInCompany('posts', req.body.assigned_post_id, cid2))) {
+        res.status(400).json({ error: 'Postul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_section_id && !(await rowIsInCompany('sections', req.body.assigned_section_id, cid2))) {
+        res.status(400).json({ error: 'Subdepartamentul nu aparține acestei companii.' });
+        return;
+    }
+    if (req.body.assigned_department_id && !(await rowIsInCompany('departments', req.body.assigned_department_id, cid2))) {
+        res.status(400).json({ error: 'Departamentul nu aparține acestei companii.' });
+        return;
+    }
+
     const result = await taskService.updateTask(req.params.id, req.body, req.user!.id, req.activeCompanyId);
     if (result === null) {
         res.status(400).json({ error: 'Nimic de actualizat.' });
@@ -352,42 +398,75 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             return;
         }
 
-        // Get current status (tenant-scoped)
-        const { rows: current } = await pool.query(
-            'SELECT status FROM tasks WHERE id = $1 AND company_id = $2',
-            [id, req.activeCompanyId]
-        );
-        if (current.length === 0) {
-            res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
-            return;
-        }
-
-        const oldStatus = current[0].status;
-
-        // Status transition rules:
-        // - 'terminat' (completed) is a terminal state. Reopening it requires
-        //   admin/superadmin/manager to avoid accidental "un-finish" by users.
-        if (oldStatus === 'terminat' && status !== 'terminat') {
-            const callerRole = req.user!.role;
-            const canReopen = callerRole === 'superadmin' || callerRole === 'admin' || callerRole === 'manager';
-            if (!canReopen) {
-                res.status(403).json({ error: 'Doar managerii și administratorii pot redeschide o sarcină finalizată.' });
+        // Atomic read-modify-write (audit-3 C15): wrap status flip in a
+        // transaction with FOR UPDATE so two concurrent "complete" clicks
+        // can't both see 'de_rezolvat', both flip to 'terminat', both fire
+        // completion emails + both spawn the next recurring task.
+        const txClient = await pool.connect();
+        let oldStatus: string;
+        let rows: any[];
+        try {
+            await txClient.query('BEGIN');
+            const { rows: current } = await txClient.query(
+                'SELECT status FROM tasks WHERE id = $1 AND company_id = $2 FOR UPDATE',
+                [id, req.activeCompanyId]
+            );
+            if (current.length === 0) {
+                await txClient.query('ROLLBACK');
+                res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
                 return;
             }
+            oldStatus = current[0].status;
+
+            // Idempotent: if the status is already what the caller wants,
+            // commit nothing and respond 200 without re-firing side effects.
+            if (oldStatus === status) {
+                await txClient.query('ROLLBACK');
+                const { rows: existing } = await pool.query(
+                    'SELECT * FROM tasks WHERE id = $1 AND company_id = $2',
+                    [id, req.activeCompanyId]
+                );
+                res.json(existing[0]);
+                return;
+            }
+
+            // Status transition rules: 'terminat' is terminal. Reopening it
+            // requires admin/superadmin/manager.
+            if (oldStatus === 'terminat' && status !== 'terminat') {
+                const callerRole = req.user!.role;
+                const canReopen = callerRole === 'superadmin' || callerRole === 'admin' || callerRole === 'manager';
+                if (!canReopen) {
+                    await txClient.query('ROLLBACK');
+                    res.status(403).json({ error: 'Doar managerii și administratorii pot redeschide o sarcină finalizată.' });
+                    return;
+                }
+            }
+
+            const r = await txClient.query(
+                `UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`,
+                [status, id, req.activeCompanyId]
+            );
+            rows = r.rows;
+
+            // Log status change inside the transaction so the audit row is
+            // atomic with the mutation (avoids "status moved but no log" if
+            // process dies between).
+            await txClient.query(
+                `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by, company_id)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [id, oldStatus, status, reason || null, req.user!.id, req.activeCompanyId]
+            );
+
+            await txClient.query('COMMIT');
+        } catch (err) {
+            await txClient.query('ROLLBACK');
+            throw err;
+        } finally {
+            txClient.release();
         }
 
-        // Update task (tenant-scoped)
-        const { rows } = await pool.query(
-            `UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`,
-            [status, id, req.activeCompanyId]
-        );
-
-        // Log status change
-        await pool.query(
-            `INSERT INTO task_status_changes (task_id, old_status, new_status, reason, changed_by, company_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-            [id, oldStatus, status, reason || null, req.user!.id, req.activeCompanyId]
-        );
+        // (task_status_changes INSERT now lives inside the FOR UPDATE
+        // transaction above — keeping it outside re-fired duplicates on race.)
 
         // Activity log
         await pool.query(
@@ -398,15 +477,18 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
         // If status changed to 'terminat', auto-resolve all alerts
         if (status === 'terminat') {
+            // Tenant filter (audit-3 C14): defense-in-depth so a hypothetical
+            // cross-tenant task id can't update another company's alerts.
             await pool.query(
-                `UPDATE task_alerts SET is_resolved = true, resolved_at = NOW() WHERE task_id = $1 AND is_resolved = false`,
-                [id]
+                `UPDATE task_alerts SET is_resolved = true, resolved_at = NOW()
+                 WHERE task_id = $1 AND is_resolved = false AND company_id = $2`,
+                [id, req.activeCompanyId]
             );
 
             // Also handle recurring tasks — wrapped in transaction for atomicity
             const { rows: recurringRows } = await pool.query(
-                `SELECT * FROM recurring_tasks WHERE template_task_id = $1 AND is_active = true`,
-                [id]
+                `SELECT * FROM recurring_tasks WHERE template_task_id = $1 AND is_active = true AND company_id = $2`,
+                [id, req.activeCompanyId]
             );
 
             if (recurringRows.length > 0) {

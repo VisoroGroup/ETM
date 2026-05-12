@@ -31,26 +31,26 @@ const FALLBACK_AVATARS = [
     { avatar: 'from-teal-500 to-cyan-500',      border: 'border-teal-500' },
 ];
 
-// Cache: authorId -> color pair
-const authorColorCache = new Map<string, { avatar: string; border: string }>();
-let fallbackIndex = 0;
+// Deterministic color picker (audit-3 H31). Previously used a module-level
+// mutable Map + counter (`authorColorCache`, `fallbackIndex`) — same author
+// got different colors across reloads / route navigations, and the counter
+// grew unbounded for the process lifetime. Now: derive the color from a
+// stable hash of authorId, no mutable state.
+function hashStringToInt(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h);
+}
 
 function getAuthorColors(authorId: string, authorName?: string): { avatar: string; border: string } {
-    if (authorColorCache.has(authorId)) return authorColorCache.get(authorId)!;
-
-    // Try matching by first name
+    // Try matching by first name first (gives recognisable colors to known users).
     const firstName = (authorName || '').split(' ')[0].toLowerCase();
     const named = NAMED_COLORS[firstName];
-    if (named) {
-        authorColorCache.set(authorId, named);
-        return named;
-    }
-
-    // Fallback: assign next available color
-    const fb = FALLBACK_AVATARS[fallbackIndex % FALLBACK_AVATARS.length];
-    fallbackIndex++;
-    authorColorCache.set(authorId, fb);
-    return fb;
+    if (named) return named;
+    // Stable fallback: hash(authorId) % palette.length.
+    return FALLBACK_AVATARS[hashStringToInt(authorId) % FALLBACK_AVATARS.length];
 }
 
 function getAvatarColor(authorId: string, authorName?: string): string {

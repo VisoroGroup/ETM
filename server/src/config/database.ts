@@ -46,9 +46,20 @@ function getSslConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
     return false;
 }
 
+// Pool sizing + timeouts (audit-3 H8):
+//   max: default 10 was too low for an app with parallelizable endpoints
+//     (dashboard widgets, day-view week, notification fan-out) — bumped to
+//     20. Override with PG_POOL_MAX env var for larger Railway plans.
+//   statement_timeout: 30s ceiling on any single query — prevents a runaway
+//     scan from holding a connection forever.
+//   idleTimeoutMillis: 30s — release idle connections so they don't pin
+//     server resources, but keep the pool warm enough for burst load.
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: getSslConfig(),
+    max: parseInt(process.env.PG_POOL_MAX || '20', 10),
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 30_000,
 });
 
 // --- Pool error handling with retry ---

@@ -18,46 +18,94 @@ interface MsGraphUser {
 
 type SqlValue = string | number | boolean | null | string[];
 
-// One-time auth code store — codes expire after 60 seconds and are single-use
+// One-time auth code + OAuth state stores live in the DB (audit-3 C17).
+// Previously they were in-memory Maps — broke on multi-replica Railway.
 const AUTH_CODE_TTL_MS = 60_000;
-const authCodeStore = new Map<string, { token: string; expiresAt: number }>();
-
-// OAuth state store for CSRF protection. State value is short-lived
-// (5 minutes) and bound to the user's browser via cookie.
 const OAUTH_STATE_TTL_MS = 5 * 60_000;
-const oauthStateStore = new Map<string, { expiresAt: number }>();
 
-// Clean up expired codes/states every 5 minutes
+async function storeAuthCode(code: string, token: string): Promise<void> {
+    const expiresAt = new Date(Date.now() + AUTH_CODE_TTL_MS);
+    await pool.query(
+        `INSERT INTO auth_codes (code, token, expires_at) VALUES ($1, $2, $3)`,
+        [code, token, expiresAt]
+    );
+}
+
+async function consumeAuthCode(code: string): Promise<string | null> {
+    // Atomic claim: SELECT FOR UPDATE → check expiry → DELETE in one transaction.
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows } = await client.query<{ token: string; expires_at: Date }>(
+            `SELECT token, expires_at FROM auth_codes WHERE code = $1 FOR UPDATE`,
+            [code]
+        );
+        if (rows.length === 0) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+        await client.query(`DELETE FROM auth_codes WHERE code = $1`, [code]);
+        await client.query('COMMIT');
+        if (new Date(rows[0].expires_at).getTime() < Date.now()) return null;
+        return rows[0].token;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+async function storeOauthState(state: string): Promise<void> {
+    const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_MS);
+    await pool.query(
+        `INSERT INTO oauth_states (state, expires_at) VALUES ($1, $2)`,
+        [state, expiresAt]
+    );
+}
+
+async function consumeOauthState(state: string): Promise<boolean> {
+    // Atomic claim: matches state, checks expiry, deletes regardless (so even
+    // a mismatch on expiry doesn't leave a reusable row — audit-3 H1).
+    const { rows } = await pool.query<{ expires_at: Date }>(
+        `DELETE FROM oauth_states WHERE state = $1 RETURNING expires_at`,
+        [state]
+    );
+    if (rows.length === 0) return false;
+    return new Date(rows[0].expires_at).getTime() >= Date.now();
+}
+
+// Clean up expired rows once every 5 minutes (cheap, single SQL).
 setInterval(() => {
-    const now = Date.now();
-    for (const [code, entry] of authCodeStore) {
-        if (entry.expiresAt < now) {
-            authCodeStore.delete(code);
-        }
-    }
-    for (const [state, entry] of oauthStateStore) {
-        if (entry.expiresAt < now) {
-            oauthStateStore.delete(state);
-        }
-    }
-}, 5 * 60_000);
+    pool.query(`DELETE FROM auth_codes WHERE expires_at < NOW()`).catch(() => {});
+    pool.query(`DELETE FROM oauth_states WHERE expires_at < NOW()`).catch(() => {});
+}, 5 * 60_000).unref();
+
+// Strict allowlist for Host-header fallback. The OLD regex
+// `/:|localhost|127\.0\.0\.1/` accepted ANY host containing a colon
+// (e.g. `evil.com:443`) — host-header spoofing defeated the hardening
+// entirely. Require the host to be exactly localhost or 127.0.0.1, with
+// an optional port. (audit-3 C19)
+const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1)(:\d+)?$/i;
 
 function getServerUrl(req: Request): string {
     // Prefer the explicitly configured SERVER_URL; never trust the Host header
     // for OAuth redirects (host-header spoofing → token redirect to attacker).
     if (process.env.SERVER_URL) return process.env.SERVER_URL;
-    // Fallback: only allow if running locally; otherwise refuse to derive.
     const host = req.headers.host;
-    if (!host || /:|localhost|127\.0\.0\.1/.test(host) === false) {
-        throw new Error('SERVER_URL must be configured for OAuth.');
+    if (!host || !LOCAL_HOST_RE.test(host)) {
+        throw new Error('SERVER_URL must be configured (host header fallback only allowed for localhost/127.0.0.1).');
     }
     return `http://${host}`;
 }
 
-function getClientUrl(_req: Request): string {
+function getClientUrl(req: Request): string {
     // Same hardening as getServerUrl — never trust Host header.
     if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
-    return process.env.SERVER_URL || 'http://localhost:5173';
+    if (process.env.SERVER_URL) return process.env.SERVER_URL;
+    const host = req.headers.host;
+    if (host && LOCAL_HOST_RE.test(host)) return `http://${host}`;
+    throw new Error('CLIENT_URL must be configured (host header fallback only allowed for localhost/127.0.0.1).');
 }
 
 const router = Router();
@@ -87,9 +135,10 @@ router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
 
         // Generate a one-time CSRF state and store both server-side and in a
-        // signed cookie so the callback can verify it.
+        // signed cookie so the callback can verify it. State persists in the
+        // DB so it survives multi-replica deploys (audit-3 C17).
         const state = crypto.randomBytes(24).toString('hex');
-        oauthStateStore.set(state, { expiresAt: Date.now() + OAUTH_STATE_TTL_MS });
+        await storeOauthState(state);
         res.cookie('oauth_state', state, {
             httpOnly: true,
             sameSite: 'lax',
@@ -132,17 +181,20 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
             ?.slice('oauth_state='.length);
         if (!state || typeof state !== 'string' || !cookieState || state !== cookieState) {
             res.clearCookie('oauth_state', { path: '/api/auth' });
+            // Defensive: if the cookie state happens to match a stored row
+            // (e.g. replayed), consume-and-discard it so it can't be reused.
+            if (typeof state === 'string' && state.length === 48) {
+                await consumeOauthState(state).catch(() => {});
+            }
             res.redirect(`${clientUrl}/?error=oauth_state_mismatch`);
             return;
         }
-        const stateEntry = oauthStateStore.get(state);
-        if (!stateEntry || stateEntry.expiresAt < Date.now()) {
-            res.clearCookie('oauth_state', { path: '/api/auth' });
+        const stateValid = await consumeOauthState(state);
+        res.clearCookie('oauth_state', { path: '/api/auth' });
+        if (!stateValid) {
             res.redirect(`${clientUrl}/?error=oauth_state_expired`);
             return;
         }
-        oauthStateStore.delete(state);
-        res.clearCookie('oauth_state', { path: '/api/auth' });
 
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
         const tokenResponse = await getMsalApp().acquireTokenByCode({
@@ -231,12 +283,11 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
 
         const token = generateToken(user);
 
-        // Generate one-time auth code instead of putting JWT in URL
+        // Generate one-time auth code instead of putting JWT in URL.
+        // Persisted in DB so multi-replica Railway deploys can exchange
+        // codes regardless of which replica handles the callback (audit-3 C17).
         const authCode = crypto.randomUUID();
-        authCodeStore.set(authCode, {
-            token,
-            expiresAt: Date.now() + AUTH_CODE_TTL_MS,
-        });
+        await storeAuthCode(authCode, token);
 
         // Redirect with short-lived code — client will exchange it for the JWT
         res.redirect(`${clientUrl}/?code=${authCode}`);
@@ -257,23 +308,13 @@ router.post('/exchange', async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const entry = authCodeStore.get(code);
-
-        if (!entry) {
-            res.status(401).json({ error: 'Cod de autentificare invalid sau deja folosit.' });
+        const issuedToken = await consumeAuthCode(code);
+        if (!issuedToken) {
+            res.status(401).json({ error: 'Cod de autentificare invalid, expirat sau deja folosit.' });
             return;
         }
 
-        // Delete immediately — single use
-        authCodeStore.delete(code);
-
-        // Check expiration
-        if (entry.expiresAt < Date.now()) {
-            res.status(401).json({ error: 'Codul de autentificare a expirat.' });
-            return;
-        }
-
-        res.json({ token: entry.token });
+        res.json({ token: issuedToken });
     } catch (err) {
         console.error('Auth code exchange error:', err);
         res.status(500).json({ error: 'Eroare la schimbul codului de autentificare.' });
@@ -336,9 +377,9 @@ router.post(
             const rawToken = crypto.randomBytes(32).toString('hex');
             const tokenHash = hashMagicToken(rawToken);
             const expiresAt = new Date(Date.now() + MAGIC_LINK_TTL_MS);
-            const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-                || req.socket.remoteAddress
-                || null;
+            // Use Express's req.ip — honours `trust proxy` so attackers can't
+            // spoof X-Forwarded-For directly. (audit-3 M)
+            const ip = req.ip || req.socket.remoteAddress || null;
             const ua = (req.headers['user-agent'] as string) || null;
 
             await pool.query(
@@ -363,10 +404,20 @@ router.post(
                 if (v === 'ro' || v === 'hu' || v === 'en') lang = v;
             } catch { /* fall back to ro */ }
 
-            // Build the deep link. Prefer CLIENT_URL; fall back to the request
-            // origin (host header) only when CLIENT_URL isn't set — same
-            // hardening as the OAuth flow.
-            const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+            // Build the deep link with the same host-header hardening as the
+            // OAuth flow (audit-3 C20). Previously fell back to
+            // `https://${req.headers.host}` with no validation — a Host
+            // header attack could send the magic link to attacker.com,
+            // intercepting the token. getClientUrl throws if CLIENT_URL
+            // isn't set AND the host isn't localhost.
+            let clientUrl: string;
+            try {
+                clientUrl = getClientUrl(req);
+            } catch (err) {
+                console.error('[magic-link] cannot derive CLIENT_URL — refusing to send link:', err);
+                res.json({ ok: true });
+                return;
+            }
             const link = `${clientUrl}/auth/magic-link?token=${encodeURIComponent(rawToken)}`;
 
             // Fire-and-forget — never let a Graph API error leak whether the
@@ -390,7 +441,9 @@ router.post(
     async (req: Request, res: Response): Promise<void> => {
         try {
             const raw = typeof req.body?.token === 'string' ? req.body.token : '';
-            if (!raw || raw.length < 32 || raw.length > 256) {
+            // Tokens are exactly 64 hex chars (32 random bytes → hex). Reject
+            // anything else before hashing — saves a DB round-trip on garbage.
+            if (!raw || raw.length !== 64 || !/^[a-f0-9]+$/.test(raw)) {
                 res.status(401).json({ error: 'Link invalid sau expirat.' });
                 return;
             }
@@ -435,9 +488,12 @@ router.post(
 
                 // Resolve the user NOW (at verify time, not at request time):
                 // an admin may have deactivated the account between request
-                // and verify, and we must respect that.
+                // and verify, and we must respect that. Explicit column list
+                // excludes the BYTEA avatar_data + microsoft_id (audit-3 M).
                 const { rows: users } = await client.query(
-                    `SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true LIMIT 1`,
+                    `SELECT id, email, display_name, avatar_url, departments, role,
+                            is_active, created_at, updated_at, reports_to
+                       FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true LIMIT 1`,
                     [link.email]
                 );
                 if (users.length === 0) {
@@ -661,9 +717,11 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
             }
         }
 
-        // Department change scope guard: a non-superadmin admin can only modify users
-        // who share at least one company with them (via user_companies).
-        if (departments && isAdmin && !isSuperadmin && req.user!.id !== id) {
+        // Tenant scope guard: a non-superadmin admin can only modify users
+        // who share at least one company with them. Applies to ROLE as well
+        // as departments — previously this guard only ran for `departments`,
+        // letting an admin demote any user across tenants.
+        if (isAdmin && !isSuperadmin && callerId !== id && (role || departments)) {
             const { rows: shared } = await pool.query(
                 `SELECT 1
                    FROM user_companies uc_target
@@ -672,7 +730,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
                   WHERE uc_target.user_id = $1
                     AND uc_caller.user_id = $2
                   LIMIT 1`,
-                [id, req.user!.id]
+                [id, callerId]
             );
             if (shared.length === 0) {
                 res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });

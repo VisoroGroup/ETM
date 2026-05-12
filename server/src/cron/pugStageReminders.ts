@@ -332,6 +332,24 @@ async function runPugStageReminderJob() {
                 const deadlineFormatted = formatDate(s.deadline, lang);
                 const overdue = days < 0;
 
+                // CLAIM the level BEFORE sending (audit-3 C18). Previously the
+                // INSERT ran AFTER the email loop; if the process died mid-
+                // loop, the next 07:00 run re-sent every email for the stage.
+                // We use ON CONFLICT DO NOTHING + RETURNING — if another
+                // replica already claimed this (level, stage), our INSERT
+                // returns 0 rows and we skip the send entirely.
+                const claim = await pool.query(
+                    `INSERT INTO pug_stage_reminder_log (company_id, project_stage_id, level)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (project_stage_id, level) DO NOTHING
+                     RETURNING id`,
+                    [s.company_id, s.stage_id, level]
+                );
+                if (claim.rowCount === 0) {
+                    skippedCount++;
+                    continue;
+                }
+
                 for (const u of responsibles) {
                     const phrases = phrasesFor({
                         lang,
@@ -378,13 +396,8 @@ async function runPugStageReminderJob() {
                     }
                 }
 
-                // Record that this level has been sent.
-                await pool.query(
-                    `INSERT INTO pug_stage_reminder_log (company_id, project_stage_id, level)
-                     VALUES ($1, $2, $3)
-                     ON CONFLICT (project_stage_id, level) DO NOTHING`,
-                    [s.company_id, s.stage_id, level]
-                );
+                // (Level was already claimed BEFORE the send loop above —
+                // audit-3 C18.)
                 sentCount++;
             }
         }

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { SkeletonDrawer } from '../ui/Skeleton';
 import { useTranslation } from '../../i18n/I18nContext';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { tasksApi, notificationsApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
-import { STATUSES, DEPARTMENTS } from '../../types';
+import { STATUSES, DEPARTMENTS, statusLabel, departmentLabel } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
@@ -40,6 +41,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const td = useTaskDetail(taskId);
     const task = td.task;
     const loading = td.loading;
+    // Audit-3 H21/H24: Esc closes the drawer, focus restored on close.
+    useModalDismiss(true, onClose);
     const [activeTab, setActiveTab] = useState<Tab>('subtasks');
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
     const { user, users } = useAuth();
@@ -103,7 +106,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         }
 
         td.changeStatus.mutate({ status: newStatus }, {
-            onSuccess: () => { showToast(t('task_drawer.toast_status_changed', { status: STATUSES[newStatus].label })); onUpdate(); },
+            onSuccess: () => { showToast(t('task_drawer.toast_status_changed', { status: statusLabel(newStatus, t) })); onUpdate(); },
             onError: (err: any) => showToast(err.response?.data?.error || t('common.error'), 'error'),
         });
     }
@@ -200,7 +203,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     if (loading || !task) {
         return (
-            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={t('common.loading')}>
                 <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in rounded-t-2xl md:rounded-none overflow-hidden" onClick={e => e.stopPropagation()}>
                     <SkeletonDrawer />
                 </div>
@@ -242,7 +245,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     return (
         <>
-            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={task?.title || 'Task details'}>
                 {/* Mobile: full-screen bottom sheet. Desktop: right side panel */}
                 <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in flex flex-col overflow-hidden rounded-t-2xl md:rounded-none" onClick={e => e.stopPropagation()}>
                     {/* Header */}
@@ -324,7 +327,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                 >
                                     {task.status === 'blocat' && <Ban className="w-3 h-3" />}
                                     {task.status === 'terminat' && <CheckCircle2 className="w-3 h-3" />}
-                                    {STATUSES[task.status].label}
+                                    {statusLabel(task.status, t)}
                                     <ChevronDown className="w-3 h-3" />
                                 </button>
                                 {statusMenuOpen && (
@@ -337,7 +340,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                                                 disabled={s === task.status}
                                             >
                                                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUSES[s].color }} />
-                                                {STATUSES[s].label}
+                                                {statusLabel(s, t)}
                                             </button>
                                         ))}
                                     </div>

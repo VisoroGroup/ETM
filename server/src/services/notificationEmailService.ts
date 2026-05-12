@@ -31,6 +31,18 @@ export function hasAzureCredentials(): boolean {
     );
 }
 
+// In-memory cache for the recipient-locale lookup (audit-3 H5). The lookup
+// hits companies + user_companies and is invoked once per email recipient
+// during fan-out — without a cache, a status change with 20 stakeholders
+// fires 20 separate JOIN queries. Cache TTL is short enough that an admin
+// changing a company's language propagates within a minute.
+const LOCALE_CACHE_TTL_MS = 60_000;
+const localeCache = new Map<string, { value: ServerLocale; expiresAt: number }>();
+
+function cacheKey(userId: string, companyId?: number | null): string {
+    return `${userId}:${companyId ?? 'any'}`;
+}
+
 /**
  * Look up the language to use for a notification email destined for `userId`.
  *
@@ -44,6 +56,11 @@ export async function resolveRecipientLocale(
     userId: string,
     companyId?: number | null
 ): Promise<ServerLocale> {
+    const key = cacheKey(userId, companyId);
+    const cached = localeCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    let resolved: ServerLocale = 'ro';
     try {
         if (companyId != null) {
             const { rows } = await pool.query(
@@ -54,22 +71,33 @@ export async function resolveRecipientLocale(
                   LIMIT 1`,
                 [userId, companyId]
             );
-            if (rows.length > 0) return pickLocale(rows[0].language);
+            if (rows.length > 0) resolved = pickLocale(rows[0].language);
         }
-        const { rows } = await pool.query(
-            `SELECT c.language
-               FROM companies c
-               JOIN user_companies uc ON uc.company_id = c.id
-              WHERE uc.user_id = $1
-              ORDER BY c.id ASC
-              LIMIT 1`,
-            [userId]
-        );
-        if (rows.length > 0) return pickLocale(rows[0].language);
+        if (resolved === 'ro' && companyId == null) {
+            const { rows } = await pool.query(
+                `SELECT c.language
+                   FROM companies c
+                   JOIN user_companies uc ON uc.company_id = c.id
+                  WHERE uc.user_id = $1
+                  ORDER BY c.id ASC
+                  LIMIT 1`,
+                [userId]
+            );
+            if (rows.length > 0) resolved = pickLocale(rows[0].language);
+        }
     } catch (err: any) {
         console.warn('[NOTIF_EMAIL] resolveRecipientLocale failed:', err?.message);
     }
-    return 'ro';
+
+    localeCache.set(key, { value: resolved, expiresAt: Date.now() + LOCALE_CACHE_TTL_MS });
+    // Soft cap on cache size so a long-running process doesn't grow unbounded.
+    if (localeCache.size > 5000) {
+        const cutoff = Date.now();
+        for (const [k, v] of localeCache) {
+            if (v.expiresAt < cutoff) localeCache.delete(k);
+        }
+    }
+    return resolved;
 }
 
 /**

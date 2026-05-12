@@ -83,6 +83,15 @@ export async function authMiddleware(
     res: Response,
     next: NextFunction
 ): Promise<void> {
+    // SELECT list for the user row loaded on every authed request. Explicitly
+    // excludes the BYTEA avatar_data + avatar_mime columns (audit-3 H3):
+    // those can be 100 KB+ each, and shipping them on every API call wastes
+    // bandwidth (DB → Node → JSON-serialize, just to be discarded). Avatars
+    // are served separately by /api/files/avatar/:userId.
+    const USER_SELECT_COLS =
+        'id, microsoft_id, email, display_name, avatar_url, departments, ' +
+        'role, is_active, created_at, updated_at, deactivated_at, reports_to';
+
     // Dev mode bypass — NEVER active in production
     if (process.env.DEV_AUTH_BYPASS === 'true' && isLocalDev) {
         try {
@@ -92,7 +101,7 @@ export async function authMiddleware(
                 const token = authHeader.substring(7);
                 try {
                     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-                    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
+                    const { rows } = await pool.query(`SELECT ${USER_SELECT_COLS} FROM users WHERE id = $1 AND is_active = true`, [decoded.id]);
                     if (rows.length > 0) {
                         req.user = rows[0];
                         await loadCompanyContext(req, rows[0].id, rows[0].role);
@@ -104,7 +113,7 @@ export async function authMiddleware(
             }
 
             // Use the first user as dev user
-            const { rows } = await pool.query('SELECT * FROM users WHERE is_active = true ORDER BY created_at LIMIT 1');
+            const { rows } = await pool.query(`SELECT ${USER_SELECT_COLS} FROM users WHERE is_active = true ORDER BY created_at LIMIT 1`);
             if (rows.length > 0) {
                 req.user = rows[0];
                 await loadCompanyContext(req, rows[0].id, rows[0].role);
@@ -130,7 +139,7 @@ export async function authMiddleware(
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-        const { rows } = await pool.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
+        const { rows } = await pool.query(`SELECT ${USER_SELECT_COLS} FROM users WHERE id = $1 AND is_active = true`, [decoded.id]);
 
         if (rows.length === 0) {
             res.status(401).json({ error: 'Utilizator negăsit.' });

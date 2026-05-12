@@ -360,7 +360,10 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 
     // If assignee change requested
     if (assigned_to !== undefined) {
-        const result = await taskService.updateTask(id, { assigned_to: assigned_to || undefined }, req.user!.id);
+        // Pass companyId so taskService.updateTask applies its defense-in-depth
+        // company_id filter (audit-3 C10). Without it, the service's SELECT
+        // FOR UPDATE falls back to the no-tenant query path.
+        const result = await taskService.updateTask(id, { assigned_to: assigned_to || undefined }, req.user!.id, companyId);
         if (result === undefined) {
             res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
             return;

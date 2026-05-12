@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { userIsInCompany } from '../utils/tenantGuard';
 
 const router = Router();
 
@@ -155,6 +156,14 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
         return;
     }
 
+    // Tenant guard on head_user_id (audit-3 C13): refuse a head user from
+    // another tenant. Department head receives notifications + email for
+    // every task scoped to this department.
+    if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
+
     // Get next sort_order (per company)
     const { rows: maxOrder } = await pool.query(
         'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM departments WHERE company_id = $1',
@@ -178,6 +187,12 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
     }
     const { id } = req.params;
     const { name, color, head_user_id, pfv, statistic_name, sort_order } = req.body;
+
+    // Tenant guard on head_user_id (audit-3 C13).
+    if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
 
     const { rows } = await pool.query(`
         UPDATE departments SET
@@ -262,6 +277,12 @@ router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req:
         return;
     }
 
+    // Tenant guard on head_user_id (audit-3 C13).
+    if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
+
     const { rows: maxOrder } = await pool.query(
         'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM sections WHERE department_id = $1 AND company_id = $2',
         [department_id, req.activeCompanyId]
@@ -284,6 +305,12 @@ router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: 
     }
     const { id } = req.params;
     const { name, head_user_id, pfv, sort_order } = req.body;
+
+    // Tenant guard on head_user_id (audit-3 C13).
+    if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
 
     const { rows } = await pool.query(`
         UPDATE sections SET
@@ -369,6 +396,13 @@ router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(asy
         return;
     }
 
+    // Tenant guard on user_id (audit-3 C13): assigning a foreign-tenant user
+    // to a post cascades into tasks via the post-user-change trigger below.
+    if (user_id && !(await userIsInCompany(user_id, req.activeCompanyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
+
     const { rows: maxOrder } = await pool.query(
         'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM posts WHERE section_id = $1 AND company_id = $2',
         [sectionId, req.activeCompanyId]
@@ -393,6 +427,12 @@ router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: Aut
     const companyId = req.activeCompanyId;
     const { id } = req.params;
     const { name, user_id, description, sort_order } = req.body;
+
+    // Tenant guard on user_id (audit-3 C13).
+    if (user_id && !(await userIsInCompany(user_id, companyId))) {
+        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        return;
+    }
 
     const client = await pool.connect();
     try {

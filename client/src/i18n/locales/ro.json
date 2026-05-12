@@ -30,7 +30,8 @@
     "error_loading": "Eroare la încărcare.",
     "error_saving": "Eroare la salvare.",
     "no_company_active": "Companie activă lipsește.",
-    "error": "Eroare"
+    "error": "Eroare",
+    "skip_to_main": "Sari la conținut"
   },
   "sidebar": {
     "no_companies": "Nicio companie disponibilă.",
@@ -1014,5 +1015,20 @@
     "col_department": "Departament",
     "col_creator": "Creat de",
     "col_subtasks": "Subtask-uri"
+  },
+  "departments": {
+    "departament_1": "1 - HR - Comunicare",
+    "departament_2": "2 - Vânzări",
+    "departament_3": "3 - Financiar",
+    "departament_4": "4 - Producție",
+    "departament_5": "5 - Calitate și calificare",
+    "departament_6": "6 - Extindere",
+    "departament_7": "7 - Administrativ"
+  },
+  "statuses": {
+    "de_rezolvat": "De rezolvat",
+    "in_realizare": "În realizare",
+    "terminat": "Terminat",
+    "blocat": "Blocat"
   }
 }

@@ -25,23 +25,68 @@ const avatarUpload = multer({
     }
 });
 
-// GET /api/admin/users — list all users with their departments, roles, and
-// the IDs of companies they have access to.
-router.get('/users', asyncHandler(async (_req: AuthRequest, res: Response) => {
+// Tenant scope helper: returns true iff the caller is superadmin or shares
+// at least one company with the target user (or is the user themselves).
+// Used by every admin endpoint that mutates / discloses a user record.
+async function callerCanTouchUser(
+    callerId: string,
+    callerRole: string,
+    targetUserId: string,
+): Promise<boolean> {
+    if (callerRole === 'superadmin') return true;
+    if (callerId === targetUserId) return true;
+    const { rows } = await pool.query(
+        `SELECT 1 FROM user_companies uc_target
+           JOIN user_companies uc_caller ON uc_caller.company_id = uc_target.company_id
+          WHERE uc_target.user_id = $1 AND uc_caller.user_id = $2 LIMIT 1`,
+        [targetUserId, callerId]
+    );
+    return rows.length > 0;
+}
+
+// GET /api/admin/users — list users an admin can actually see.
+// Superadmin sees everyone (cross-tenant by design). Admins see only users
+// who share at least one company with them. Without this scope, a Hungary
+// admin could enumerate every Visoro Global user (email, microsoft_id, role).
+router.get('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
-        const { rows } = await pool.query(`
-            SELECT u.id, u.microsoft_id, u.email, u.display_name, u.avatar_url,
-                   u.departments, u.role, u.is_active, u.created_at, u.updated_at,
-                   COALESCE(
-                       (SELECT array_agg(uc.company_id ORDER BY uc.company_id)
-                          FROM user_companies uc
-                         WHERE uc.user_id = u.id),
-                       ARRAY[]::int[]
-                   ) AS company_ids
-              FROM users u
-             WHERE u.is_active = true
-             ORDER BY u.display_name ASC
-        `);
+        const isSuperadmin = req.user!.role === 'superadmin';
+        const callerId = req.user!.id;
+        const { rows } = isSuperadmin
+            ? await pool.query(`
+                SELECT u.id, u.microsoft_id, u.email, u.display_name, u.avatar_url,
+                       u.departments, u.role, u.is_active, u.created_at, u.updated_at,
+                       COALESCE(
+                           (SELECT array_agg(uc.company_id ORDER BY uc.company_id)
+                              FROM user_companies uc
+                             WHERE uc.user_id = u.id),
+                           ARRAY[]::int[]
+                       ) AS company_ids
+                  FROM users u
+                 WHERE u.is_active = true
+                 ORDER BY u.display_name ASC
+            `)
+            : await pool.query(`
+                SELECT u.id, u.microsoft_id, u.email, u.display_name, u.avatar_url,
+                       u.departments, u.role, u.is_active, u.created_at, u.updated_at,
+                       COALESCE(
+                           (SELECT array_agg(uc.company_id ORDER BY uc.company_id)
+                              FROM user_companies uc
+                             WHERE uc.user_id = u.id),
+                           ARRAY[]::int[]
+                       ) AS company_ids
+                  FROM users u
+                 WHERE u.is_active = true
+                   AND (
+                       u.id = $1
+                       OR EXISTS (
+                           SELECT 1 FROM user_companies uc_t
+                             JOIN user_companies uc_c ON uc_c.company_id = uc_t.company_id
+                            WHERE uc_t.user_id = u.id AND uc_c.user_id = $1
+                       )
+                   )
+                 ORDER BY u.display_name ASC
+            `, [callerId]);
         res.json(rows);
     } catch (err) {
         console.error('Admin users error:', err);
@@ -141,6 +186,17 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         return;
     }
 
+    // Tenant scope guard: non-superadmin admins may only modify users with
+    // whom they share at least one company. Applies to ROLE, DEPARTMENTS, and
+    // EMAIL alike — previously this guard only ran for `departments`, leaving
+    // role/email writable across tenants.
+    if (!isSuperadmin && target.id !== callerId && (role || departments || email)) {
+        if (!(await callerCanTouchUser(callerId, callerRole, target.id))) {
+            res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
+            return;
+        }
+    }
+
     // Superadmin may set any role; a regular admin can only set 'user' or 'manager'.
     const allowed_roles = isSuperadmin
         ? ['superadmin', 'admin', 'manager', 'user']
@@ -170,24 +226,8 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         return;
     }
 
-    // Department change scope guard for non-superadmin admins:
-    // they may only modify users with whom they share at least one company.
-    if (departments && isAdmin && !isSuperadmin && req.user!.id !== id) {
-        const { rows: shared } = await pool.query(
-            `SELECT 1
-               FROM user_companies uc_target
-               JOIN user_companies uc_caller
-                 ON uc_caller.company_id = uc_target.company_id
-              WHERE uc_target.user_id = $1
-                AND uc_caller.user_id = $2
-              LIMIT 1`,
-            [id, req.user!.id]
-        );
-        if (shared.length === 0) {
-            res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
-            return;
-        }
-    }
+    // (The department-scope guard above now lives in the combined
+    // share-company check that runs for role/departments/email.)
 
     if (departments) {
         if (!Array.isArray(departments)) {
@@ -315,6 +355,7 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
 
     // Hierarchy guard: only superadmin may deactivate admins/superadmins.
     const callerRole = req.user!.role;
+    const callerId = req.user!.id;
     const isSuperadmin = callerRole === 'superadmin';
     const { rows: targetRows } = await pool.query<{ role: string }>(
         'SELECT role FROM users WHERE id = $1',
@@ -326,6 +367,13 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
     }
     if (!isSuperadmin && rank(targetRows[0].role) >= rank(callerRole)) {
         res.status(403).json({ error: 'Nu poți dezactiva un utilizator cu rol egal sau superior.' });
+        return;
+    }
+    // Tenant scope guard: non-superadmin admins may only deactivate users
+    // who share at least one company with them. Without this, a Hungary admin
+    // could deactivate a Neo Plan user via direct API call.
+    if (!isSuperadmin && !(await callerCanTouchUser(callerId, callerRole, id))) {
+        res.status(403).json({ error: 'Nu poți dezactiva un utilizator dintr-o companie din afara ariei tale.' });
         return;
     }
 
@@ -487,6 +535,16 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
     const { rows: currentUser } = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
     if (currentUser.length === 0) {
         res.status(404).json({ error: 'Utilizator negăsit.' });
+        return;
+    }
+
+    // Tenant scope guard: avatar overwrite is a privacy-sensitive op (the
+    // avatar is visible across the app). Restrict to shared-company / self /
+    // superadmin so a Hungary admin can't overwrite a Neo Plan user's photo.
+    const callerRole = req.user!.role;
+    const callerId = req.user!.id;
+    if (!(await callerCanTouchUser(callerId, callerRole, id))) {
+        res.status(403).json({ error: 'Nu poți modifica avatarul unui utilizator dintr-o companie din afara ariei tale.' });
         return;
     }
 

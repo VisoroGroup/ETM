@@ -12,6 +12,7 @@ import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import CompanyGoalBanner from './CompanyGoalBanner';
 import { Company, CompanyTemplateType } from '../../types';
 
@@ -72,6 +73,8 @@ export default function Layout() {
     });
     const [showProfile, setShowProfile] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    // Audit-3 H21/H24: Esc dismisses the logout confirm dialog.
+    useModalDismiss(showLogoutConfirm, () => setShowLogoutConfirm(false));
     const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Persist dark mode
@@ -117,6 +120,10 @@ export default function Layout() {
 
     return (
         <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+            {/* Skip-to-main-content link (audit-3 low). Visible only on keyboard focus. */}
+            <a href="#main-content" className="skip-link focus:outline-none focus:ring-2 focus:ring-blue-400 rounded">
+                {t('common.skip_to_main')}
+            </a>
             {/* Sidebar — hidden on mobile, visible md+ */}
             <aside className={`${collapsed ? 'w-16' : 'w-64'} ${darkMode ? 'bg-navy-900 border-navy-800' : 'bg-white border-gray-200'} border-r hidden md:flex flex-col transition-all duration-300 fixed h-full z-40`}>
                 {/* Logo */}
@@ -232,7 +239,7 @@ export default function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 overflow-y-auto overflow-x-hidden`}>
+            <main id="main-content" tabIndex={-1} className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 overflow-y-auto overflow-x-hidden`}>
                 {/* Mobile-only top bar — surfaces the bell + active company name.
                     Hidden on md+ because the sidebar already exposes both. */}
                 <header className={`md:hidden sticky top-0 z-30 h-14 flex items-center justify-between px-4 border-b ${
