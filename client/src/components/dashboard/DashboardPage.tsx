@@ -38,7 +38,12 @@ export default function DashboardPage() {
     useEffect(() => {
         // Skip until we know which company to query — the X-Active-Company
         // header would otherwise be missing and the API would 400.
-        if (!activeCompany) return;
+        // If the user belongs to NO companies, drop the spinner so the page
+        // shows an empty/no-access state instead of hanging on Loader2 forever.
+        if (!activeCompany) {
+            setLoading(false);
+            return;
+        }
         let cancelled = false;
 
         async function loadDashboard() {
@@ -413,7 +418,7 @@ export default function DashboardPage() {
 
             {/* Stat Cards — slim */}
             {isVisible('global_stats') && (
-            <div className="grid grid-cols-4 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
                 {statCards.map((card, i) => (
                     <div
                         key={i}

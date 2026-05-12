@@ -177,6 +177,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         u.avatar_url AS creator_avatar,
         au.display_name AS assignee_name,
         au.avatar_url AS assignee_avatar,
+        au.email AS assignee_email,
         ap.name AS assigned_post_name,
         COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
         COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name,
@@ -190,6 +191,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         COALESCE(sub.completed, 0) AS subtask_completed,
         al.last_activity,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
+        rt.frequency AS recurring_frequency,
         (SELECT tsc.reason FROM task_status_changes tsc
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason,
@@ -362,6 +364,18 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
 
         const oldStatus = current[0].status;
 
+        // Status transition rules:
+        // - 'terminat' (completed) is a terminal state. Reopening it requires
+        //   admin/superadmin/manager to avoid accidental "un-finish" by users.
+        if (oldStatus === 'terminat' && status !== 'terminat') {
+            const callerRole = req.user!.role;
+            const canReopen = callerRole === 'superadmin' || callerRole === 'admin' || callerRole === 'manager';
+            if (!canReopen) {
+                res.status(403).json({ error: 'Doar managerii și administratorii pot redeschide o sarcină finalizată.' });
+                return;
+            }
+        }
+
         // Update task (tenant-scoped)
         const { rows } = await pool.query(
             `UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`,
@@ -403,13 +417,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 let nextDueDate = new Date(recurring.next_run_date);
                 switch (recurring.frequency) {
                     case 'daily':
-                        if (recurring.workdays_only) {
-                            do {
-                                nextDueDate.setDate(nextDueDate.getDate() + 1);
-                            } while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6);
-                        } else {
-                            nextDueDate.setDate(nextDueDate.getDate() + 1);
-                        }
+                        nextDueDate.setDate(nextDueDate.getDate() + 1);
                         break;
                     case 'weekly':
                         nextDueDate.setDate(nextDueDate.getDate() + 7);
@@ -426,6 +434,13 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     case 'yearly':
                         nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
                         break;
+                }
+                // Roll forward to the next workday for ANY frequency that
+                // requested workdays_only (previously only daily honored it).
+                if (recurring.workdays_only) {
+                    while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6) {
+                        nextDueDate.setDate(nextDueDate.getDate() + 1);
+                    }
                 }
 
                 // Use a transaction to ensure all recurring task operations succeed or fail together
@@ -564,16 +579,21 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     try {
                         const recipients = await getCompletionReportRecipients(id, req.user!.id);
                         if (recipients.length > 0) {
-                            const reportHtml = await buildCompletionReportHtml(id);
+                            // Build the report once per language so each recipient
+                            // gets it in their own locale instead of hardcoded RO.
+                            const reportHtmlByLang = new Map<string, string>();
                             for (const recipient of recipients) {
                                 const language = await resolveRecipientLocale(recipient.id, req.activeCompanyId);
+                                if (!reportHtmlByLang.has(language)) {
+                                    reportHtmlByLang.set(language, await buildCompletionReportHtml(id, language));
+                                }
                                 sendNotificationEmail({
                                     userId: recipient.id,
                                     userEmail: recipient.email,
                                     userName: recipient.display_name,
                                     taskId: id,
                                     subject: tServer(language, 'notif_email.subj_completion_report', { title: taskTitle }),
-                                    htmlBody: reportHtml,
+                                    htmlBody: reportHtmlByLang.get(language)!,
                                     emailType: 'completion_report',
                                     companyId: req.activeCompanyId,
                                 }).catch(err => console.error('[completion_report] Email error:', err));

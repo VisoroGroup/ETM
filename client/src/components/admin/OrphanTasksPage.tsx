@@ -166,8 +166,8 @@ export default function OrphanTasksPage() {
                                             </div>
                                             <div className="flex items-center gap-3 mt-1 text-[10px] text-navy-500">
                                                 <span className="flex items-center gap-1">
-                                                    <UserAvatar name={task.creator_name} avatarUrl={task.creator_avatar} size="xs" />
-                                                    {t('admin_orphan.created_by', { name: task.creator_name })}
+                                                    <UserAvatar name={task.creator_name ?? '?'} avatarUrl={task.creator_avatar} size="xs" />
+                                                    {t('admin_orphan.created_by', { name: task.creator_name ?? '—' })}
                                                 </span>
                                                 {task.assignee_name && (
                                                     <span className="flex items-center gap-1">

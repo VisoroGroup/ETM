@@ -183,10 +183,13 @@ export default function EmailLogsPage() {
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className="text-xs text-navy-300">
-                                            {new Date(log.sent_at).toLocaleString('ro-RO', {
-                                                day: '2-digit', month: '2-digit', year: 'numeric',
-                                                hour: '2-digit', minute: '2-digit'
-                                            })}
+                                            {new Date(log.sent_at).toLocaleString(
+                                                activeCompany?.language === 'hu' ? 'hu-HU' : activeCompany?.language === 'en' ? 'en-GB' : 'ro-RO',
+                                                {
+                                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                                    hour: '2-digit', minute: '2-digit'
+                                                }
+                                            )}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">

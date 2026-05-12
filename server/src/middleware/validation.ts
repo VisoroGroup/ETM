@@ -18,9 +18,14 @@ function validate<T>(schema: z.ZodSchema<T>) {
     };
 }
 
+// 50 KB ceiling for description: enough for a long brief, but small enough
+// that a malicious client can't paste a multi-megabyte payload that bloats
+// every task list/email render.
+const DESCRIPTION_MAX = 50_000;
+
 export const createTaskSchema = z.object({
     title: z.string().min(1, 'Titlul este obligatoriu').max(255),
-    description: z.string().nullable().optional(),
+    description: z.string().max(DESCRIPTION_MAX, `Descrierea poate fi maxim ${DESCRIPTION_MAX} caractere`).nullable().optional(),
     department_label: z.string().min(1),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD formátum szükséges'),
     assigned_to: z.string().uuid().nullable().optional(),
@@ -49,7 +54,7 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = z.object({
     title: z.string().min(1).max(255).optional(),
-    description: z.string().nullable().optional(),
+    description: z.string().max(DESCRIPTION_MAX).nullable().optional(),
     department_label: z.string().optional(),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD formátum szükséges').optional(),
     assigned_to: z.string().uuid().nullable().optional(),
@@ -73,10 +78,10 @@ export const createCommentSchema = z.object({
 
 export const createTemplateSchema = z.object({
     title: z.string().min(1, 'Titlul este obligatoriu').max(255),
-    description: z.string().optional(),
+    description: z.string().max(DESCRIPTION_MAX).optional(),
     department_label: z.string().min(1),
     assigned_to: z.string().uuid().nullable().optional(),
-    subtasks: z.array(z.object({ title: z.string().min(1) })).optional().default([]),
+    subtasks: z.array(z.object({ title: z.string().min(1).max(255) })).max(50).optional().default([]),
 });
 
 export const validateCreateTask = validate(createTaskSchema);

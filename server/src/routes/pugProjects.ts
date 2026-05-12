@@ -218,12 +218,27 @@ router.post('/', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyn
             );
         }
 
-        // Responsibles (optional list of user ids)
+        // Responsibles (optional list of user ids) — must belong to the same company.
         if (Array.isArray(responsible_ids) && responsible_ids.length > 0) {
-            const valuesSql = responsible_ids.map((_: string, i: number) => `($1, $${i + 2})`).join(', ');
+            const { rows: validRows } = await client.query<{ id: string }>(
+                `SELECT u.id FROM users u
+                  WHERE u.id = ANY($1::uuid[])
+                    AND u.is_active = true
+                    AND (u.role IN ('admin','superadmin')
+                         OR EXISTS (SELECT 1 FROM user_companies uc
+                                     WHERE uc.user_id = u.id AND uc.company_id = $2))`,
+                [responsible_ids, cid]
+            );
+            const validIds = validRows.map((r) => r.id);
+            if (validIds.length !== responsible_ids.length) {
+                await client.query('ROLLBACK');
+                res.status(400).json({ error: 'Utilizatori care nu aparțin acestei companii.' });
+                return;
+            }
+            const valuesSql = validIds.map((_: string, i: number) => `($1, $${i + 2})`).join(', ');
             await client.query(
                 `INSERT INTO pug_project_responsibles (project_id, user_id) VALUES ${valuesSql} ON CONFLICT DO NOTHING`,
-                [newId, ...responsible_ids]
+                [newId, ...validIds]
             );
         }
 
@@ -364,6 +379,18 @@ router.put('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(ens
         vals
     );
     if ((rowCount ?? 0) === 0) { res.status(404).json({ error: 'Etapă inexistentă.' }); return; }
+
+    // If the deadline moved, drop the reminder log so future levels can fire
+    // again. Without this, a stage whose deadline slips to a later date would
+    // never receive its d14/d7/d1 reminders again because the UNIQUE constraint
+    // (project_stage_id, level) keeps the old "already sent" rows.
+    if (deadline !== undefined) {
+        await pool.query(
+            'DELETE FROM pug_stage_reminder_log WHERE project_stage_id = $1',
+            [stageId]
+        );
+    }
+
     res.json({ ok: true });
 }));
 
@@ -447,6 +474,27 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2', [projectId, cid]
     );
     if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+
+    // Tenant guard: every user_id must belong to the project's company (via
+    // user_companies) OR be a superadmin/admin (cross-company by definition).
+    if (ids.length > 0) {
+        const { rows: validRows } = await pool.query<{ id: string }>(
+            `SELECT u.id FROM users u
+              WHERE u.id = ANY($1::uuid[])
+                AND u.is_active = true
+                AND (u.role IN ('admin','superadmin')
+                     OR EXISTS (SELECT 1 FROM user_companies uc
+                                 WHERE uc.user_id = u.id AND uc.company_id = $2))`,
+            [ids, cid]
+        );
+        const validSet = new Set(validRows.map((r) => r.id));
+        const invalid = ids.filter((id: string) => !validSet.has(id));
+        if (invalid.length > 0) {
+            res.status(400).json({ error: 'Utilizatori care nu aparțin acestei companii.', invalid });
+            return;
+        }
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

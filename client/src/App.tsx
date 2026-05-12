@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -7,23 +8,36 @@ import { ToastProvider } from './hooks/useToast';
 import LoginPage from './components/auth/LoginPage';
 import Layout from './components/layout/Layout';
 import DashboardPage from './components/dashboard/DashboardPage';
-import TaskListPage from './components/tasks/TaskListPage';
-import AdminPage from './components/admin/AdminPage';
-import EmailLogsPage from './components/emails/EmailLogsPage';
-import TemplatesPage from './pages/TemplatesPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import ActivityFeedPage from './components/activity/ActivityFeedPage';
-import DayViewPage from './components/dayview/DayViewPage';
-import WeekViewPage from './components/dayview/WeekViewPage';
-import CompletedTasksPage from './components/tasks/CompletedTasksPage';
-import SearchPage from './components/search/SearchPage';
-import OrphanTasksPage from './components/admin/OrphanTasksPage';
-import CompaniesAdminPage from './components/admin/CompaniesAdminPage';
-import ProjectsListPage from './components/projects/ProjectsListPage';
-import ProjectDetailPage from './components/projects/ProjectDetailPage';
-import PugConfigPage from './components/projects/PugConfigPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './index.css';
+
+// Lazy-load every route that isn't on the critical first paint. This keeps the
+// login screen and dashboard tiny — heavy deps (recharts, react-big-calendar,
+// @hello-pangea/dnd, react-easy-crop, the admin/pug bundles) only download
+// when the user actually navigates to those routes.
+const TaskListPage = lazy(() => import('./components/tasks/TaskListPage'));
+const AdminPage = lazy(() => import('./components/admin/AdminPage'));
+const EmailLogsPage = lazy(() => import('./components/emails/EmailLogsPage'));
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
+const ActivityFeedPage = lazy(() => import('./components/activity/ActivityFeedPage'));
+const DayViewPage = lazy(() => import('./components/dayview/DayViewPage'));
+const WeekViewPage = lazy(() => import('./components/dayview/WeekViewPage'));
+const CompletedTasksPage = lazy(() => import('./components/tasks/CompletedTasksPage'));
+const SearchPage = lazy(() => import('./components/search/SearchPage'));
+const OrphanTasksPage = lazy(() => import('./components/admin/OrphanTasksPage'));
+const CompaniesAdminPage = lazy(() => import('./components/admin/CompaniesAdminPage'));
+const ProjectsListPage = lazy(() => import('./components/projects/ProjectsListPage'));
+const ProjectDetailPage = lazy(() => import('./components/projects/ProjectDetailPage'));
+const PugConfigPage = lazy(() => import('./components/projects/PugConfigPage'));
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center p-12">
+      <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,26 +71,28 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
-        <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
-        <Route path="/search" element={<ErrorBoundary><SearchPage /></ErrorBoundary>} />
-        <Route path="/activitate" element={<ErrorBoundary><ActivityFeedPage /></ErrorBoundary>} />
-        <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
-        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/admin/companies" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><CompaniesAdminPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/admin/pug" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PugConfigPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/proiecte" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectsListPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/proiecte/:id" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/week-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><WeekViewPage /></ErrorBoundary></ProtectedRoute>} />
-        <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+          <Route path="/tasks" element={<ErrorBoundary><TaskListPage /></ErrorBoundary>} />
+          <Route path="/search" element={<ErrorBoundary><SearchPage /></ErrorBoundary>} />
+          <Route path="/activitate" element={<ErrorBoundary><ActivityFeedPage /></ErrorBoundary>} />
+          <Route path="/templates" element={<ErrorBoundary><TemplatesPage /></ErrorBoundary>} />
+          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/admin/companies" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><CompaniesAdminPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/admin/pug" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><PugConfigPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/proiecte" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectsListPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/proiecte/:id" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/week-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><WeekViewPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

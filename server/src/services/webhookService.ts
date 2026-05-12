@@ -1,6 +1,8 @@
 import crypto from 'crypto';
+import type { PoolClient } from 'pg';
 import pool from '../config/database';
 import { WebhookEventType, WebhookPayload } from '../types';
+import { validateWebhookUrlAsync } from '../utils/urlSafety';
 
 const RETRY_DELAYS = [10_000, 60_000, 300_000]; // 10s, 1min, 5min
 const DELIVERY_TIMEOUT = 10_000; // 10s timeout per request
@@ -89,6 +91,20 @@ async function sendWebhook(
     );
 
     try {
+        // SSRF re-check at delivery time (TOCTOU / DNS rebinding defense).
+        // The URL was validated at registration but DNS may have rotated to a
+        // private/metadata IP since then.
+        const safety = await validateWebhookUrlAsync(url);
+        if (!safety.valid) {
+            await pool.query(
+                `UPDATE webhook_deliveries
+                   SET status = 'failed', error_message = $1, updated_at = NOW()
+                 WHERE id = $2`,
+                [`SSRF check failed: ${safety.error}`, deliveryId]
+            );
+            return;
+        }
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT);
 
@@ -98,7 +114,8 @@ async function sendWebhook(
                 method: 'POST',
                 headers,
                 body,
-                signal: controller.signal
+                signal: controller.signal,
+                redirect: 'manual',
             });
         } finally {
             clearTimeout(timeout);
@@ -172,10 +189,19 @@ export function startWebhookRetryProcessor(): void {
 
     const POLL_INTERVAL = 30_000; // 30 seconds
 
-    retryInterval = setInterval(async () => {
+    // Add jitter (0-5s) to spread retries across replicas instead of hammering
+    // all at once exactly on the 30s tick.
+    const tick = async () => {
+        // pool.connect() can throw (e.g. DB down) — keep it inside try so
+        // the rejection doesn't escape the setInterval callback and crash
+        // the process via unhandled promise rejection.
+        let client: PoolClient | null = null;
         try {
-            // Find deliveries due for retry
-            const { rows: dueRetries } = await pool.query(`
+            client = await pool.connect();
+            await client.query('BEGIN');
+            // Atomically claim a batch of due retries: SKIP LOCKED prevents
+            // two replicas from processing the same delivery.
+            const { rows: dueRetries } = await client.query<{ id: string; payload: any; attempt: number; url: string; secret: string | null }>(`
                 SELECT wd.id, wd.payload, wd.attempt,
                        ws.url, ws.secret
                 FROM webhook_deliveries wd
@@ -183,20 +209,45 @@ export function startWebhookRetryProcessor(): void {
                 WHERE wd.status = 'retrying' AND wd.next_retry_at <= NOW()
                 ORDER BY wd.next_retry_at ASC
                 LIMIT 10
+                FOR UPDATE OF wd SKIP LOCKED
             `);
+            if (dueRetries.length > 0) {
+                // Mark the claimed deliveries as in-flight (status='sending')
+                // so a sibling replica's poll won't see them even before
+                // the actual HTTP attempt finishes.
+                await client.query(
+                    `UPDATE webhook_deliveries
+                       SET status = 'sending', updated_at = NOW()
+                     WHERE id = ANY($1::uuid[])`,
+                    [dueRetries.map((r) => r.id)],
+                );
+            }
+            await client.query('COMMIT');
 
             for (const row of dueRetries) {
                 const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
                 const attemptNum = row.attempt || 1;
-
-                // Fire-and-forget each retry
                 sendWebhook(row.id, row.url, row.secret, payload, attemptNum).catch(err =>
                     console.error(`[WEBHOOK] Retry processor: delivery ${row.id} failed:`, err.message)
                 );
             }
         } catch (err: any) {
-            console.error('[WEBHOOK] Retry processor error:', err.message);
+            if (client) {
+                try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+            }
+            console.error('[WEBHOOK] Retry processor error:', err?.message ?? err);
+        } finally {
+            if (client) client.release();
         }
+    };
+
+    retryInterval = setInterval(() => {
+        const jitterMs = Math.floor(Math.random() * 5000);
+        setTimeout(() => {
+            // Belt-and-suspenders: even if `tick` somehow throws synchronously
+            // before its own try/catch, a top-level `.catch` keeps the process alive.
+            tick().catch((err) => console.error('[WEBHOOK] Retry tick error:', err?.message ?? err));
+        }, jitterMs);
     }, POLL_INTERVAL);
 
     console.log('[WEBHOOK] Retry processor started (30s interval)');
@@ -247,9 +298,13 @@ export async function testWebhook(subscriptionId: string): Promise<{
     }
 
     try {
+        const safety = await validateWebhookUrlAsync(sub.url);
+        if (!safety.valid) {
+            return { success: false, error: `SSRF check failed: ${safety.error}` };
+        }
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT);
-        const response = await fetch(sub.url, { method: 'POST', headers, body, signal: controller.signal });
+        const response = await fetch(sub.url, { method: 'POST', headers, body, signal: controller.signal, redirect: 'manual' });
         clearTimeout(timeout);
         return { success: response.ok, status: response.status };
     } catch (err: any) {

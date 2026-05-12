@@ -54,7 +54,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2" role="status" aria-live="polite">
+            {/* On mobile we sit ABOVE the 64px bottom-bar (md:bottom-4 keeps the
+                normal placement on tablet/desktop). Without the bottom-20 we
+                overlap the Profile/Cég gombokat 6 másodpercre. */}
+            <div className="fixed bottom-20 md:bottom-4 right-4 z-[100] flex flex-col gap-2" role="status" aria-live="polite">
                 {toasts.map(toast => (
                     <div
                         key={toast.id}

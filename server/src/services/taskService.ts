@@ -309,9 +309,14 @@ export async function updateTask(
     try {
         await client.query('BEGIN');
 
-        const { rows: oldRows } = await client.query(
-            'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]
-        );
+        const { rows: oldRows } = companyId !== undefined
+            ? await client.query(
+                'SELECT * FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL FOR UPDATE',
+                [id, companyId]
+              )
+            : await client.query(
+                'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL FOR UPDATE', [id]
+              );
         if (oldRows.length === 0) {
             await client.query('ROLLBACK');
             return undefined;
@@ -504,7 +509,14 @@ export async function updateTask(
 // ------- DELETE /:id — soft delete -------
 
 export async function softDeleteTask(id: string, userId: string, userRole: string, companyId?: number) {
-    const { rows } = await pool.query('SELECT created_by, assigned_to, title, company_id FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]);
+    const { rows } = companyId !== undefined
+        ? await pool.query(
+            'SELECT created_by, assigned_to, title, company_id FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+            [id, companyId]
+          )
+        : await pool.query(
+            'SELECT created_by, assigned_to, title, company_id FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]
+          );
     if (rows.length === 0) return { error: 'not_found' as const };
 
     const isCreator = rows[0].created_by === userId;
@@ -534,8 +546,10 @@ export async function softDeleteTask(id: string, userId: string, userRole: strin
 // ------- POST /:id/duplicate — duplicate task with subtasks -------
 
 export async function duplicateTask(id: string, userId: string, companyId: number) {
+    // Defense-in-depth: only allow duplicating a task that belongs to the
+    // caller's active company.
     const { rows: [original] } = await pool.query(
-        'SELECT * FROM tasks WHERE id = $1 AND deleted_at IS NULL', [id]
+        'SELECT * FROM tasks WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL', [id, companyId]
     );
     if (!original) return null;
 

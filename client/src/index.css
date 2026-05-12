@@ -200,6 +200,17 @@ a, button {
   animation: toast-out 0.3s ease-in;
 }
 
+/* On touch devices (no hover capability), reveal hover-only action buttons
+   (`opacity-0 group-hover:opacity-100` pattern) so they're tappable.
+   Without this, delete/edit icons on tasks/comments/alerts/etc. are
+   completely unreachable on phones. */
+@media (hover: none) {
+  .opacity-0.group-hover\:opacity-100,
+  [class*="opacity-0"][class*="group-hover:opacity-100"] {
+    opacity: 1 !important;
+  }
+}
+
 /* Drag and drop */
 .dragging {
   opacity: 0.5;

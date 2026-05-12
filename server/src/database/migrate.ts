@@ -118,21 +118,44 @@ export async function runMigrations() {
 
             console.log(`   📝 ${statements.length} statement(s) to execute`);
 
+            // PostgreSQL forbids ALTER TYPE ... ADD VALUE inside a transaction
+            // block. We auto-detect those statements and run them outside the
+            // transaction so the rest of the file still gets atomic commit/rollback.
+            const isOutsideTx = (s: string): boolean => /^\s*ALTER\s+TYPE\b[\s\S]*ADD\s+VALUE\b/i.test(s);
+            const txStatements = statements.filter((s) => !isOutsideTx(s));
+            const nonTxStatements = statements.filter((s) => isOutsideTx(s));
+
             try {
-                // Run each statement individually (handles ALTER TYPE outside transaction)
-                for (let i = 0; i < statements.length; i++) {
-                    const stmt = statements[i];
+                // 1) Run ALTER TYPE ... ADD VALUE statements first (outside tx).
+                for (let i = 0; i < nonTxStatements.length; i++) {
+                    const stmt = nonTxStatements[i];
                     const preview = stmt.substring(0, 80).replace(/\n/g, ' ');
-                    console.log(`   [${i + 1}/${statements.length}] ${preview}...`);
+                    console.log(`   [pre/${i + 1}/${nonTxStatements.length}] ${preview}...`);
                     await client.query(stmt);
                 }
 
-                await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
-                console.log(`✅ Completed: ${file}`);
+                // 2) Run the rest atomically. Either ALL succeed or NONE.
+                await client.query('BEGIN');
+                try {
+                    for (let i = 0; i < txStatements.length; i++) {
+                        const stmt = txStatements[i];
+                        const preview = stmt.substring(0, 80).replace(/\n/g, ' ');
+                        console.log(`   [${i + 1}/${txStatements.length}] ${preview}...`);
+                        await client.query(stmt);
+                    }
+                    await client.query('INSERT INTO _migrations (name) VALUES ($1)', [file]);
+                    await client.query('COMMIT');
+                    console.log(`✅ Completed: ${file}`);
+                } catch (innerErr) {
+                    await client.query('ROLLBACK');
+                    throw innerErr;
+                }
             } catch (err: any) {
                 failedCount++;
                 console.error(`❌ Failed: ${file}`, err?.message || err);
-                // Continue with next migration — don't stop the whole process
+                // STOP on first failure: continuing leaves DB in inconsistent
+                // state (later migrations may depend on this one).
+                throw err;
             }
         }
 
@@ -160,3 +183,8 @@ if (require.main === module) {
         process.exit(1);
     });
 }
+
+// CALLERS NOTE: when invoked from app.ts on boot, runMigrations now THROWS on
+// the first failed migration (was: silently continued + process.exit(0)). Make
+// sure callers either catch and decide whether to keep serving, or let the
+// error propagate so the process restarts cleanly.

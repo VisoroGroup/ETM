@@ -9,6 +9,19 @@ const router = Router();
  * Serve avatar image from PostgreSQL. Public endpoint (no auth)
  * because <img> tags don't send Authorization headers.
  */
+// Allowed avatar MIME types — anything else is replaced by octet-stream so a
+// crafted SVG/HTML upload can't be rendered as a script in the browser.
+const ALLOWED_AVATAR_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const ALLOWED_ATTACHMENT_MIMES = new Set([
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain', 'text/csv',
+    'application/zip', 'application/x-zip-compressed',
+]);
+
 router.get('/avatar/:userId', async (req: Request, res: Response) => {
     try {
         const { rows } = await pool.query(
@@ -22,7 +35,10 @@ router.get('/avatar/:userId', async (req: Request, res: Response) => {
         }
 
         const { avatar_data, avatar_mime } = rows[0];
-        res.set('Content-Type', avatar_mime || 'image/jpeg');
+        const safeMime = ALLOWED_AVATAR_MIMES.has(avatar_mime) ? avatar_mime : 'application/octet-stream';
+        res.set('Content-Type', safeMime);
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
         res.set('Cache-Control', 'public, max-age=86400'); // 24h cache
         res.send(avatar_data);
     } catch (err) {
@@ -78,8 +94,14 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
             }
         }
 
-        res.set('Content-Type', file_mime || 'application/octet-stream');
-        res.set('Content-Disposition', `inline; filename="${encodeURIComponent(file_name)}"`);
+        const safeMime = ALLOWED_ATTACHMENT_MIMES.has(file_mime) ? file_mime : 'application/octet-stream';
+        // Force download for non-allowlisted MIME types so unknown content
+        // doesn't get rendered in-browser (XSS surface for SVG/HTML uploads).
+        const disposition = ALLOWED_ATTACHMENT_MIMES.has(file_mime) ? 'inline' : 'attachment';
+        res.set('Content-Type', safeMime);
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:");
+        res.set('Content-Disposition', `${disposition}; filename="${encodeURIComponent(file_name)}"`);
         // no-store: sensitive attachments (contracts, PDFs) must not be cached
         // by the browser after the user logs out
         res.set('Cache-Control', 'no-store');

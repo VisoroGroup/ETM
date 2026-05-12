@@ -113,6 +113,89 @@ export async function sendEmail(params: {
 }
 
 /**
+ * Send a magic-link login email. Used by the second login flow (external
+ * collaborators on gmail/yahoo/etc. who don't have Microsoft 365 accounts).
+ *
+ * `language` is the recipient's preferred locale. We don't have a user_id
+ * yet at request time, so we localise via a small inline dict — this email
+ * is short and self-contained.
+ */
+const MAGIC_LINK_COPY: Record<string, {
+    subject: string;
+    greeting: string;
+    intro: string;
+    cta: string;
+    expires: string;
+    ignore: string;
+    footer: string;
+}> = {
+    ro: {
+        subject: '[Sarcinator Visoro] Link de autentificare',
+        greeting: 'Bună!',
+        intro: 'Cineva a cerut un link de autentificare pentru această adresă de email. Apasă butonul de mai jos pentru a te conecta:',
+        cta: 'Conectează-te în Sarcinator',
+        expires: 'Linkul este valabil 15 minute și poate fi folosit o singură dată.',
+        ignore: 'Dacă nu ai cerut tu acest link, ignoră acest email — nu se va întâmpla nimic.',
+        footer: 'Acest email a fost generat automat de Sarcinator Visoro.',
+    },
+    hu: {
+        subject: '[Sarcinator Visoro] Belépési link',
+        greeting: 'Szia!',
+        intro: 'Valaki belépési linket kért erre az email címre. Kattints a lenti gombra a belépéshez:',
+        cta: 'Belépés a Sarcinator-ba',
+        expires: 'A link 15 percig érvényes és csak egyszer használható.',
+        ignore: 'Ha nem te kérted ezt a linket, hagyd figyelmen kívül ezt az email-t — semmi sem fog történni.',
+        footer: 'Ezt az email-t a Sarcinator Visoro automatikusan generálta.',
+    },
+    en: {
+        subject: '[Sarcinator Visoro] Sign-in link',
+        greeting: 'Hi!',
+        intro: 'Someone requested a sign-in link for this email address. Click the button below to log in:',
+        cta: 'Sign in to Sarcinator',
+        expires: 'This link is valid for 15 minutes and can only be used once.',
+        ignore: 'If you did not request this link, ignore this email — nothing will happen.',
+        footer: 'This email was generated automatically by Sarcinator Visoro.',
+    },
+};
+
+export async function sendMagicLinkEmail(params: {
+    to: string;
+    link: string;
+    language?: 'ro' | 'hu' | 'en';
+}): Promise<void> {
+    const lang = params.language || 'ro';
+    const t = MAGIC_LINK_COPY[lang] || MAGIC_LINK_COPY.ro;
+    const safeLink = params.link.replace(/"/g, '&quot;');
+
+    await sendEmail({
+        to: params.to,
+        subject: t.subject,
+        htmlBody: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
+                <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                    <h1 style="margin: 0; font-size: 20px;">Sarcinator Visoro</h1>
+                </div>
+                <div style="background: white; padding: 28px; border-radius: 0 0 8px 8px;">
+                    <p style="font-size: 16px; color: #1f2937; margin: 0 0 12px 0;">${t.greeting}</p>
+                    <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">${t.intro}</p>
+                    <div style="text-align: center; margin: 28px 0;">
+                        <a href="${safeLink}"
+                           style="display: inline-block; background: #2563eb; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+                            ${t.cta}
+                        </a>
+                    </div>
+                    <p style="color: #6b7280; font-size: 13px; margin: 8px 0;">${t.expires}</p>
+                    <p style="color: #6b7280; font-size: 13px; margin: 8px 0;">${t.ignore}</p>
+                    <p style="color: #9ca3af; font-size: 11px; word-break: break-all; margin-top: 16px;">${safeLink}</p>
+                    <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
+                    <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">${t.footer}</p>
+                </div>
+            </div>
+        `,
+    });
+}
+
+/**
  * Send a test email to verify Graph API configuration
  */
 export async function sendTestEmail(toEmail: string, toName: string): Promise<void> {

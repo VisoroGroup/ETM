@@ -15,12 +15,24 @@ export function getActiveCompanyId(): number | null {
     return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// AbortController used to cancel ALL in-flight requests when the active company
+// changes. Without this, a request that started under company A could resolve
+// AFTER the user switched to company B and overwrite B's UI with A's data.
+let companyAbortController = new AbortController();
+
 export function setActiveCompanyId(id: number | null): void {
+    const previous = getActiveCompanyId();
     if (id == null) safeLocalStorage.remove(ACTIVE_COMPANY_KEY);
     else safeLocalStorage.set(ACTIVE_COMPANY_KEY, String(id));
+    // Abort everything in-flight under the previous company, then mint a
+    // fresh controller for new requests.
+    if (previous !== id) {
+        companyAbortController.abort('active-company-change');
+        companyAbortController = new AbortController();
+    }
 }
 
-// Add auth token + active company to requests
+// Add auth token + active company + cancel signal to requests
 api.interceptors.request.use((config) => {
     const token = safeLocalStorage.get('visoro_token');
     if (token) {
@@ -29,6 +41,12 @@ api.interceptors.request.use((config) => {
     const activeCompanyId = getActiveCompanyId();
     if (activeCompanyId != null) {
         config.headers['X-Active-Company'] = String(activeCompanyId);
+    }
+    // Tag every request with the company-change abort signal unless the
+    // caller explicitly provided their own. Lets us cancel every in-flight
+    // request the instant the user switches companies.
+    if (!config.signal) {
+        config.signal = companyAbortController.signal;
     }
     return config;
 });
@@ -50,6 +68,14 @@ export const authApi = {
     login: (data: any) => api.post('/auth/login', data).then(r => r.data),
     me: () => api.get<{ user: User }>('/auth/me').then(r => r.data),
     users: () => api.get<User[]>('/auth/users').then(r => r.data),
+    // Magic link: request a link by email. Server always returns 200 (no
+    // enumeration leak) — we just show a "check your inbox" message.
+    requestMagicLink: (email: string) =>
+        api.post<{ ok: true }>('/auth/magic-link/request', { email }).then(r => r.data),
+    // Magic link: verify the token we got from the email URL. On success
+    // returns a 30-day JWT.
+    verifyMagicLink: (token: string) =>
+        api.post<{ token: string; user: User }>('/auth/magic-link/verify', { token }).then(r => r.data),
 };
 
 // Tasks
@@ -186,7 +212,7 @@ export const adminApi = {
     users: () => api.get('/admin/users').then(r => r.data),
     createUser: (data: { email: string; display_name: string; role?: string; departments?: string[] }) =>
         api.post('/admin/users', data).then(r => r.data),
-    updateUser: (id: string, data: { role?: string; department?: string }) =>
+    updateUser: (id: string, data: { role?: string; departments?: string[]; email?: string }) =>
         api.patch(`/admin/users/${id}`, data).then(r => r.data),
     deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),
     stats: () => api.get('/admin/stats').then(r => r.data),
@@ -347,7 +373,8 @@ export interface OrphanTask {
     assignee_name: string | null;
     assignee_avatar: string | null;
     created_by: string;
-    creator_name: string;
+    // Server returns NULL when the creator was hard-deleted (LEFT JOIN).
+    creator_name: string | null;
     creator_avatar: string | null;
     is_recurring_template: boolean;
 }

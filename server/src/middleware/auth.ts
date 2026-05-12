@@ -50,22 +50,31 @@ async function loadCompanyContext(req: AuthRequest, userId: string, role: string
     }
 }
 
-const DEFAULT_JWT_SECRET = 'visoro-task-manager-jwt-secret-dev-2024';
-const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
-
-if (process.env.NODE_ENV === 'production' && JWT_SECRET === DEFAULT_JWT_SECRET) {
-    console.error('🚨 CRITICAL: JWT_SECRET is not set in production! Using insecure default.');
-    throw new Error('JWT_SECRET environment variable must be set in production.');
-}
-if (!process.env.JWT_SECRET) {
+// JWT secret resolution: a hardcoded dev fallback is allowed only when we're
+// confident we're on a developer's local machine — i.e. NODE_ENV is either
+// unset (Node's default for `npm run dev`) or explicitly 'development'.
+// Anywhere with a deployed-looking NODE_ENV (production, staging, test, ...)
+// MUST configure JWT_SECRET, otherwise we refuse to run rather than silently
+// use a known-public secret.
+const DEFAULT_DEV_JWT_SECRET = 'visoro-task-manager-jwt-secret-dev-2024';
+const isLocalDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+let JWT_SECRET: string;
+if (process.env.JWT_SECRET) {
+    JWT_SECRET = process.env.JWT_SECRET;
+} else if (isLocalDev) {
+    JWT_SECRET = DEFAULT_DEV_JWT_SECRET;
     console.warn('⚠️  JWT_SECRET not set — using development default. Do NOT use this in production.');
+} else {
+    throw new Error(`JWT_SECRET environment variable must be set (NODE_ENV=${process.env.NODE_ENV}).`);
 }
 
-export function generateToken(user: User): string {
+export function generateToken(user: User, expiresIn: string = '24h'): string {
     return jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         JWT_SECRET,
-        { expiresIn: '24h' }
+        // expiresIn accepts string forms like '24h', '30d', '15m'. Magic-link
+        // logins pass '30d'; Microsoft SSO stays on the 24h default.
+        { expiresIn: expiresIn as any }
     );
 }
 
@@ -75,7 +84,7 @@ export async function authMiddleware(
     next: NextFunction
 ): Promise<void> {
     // Dev mode bypass — NEVER active in production
-    if (process.env.DEV_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+    if (process.env.DEV_AUTH_BYPASS === 'true' && isLocalDev) {
         try {
             // Check if there's a token in the header
             const authHeader = req.headers.authorization;
@@ -136,6 +145,15 @@ export async function authMiddleware(
     }
 }
 
+// Role hierarchy: every role implicitly grants access to all lower roles.
+// superadmin > admin > manager > user
+const ROLE_INHERITANCE: Record<string, string[]> = {
+    superadmin: ['superadmin', 'admin', 'manager', 'user'],
+    admin: ['admin', 'manager', 'user'],
+    manager: ['manager', 'user'],
+    user: ['user'],
+};
+
 export function requireRole(...roles: string[]) {
     return (req: AuthRequest, res: Response, next: NextFunction): void => {
         if (!req.user) {
@@ -143,10 +161,7 @@ export function requireRole(...roles: string[]) {
             return;
         }
 
-        // superadmin inherits all lower roles (admin, manager, user)
-        const effectiveRoles = req.user.role === 'superadmin'
-            ? ['superadmin', 'admin', 'manager', 'user']
-            : [req.user.role];
+        const effectiveRoles = ROLE_INHERITANCE[req.user.role] ?? [req.user.role];
 
         if (!roles.some(r => effectiveRoles.includes(r))) {
             res.status(403).json({ error: 'Nu ai permisiunea necesară.' });

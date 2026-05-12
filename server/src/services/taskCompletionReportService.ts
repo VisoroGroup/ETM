@@ -1,6 +1,126 @@
 import pool from '../config/database';
 import { escapeHtml } from './notificationEmailService';
 import { DEPARTMENTS, STATUSES } from '../types/index';
+import { ServerLocale } from '../i18n/serverI18n';
+
+// ─── Localized labels ───────────────────────────────────────────────────────
+// Kept inline (not in serverI18n.ts) because this file owns ~40 single-use
+// strings — externalising them would dwarf the rest of i18n.
+const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
+    ro: {
+        title: 'Sarcinator Visoro',
+        subtitle: 'Raport finalizare sarcină',
+        success: 'Sarcina a fost finalizată cu succes.',
+        footer: 'Acest raport a fost generat automat de Sarcinator Visoro la finalizarea sarcinii.',
+        general: 'Informații generale',
+        title_field: 'Titlu',
+        description: 'Descriere',
+        department: 'Departament',
+        creator: 'Creat de',
+        assignee: 'Responsabil',
+        unassigned: 'Neatribuit',
+        due_date: 'Termen limită',
+        created_at: 'Data creării',
+        completed_at: 'Data finalizării',
+        status_history: 'Istoricul statusurilor',
+        due_date_changes: 'Modificări termen limită',
+        reason_label: 'Motiv',
+        subtasks: 'Subsarcini',
+        subtasks_progress: '{count}/{total} finalizate',
+        checklist: 'Lista de verificare',
+        comments: 'Comentarii',
+        alerts: 'Alerte',
+        alert_resolved: 'Rezolvat de {name} ({date})',
+        alert_unresolved: 'Nerezolvat',
+        attachments: 'Fișiere atașate',
+        uploaded_by: 'încărcat de {name} la {date}',
+        dependencies: 'Dependențe',
+        blocked_by: 'Blocată de',
+        blocks: 'Blochează',
+        activity: 'Jurnal de activitate',
+        not_found: 'Sarcina nu a fost găsită.',
+        dash: '—',
+    },
+    hu: {
+        title: 'Sarcinator Visoro',
+        subtitle: 'Feladat befejezési jelentés',
+        success: 'A feladat sikeresen befejeződött.',
+        footer: 'Ezt a jelentést automatikusan generálta a Sarcinator Visoro a feladat lezárásakor.',
+        general: 'Általános információk',
+        title_field: 'Cím',
+        description: 'Leírás',
+        department: 'Részleg',
+        creator: 'Létrehozta',
+        assignee: 'Felelős',
+        unassigned: 'Nincs hozzárendelve',
+        due_date: 'Határidő',
+        created_at: 'Létrehozás dátuma',
+        completed_at: 'Befejezés dátuma',
+        status_history: 'Státuszelőzmények',
+        due_date_changes: 'Határidő-módosítások',
+        reason_label: 'Indok',
+        subtasks: 'Részfeladatok',
+        subtasks_progress: '{count}/{total} kész',
+        checklist: 'Ellenőrzőlista',
+        comments: 'Hozzászólások',
+        alerts: 'Riasztások',
+        alert_resolved: 'Megoldotta {name} ({date})',
+        alert_unresolved: 'Megoldatlan',
+        attachments: 'Csatolmányok',
+        uploaded_by: 'feltöltötte: {name} ({date})',
+        dependencies: 'Függőségek',
+        blocked_by: 'Blokkolja',
+        blocks: 'Blokkolja',
+        activity: 'Tevékenységnapló',
+        not_found: 'A feladat nem található.',
+        dash: '—',
+    },
+    en: {
+        title: 'Sarcinator Visoro',
+        subtitle: 'Task completion report',
+        success: 'The task was completed successfully.',
+        footer: 'This report was generated automatically by Sarcinator Visoro on task completion.',
+        general: 'General information',
+        title_field: 'Title',
+        description: 'Description',
+        department: 'Department',
+        creator: 'Created by',
+        assignee: 'Assignee',
+        unassigned: 'Unassigned',
+        due_date: 'Due date',
+        created_at: 'Created at',
+        completed_at: 'Completed at',
+        status_history: 'Status history',
+        due_date_changes: 'Due date changes',
+        reason_label: 'Reason',
+        subtasks: 'Subtasks',
+        subtasks_progress: '{count}/{total} done',
+        checklist: 'Checklist',
+        comments: 'Comments',
+        alerts: 'Alerts',
+        alert_resolved: 'Resolved by {name} ({date})',
+        alert_unresolved: 'Unresolved',
+        attachments: 'Attachments',
+        uploaded_by: 'uploaded by {name} on {date}',
+        dependencies: 'Dependencies',
+        blocked_by: 'Blocked by',
+        blocks: 'Blocks',
+        activity: 'Activity log',
+        not_found: 'Task not found.',
+        dash: '—',
+    },
+};
+
+function L(lang: ServerLocale, key: string, vars?: Record<string, string | number>): string {
+    const dict = REPORT_LABELS[lang] ?? REPORT_LABELS.ro;
+    let s = dict[key] ?? REPORT_LABELS.ro[key] ?? key;
+    if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+            s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+        }
+    }
+    return s;
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,19 +202,25 @@ export async function getCompletionReportRecipients(
 
 // ─── HTML Report Builder ────────────────────────────────────────────────────
 
-function formatDate(d: Date | string | null): string {
+const LOCALE_BCP47: Record<ServerLocale, string> = {
+    ro: 'ro-RO',
+    hu: 'hu-HU',
+    en: 'en-GB',
+};
+
+function formatDate(d: Date | string | null, lang: ServerLocale = 'ro'): string {
     if (!d) return '—';
     const date = new Date(d);
-    return date.toLocaleDateString('ro-RO', {
+    return date.toLocaleDateString(LOCALE_BCP47[lang], {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
     });
 }
 
-function formatDateOnly(d: Date | string | null): string {
+function formatDateOnly(d: Date | string | null, lang: ServerLocale = 'ro'): string {
     if (!d) return '—';
     const date = new Date(d);
-    return date.toLocaleDateString('ro-RO', {
+    return date.toLocaleDateString(LOCALE_BCP47[lang], {
         day: '2-digit', month: '2-digit', year: 'numeric',
     });
 }
@@ -114,7 +240,8 @@ const infoRow = (label: string, value: string) => `
  * Gathers ALL data: basic info, status changes, due date changes,
  * comments, subtasks, checklist items, alerts, attachments, dependencies, activity log.
  */
-export async function buildCompletionReportHtml(taskId: string): Promise<string> {
+export async function buildCompletionReportHtml(taskId: string, language: ServerLocale = 'ro'): Promise<string> {
+    const t = (k: string, vars?: Record<string, string | number>) => L(language, k, vars);
     // 1. Task basic info
     const { rows: [task] } = await pool.query(
         `SELECT t.*,
@@ -126,7 +253,7 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
          WHERE t.id = $1`,
         [taskId]
     );
-    if (!task) return '<p>Sarcina nu a fost găsită.</p>';
+    if (!task) return `<p>${t('not_found')}</p>`;
 
     const deptInfo = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
     const deptLabel = deptInfo?.label || task.department_label;
@@ -232,41 +359,43 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
 
     let sections = '';
 
+    const dash = t('dash');
+
     // === BASIC INFO ===
-    sections += sectionTitle('Informații generale');
-    sections += infoRow('Titlu', escapeHtml(task.title));
+    sections += sectionTitle(t('general'));
+    sections += infoRow(t('title_field'), escapeHtml(task.title));
     if (task.description) {
-        sections += infoRow('Descriere', escapeHtml(task.description));
+        sections += infoRow(t('description'), escapeHtml(task.description));
     }
-    sections += infoRow('Departament', `<span style="color: ${deptInfo?.color || '#333'}; font-weight: bold;">${escapeHtml(deptLabel)}</span>`);
-    sections += infoRow('Creat de', escapeHtml(task.creator_name || '—'));
-    sections += infoRow('Responsabil', escapeHtml(task.assignee_name || 'Neatribuit'));
-    sections += infoRow('Termen limită', formatDateOnly(task.due_date));
-    sections += infoRow('Data creării', formatDate(task.created_at));
-    sections += infoRow('Data finalizării', formatDate(task.updated_at));
+    sections += infoRow(t('department'), `<span style="color: ${deptInfo?.color || '#333'}; font-weight: bold;">${escapeHtml(deptLabel)}</span>`);
+    sections += infoRow(t('creator'), escapeHtml(task.creator_name || dash));
+    sections += infoRow(t('assignee'), escapeHtml(task.assignee_name || t('unassigned')));
+    sections += infoRow(t('due_date'), formatDateOnly(task.due_date, language));
+    sections += infoRow(t('created_at'), formatDate(task.created_at, language));
+    sections += infoRow(t('completed_at'), formatDate(task.updated_at, language));
 
     // === STATUS CHANGES ===
     if (statusChanges.length > 0) {
-        sections += sectionTitle(`Istoricul statusurilor (${statusChanges.length})`);
+        sections += sectionTitle(`${t('status_history')} (${statusChanges.length})`);
         for (const sc of statusChanges) {
             const oldLabel = STATUSES[sc.old_status as keyof typeof STATUSES]?.label || sc.old_status;
             const newLabel = STATUSES[sc.new_status as keyof typeof STATUSES]?.label || sc.new_status;
-            const reasonText = sc.reason ? ` — <em>Motiv: ${escapeHtml(sc.reason)}</em>` : '';
+            const reasonText = sc.reason ? ` — <em>${t('reason_label')}: ${escapeHtml(sc.reason)}</em>` : '';
             sections += `<tr><td style="padding: 4px 0 4px 12px; font-size: 13px; color: #333; border-left: 3px solid #e5e7eb;">
-                <strong>${escapeHtml(sc.changed_by_name || '—')}</strong>: ${escapeHtml(oldLabel)} → ${escapeHtml(newLabel)}${reasonText}
-                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(sc.created_at)}</span>
+                <strong>${escapeHtml(sc.changed_by_name || dash)}</strong>: ${escapeHtml(oldLabel)} → ${escapeHtml(newLabel)}${reasonText}
+                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(sc.created_at, language)}</span>
             </td></tr>`;
         }
     }
 
     // === DUE DATE CHANGES ===
     if (dueDateChanges.length > 0) {
-        sections += sectionTitle(`Modificări termen limită (${dueDateChanges.length})`);
+        sections += sectionTitle(`${t('due_date_changes')} (${dueDateChanges.length})`);
         for (const dc of dueDateChanges) {
             sections += `<tr><td style="padding: 4px 0 4px 12px; font-size: 13px; color: #333; border-left: 3px solid #F59E0B;">
-                <strong>${escapeHtml(dc.changed_by_name || '—')}</strong>: ${formatDateOnly(dc.old_date)} → ${formatDateOnly(dc.new_date)}
-                <br><em style="color: #666;">Motiv: ${escapeHtml(dc.reason || '—')}</em>
-                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(dc.created_at)}</span>
+                <strong>${escapeHtml(dc.changed_by_name || dash)}</strong>: ${formatDateOnly(dc.old_date, language)} → ${formatDateOnly(dc.new_date, language)}
+                <br><em style="color: #666;">${t('reason_label')}: ${escapeHtml(dc.reason || dash)}</em>
+                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(dc.created_at, language)}</span>
             </td></tr>`;
         }
     }
@@ -274,7 +403,7 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
     // === SUBTASKS ===
     if (subtasks.length > 0) {
         const completedCount = subtasks.filter(s => s.is_completed).length;
-        sections += sectionTitle(`Subsarcini (${completedCount}/${subtasks.length} finalizate)`);
+        sections += sectionTitle(`${t('subtasks')} (${t('subtasks_progress', { count: completedCount, total: subtasks.length })})`);
         for (const st of subtasks) {
             const icon = st.is_completed ? '✅' : '⬜';
             const assignee = st.assignee_name ? ` — <em>${escapeHtml(st.assignee_name)}</em>` : '';
@@ -288,7 +417,7 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
     // === CHECKLIST ===
     if (checklistItems.length > 0) {
         const checkedCount = checklistItems.filter(c => c.is_checked).length;
-        sections += sectionTitle(`Lista de verificare (${checkedCount}/${checklistItems.length})`);
+        sections += sectionTitle(`${t('checklist')} (${checkedCount}/${checklistItems.length})`);
         for (const ci of checklistItems) {
             const icon = ci.is_checked ? '☑' : '☐';
             const style = ci.is_checked ? 'text-decoration: line-through; color: #9ca3af;' : '';
@@ -300,11 +429,11 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
 
     // === COMMENTS ===
     if (comments.length > 0) {
-        sections += sectionTitle(`Comentarii (${comments.length})`);
+        sections += sectionTitle(`${t('comments')} (${comments.length})`);
         for (const cm of comments) {
             sections += `<tr><td style="padding: 6px 0 6px 12px; font-size: 13px; color: #333; border-left: 3px solid #2563EB; margin-bottom: 4px;">
-                <strong>${escapeHtml(cm.author_name || '—')}</strong>
-                <span style="color: #9ca3af; font-size: 11px; margin-left: 8px;">${formatDate(cm.created_at)}</span>
+                <strong>${escapeHtml(cm.author_name || dash)}</strong>
+                <span style="color: #9ca3af; font-size: 11px; margin-left: 8px;">${formatDate(cm.created_at, language)}</span>
                 <br><span style="white-space: pre-wrap;">${escapeHtml(cm.content)}</span>
             </td></tr>`;
         }
@@ -312,51 +441,51 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
 
     // === ALERTS ===
     if (alerts.length > 0) {
-        sections += sectionTitle(`Alerte (${alerts.length})`);
+        sections += sectionTitle(`${t('alerts')} (${alerts.length})`);
         for (const al of alerts) {
             const resolvedText = al.is_resolved
-                ? `<span style="color: #10B981;">✓ Rezolvat de ${escapeHtml(al.resolver_name || '—')} (${formatDate(al.resolved_at)})</span>`
-                : '<span style="color: #EF4444;">✗ Nerezolvat</span>';
+                ? `<span style="color: #10B981;">✓ ${t('alert_resolved', { name: escapeHtml(al.resolver_name || dash), date: formatDate(al.resolved_at, language) })}</span>`
+                : `<span style="color: #EF4444;">✗ ${t('alert_unresolved')}</span>`;
             sections += `<tr><td style="padding: 4px 0 4px 12px; font-size: 13px; color: #333; border-left: 3px solid #EF4444;">
-                <strong>${escapeHtml(al.creator_name || '—')}</strong>: ${escapeHtml(al.content)}
+                <strong>${escapeHtml(al.creator_name || dash)}</strong>: ${escapeHtml(al.content)}
                 <br>${resolvedText}
-                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(al.created_at)}</span>
+                <br><span style="color: #9ca3af; font-size: 11px;">${formatDate(al.created_at, language)}</span>
             </td></tr>`;
         }
     }
 
     // === ATTACHMENTS ===
     if (attachments.length > 0) {
-        sections += sectionTitle(`Fișiere atașate (${attachments.length})`);
+        sections += sectionTitle(`${t('attachments')} (${attachments.length})`);
         for (const att of attachments) {
             const sizeKB = Math.round((att.file_size || 0) / 1024);
             sections += `<tr><td style="padding: 3px 0 3px 12px; font-size: 13px; color: #333;">
                 📎 <strong>${escapeHtml(att.file_name)}</strong> (${sizeKB} KB)
-                — încărcat de ${escapeHtml(att.uploader_name || '—')} la ${formatDate(att.created_at)}
+                — ${t('uploaded_by', { name: escapeHtml(att.uploader_name || dash), date: formatDate(att.created_at, language) })}
             </td></tr>`;
         }
     }
 
     // === DEPENDENCIES ===
     if (blockingDeps.length > 0 || blockedDeps.length > 0) {
-        sections += sectionTitle('Dependențe');
+        sections += sectionTitle(t('dependencies'));
         for (const dep of blockingDeps) {
             const statusLabel = STATUSES[dep.blocking_status as keyof typeof STATUSES]?.label || dep.blocking_status;
             sections += `<tr><td style="padding: 3px 0 3px 12px; font-size: 13px; color: #333;">
-                🔒 Blocată de: <strong>${escapeHtml(dep.blocking_title)}</strong> (${escapeHtml(statusLabel)})
+                🔒 ${t('blocked_by')}: <strong>${escapeHtml(dep.blocking_title)}</strong> (${escapeHtml(statusLabel)})
             </td></tr>`;
         }
         for (const dep of blockedDeps) {
             const statusLabel = STATUSES[dep.blocked_status as keyof typeof STATUSES]?.label || dep.blocked_status;
             sections += `<tr><td style="padding: 3px 0 3px 12px; font-size: 13px; color: #333;">
-                🔓 Blochează: <strong>${escapeHtml(dep.blocked_title)}</strong> (${escapeHtml(statusLabel)})
+                🔓 ${t('blocks')}: <strong>${escapeHtml(dep.blocked_title)}</strong> (${escapeHtml(statusLabel)})
             </td></tr>`;
         }
     }
 
     // === ACTIVITY LOG ===
     if (activityLog.length > 0) {
-        sections += sectionTitle(`Jurnal de activitate (${activityLog.length})`);
+        sections += sectionTitle(`${t('activity')} (${activityLog.length})`);
         const actionLabels: Record<string, string> = {
             created: 'Creat',
             status_changed: 'Status schimbat',
@@ -393,7 +522,7 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
                     detailText = `: ${oldL} → ${newL}`;
                     if (d.reason) detailText += ` (${escapeHtml(d.reason)})`;
                 } else if (d.old_date && d.new_date) {
-                    detailText = `: ${formatDateOnly(d.old_date)} → ${formatDateOnly(d.new_date)}`;
+                    detailText = `: ${formatDateOnly(d.old_date, language)} → ${formatDateOnly(d.new_date, language)}`;
                     if (d.reason) detailText += ` (${escapeHtml(d.reason)})`;
                 } else if (d.subtask_title) {
                     detailText = `: ${escapeHtml(d.subtask_title)}`;
@@ -404,8 +533,8 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
                 }
             }
             sections += `<tr><td style="padding: 2px 0 2px 12px; font-size: 12px; color: #666;">
-                <span style="color: #9ca3af;">${formatDate(entry.created_at)}</span>
-                — <strong>${escapeHtml(entry.user_name || '—')}</strong>: ${escapeHtml(label)}${detailText}
+                <span style="color: #9ca3af;">${formatDate(entry.created_at, language)}</span>
+                — <strong>${escapeHtml(entry.user_name || dash)}</strong>: ${escapeHtml(label)}${detailText}
             </td></tr>`;
         }
     }
@@ -417,20 +546,20 @@ export async function buildCompletionReportHtml(taskId: string): Promise<string>
     return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
       <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="margin: 0; font-size: 20px;">Sarcinator Visoro</h1>
-        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">Raport finalizare sarcină</p>
+        <h1 style="margin: 0; font-size: 20px;">${t('title')}</h1>
+        <p style="margin: 5px 0 0; opacity: 0.8; font-size: 14px;">${t('subtitle')}</p>
       </div>
       <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
         <div style="background: #d1fae5; border-left: 4px solid #10B981; padding: 12px 16px; margin: 0 0 20px 0; border-radius: 0 8px 8px 0;">
           <p style="margin: 0; font-weight: bold; color: #065f46; font-size: 16px;">✅ ${safeTitle}</p>
-          <p style="margin: 4px 0 0; color: #047857; font-size: 13px;">Sarcina a fost finalizată cu succes.</p>
+          <p style="margin: 4px 0 0; color: #047857; font-size: 13px;">${t('success')}</p>
         </div>
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
           ${sections}
         </table>
         <hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
         <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-          Acest raport a fost generat automat de Sarcinator Visoro la finalizarea sarcinii.
+          ${t('footer')}
         </p>
       </div>
     </div>`;

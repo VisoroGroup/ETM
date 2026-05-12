@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { ConfidentialClientApplication } from '@azure/msal-node';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware, generateToken } from '../middleware/auth';
+import { magicLinkRequestLimiter, magicLinkVerifyLimiter } from '../middleware/rateLimiter';
+import { sendMagicLinkEmail } from '../services/emailService';
 import { v4 as uuidv4 } from 'uuid';
 
 interface MsGraphUser {
@@ -20,7 +22,12 @@ type SqlValue = string | number | boolean | null | string[];
 const AUTH_CODE_TTL_MS = 60_000;
 const authCodeStore = new Map<string, { token: string; expiresAt: number }>();
 
-// Clean up expired codes every 5 minutes
+// OAuth state store for CSRF protection. State value is short-lived
+// (5 minutes) and bound to the user's browser via cookie.
+const OAUTH_STATE_TTL_MS = 5 * 60_000;
+const oauthStateStore = new Map<string, { expiresAt: number }>();
+
+// Clean up expired codes/states every 5 minutes
 setInterval(() => {
     const now = Date.now();
     for (const [code, entry] of authCodeStore) {
@@ -28,7 +35,30 @@ setInterval(() => {
             authCodeStore.delete(code);
         }
     }
+    for (const [state, entry] of oauthStateStore) {
+        if (entry.expiresAt < now) {
+            oauthStateStore.delete(state);
+        }
+    }
 }, 5 * 60_000);
+
+function getServerUrl(req: Request): string {
+    // Prefer the explicitly configured SERVER_URL; never trust the Host header
+    // for OAuth redirects (host-header spoofing → token redirect to attacker).
+    if (process.env.SERVER_URL) return process.env.SERVER_URL;
+    // Fallback: only allow if running locally; otherwise refuse to derive.
+    const host = req.headers.host;
+    if (!host || /:|localhost|127\.0\.0\.1/.test(host) === false) {
+        throw new Error('SERVER_URL must be configured for OAuth.');
+    }
+    return `http://${host}`;
+}
+
+function getClientUrl(_req: Request): string {
+    // Same hardening as getServerUrl — never trust Host header.
+    if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
+    return process.env.SERVER_URL || 'http://localhost:5173';
+}
 
 const router = Router();
 
@@ -53,16 +83,30 @@ function getMsalApp(): ConfidentialClientApplication {
 // GET /api/auth/microsoft — redirect to Microsoft OAuth
 router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
     try {
-        const serverUrl = process.env.SERVER_URL || `https://${req.headers.host}`;
+        const serverUrl = getServerUrl(req);
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
+
+        // Generate a one-time CSRF state and store both server-side and in a
+        // signed cookie so the callback can verify it.
+        const state = crypto.randomBytes(24).toString('hex');
+        oauthStateStore.set(state, { expiresAt: Date.now() + OAUTH_STATE_TTL_MS });
+        res.cookie('oauth_state', state, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: OAUTH_STATE_TTL_MS,
+            path: '/api/auth',
+        });
+
         const authUrl = await getMsalApp().getAuthCodeUrl({
             scopes: ['User.Read'],
             redirectUri,
+            state,
         });
         res.redirect(authUrl);
     } catch (err) {
         console.error('Microsoft OAuth init error:', err);
-        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+        const clientUrl = getClientUrl(req);
         res.redirect(`${clientUrl}/?error=oauth_init_failed`);
     }
 });
@@ -70,14 +114,35 @@ router.get('/microsoft', async (req: Request, res: Response): Promise<void> => {
 // GET /api/auth/microsoft/callback — exchange code for token
 router.get('/microsoft/callback', async (req: Request, res: Response): Promise<void> => {
     try {
-        const { code } = req.query;
-        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
-        const serverUrl = process.env.SERVER_URL || `https://${req.headers.host}`;
+        const { code, state } = req.query;
+        const clientUrl = getClientUrl(req);
+        const serverUrl = getServerUrl(req);
 
         if (!code || typeof code !== 'string') {
             res.redirect(`${clientUrl}/?error=no_code`);
             return;
         }
+
+        // CSRF: state must match a server-stored value AND the cookie value.
+        const rawCookie = req.headers.cookie || '';
+        const cookieState = rawCookie
+            .split(';')
+            .map((c) => c.trim())
+            .find((c) => c.startsWith('oauth_state='))
+            ?.slice('oauth_state='.length);
+        if (!state || typeof state !== 'string' || !cookieState || state !== cookieState) {
+            res.clearCookie('oauth_state', { path: '/api/auth' });
+            res.redirect(`${clientUrl}/?error=oauth_state_mismatch`);
+            return;
+        }
+        const stateEntry = oauthStateStore.get(state);
+        if (!stateEntry || stateEntry.expiresAt < Date.now()) {
+            res.clearCookie('oauth_state', { path: '/api/auth' });
+            res.redirect(`${clientUrl}/?error=oauth_state_expired`);
+            return;
+        }
+        oauthStateStore.delete(state);
+        res.clearCookie('oauth_state', { path: '/api/auth' });
 
         const redirectUri = `${serverUrl}/api/auth/microsoft/callback`;
         const tokenResponse = await getMsalApp().acquireTokenByCode({
@@ -177,7 +242,7 @@ router.get('/microsoft/callback', async (req: Request, res: Response): Promise<v
         res.redirect(`${clientUrl}/?code=${authCode}`);
     } catch (err) {
         console.error('Microsoft OAuth callback error:', err);
-        const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+        const clientUrl = getClientUrl(req);
         res.redirect(`${clientUrl}/?error=oauth_failed`);
     }
 });
@@ -215,11 +280,201 @@ router.post('/exchange', async (req: Request, res: Response): Promise<void> => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Magic-link login (second auth path for external collaborators)
+//
+// Flow:
+//   1. POST /api/auth/magic-link/request  { email }
+//      → always 200, even if no such user (enumeration defense).
+//        If an active user exists with that email, we hash a random token,
+//        store it, and email the raw token as a deep link.
+//   2. POST /api/auth/magic-link/verify   { token }
+//      → on success: { token: jwt }  (30-day JWT, same shape as MS SSO)
+//        on failure: 401.
+// ---------------------------------------------------------------------------
+const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;       // 15 minutes
+const MAGIC_LINK_JWT_LIFETIME = '30d';          // 30-day session
+
+function hashMagicToken(raw: string): string {
+    return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+router.post(
+    '/magic-link/request',
+    magicLinkRequestLimiter,
+    async (req: Request, res: Response): Promise<void> => {
+        try {
+            const rawEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+            // Cheap shape check — never echo the email back, never reveal whether
+            // it matched anything (always 200).
+            const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail);
+            if (!looksLikeEmail) {
+                res.status(400).json({ error: 'Adresa de email este invalidă.' });
+                return;
+            }
+            const email = rawEmail.toLowerCase();
+
+            // Resolve active user (case-insensitive). If not found, we still
+            // return 200 — no enumeration leak.
+            const { rows: users } = await pool.query<{
+                id: string;
+                email: string;
+                display_name: string;
+            }>(
+                `SELECT id, email, display_name FROM users
+                  WHERE LOWER(email) = $1 AND is_active = true LIMIT 1`,
+                [email]
+            );
+
+            if (users.length === 0) {
+                res.json({ ok: true });
+                return;
+            }
+            const user = users[0];
+
+            // Generate raw token; store only the hash.
+            const rawToken = crypto.randomBytes(32).toString('hex');
+            const tokenHash = hashMagicToken(rawToken);
+            const expiresAt = new Date(Date.now() + MAGIC_LINK_TTL_MS);
+            const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+                || req.socket.remoteAddress
+                || null;
+            const ua = (req.headers['user-agent'] as string) || null;
+
+            await pool.query(
+                `INSERT INTO magic_links (token_hash, email, expires_at, requested_ip, user_agent)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [tokenHash, email, expiresAt, ip, ua]
+            );
+
+            // Pick the recipient's preferred language from their first active
+            // company (falls back to RO).
+            let lang: 'ro' | 'hu' | 'en' = 'ro';
+            try {
+                const { rows: langRows } = await pool.query<{ language: string }>(
+                    `SELECT c.language FROM companies c
+                       JOIN user_companies uc ON uc.company_id = c.id
+                      WHERE uc.user_id = $1 AND c.is_archived = false
+                      ORDER BY c.sort_order, c.id
+                      LIMIT 1`,
+                    [user.id]
+                );
+                const v = langRows[0]?.language;
+                if (v === 'ro' || v === 'hu' || v === 'en') lang = v;
+            } catch { /* fall back to ro */ }
+
+            // Build the deep link. Prefer CLIENT_URL; fall back to the request
+            // origin (host header) only when CLIENT_URL isn't set — same
+            // hardening as the OAuth flow.
+            const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+            const link = `${clientUrl}/auth/magic-link?token=${encodeURIComponent(rawToken)}`;
+
+            // Fire-and-forget — never let a Graph API error leak whether the
+            // email exists. We always 200.
+            sendMagicLinkEmail({ to: user.email, link, language: lang })
+                .catch((err) => console.error('[magic-link] email send failed:', err?.message ?? err));
+
+            res.json({ ok: true });
+        } catch (err) {
+            console.error('Magic link request error:', err);
+            // Even on internal error: 200 OK with generic ack to avoid leaking
+            // anything to enumeration probes.
+            res.json({ ok: true });
+        }
+    }
+);
+
+router.post(
+    '/magic-link/verify',
+    magicLinkVerifyLimiter,
+    async (req: Request, res: Response): Promise<void> => {
+        try {
+            const raw = typeof req.body?.token === 'string' ? req.body.token : '';
+            if (!raw || raw.length < 32 || raw.length > 256) {
+                res.status(401).json({ error: 'Link invalid sau expirat.' });
+                return;
+            }
+
+            const tokenHash = hashMagicToken(raw);
+
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+
+                // Lock the matching row so we can atomically check-and-mark.
+                const { rows: linkRows } = await client.query<{
+                    id: string;
+                    email: string;
+                    expires_at: Date;
+                    used_at: Date | null;
+                }>(
+                    `SELECT id, email, expires_at, used_at
+                       FROM magic_links
+                      WHERE token_hash = $1
+                      FOR UPDATE`,
+                    [tokenHash]
+                );
+
+                if (linkRows.length === 0) {
+                    await client.query('ROLLBACK');
+                    res.status(401).json({ error: 'Link invalid sau expirat.' });
+                    return;
+                }
+                const link = linkRows[0];
+
+                if (link.used_at !== null) {
+                    await client.query('ROLLBACK');
+                    res.status(401).json({ error: 'Acest link a fost deja folosit.' });
+                    return;
+                }
+                if (new Date(link.expires_at).getTime() < Date.now()) {
+                    await client.query('ROLLBACK');
+                    res.status(401).json({ error: 'Linkul a expirat. Cere unul nou.' });
+                    return;
+                }
+
+                // Resolve the user NOW (at verify time, not at request time):
+                // an admin may have deactivated the account between request
+                // and verify, and we must respect that.
+                const { rows: users } = await client.query(
+                    `SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true LIMIT 1`,
+                    [link.email]
+                );
+                if (users.length === 0) {
+                    await client.query('ROLLBACK');
+                    res.status(401).json({ error: 'Cont indisponibil.' });
+                    return;
+                }
+                const user = users[0];
+
+                // Mark consumed BEFORE issuing the JWT so a parallel verify
+                // can't reuse the same token.
+                await client.query(
+                    `UPDATE magic_links SET used_at = NOW() WHERE id = $1`,
+                    [link.id]
+                );
+                await client.query('COMMIT');
+
+                const jwtToken = generateToken(user, MAGIC_LINK_JWT_LIFETIME);
+                res.json({ token: jwtToken, user });
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+        } catch (err) {
+            console.error('Magic link verify error:', err);
+            res.status(500).json({ error: 'Eroare la validarea linkului.' });
+        }
+    }
+);
+
 // POST /api/auth/login — validate Microsoft token or dev login
 router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         // Dev mode — login with microsoft_id or email (NEVER in production)
-        if (process.env.DEV_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+        if (process.env.DEV_AUTH_BYPASS === 'true' && (!process.env.NODE_ENV || process.env.NODE_ENV === 'development')) {
             const { microsoft_id, email } = req.body;
 
             let user;
@@ -352,6 +607,10 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => 
     }
 });
 
+// Role hierarchy ranks for privilege checks.
+const ROLE_RANK: Record<string, number> = { user: 1, manager: 2, admin: 3, superadmin: 4 };
+const rankOf = (role: string | undefined | null): number => ROLE_RANK[role ?? 'user'] ?? 0;
+
 // PUT /api/users/:id — update user (admin only for role/departments)
 router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -361,11 +620,28 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         const callerRole = req.user!.role;
         const isSuperadmin = callerRole === 'superadmin';
         const isAdmin = callerRole === 'admin';
+        const callerId = req.user!.id;
 
         // Only admin can change roles/departments
-        if (!isAdmin && !isSuperadmin && req.user!.id !== id) {
+        if (!isAdmin && !isSuperadmin && callerId !== id) {
             res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
             return;
+        }
+
+        // Hierarchy guard: cannot modify a peer or superior.
+        if (callerId !== id && (role || departments)) {
+            const { rows: targetRows } = await pool.query<{ role: string }>(
+                'SELECT role FROM users WHERE id = $1',
+                [id]
+            );
+            if (targetRows.length === 0) {
+                res.status(404).json({ error: 'Utilizator negăsit.' });
+                return;
+            }
+            if (!isSuperadmin && rankOf(targetRows[0].role) >= rankOf(callerRole)) {
+                res.status(403).json({ error: 'Nu poți modifica un utilizator cu rol egal sau superior.' });
+                return;
+            }
         }
 
         // Privilege-escalation guard: only superadmin can grant the superadmin role,
@@ -377,6 +653,10 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
             }
             if (isAdmin && !['user', 'manager'].includes(role)) {
                 res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+                return;
+            }
+            if (rankOf(role) > rankOf(callerRole)) {
+                res.status(403).json({ error: 'Nu poți atribui un rol superior celui propriu.' });
                 return;
             }
         }

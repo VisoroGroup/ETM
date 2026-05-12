@@ -102,6 +102,17 @@ router.put('/users/:id/companies', requireRole('superadmin'), asyncHandler(async
     }
 }));
 
+// Role hierarchy ranks — higher number means more privileged.
+const ROLE_RANK: Record<string, number> = {
+    user: 1,
+    manager: 2,
+    admin: 3,
+    superadmin: 4,
+};
+function rank(role: string | undefined | null): number {
+    return ROLE_RANK[role ?? 'user'] ?? 0;
+}
+
 // PATCH /api/admin/users/:id — update user role and/or departments
 router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
@@ -110,6 +121,25 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     const callerRole = req.user!.role;
     const isSuperadmin = callerRole === 'superadmin';
     const isAdmin = callerRole === 'admin';
+
+    // Load target user for hierarchy checks (cannot modify peers/superiors).
+    const { rows: targetRows } = await pool.query<{ id: string; role: string }>(
+        'SELECT id, role FROM users WHERE id = $1',
+        [id]
+    );
+    if (targetRows.length === 0) {
+        res.status(404).json({ error: 'Utilizator negăsit.' });
+        return;
+    }
+    const target = targetRows[0];
+    const callerId = req.user!.id;
+
+    // Hierarchy guard: an admin cannot modify a peer admin or any superadmin
+    // (only superadmins can touch admins/superadmins).
+    if (!isSuperadmin && target.id !== callerId && rank(target.role) >= rank(callerRole)) {
+        res.status(403).json({ error: 'Nu poți modifica un utilizator cu rol egal sau superior.' });
+        return;
+    }
 
     // Superadmin may set any role; a regular admin can only set 'user' or 'manager'.
     const allowed_roles = isSuperadmin
@@ -126,6 +156,18 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
             res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
             return;
         }
+        // Disallow demoting yourself or changing roles upward beyond your own rank.
+        if (rank(role) > rank(callerRole)) {
+            res.status(403).json({ error: 'Nu poți atribui un rol superior celui propriu.' });
+            return;
+        }
+    }
+
+    // Email change: only superadmin may change another user's email
+    // (admins changing emails enables account takeover via SSO upsert).
+    if (email && !isSuperadmin && target.id !== callerId) {
+        res.status(403).json({ error: 'Doar superadmin poate modifica email-ul altui utilizator.' });
+        return;
     }
 
     // Department change scope guard for non-superadmin admins:
@@ -271,6 +313,22 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
         return;
     }
 
+    // Hierarchy guard: only superadmin may deactivate admins/superadmins.
+    const callerRole = req.user!.role;
+    const isSuperadmin = callerRole === 'superadmin';
+    const { rows: targetRows } = await pool.query<{ role: string }>(
+        'SELECT role FROM users WHERE id = $1',
+        [id]
+    );
+    if (targetRows.length === 0) {
+        res.status(404).json({ error: 'Utilizator negăsit.' });
+        return;
+    }
+    if (!isSuperadmin && rank(targetRows[0].role) >= rank(callerRole)) {
+        res.status(403).json({ error: 'Nu poți dezactiva un utilizator cu rol egal sau superior.' });
+        return;
+    }
+
     try {
         const { rows } = await pool.query(
             `UPDATE users SET is_active = false, deactivated_at = NOW() WHERE id = $1 AND is_active = true RETURNING id, display_name`,
@@ -289,17 +347,26 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
     }
 }));
 
-// GET /api/admin/stats — overview stats for admin
-router.get('/stats', asyncHandler(async (_req: AuthRequest, res: Response) => {
+// GET /api/admin/stats — overview stats for admin (scoped to active company)
+router.get('/stats', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: 'Companie activă lipsește.' });
+        return;
+    }
     try {
+        const companyId = req.activeCompanyId;
         const { rows: [stats] } = await pool.query(`
             SELECT
-                (SELECT COUNT(*) FROM users WHERE is_active = true) as total_users,
-                (SELECT COUNT(*) FROM tasks) as total_tasks,
-                (SELECT COUNT(*) FROM tasks WHERE status = 'terminat') as completed_tasks,
-                (SELECT COUNT(*) FROM tasks WHERE status = 'blocat') as blocked_tasks,
-                (SELECT COUNT(*) FROM tasks WHERE due_date < NOW() AND status != 'terminat') as overdue_tasks
-        `);
+                (SELECT COUNT(*) FROM users u
+                   WHERE u.is_active = true
+                     AND (u.role IN ('admin','superadmin')
+                          OR EXISTS (SELECT 1 FROM user_companies uc WHERE uc.user_id = u.id AND uc.company_id = $1))
+                ) as total_users,
+                (SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND deleted_at IS NULL) as total_tasks,
+                (SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND deleted_at IS NULL AND status = 'terminat') as completed_tasks,
+                (SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND deleted_at IS NULL AND status = 'blocat') as blocked_tasks,
+                (SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND deleted_at IS NULL AND due_date < NOW() AND status != 'terminat') as overdue_tasks
+        `, [companyId]);
         res.json(stats);
     } catch (err) {
         console.error('Admin stats error:', err);
@@ -343,16 +410,27 @@ router.post('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) 
     }
 }));
 
-// GET /api/admin/api-tokens — list all tokens (without hashes)
-router.get('/api-tokens', asyncHandler(async (_req: AuthRequest, res: Response) => {
+// GET /api/admin/api-tokens — list tokens visible to the caller. Superadmins
+// see all; regular admins only see tokens they created themselves.
+router.get('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) => {
     try {
-        const { rows } = await pool.query(`
-            SELECT at.id, at.name, at.is_active, at.created_at, at.last_used_at, at.expires_at,
-                   u.display_name AS created_by_name
-            FROM api_tokens at
-            JOIN users u ON at.created_by = u.id
-            ORDER BY at.created_at DESC
-        `);
+        const isSuperadmin = req.user!.role === 'superadmin';
+        const { rows } = isSuperadmin
+            ? await pool.query(`
+                SELECT at.id, at.name, at.is_active, at.created_at, at.last_used_at, at.expires_at,
+                       u.display_name AS created_by_name
+                FROM api_tokens at
+                JOIN users u ON at.created_by = u.id
+                ORDER BY at.created_at DESC
+            `)
+            : await pool.query(`
+                SELECT at.id, at.name, at.is_active, at.created_at, at.last_used_at, at.expires_at,
+                       u.display_name AS created_by_name
+                FROM api_tokens at
+                JOIN users u ON at.created_by = u.id
+                WHERE at.created_by = $1
+                ORDER BY at.created_at DESC
+            `, [req.user!.id]);
         res.json(rows);
     } catch (err) {
         console.error('List API tokens error:', err);

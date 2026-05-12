@@ -33,8 +33,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const params = new URLSearchParams(window.location.search);
         const oauthCode = params.get('code');
         const oauthError = params.get('error');
+        // Magic-link callback: /auth/magic-link?token=...
+        const isMagicLinkRoute = window.location.pathname === '/auth/magic-link';
+        const magicLinkToken = isMagicLinkRoute ? params.get('token') : null;
 
-        if (oauthCode) {
+        if (magicLinkToken) {
+            // Clean URL immediately so the raw token isn't kept in history.
+            window.history.replaceState({}, '', '/');
+            axios.post('/api/auth/magic-link/verify', { token: magicLinkToken })
+                .then(({ data }) => {
+                    safeLocalStorage.set('visoro_token', data.token);
+                    checkAuth();
+                })
+                .catch((err) => {
+                    console.error('Magic link verify failed:', err);
+                    const tt = makeT('ro');
+                    alert(tt('login.magic_link_verify_failed'));
+                    setLoading(false);
+                });
+        } else if (oauthCode) {
             // Clean URL immediately so code isn't visible in browser history
             window.history.replaceState({}, '', '/');
             // Exchange the one-time code for a JWT token
@@ -94,6 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(user);
         } catch {}
     }
+
+    // Periodically re-pull the user profile so a role downgrade or company
+    // access change made by another admin propagates without forcing the
+    // user to log out and back in. Refresh on:
+    //   - mount + auth becomes ready (covered by checkAuth)
+    //   - tab regains focus (cheap, common)
+    //   - 5-minute heartbeat (catches background tabs)
+    useEffect(() => {
+        if (!user) return;
+        const onFocus = () => refreshUser();
+        window.addEventListener('focus', onFocus);
+        const t = setInterval(refreshUser, 5 * 60 * 1000);
+        return () => {
+            window.removeEventListener('focus', onFocus);
+            clearInterval(t);
+        };
+    }, [user?.id]);
 
     return (
         <AuthContext.Provider value={{ user, users, loading, login, logout, refreshUser }}>

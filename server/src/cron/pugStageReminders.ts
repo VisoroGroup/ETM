@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import pool from '../config/database';
 import { sendEmail } from '../services/emailService';
+import { withCronLock } from './cronLock';
 
 // ---------------------------------------------------------------------------
 // PUG stage deadline reminders
@@ -399,7 +400,9 @@ async function runPugStageReminderJob() {
  */
 export function startPugStageReminderScheduler() {
     cron.schedule('0 7 * * *', () => {
-        runPugStageReminderJob();
+        // Advisory lock so only one replica runs the daily reminder pass.
+        withCronLock(91002, 'pug_stage_reminder_job', runPugStageReminderJob)
+            .catch((err) => console.error('[PUG-REMIND] lock/run error:', err));
     }, {
         timezone: 'Europe/Bucharest',
     });

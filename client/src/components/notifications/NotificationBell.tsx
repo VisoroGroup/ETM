@@ -78,7 +78,31 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
 
     useEffect(() => {
         fetchCount();
-        const interval = setInterval(fetchCount, 15000);
+        // Pause the 15s poll while the tab is hidden — running it in the
+        // background just drains the battery and burns server CPU without
+        // anyone seeing the badge.
+        let interval: ReturnType<typeof setInterval> | null = null;
+        const start = () => {
+            if (interval == null) interval = setInterval(fetchCount, 15000);
+        };
+        const stop = () => {
+            if (interval != null) {
+                clearInterval(interval);
+                interval = null;
+            }
+        };
+        if (!document.hidden) start();
+
+        const visibilityHandler = () => {
+            if (document.hidden) {
+                stop();
+            } else {
+                fetchCount(); // catch up immediately
+                start();
+            }
+        };
+        document.addEventListener('visibilitychange', visibilityHandler);
+
         // Refresh immediately when another component marks notifications read
         const handler = () => {
             fetchCount();
@@ -86,7 +110,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         };
         window.addEventListener('etm:notifications-updated', handler);
         return () => {
-            clearInterval(interval);
+            stop();
+            document.removeEventListener('visibilitychange', visibilityHandler);
             window.removeEventListener('etm:notifications-updated', handler);
         };
     }, [open]);

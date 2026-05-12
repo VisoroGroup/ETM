@@ -134,7 +134,8 @@ export default function DayViewPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Wrap on mobile — at 360px the four controls overflow off-screen. */}
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Quick date navigation */}
                     <button
                         onClick={() => {
@@ -142,7 +143,7 @@ export default function DayViewPage() {
                             d.setDate(d.getDate() - 1);
                             setDate(d.toISOString().split('T')[0]);
                         }}
-                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
+                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors min-h-[44px]"
                     >
                         ← {t('day_view.prev_day')}
                     </button>
@@ -150,11 +151,11 @@ export default function DayViewPage() {
                         type="date"
                         value={date}
                         onChange={e => setDate(e.target.value)}
-                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 border border-navy-700 text-white focus:outline-none focus:border-blue-500"
+                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 border border-navy-700 text-white focus:outline-none focus:border-blue-500 min-h-[44px]"
                     />
                     <button
                         onClick={() => setDate(new Date().toISOString().split('T')[0])}
-                        className="px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                        className="px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors min-h-[44px]"
                     >
                         {t('day_view.today')}
                     </button>
@@ -164,7 +165,7 @@ export default function DayViewPage() {
                             d.setDate(d.getDate() + 1);
                             setDate(d.toISOString().split('T')[0]);
                         }}
-                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors"
+                        className="px-3 py-2 rounded-lg text-sm bg-navy-800 hover:bg-navy-700 text-navy-300 transition-colors min-h-[44px]"
                     >
                         {t('day_view.next_day')} →
                     </button>

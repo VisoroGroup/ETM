@@ -5,6 +5,7 @@ import { DEPARTMENTS } from '../types';
 import { sendEmail } from '../services/emailService';
 import { dispatchWebhook } from '../services/webhookService';
 import { tServer, pickLocale, formatDateLocalized, ServerLocale } from '../i18n/serverI18n';
+import { withCronLock } from './cronLock';
 
 interface TaskForEmail {
     id: string;
@@ -22,6 +23,8 @@ interface UserCompanyEmail {
     email: string;
     display_name: string;
     language: ServerLocale;
+    /** Only 'full'-template companies have a real department taxonomy. */
+    show_department: boolean;
     overdue: TaskForEmail[];
     due_today: TaskForEmail[];
     due_soon: TaskForEmail[];
@@ -29,14 +32,31 @@ interface UserCompanyEmail {
     blocked: TaskForEmail[];
 }
 
+/** Escape HTML special chars to prevent stored XSS in daily summary emails. */
+function escapeHtml(s: string | null | undefined): string {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /**
  * Build the daily summary email HTML for a user, in their company's language.
  */
 function buildEmailHtml(data: UserCompanyEmail): string {
-    const firstName = data.display_name.split(' ')[0];
+    const firstName = escapeHtml(data.display_name.split(' ')[0]);
     const today = formatDateLocalized(new Date(), data.language);
     const t = (key: string, vars?: Record<string, string | number>) =>
         tServer(data.language, `daily_email.${key}`, vars);
+
+    const renderDept = (label: string | null | undefined): string => {
+        if (!data.show_department) return '';
+        const dept = DEPARTMENTS[label as keyof typeof DEPARTMENTS];
+        return dept ? ` — <span style="color: ${dept.color};">[${escapeHtml(dept.label)}]</span>` : '';
+    };
 
     let html = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
@@ -58,9 +78,7 @@ function buildEmailHtml(data: UserCompanyEmail): string {
     `;
         for (const task of data.overdue) {
             const daysOverdue = Math.abs(daysDiff(new Date(), new Date(task.due_date)));
-            const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('days_overdue', { days: daysOverdue })} — ${deptLabel}</p>`;
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${escapeHtml(task.title)}</strong> — ${t('days_overdue', { days: daysOverdue })}${renderDept(task.department_label)}</p>`;
         }
         html += `</div></div>`;
     }
@@ -73,9 +91,7 @@ function buildEmailHtml(data: UserCompanyEmail): string {
         <div style="border-left: 3px solid #F59E0B; padding-left: 12px;">
     `;
         for (const task of data.due_today) {
-            const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('due_today_label')} — ${deptLabel}</p>`;
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${escapeHtml(task.title)}</strong> — ${t('due_today_label')}${renderDept(task.department_label)}</p>`;
         }
         html += `</div></div>`;
     }
@@ -89,9 +105,7 @@ function buildEmailHtml(data: UserCompanyEmail): string {
     `;
         for (const task of data.due_soon) {
             const daysUntil = daysDiff(new Date(), new Date(task.due_date));
-            const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('due_in_days', { days: daysUntil, date: formatDateLocalized(task.due_date, data.language) })} — ${deptLabel}</p>`;
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${escapeHtml(task.title)}</strong> — ${t('due_in_days', { days: daysUntil, date: formatDateLocalized(task.due_date, data.language) })}${renderDept(task.department_label)}</p>`;
         }
         html += `</div></div>`;
     }
@@ -105,9 +119,7 @@ function buildEmailHtml(data: UserCompanyEmail): string {
     `;
         for (const task of data.weekly) {
             const daysUntil = daysDiff(new Date(), new Date(task.due_date));
-            const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong> — ${t('weekly_due_on', { date: formatDateLocalized(task.due_date, data.language), days: daysUntil })} — ${deptLabel}</p>`;
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${escapeHtml(task.title)}</strong> — ${t('weekly_due_on', { date: formatDateLocalized(task.due_date, data.language), days: daysUntil })}${renderDept(task.department_label)}</p>`;
         }
         html += `</div></div>`;
     }
@@ -120,12 +132,13 @@ function buildEmailHtml(data: UserCompanyEmail): string {
         <div style="border-left: 3px solid #6B7280; padding-left: 12px;">
     `;
         for (const task of data.blocked) {
-            const dept = DEPARTMENTS[task.department_label as keyof typeof DEPARTMENTS];
-            const deptLabel = dept ? `<span style="color: ${dept.color};">[${dept.label}]</span>` : '';
-            const reason = task.blocked_reason
-                ? ` — ${t('blocked_reason_prefix')}: ${task.blocked_reason.substring(0, 80)}${task.blocked_reason.length > 80 ? '...' : ''}`
+            const reasonRaw = task.blocked_reason
+                ? task.blocked_reason.substring(0, 80) + (task.blocked_reason.length > 80 ? '...' : '')
                 : '';
-            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${task.title}</strong>${reason} — ${deptLabel}</p>`;
+            const reason = reasonRaw
+                ? ` — ${t('blocked_reason_prefix')}: ${escapeHtml(reasonRaw)}`
+                : '';
+            html += `<p style="margin: 6px 0; font-size: 14px;">• <strong>${escapeHtml(task.title)}</strong>${reason}${renderDept(task.department_label)}</p>`;
         }
         html += `</div></div>`;
     }
@@ -179,12 +192,15 @@ async function runDailyEmailJob() {
             allUsers.map(u => [u.id, u])
         );
 
-        // All companies (id → language)
+        // All companies (id → language + template_type)
         const { rows: allCompanies } = await pool.query(
-            `SELECT id, language FROM companies WHERE is_archived = false`
+            `SELECT id, language, template_type FROM companies WHERE is_archived = false`
         );
         const companyLangMap = new Map<number, ServerLocale>(
             allCompanies.map((c: { id: number; language: string }) => [c.id, pickLocale(c.language)])
+        );
+        const companyTemplateMap = new Map<number, string>(
+            allCompanies.map((c: { id: number; template_type: string }) => [c.id, c.template_type])
         );
 
         // Membership: user_id → Set<company_id>
@@ -230,6 +246,7 @@ async function runDailyEmailJob() {
             if (!memberOf || !memberOf.has(companyId)) return null;
 
             const language = companyLangMap.get(companyId) || 'ro';
+            const showDepartment = (companyTemplateMap.get(companyId) || 'simple') === 'full';
 
             const entry: UserCompanyEmail = {
                 user_id: userId,
@@ -237,6 +254,7 @@ async function runDailyEmailJob() {
                 email: user.email,
                 display_name: user.display_name,
                 language,
+                show_department: showDepartment,
                 overdue: [],
                 due_today: [],
                 due_soon: [],
@@ -280,7 +298,8 @@ async function runDailyEmailJob() {
                     bucket.overdue.push(taskData);
                     const daysOver = Math.abs(daysDiff(today, dueDate));
                     dispatchWebhook('task.overdue', {
-                        task: { id: task.id, title: task.title, due_date: task.due_date, status: task.status, department_label: task.department_label },
+                        task: { id: task.id, title: task.title, due_date: task.due_date, status: task.status, department_label: task.department_label, company_id: task.company_id },
+                        company_id: task.company_id,
                         days_overdue: daysOver
                     }).catch(err => console.error('[WEBHOOK] task.overdue dispatch error:', err.message));
                 } else if (phase === 'due_today') {
@@ -350,7 +369,9 @@ async function runDailyEmailJob() {
 export function startEmailScheduler() {
     // "0 7 * * 1-5" = at 07:00 on Mon-Fri
     cron.schedule('0 7 * * 1-5', () => {
-        runDailyEmailJob();
+        // Wrap in advisory lock so multi-replica deploys don't double-fire.
+        withCronLock(91001, 'daily_email_job', runDailyEmailJob)
+            .catch((err) => console.error('[daily_email_job] lock/run error:', err));
     }, {
         timezone: 'Europe/Bucharest'
     });

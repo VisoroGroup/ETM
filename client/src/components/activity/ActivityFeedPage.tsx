@@ -42,11 +42,22 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
+// Must match the server's `action_type` enum (see app.ts startup +
+// migrations 008/017/030/032/034/037). marked_paid / date_changed /
+// category_changed don't exist on the server — they were leftovers from the
+// old finance module and silently filtered nothing.
 const ACTION_TYPES = [
-    'created', 'status_changed', 'due_date_changed', 'comment_added',
+    'created', 'task_created', 'task_duplicated', 'task_deleted',
+    'status_changed', 'due_date_changed',
+    'comment_added',
     'subtask_added', 'subtask_completed', 'subtask_assigned',
-    'attachment_added', 'label_changed', 'recurring_created',
-    'marked_paid', 'date_changed',
+    'attachment_added', 'attachment_read',
+    'label_changed', 'recurring_created',
+    'title_changed', 'description_changed', 'department_changed',
+    'assigned_to_changed',
+    'alert_added', 'alert_resolved',
+    'dependency_added', 'dependency_removed', 'dependency_resolved',
+    'checklist_updated',
 ];
 
 interface FeedItem {

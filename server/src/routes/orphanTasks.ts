@@ -25,6 +25,10 @@ router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res:
         return;
     }
 
+    // Only "full" template companies have a real org structure (departments,
+    // sections, posts). Lean companies (e.g. Hungary, Neo Plan) intentionally
+    // skip those, so EVERY task there has no scope and would otherwise look
+    // like an orphan. We exclude those companies entirely.
     const { rows } = await pool.query(`
         SELECT t.id, t.title, t.status,
                t.department_label,
@@ -43,6 +47,7 @@ router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res:
                      AND rt.company_id = $1
                ) AS is_recurring_template
         FROM tasks t
+        JOIN companies c ON c.id = t.company_id
         LEFT JOIN users uc ON t.created_by = uc.id
         LEFT JOIN users ua ON t.assigned_to = ua.id
         WHERE t.assigned_post_id IS NULL
@@ -51,6 +56,7 @@ router.get('/', requireRole('admin'), asyncHandler(async (req: AuthRequest, res:
           AND t.deleted_at IS NULL
           AND t.status != 'terminat'
           AND t.company_id = $1
+          AND c.template_type = 'full'
         ORDER BY is_recurring_template DESC, t.created_at DESC
     `, [companyId]);
 

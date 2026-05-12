@@ -233,6 +233,19 @@ export default function Layout() {
 
             {/* Main content */}
             <main className={`flex-1 min-w-0 ml-0 ${collapsed ? 'md:ml-16' : 'md:ml-64'} transition-all duration-300 pb-16 md:pb-0 overflow-y-auto overflow-x-hidden`}>
+                {/* Mobile-only top bar — surfaces the bell + active company name.
+                    Hidden on md+ because the sidebar already exposes both. */}
+                <header className={`md:hidden sticky top-0 z-30 h-14 flex items-center justify-between px-4 border-b ${
+                    darkMode ? 'bg-navy-900/95 border-navy-800 backdrop-blur-md' : 'bg-white/95 border-gray-200 backdrop-blur-md'
+                }`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <img src="/visoro-logo.png" alt="Visoro" className="w-7 h-7 rounded-lg flex-shrink-0" />
+                        <p className={`text-xs font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {activeCompany?.name ?? 'Sarcinator'}
+                        </p>
+                    </div>
+                    <NotificationBell collapsed={true} darkMode={darkMode} />
+                </header>
                 <CompanyGoalBanner darkMode={darkMode} />
                 <Outlet />
             </main>

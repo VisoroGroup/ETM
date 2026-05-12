@@ -54,6 +54,21 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         reload();
     }, [reload]);
 
+    // Multi-tab sync: if another tab switches the active company, mirror that
+    // change here so the two tabs don't drift (and so we abort in-flight
+    // requests in this tab too — handled inside setActiveCompanyId).
+    useEffect(() => {
+        const onStorage = (e: StorageEvent) => {
+            if (e.key !== 'visoro_active_company_id') return;
+            const next = e.newValue ? Number(e.newValue) : null;
+            if (Number.isFinite(next) && next !== activeId) {
+                setActiveIdState(next);
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, [activeId]);
+
     const setActiveCompany = useCallback((id: number) => {
         setActiveIdState(id);
         setActiveCompanyId(id);

@@ -41,7 +41,11 @@ export default function CalendarView() {
         time: t('calendar.time'),
         event: t('calendar.event'),
     }), [t]);
-    const [view, setView] = useState<View>('month');
+    // Default to agenda on narrow viewports — month view is unreadable below
+    // ~640px; we don't want to silently switch later (would lose state), so
+    // we only pick the initial value based on width at mount time.
+    const initialView: View = typeof window !== 'undefined' && window.innerWidth < 640 ? 'agenda' : 'month';
+    const [view, setView] = useState<View>(initialView);
     const [date, setDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
