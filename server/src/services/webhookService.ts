@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import pool from '../config/database';
 import { WebhookEventType, WebhookPayload } from '../types';
 import { validateWebhookUrlAsync } from '../utils/urlSafety';
+import { tError } from '../utils/serverErrors';
 
 const RETRY_DELAYS = [10_000, 60_000, 300_000]; // 10s, 1min, 5min
 const DELIVERY_TIMEOUT = 10_000; // 10s timeout per request

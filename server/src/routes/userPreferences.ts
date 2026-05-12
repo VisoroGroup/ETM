@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -19,7 +20,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 router.put('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const patch = req.body;
     if (!patch || typeof patch !== 'object') {
-        res.status(400).json({ error: 'Body must be a JSON object.' });
+        res.status(400).json({ error: tError(req, 'body_must_be_object') });
         return;
     }
 

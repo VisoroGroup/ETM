@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -9,7 +10,7 @@ router.use(authMiddleware);
 // GET /api/activity-feed — global activity feed with filters and pagination
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -93,7 +94,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         });
     } catch (err) {
         console.error('Activity feed error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea fluxului de activitate.' });
+        res.status(500).json({ error: tError(req, 'activity_load_error') });
     }
 }));
 

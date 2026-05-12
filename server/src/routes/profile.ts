@@ -3,6 +3,7 @@ import multer from 'multer';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -28,7 +29,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         [req.user!.id]
     );
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Utilizator negăsit.' });
+        res.status(404).json({ error: tError(req, 'user_not_found') });
         return;
     }
     res.json(rows[0]);
@@ -39,7 +40,7 @@ router.patch('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { display_name, avatar_url } = req.body;
 
     if (!display_name && avatar_url === undefined) {
-        res.status(400).json({ error: 'Nimic de actualizat.' });
+        res.status(400).json({ error: tError(req, 'nothing_to_update') });
         return;
     }
 
@@ -49,7 +50,7 @@ router.patch('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     if (display_name) {
         if (display_name.trim().length < 2) {
-            res.status(400).json({ error: 'Numele trebuie să aibă cel puțin 2 caractere.' });
+            res.status(400).json({ error: tError(req, 'name_min_2') });
             return;
         }
         setParts.push(`display_name = $${idx++}`);
@@ -62,7 +63,7 @@ router.patch('/', asyncHandler(async (req: AuthRequest, res: Response) => {
             const urlStr = String(avatar_url).trim();
             const isValidAvatarPath = /^\/api\/files\/avatar\/[a-f0-9\-]{36}$/i.test(urlStr);
             if (!isValidAvatarPath) {
-                res.status(400).json({ error: 'Doar URL-uri interne de avatar sunt permise (/api/files/avatar/{uuid}).' });
+                res.status(400).json({ error: tError(req, 'only_internal_avatar_url') });
                 return;
             }
         }
@@ -94,7 +95,7 @@ router.post('/avatar', (req: AuthRequest, res: Response, next) => {
 }, asyncHandler(async (req: AuthRequest, res: Response) => {
     const file = req.file;
     if (!file) {
-        res.status(400).json({ error: 'Imaginea este obligatorie.' });
+        res.status(400).json({ error: tError(req, 'image_required') });
         return;
     }
 

@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { Company } from '../types';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -34,7 +35,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         res.json({ companies: rows });
     } catch (err) {
         console.error('GET /companies failed:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea companiilor.' });
+        res.status(500).json({ error: tError(req, 'companies_load_error') });
     }
 });
 

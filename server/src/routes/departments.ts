@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { userIsInCompany } from '../utils/tenantGuard';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.use(authMiddleware);
 // GET /api/departments — list all departments with sections and posts
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
@@ -126,7 +127,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 // GET /api/departments/:id — single department with full details
 router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -138,7 +139,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Departamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'department_not_found') });
         return;
     }
     res.json(rows[0]);
@@ -147,12 +148,12 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 // POST /api/departments — create department (superadmin only)
 router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { name, color, head_user_id, pfv, statistic_name } = req.body;
     if (!name || !color) {
-        res.status(400).json({ error: 'Numele și culoarea sunt obligatorii.' });
+        res.status(400).json({ error: tError(req, 'dept_name_required') });
         return;
     }
 
@@ -160,7 +161,7 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
     // another tenant. Department head receives notifications + email for
     // every task scoped to this department.
     if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -182,7 +183,7 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
 // PUT /api/departments/:id — update department (superadmin only)
 router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -190,7 +191,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 
     // Tenant guard on head_user_id (audit-3 C13).
     if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -208,7 +209,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
     `, [name, color, head_user_id || null, pfv || null, statistic_name || null, sort_order, id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Departamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'department_not_found') });
         return;
     }
     res.json(rows[0]);
@@ -217,7 +218,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 // DELETE /api/departments/:id — soft delete (superadmin only)
 router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -227,7 +228,7 @@ router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRe
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Departamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'department_not_found') });
         return;
     }
     res.json({ message: 'Departamentul a fost dezactivat.' });
@@ -240,7 +241,7 @@ router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRe
 // GET /api/departments/:id/sections — sections within a department
 router.get('/:id/sections', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -257,13 +258,13 @@ router.get('/:id/sections', asyncHandler(async (req: AuthRequest, res: Response)
 // POST /api/departments/:id/sections — create section (superadmin only)
 router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const department_id = req.params.id;
     const { name, head_user_id, pfv } = req.body;
     if (!name) {
-        res.status(400).json({ error: 'Numele subdepartamentului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'section_name_required') });
         return;
     }
 
@@ -273,13 +274,13 @@ router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req:
         [department_id, req.activeCompanyId]
     );
     if (deptCheck.length === 0) {
-        res.status(404).json({ error: 'Departamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'department_not_found') });
         return;
     }
 
     // Tenant guard on head_user_id (audit-3 C13).
     if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -300,7 +301,7 @@ router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req:
 // PUT /api/sections/:id — update section (superadmin only)
 router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -308,7 +309,7 @@ router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: 
 
     // Tenant guard on head_user_id (audit-3 C13).
     if (head_user_id && !(await userIsInCompany(head_user_id, req.activeCompanyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -324,7 +325,7 @@ router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: 
     `, [name, head_user_id || null, pfv || null, sort_order, id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Subdepartamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'section_not_found') });
         return;
     }
     res.json(rows[0]);
@@ -333,7 +334,7 @@ router.put('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: 
 // DELETE /api/sections/:id — soft delete section (superadmin only)
 router.delete('/sections/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -343,7 +344,7 @@ router.delete('/sections/:id', requireRole('superadmin'), asyncHandler(async (re
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Subdepartamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'section_not_found') });
         return;
     }
     res.json({ message: 'Subdepartamentul a fost dezactivat.' });
@@ -356,7 +357,7 @@ router.delete('/sections/:id', requireRole('superadmin'), asyncHandler(async (re
 // GET /api/departments/sections/:sectionId/posts — posts within a section
 router.get('/sections/:sectionId/posts', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { sectionId } = req.params;
@@ -376,13 +377,13 @@ router.get('/sections/:sectionId/posts', asyncHandler(async (req: AuthRequest, r
 // POST /api/departments/sections/:sectionId/posts — create post (admin + superadmin)
 router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { sectionId } = req.params;
     const { name, user_id, description } = req.body;
     if (!name) {
-        res.status(400).json({ error: 'Numele postului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'post_name_required') });
         return;
     }
 
@@ -392,14 +393,14 @@ router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(asy
         [sectionId, req.activeCompanyId]
     );
     if (secCheck.length === 0) {
-        res.status(404).json({ error: 'Subdepartamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'section_not_found') });
         return;
     }
 
     // Tenant guard on user_id (audit-3 C13): assigning a foreign-tenant user
     // to a post cascades into tasks via the post-user-change trigger below.
     if (user_id && !(await userIsInCompany(user_id, req.activeCompanyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -421,7 +422,7 @@ router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(asy
 // IMPORTANT: When user_id changes, all tasks assigned to this post get their assigned_to updated
 router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
@@ -430,7 +431,7 @@ router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: Aut
 
     // Tenant guard on user_id (audit-3 C13).
     if (user_id && !(await userIsInCompany(user_id, companyId))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
 
@@ -445,7 +446,7 @@ router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: Aut
         );
         if (oldPost.length === 0) {
             await client.query('ROLLBACK');
-            res.status(404).json({ error: 'Postul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'post_not_found') });
             return;
         }
 
@@ -487,7 +488,7 @@ router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: Aut
 // DELETE /api/departments/posts/:id — soft delete post (superadmin only)
 router.delete('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -497,7 +498,7 @@ router.delete('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: 
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Postul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'post_not_found') });
         return;
     }
     res.json({ message: 'Postul a fost dezactivat.' });
@@ -506,7 +507,7 @@ router.delete('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: 
 // GET /api/departments/posts/:id — single post with full details
 router.get('/posts/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -526,7 +527,7 @@ router.get('/posts/:id', asyncHandler(async (req: AuthRequest, res: Response) =>
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Postul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'post_not_found') });
         return;
     }
     res.json(rows[0]);

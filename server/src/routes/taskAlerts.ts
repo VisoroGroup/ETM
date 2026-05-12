@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router({ mergeParams: true });
 
@@ -22,7 +23,7 @@ router.get('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res:
     const { id: taskId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     const { rows } = await pool.query(
@@ -46,12 +47,12 @@ router.post('/alerts', authMiddleware, asyncHandler(async (req: AuthRequest, res
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
     if (!content || content.trim() === '') {
-        res.status(400).json({ error: 'Conținutul alertei este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'alert_content_required') });
         return;
     }
 
@@ -80,18 +81,18 @@ router.put('/alerts/:alertId/resolve', authMiddleware, asyncHandler(async (req: 
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     // Tenant + parent guard
     const existing = await getAlertInTenant(alertId, taskId, companyId);
     if (!existing) {
-        res.status(404).json({ error: 'Alerta nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'alert_not_found') });
         return;
     }
 
@@ -119,23 +120,23 @@ router.delete('/alerts/:alertId', authMiddleware, asyncHandler(async (req: AuthR
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     // Tenant + parent guard
     const existing = await getAlertInTenant(alertId, taskId, companyId);
     if (!existing) {
-        res.status(404).json({ error: 'Alerta nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'alert_not_found') });
         return;
     }
 
     if (existing.created_by !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
-        res.status(403).json({ error: 'Poți șterge doar propriile alerte.' });
+        res.status(403).json({ error: tError(req, 'can_delete_own_alerts_only') });
         return;
     }
 

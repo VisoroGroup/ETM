@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router({ mergeParams: true });
 
@@ -15,12 +16,12 @@ router.delete('/attachments/:attachmentId', authMiddleware, asyncHandler(async (
 
     // Task-level access check (uses shared middleware — includes manager role)
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -33,13 +34,13 @@ router.delete('/attachments/:attachmentId', authMiddleware, asyncHandler(async (
     );
 
     if (existing.length === 0) {
-        res.status(404).json({ error: 'Fișierul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'file_not_found') });
         return;
     }
 
     // Non-admin users can only delete their own uploads
     if (existing[0].uploaded_by !== userId && userRole !== 'admin' && userRole !== 'superadmin') {
-        res.status(403).json({ error: 'Poți șterge doar fișierele încărcate de tine.' });
+        res.status(403).json({ error: tError(req, 'can_delete_own_files_only') });
         return;
     }
 

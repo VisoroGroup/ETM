@@ -7,6 +7,7 @@ import { AuthRequest, authMiddleware, generateToken } from '../middleware/auth';
 import { magicLinkRequestLimiter, magicLinkVerifyLimiter } from '../middleware/rateLimiter';
 import { sendMagicLinkEmail } from '../services/emailService';
 import { v4 as uuidv4 } from 'uuid';
+import { tError } from '../utils/serverErrors';
 
 interface MsGraphUser {
     id: string;
@@ -304,20 +305,20 @@ router.post('/exchange', async (req: Request, res: Response): Promise<void> => {
         const { code } = req.body;
 
         if (!code || typeof code !== 'string') {
-            res.status(400).json({ error: 'Codul de autentificare lipsește.' });
+            res.status(400).json({ error: tError(req, 'auth_code_missing') });
             return;
         }
 
         const issuedToken = await consumeAuthCode(code);
         if (!issuedToken) {
-            res.status(401).json({ error: 'Cod de autentificare invalid, expirat sau deja folosit.' });
+            res.status(401).json({ error: tError(req, 'auth_code_invalid') });
             return;
         }
 
         res.json({ token: issuedToken });
     } catch (err) {
         console.error('Auth code exchange error:', err);
-        res.status(500).json({ error: 'Eroare la schimbul codului de autentificare.' });
+        res.status(500).json({ error: tError(req, 'auth_code_exchange_error') });
     }
 });
 
@@ -350,7 +351,7 @@ router.post(
             // it matched anything (always 200).
             const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail);
             if (!looksLikeEmail) {
-                res.status(400).json({ error: 'Adresa de email este invalidă.' });
+                res.status(400).json({ error: tError(req, 'magic_link_email_invalid') });
                 return;
             }
             const email = rawEmail.toLowerCase();
@@ -444,7 +445,7 @@ router.post(
             // Tokens are exactly 64 hex chars (32 random bytes → hex). Reject
             // anything else before hashing — saves a DB round-trip on garbage.
             if (!raw || raw.length !== 64 || !/^[a-f0-9]+$/.test(raw)) {
-                res.status(401).json({ error: 'Link invalid sau expirat.' });
+                res.status(401).json({ error: tError(req, 'magic_link_invalid') });
                 return;
             }
 
@@ -470,19 +471,19 @@ router.post(
 
                 if (linkRows.length === 0) {
                     await client.query('ROLLBACK');
-                    res.status(401).json({ error: 'Link invalid sau expirat.' });
+                    res.status(401).json({ error: tError(req, 'magic_link_invalid') });
                     return;
                 }
                 const link = linkRows[0];
 
                 if (link.used_at !== null) {
                     await client.query('ROLLBACK');
-                    res.status(401).json({ error: 'Acest link a fost deja folosit.' });
+                    res.status(401).json({ error: tError(req, 'magic_link_used') });
                     return;
                 }
                 if (new Date(link.expires_at).getTime() < Date.now()) {
                     await client.query('ROLLBACK');
-                    res.status(401).json({ error: 'Linkul a expirat. Cere unul nou.' });
+                    res.status(401).json({ error: tError(req, 'magic_link_expired') });
                     return;
                 }
 
@@ -498,7 +499,7 @@ router.post(
                 );
                 if (users.length === 0) {
                     await client.query('ROLLBACK');
-                    res.status(401).json({ error: 'Cont indisponibil.' });
+                    res.status(401).json({ error: tError(req, 'account_unavailable') });
                     return;
                 }
                 const user = users[0];
@@ -521,7 +522,7 @@ router.post(
             }
         } catch (err) {
             console.error('Magic link verify error:', err);
-            res.status(500).json({ error: 'Eroare la validarea linkului.' });
+            res.status(500).json({ error: tError(req, 'magic_link_verify_error') });
         }
     }
 );
@@ -572,7 +573,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
         // Production mode — validate Microsoft token
         const { accessToken } = req.body;
         if (!accessToken) {
-            res.status(400).json({ error: 'Token Microsoft lipsă.' });
+            res.status(400).json({ error: tError(req, 'ms_token_missing') });
             return;
         }
 
@@ -584,7 +585,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             });
 
             if (!graphResponse.ok) {
-                res.status(401).json({ error: 'Token Microsoft invalid.' });
+                res.status(401).json({ error: tError(req, 'ms_token_invalid') });
                 return;
             }
 
@@ -621,11 +622,11 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             const token = generateToken(user);
             res.json({ token, user });
         } catch (err) {
-            res.status(500).json({ error: 'Eroare la validarea token-ului Microsoft.' });
+            res.status(500).json({ error: tError(req, 'ms_token_validate_error') });
         }
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Eroare internă la autentificare.' });
+        res.status(500).json({ error: tError(req, 'auth_internal') });
     }
 });
 
@@ -640,7 +641,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         if (req.activeCompanyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const { rows } = await pool.query(
@@ -659,7 +660,7 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Response) => 
         );
         res.json(rows);
     } catch (err) {
-        res.status(500).json({ error: 'Eroare la încărcarea utilizatorilor.' });
+        res.status(500).json({ error: tError(req, 'users_load_error') });
     }
 });
 
@@ -680,7 +681,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
 
         // Only admin can change roles/departments
         if (!isAdmin && !isSuperadmin && callerId !== id) {
-            res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
+            res.status(403).json({ error: tError(req, 'no_permission') });
             return;
         }
 
@@ -691,11 +692,11 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
                 [id]
             );
             if (targetRows.length === 0) {
-                res.status(404).json({ error: 'Utilizator negăsit.' });
+                res.status(404).json({ error: tError(req, 'user_not_found') });
                 return;
             }
             if (!isSuperadmin && rankOf(targetRows[0].role) >= rankOf(callerRole)) {
-                res.status(403).json({ error: 'Nu poți modifica un utilizator cu rol egal sau superior.' });
+                res.status(403).json({ error: tError(req, 'cant_modify_peer_or_higher') });
                 return;
             }
         }
@@ -704,15 +705,15 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         // and a regular admin can only assign 'user' or 'manager' (never 'admin' or 'superadmin').
         if (role) {
             if (role === 'superadmin' && !isSuperadmin) {
-                res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+                res.status(403).json({ error: tError(req, 'cant_assign_superadmin') });
                 return;
             }
             if (isAdmin && !['user', 'manager'].includes(role)) {
-                res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+                res.status(403).json({ error: tError(req, 'cant_assign_this_role') });
                 return;
             }
             if (rankOf(role) > rankOf(callerRole)) {
-                res.status(403).json({ error: 'Nu poți atribui un rol superior celui propriu.' });
+                res.status(403).json({ error: tError(req, 'cant_assign_higher_role') });
                 return;
             }
         }
@@ -733,7 +734,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
                 [id, callerId]
             );
             if (shared.length === 0) {
-                res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
+                res.status(403).json({ error: tError(req, 'cant_modify_user_outside_company') });
                 return;
             }
         }
@@ -745,7 +746,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         if (departments) {
             // Only admin/superadmin can modify departments (prevent scope escalation)
             if (!isAdmin && !isSuperadmin) {
-                res.status(403).json({ error: 'Doar administratorii pot modifica departamentele.' });
+                res.status(403).json({ error: tError(req, 'only_admins_change_depts') });
                 return;
             }
             updates.push(`departments = $${paramIndex++}`);
@@ -757,7 +758,7 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         }
 
         if (updates.length === 0) {
-            res.status(400).json({ error: 'Nimic de actualizat.' });
+            res.status(400).json({ error: tError(req, 'nothing_to_update') });
             return;
         }
 
@@ -770,13 +771,13 @@ router.put('/users/:id', authMiddleware, async (req: AuthRequest, res: Response)
         );
 
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Utilizator negăsit.' });
+            res.status(404).json({ error: tError(req, 'user_not_found') });
             return;
         }
 
         res.json(rows[0]);
     } catch (err) {
-        res.status(500).json({ error: 'Eroare la actualizare.' });
+        res.status(500).json({ error: tError(req, 'update_failed') });
     }
 });
 

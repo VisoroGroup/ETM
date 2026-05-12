@@ -3,6 +3,7 @@ import multer from 'multer';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ const htmlUpload = multer({
 // GET /api/policies — list all policies with optional scope filter
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
@@ -90,7 +91,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 // GET /api/policies/:id — single policy with full HTML content
 router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
@@ -103,7 +104,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
     `, [id, companyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Directiva nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'policy_not_found') });
         return;
     }
 
@@ -127,19 +128,19 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
 // POST /api/policies/upload — upload HTML policy (superadmin only)
 router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
     const { directive_number, title, date, scope, department_ids, post_ids } = req.body;
 
     if (!title || !date || !scope) {
-        res.status(400).json({ error: 'Titlul, data și scope-ul sunt obligatorii.' });
+        res.status(400).json({ error: tError(req, 'policy_required_fields') });
         return;
     }
 
     if (!['COMPANY', 'DEPARTMENT', 'POST'].includes(scope)) {
-        res.status(400).json({ error: 'Scope invalid. Valori posibile: COMPANY, DEPARTMENT, POST.' });
+        res.status(400).json({ error: tError(req, 'invalid_scope') });
         return;
     }
 
@@ -150,7 +151,7 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
     } else if (req.body.content_html) {
         content_html = req.body.content_html;
     } else {
-        res.status(400).json({ error: 'Fișierul HTML sau conținutul HTML este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'html_required') });
         return;
     }
 
@@ -180,7 +181,7 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
                 const validSet = new Set(validDepts.map((r) => r.id));
                 if (deptIds.some((d) => !validSet.has(d))) {
                     await client.query('ROLLBACK');
-                    res.status(400).json({ error: 'Unul sau mai multe departamente nu aparțin companiei active.' });
+                    res.status(400).json({ error: tError(req, 'departments_not_in_company') });
                     return;
                 }
                 for (const deptId of deptIds) {
@@ -203,7 +204,7 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
                 const validSet = new Set(validPosts.map((r) => r.id));
                 if (pIds.some((p) => !validSet.has(p))) {
                     await client.query('ROLLBACK');
-                    res.status(400).json({ error: 'Unul sau mai multe posturi nu aparțin companiei active.' });
+                    res.status(400).json({ error: tError(req, 'posts_not_in_company') });
                     return;
                 }
                 for (const postId of pIds) {
@@ -228,7 +229,7 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
 // PUT /api/policies/:id — update policy (superadmin only)
 router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const companyId = req.activeCompanyId;
@@ -253,7 +254,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 
         if (rows.length === 0) {
             await client.query('ROLLBACK');
-            res.status(404).json({ error: 'Directiva nu a fost găsită.' });
+            res.status(404).json({ error: tError(req, 'policy_not_found') });
             return;
         }
 
@@ -271,7 +272,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
                 const validSet = new Set(validDepts.map((r) => r.id));
                 if (safeDeptIds.some((d) => !validSet.has(d))) {
                     await client.query('ROLLBACK');
-                    res.status(400).json({ error: 'Unul sau mai multe departamente nu aparțin companiei active.' });
+                    res.status(400).json({ error: tError(req, 'departments_not_in_company') });
                     return;
                 }
             }
@@ -299,7 +300,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
                 const validSet = new Set(validPosts.map((r) => r.id));
                 if (safePostIds.some((p) => !validSet.has(p))) {
                     await client.query('ROLLBACK');
-                    res.status(400).json({ error: 'Unul sau mai multe posturi nu aparțin companiei active.' });
+                    res.status(400).json({ error: tError(req, 'posts_not_in_company') });
                     return;
                 }
             }
@@ -328,7 +329,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 // DELETE /api/policies/:id — soft delete (superadmin only)
 router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { id } = req.params;
@@ -338,7 +339,7 @@ router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRe
     `, [id, req.activeCompanyId]);
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Directiva nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'policy_not_found') });
         return;
     }
     res.json({ message: 'Directiva a fost dezactivată.' });

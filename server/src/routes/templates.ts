@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { z } from 'zod';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const result = await pool.query(`
@@ -48,7 +49,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const parsed = createTemplateSchema.parse(req.body);
@@ -81,7 +82,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const { rows } = await pool.query(
@@ -94,7 +95,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
             [req.params.id, req.user!.id, req.user!.role, companyId]
         );
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Sablon nem található vagy nincs jogosultságod.' });
+            res.status(404).json({ error: tError(req, 'template_not_found_or_unauth') });
             return;
         }
         res.status(204).send();
@@ -107,7 +108,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
 router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const client = await pool.connect();
@@ -122,13 +123,13 @@ router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) 
         );
         if (!tpl.rows[0]) {
             await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Sablon negăsit' });
+            return res.status(404).json({ error: tError(req, 'template_not_found') });
         }
         const t = tpl.rows[0];
 
         if (!due_date) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'Data limită este obligatorie' });
+            return res.status(400).json({ error: tError(req, 'task_due_date_required_alt') });
         }
 
         // Create task

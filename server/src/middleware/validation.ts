@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { Request, Response, NextFunction } from 'express';
+import { tError } from '../utils/serverErrors';
 
 function validate<T>(schema: z.ZodSchema<T>) {
     return (req: Request, res: Response, next: NextFunction) => {
         const result = schema.safeParse(req.body);
         if (!result.success) {
             return res.status(400).json({
-                error: 'Date invalide',
+                error: tError(req, 'invalid_data'),
                 details: result.error.errors.map((e: z.ZodIssue) => ({
                     field: e.path.join('.'),
                     message: e.message,

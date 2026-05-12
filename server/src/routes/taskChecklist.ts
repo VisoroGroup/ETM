@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 import {
     getSpecificStakeholders,
     buildNotificationHtml,
@@ -29,7 +30,7 @@ async function getChecklistItemInTenant(itemId: string, taskId: string, companyI
 router.get('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     const taskId = req.params.id;
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     const { rows } = await pool.query(
@@ -45,17 +46,17 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
     const { title } = req.body;
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
-        res.status(400).json({ error: 'Titlul este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'task_title_required') });
         return;
     }
     if (title.length > 500) {
-        res.status(400).json({ error: 'Titlul nu poate depăși 500 de caractere.' });
+        res.status(400).json({ error: tError(req, 'task_title_too_long') });
         return;
     }
 
@@ -65,7 +66,7 @@ router.post('/checklist', authMiddleware, asyncHandler(async (req: AuthRequest, 
         [taskId, companyId]
     );
     if (taskCheck.length === 0) {
-        res.status(404).json({ error: 'A task nem létezik vagy törölve lett.' });
+        res.status(404).json({ error: tError(req, 'task_deleted_or_inaccessible') });
         return;
     }
 
@@ -102,18 +103,18 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     // Tenant + parent guard
     const oldItem = await getChecklistItemInTenant(itemId, taskId, companyId);
     if (!oldItem) {
-        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'checklist_item_not_found') });
         return;
     }
 
@@ -126,7 +127,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     sets.push(`updated_at = NOW()`);
 
     if (sets.length === 1) { // only updated_at
-        res.status(400).json({ error: 'Nimic de actualizat.' });
+        res.status(400).json({ error: tError(req, 'nothing_to_update') });
         return;
     }
 
@@ -137,7 +138,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
     );
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'checklist_item_not_found') });
         return;
     }
 
@@ -185,13 +186,13 @@ router.put('/checklist-reorder', authMiddleware, asyncHandler(async (req: AuthRe
     const taskId = req.params.id;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
     const { order } = req.body;
     if (!Array.isArray(order) || order.length === 0) {
-        res.status(400).json({ error: 'Lista de ordine este obligatorie.' });
+        res.status(400).json({ error: tError(req, 'order_list_required') });
         return;
     }
 
@@ -214,18 +215,18 @@ router.delete('/checklist/:itemId', authMiddleware, asyncHandler(async (req: Aut
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     // Tenant + parent guard
     const existing = await getChecklistItemInTenant(itemId, taskId, companyId);
     if (!existing) {
-        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'checklist_item_not_found') });
         return;
     }
 
@@ -235,7 +236,7 @@ router.delete('/checklist/:itemId', authMiddleware, asyncHandler(async (req: Aut
     );
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Elementul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'checklist_item_not_found') });
         return;
     }
 

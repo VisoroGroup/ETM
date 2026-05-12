@@ -2,6 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 /**
  * PUG project routes — CRUD + per-project stages, custom field values,
@@ -13,7 +14,7 @@ router.use(authMiddleware);
 function ensureCompany(req: AuthRequest, res: Response): number | null {
     const id = req.activeCompanyId;
     if (!Number.isFinite(id)) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return null;
     }
     return id as number;
@@ -27,7 +28,7 @@ function ensureCompany(req: AuthRequest, res: Response): number | null {
 async function ensureProjectTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     const cid = req.activeCompanyId;
     if (!Number.isFinite(cid)) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { rows } = await pool.query(
@@ -35,7 +36,7 @@ async function ensureProjectTemplate(req: AuthRequest, res: Response, next: Next
         [cid]
     );
     if (rows.length === 0 || rows[0].template_type !== 'project') {
-        res.status(400).json({ error: 'Această companie nu suportă proiecte (PUG).' });
+        res.status(400).json({ error: tError(req, 'company_no_project_support') });
         return;
     }
     next();
@@ -123,7 +124,7 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
           WHERE p.id = $1 AND p.company_id = $2`,
         [id, cid]
     );
-    if (pRows.length === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if (pRows.length === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     const project = pRows[0];
 
     const [stagesRes, fieldValsRes, respsRes] = await Promise.all([
@@ -178,7 +179,7 @@ router.post('/', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyn
         responsible_ids,
     } = req.body ?? {};
     if (typeof title !== 'string' || title.trim().length === 0) {
-        res.status(400).json({ error: 'Titlul proiectului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'project_title_required') });
         return;
     }
 
@@ -232,7 +233,7 @@ router.post('/', requireRole('admin'), asyncHandler(ensureProjectTemplate), asyn
             const validIds = validRows.map((r) => r.id);
             if (validIds.length !== responsible_ids.length) {
                 await client.query('ROLLBACK');
-                res.status(400).json({ error: 'Utilizatori care nu aparțin acestei companii.' });
+                res.status(400).json({ error: tError(req, 'users_not_in_company') });
                 return;
             }
             const valuesSql = validIds.map((_: string, i: number) => `($1, $${i + 2})`).join(', ');
@@ -269,7 +270,7 @@ router.put('/:id', requireRole('admin'), asyncHandler(ensureProjectTemplate), as
             vals.push(req.body[f]); sets.push(`${f}=$${vals.length}`);
         }
     }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nimic de actualizat.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_to_update') }); return; }
     vals.push(id, cid);
     const { rows } = await pool.query(
         `UPDATE pug_projects SET ${sets.join(', ')}, updated_at=NOW()
@@ -277,7 +278,7 @@ router.put('/:id', requireRole('admin'), asyncHandler(ensureProjectTemplate), as
         RETURNING id`,
         vals
     );
-    if (rows.length === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if (rows.length === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     res.json({ ok: true });
 }));
 
@@ -291,7 +292,7 @@ router.patch('/:id/archive', requireRole('admin'), asyncHandler(ensureProjectTem
         `UPDATE pug_projects SET is_archived = $1, updated_at=NOW() WHERE id=$2 AND company_id=$3`,
         [archive, req.params.id, cid]
     );
-    if ((rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if ((rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     res.json({ ok: true });
 }));
 
@@ -306,8 +307,8 @@ router.post('/:id/stages', requireRole('admin'), asyncHandler(ensureProjectTempl
     const { rowCount: pCount } = await pool.query(
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2', [projectId, cid]
     );
-    if ((pCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
-    if (!stage_catalog_id) { res.status(400).json({ error: 'stage_catalog_id obligatoriu.' }); return; }
+    if ((pCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
+    if (!stage_catalog_id) { res.status(400).json({ error: tError(req, 'stage_catalog_required') }); return; }
     // Verify stage_catalog_id belongs to the active company — prevents
     // crafted payloads from referencing another company's catalog rows.
     const { rowCount: stageCatCount } = await pool.query(
@@ -315,7 +316,7 @@ router.post('/:id/stages', requireRole('admin'), asyncHandler(ensureProjectTempl
         [stage_catalog_id, cid]
     );
     if ((stageCatCount ?? 0) === 0) {
-        res.status(400).json({ error: 'Etapa nu aparține companiei active.' });
+        res.status(400).json({ error: tError(req, 'stage_not_in_company') });
         return;
     }
     if (status_id) {
@@ -324,7 +325,7 @@ router.post('/:id/stages', requireRole('admin'), asyncHandler(ensureProjectTempl
             [status_id, cid]
         );
         if ((statusCount ?? 0) === 0) {
-            res.status(400).json({ error: 'Statusul nu aparține companiei active.' });
+            res.status(400).json({ error: tError(req, 'status_not_in_company') });
             return;
         }
     }
@@ -338,7 +339,7 @@ router.post('/:id/stages', requireRole('admin'), asyncHandler(ensureProjectTempl
         res.status(201).json({ stage_id: rows[0].id });
     } catch (err: any) {
         if (err?.code === '23505') {
-            res.status(409).json({ error: 'Această etapă este deja atașată proiectului.' });
+            res.status(409).json({ error: tError(req, 'stage_already_attached') });
             return;
         }
         throw err;
@@ -356,7 +357,7 @@ router.put('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(ens
             [status_id, cid]
         );
         if ((statusCount ?? 0) === 0) {
-            res.status(400).json({ error: 'Statusul nu aparține companiei active.' });
+            res.status(400).json({ error: tError(req, 'status_not_in_company') });
             return;
         }
     }
@@ -365,20 +366,20 @@ router.put('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(ens
     if (deadline !== undefined) { vals.push(deadline || null); sets.push(`deadline=$${vals.length}`); }
     if (Number.isFinite(sort_order)) { vals.push(Number(sort_order)); sets.push(`sort_order=$${vals.length}`); }
     if (notes !== undefined) { vals.push(notes ?? null); sets.push(`notes=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nimic de actualizat.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_to_update') }); return; }
     vals.push(stageId, projectId);
     // Verify tenancy via the JOIN.
     const tenant = await pool.query(
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2',
         [projectId, cid]
     );
-    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     const { rowCount } = await pool.query(
         `UPDATE pug_project_stages SET ${sets.join(', ')}, updated_at=NOW()
           WHERE id=$${vals.length - 1} AND project_id=$${vals.length}`,
         vals
     );
-    if ((rowCount ?? 0) === 0) { res.status(404).json({ error: 'Etapă inexistentă.' }); return; }
+    if ((rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'stage_not_found') }); return; }
 
     // If the deadline moved, drop the reminder log so future levels can fire
     // again. Without this, a stage whose deadline slips to a later date would
@@ -401,12 +402,12 @@ router.delete('/:projectId/stages/:stageId', requireRole('admin'), asyncHandler(
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2',
         [projectId, cid]
     );
-    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     const result = await pool.query(
         'DELETE FROM pug_project_stages WHERE id=$1 AND project_id=$2',
         [stageId, projectId]
     );
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Etapă inexistentă.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'stage_not_found') }); return; }
     res.status(204).end();
 }));
 
@@ -418,13 +419,13 @@ router.put('/:id/custom-fields', requireRole('admin'), asyncHandler(ensureProjec
     const { id: projectId } = req.params;
     const values = req.body?.values; // { [field_id]: any }
     if (typeof values !== 'object' || values === null || Array.isArray(values)) {
-        res.status(400).json({ error: 'values trebuie să fie un obiect { field_id: value }.' });
+        res.status(400).json({ error: tError(req, 'values_must_be_object') });
         return;
     }
     const tenant = await pool.query(
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2', [projectId, cid]
     );
-    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
     // Verify every field_id belongs to the active company. Reject all if any
     // is invalid — partial saves would leave the project in a half-set state.
     const fieldIds = Object.keys(values);
@@ -436,7 +437,7 @@ router.put('/:id/custom-fields', requireRole('admin'), asyncHandler(ensureProjec
         const validSet = new Set(validFields.map((r) => r.id));
         const invalid = fieldIds.filter((fid) => !validSet.has(fid));
         if (invalid.length > 0) {
-            res.status(400).json({ error: 'Unul sau mai multe câmpuri nu aparțin companiei active.' });
+            res.status(400).json({ error: tError(req, 'fields_not_in_company') });
             return;
         }
     }
@@ -469,11 +470,11 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id: projectId } = req.params;
     const ids = Array.isArray(req.body?.user_ids) ? req.body.user_ids : null;
-    if (!ids) { res.status(400).json({ error: 'user_ids array required.' }); return; }
+    if (!ids) { res.status(400).json({ error: tError(req, 'user_ids_required') }); return; }
     const tenant = await pool.query(
         'SELECT 1 FROM pug_projects WHERE id=$1 AND company_id=$2', [projectId, cid]
     );
-    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Proiect inexistent.' }); return; }
+    if ((tenant.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'project_not_found') }); return; }
 
     // Tenant guard: every user_id must belong to the project's company (via
     // user_companies) OR be a superadmin/admin (cross-company by definition).
@@ -490,7 +491,7 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
         const validSet = new Set(validRows.map((r) => r.id));
         const invalid = ids.filter((id: string) => !validSet.has(id));
         if (invalid.length > 0) {
-            res.status(400).json({ error: 'Utilizatori care nu aparțin acestei companii.', invalid });
+            res.status(400).json({ error: tError(req, 'users_not_in_company'), invalid });
             return;
         }
     }

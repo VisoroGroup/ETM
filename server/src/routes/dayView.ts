@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import PDFDocument from 'pdfkit';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ async function getTemplateType(companyId: number | undefined): Promise<TemplateT
 router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const startStr = (req.query.start as string) || new Date().toISOString().split('T')[0];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) {
-        res.status(400).json({ error: 'Format dată invalid. Folosește YYYY-MM-DD.' });
+        res.status(400).json({ error: tError(req, 'invalid_date_format_ymd') });
         return;
     }
 
@@ -94,7 +95,7 @@ router.get('/', authMiddleware, requireRole('superadmin'), asyncHandler(async (r
 
     // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        res.status(400).json({ error: 'Format dată invalid. Folosește YYYY-MM-DD.' });
+        res.status(400).json({ error: tError(req, 'invalid_date_format_ymd') });
         return;
     }
 
@@ -109,7 +110,7 @@ router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandl
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        res.status(400).json({ error: 'Format dată invalid.' });
+        res.status(400).json({ error: tError(req, 'invalid_date_format') });
         return;
     }
 
@@ -120,7 +121,7 @@ router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandl
     const userData = allUsers.find(u => u.id === userId);
 
     if (!userData) {
-        res.status(404).json({ error: 'Utilizatorul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'user_not_found_alt') });
         return;
     }
 

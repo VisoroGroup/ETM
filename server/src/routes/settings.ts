@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.use(authMiddleware);
 // GET /api/settings/company-goal — get the active company's main goal banner
 router.get('/company-goal', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { rows } = await pool.query(
@@ -25,12 +26,12 @@ router.get('/company-goal', asyncHandler(async (req: AuthRequest, res: Response)
 // overwrite Visoro Global's.
 router.put('/company-goal', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { goal } = req.body;
     if (goal === undefined || goal === null) {
-        res.status(400).json({ error: 'Obiectivul companiei este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'company_objective_required') });
         return;
     }
 

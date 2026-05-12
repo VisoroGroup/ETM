@@ -4,6 +4,7 @@ import path from 'path';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -56,13 +57,13 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
         const file = req.file;
 
         if (!file) {
-            res.status(400).json({ error: 'Fișierul este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'file_required') });
             return;
         }
 
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
@@ -72,14 +73,14 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
             [taskId, companyId]
         );
         if (taskRows.length === 0) {
-            res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+            res.status(404).json({ error: tError(req, 'task_not_yours') });
             return;
         }
         const taskCompanyId = taskRows[0].company_id;
 
         // Check task access
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
@@ -123,7 +124,7 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
         }
     } catch (err) {
         console.error('Error uploading file:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea fișierului.' });
+        res.status(500).json({ error: tError(req, 'file_upload_error') });
     }
 });
 

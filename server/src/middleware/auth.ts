@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../config/database';
 import { User } from '../types';
+import { ServerLocale, pickLocale } from '../i18n/serverI18n';
+import { tError } from '../utils/serverErrors';
 
 interface JwtPayload {
     id: string;
@@ -17,6 +19,8 @@ export interface AuthRequest extends Request {
     userCompanyIds?: number[];
     /** The currently selected company for this request (from X-Active-Company header, falls back to user's first). */
     activeCompanyId?: number;
+    /** Resolved locale for backend response messages (audit-3 H18). */
+    locale?: ServerLocale;
 }
 
 async function loadCompanyContext(req: AuthRequest, userId: string, role: string): Promise<void> {
@@ -48,6 +52,39 @@ async function loadCompanyContext(req: AuthRequest, userId: string, role: string
     } else {
         req.activeCompanyId = companyIds[0]; // may be undefined if user belongs to no companies
     }
+
+    // Resolve response locale (audit-3 H18). Priority:
+    // active company language → Accept-Language → 'ro'.
+    if (req.activeCompanyId !== undefined) {
+        try {
+            const { rows } = await pool.query<{ language: string }>(
+                'SELECT language FROM companies WHERE id = $1 LIMIT 1',
+                [req.activeCompanyId]
+            );
+            if (rows[0]?.language) {
+                req.locale = pickLocale(rows[0].language);
+                return;
+            }
+        } catch {
+            // Fall through to header parsing.
+        }
+    }
+    const hdr = req.headers['accept-language'];
+    if (typeof hdr === 'string') {
+        for (const part of hdr.split(',')) {
+            const tag = part.split(';')[0]?.trim() ?? '';
+            const picked = pickLocale(tag);
+            if (picked === 'hu' || picked === 'en') {
+                req.locale = picked;
+                return;
+            }
+            if (tag.toLowerCase().startsWith('ro')) {
+                req.locale = 'ro';
+                return;
+            }
+        }
+    }
+    req.locale = 'ro';
 }
 
 // JWT secret resolution: a hardcoded dev fallback is allowed only when we're
@@ -120,10 +157,10 @@ export async function authMiddleware(
                 return next();
             }
 
-            res.status(401).json({ error: 'Nu există utilizatori în baza de date. Rulează seed-ul.' });
+            res.status(401).json({ error: tError(req, 'no_users_seeded') });
             return;
         } catch (err) {
-            res.status(500).json({ error: 'Eroare la autentificare dev.' });
+            res.status(500).json({ error: tError(req, 'auth_dev_error') });
             return;
         }
     }
@@ -131,7 +168,7 @@ export async function authMiddleware(
     // Production mode - JWT validation
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ error: 'Token de autentificare lipsă.' });
+        res.status(401).json({ error: tError(req, 'auth_token_missing') });
         return;
     }
 
@@ -142,7 +179,7 @@ export async function authMiddleware(
         const { rows } = await pool.query(`SELECT ${USER_SELECT_COLS} FROM users WHERE id = $1 AND is_active = true`, [decoded.id]);
 
         if (rows.length === 0) {
-            res.status(401).json({ error: 'Utilizator negăsit.' });
+            res.status(401).json({ error: tError(req, 'user_not_found') });
             return;
         }
 
@@ -150,7 +187,7 @@ export async function authMiddleware(
         await loadCompanyContext(req, rows[0].id, rows[0].role);
         next();
     } catch (err) {
-        res.status(401).json({ error: 'Token invalid sau expirat.' });
+        res.status(401).json({ error: tError(req, 'auth_token_invalid') });
     }
 }
 
@@ -166,14 +203,14 @@ const ROLE_INHERITANCE: Record<string, string[]> = {
 export function requireRole(...roles: string[]) {
     return (req: AuthRequest, res: Response, next: NextFunction): void => {
         if (!req.user) {
-            res.status(401).json({ error: 'Neautentificat.' });
+            res.status(401).json({ error: tError(req, 'not_authenticated') });
             return;
         }
 
         const effectiveRoles = ROLE_INHERITANCE[req.user.role] ?? [req.user.role];
 
         if (!roles.some(r => effectiveRoles.includes(r))) {
-            res.status(403).json({ error: 'Nu ai permisiunea necesară.' });
+            res.status(403).json({ error: tError(req, 'no_permission') });
             return;
         }
 

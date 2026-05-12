@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 /**
  * Admin endpoints for the Visoro Neo Plan PUG module.
@@ -21,7 +22,7 @@ type FieldType = typeof FIELD_TYPES[number];
 function ensureCompany(req: AuthRequest, res: Response): number | null {
     const id = req.activeCompanyId;
     if (!Number.isFinite(id)) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return null;
     }
     return id as number;
@@ -46,7 +47,7 @@ router.post('/stages', requireRole('superadmin'), asyncHandler(async (req: AuthR
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { name, icon, color, is_default, sort_order } = req.body ?? {};
     if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele etapei este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'stage_name_required') });
         return;
     }
     const { rows: maxRows } = await pool.query<{ m: number | null }>(
@@ -73,7 +74,7 @@ router.put('/stages/:id', requireRole('superadmin'), asyncHandler(async (req: Au
     if (Number.isFinite(sort_order)) { vals.push(Number(sort_order)); sets.push(`sort_order=$${vals.length}`); }
     if (typeof is_default === 'boolean') { vals.push(is_default); sets.push(`is_default=$${vals.length}`); }
     if (typeof is_active === 'boolean') { vals.push(is_active); sets.push(`is_active=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_sent') }); return; }
     vals.push(id, cid);
     const { rows } = await pool.query(
         `UPDATE pug_stage_catalog SET ${sets.join(', ')}, updated_at=NOW()
@@ -81,7 +82,7 @@ router.put('/stages/:id', requireRole('superadmin'), asyncHandler(async (req: Au
         RETURNING id, name, icon, color, sort_order, is_default, is_active, created_at, updated_at`,
         vals
     );
-    if (rows.length === 0) { res.status(404).json({ error: 'Etapă inexistentă.' }); return; }
+    if (rows.length === 0) { res.status(404).json({ error: tError(req, 'stage_not_found') }); return; }
     res.json({ stage: rows[0] });
 }));
 
@@ -99,11 +100,11 @@ router.delete('/stages/:id', requireRole('superadmin'), asyncHandler(async (req:
         [id, cid]
     );
     if (rowCount && rowCount > 0) {
-        res.status(409).json({ error: 'Etapa este folosită într-un proiect. Dezactiveaz-o în loc.' });
+        res.status(409).json({ error: tError(req, 'stage_in_use') });
         return;
     }
     const result = await pool.query('DELETE FROM pug_stage_catalog WHERE id=$1 AND company_id=$2', [id, cid]);
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Etapă inexistentă.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'stage_not_found') }); return; }
     res.status(204).end();
 }));
 
@@ -126,7 +127,7 @@ router.post('/statuses', requireRole('superadmin'), asyncHandler(async (req: Aut
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { name, color, is_initial, is_terminal, sort_order } = req.body ?? {};
     if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele statusului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'status_name_required') });
         return;
     }
     const { rows: maxRows } = await pool.query<{ m: number | null }>(
@@ -153,7 +154,7 @@ router.put('/statuses/:id', requireRole('superadmin'), asyncHandler(async (req: 
     if (typeof is_initial === 'boolean') { vals.push(is_initial); sets.push(`is_initial=$${vals.length}`); }
     if (typeof is_terminal === 'boolean') { vals.push(is_terminal); sets.push(`is_terminal=$${vals.length}`); }
     if (typeof is_active === 'boolean') { vals.push(is_active); sets.push(`is_active=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_sent') }); return; }
     vals.push(id, cid);
     const { rows } = await pool.query(
         `UPDATE pug_status_catalog SET ${sets.join(', ')}, updated_at=NOW()
@@ -161,7 +162,7 @@ router.put('/statuses/:id', requireRole('superadmin'), asyncHandler(async (req: 
         RETURNING id, name, color, sort_order, is_initial, is_terminal, is_active, created_at, updated_at`,
         vals
     );
-    if (rows.length === 0) { res.status(404).json({ error: 'Status inexistent.' }); return; }
+    if (rows.length === 0) { res.status(404).json({ error: tError(req, 'status_not_found') }); return; }
     res.json({ status: rows[0] });
 }));
 
@@ -180,11 +181,11 @@ router.delete('/statuses/:id', requireRole('superadmin'), asyncHandler(async (re
         [id, cid]
     );
     if (usageCount && usageCount > 0) {
-        res.status(409).json({ error: 'Acest status este folosit în proiecte. Dezactivează-l (is_active=false) în loc.' });
+        res.status(409).json({ error: tError(req, 'status_in_use') });
         return;
     }
     const result = await pool.query('DELETE FROM pug_status_catalog WHERE id=$1 AND company_id=$2', [id, cid]);
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Status inexistent.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'status_not_found') }); return; }
     res.status(204).end();
 }));
 
@@ -207,7 +208,7 @@ router.post('/work-types', requireRole('superadmin'), asyncHandler(async (req: A
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { name, sort_order } = req.body ?? {};
     if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele tipului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'type_name_required') });
         return;
     }
     const { rows: maxRows } = await pool.query<{ m: number | null }>(
@@ -230,7 +231,7 @@ router.put('/work-types/:id', requireRole('superadmin'), asyncHandler(async (req
     if (typeof name === 'string' && name.trim()) { vals.push(name.trim()); sets.push(`name=$${vals.length}`); }
     if (Number.isFinite(sort_order)) { vals.push(Number(sort_order)); sets.push(`sort_order=$${vals.length}`); }
     if (typeof is_active === 'boolean') { vals.push(is_active); sets.push(`is_active=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_sent') }); return; }
     vals.push(id, cid);
     const { rows } = await pool.query(
         `UPDATE pug_work_types SET ${sets.join(', ')}
@@ -238,7 +239,7 @@ router.put('/work-types/:id', requireRole('superadmin'), asyncHandler(async (req
         RETURNING id, name, sort_order, is_active, created_at`,
         vals
     );
-    if (rows.length === 0) { res.status(404).json({ error: 'Tip inexistent.' }); return; }
+    if (rows.length === 0) { res.status(404).json({ error: tError(req, 'type_not_found') }); return; }
     res.json({ work_type: rows[0] });
 }));
 
@@ -253,11 +254,11 @@ router.delete('/work-types/:id', requireRole('superadmin'), asyncHandler(async (
         [id, cid]
     );
     if (usageCount && usageCount > 0) {
-        res.status(409).json({ error: 'Acest tip este folosit în proiecte. Dezactivează-l (is_active=false) în loc.' });
+        res.status(409).json({ error: tError(req, 'type_in_use') });
         return;
     }
     const result = await pool.query('DELETE FROM pug_work_types WHERE id=$1 AND company_id=$2', [id, cid]);
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Tip inexistent.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'type_not_found') }); return; }
     res.status(204).end();
 }));
 
@@ -280,7 +281,7 @@ router.post('/custom-fields', requireRole('superadmin'), asyncHandler(async (req
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { name, field_type, options, is_required, sort_order } = req.body ?? {};
     if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele câmpului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'field_name_required') });
         return;
     }
     if (!FIELD_TYPES.includes(field_type as FieldType)) {
@@ -288,7 +289,7 @@ router.post('/custom-fields', requireRole('superadmin'), asyncHandler(async (req
         return;
     }
     if (field_type === 'select' && (!Array.isArray(options) || options.length === 0)) {
-        res.status(400).json({ error: 'Câmpurile de tip select au nevoie de opțiuni.' });
+        res.status(400).json({ error: tError(req, 'select_field_needs_options') });
         return;
     }
     const { rows: maxRows } = await pool.query<{ m: number | null }>(
@@ -315,7 +316,7 @@ router.put('/custom-fields/:id', requireRole('superadmin'), asyncHandler(async (
     if (typeof is_required === 'boolean') { vals.push(is_required); sets.push(`is_required=$${vals.length}`); }
     if (Number.isFinite(sort_order)) { vals.push(Number(sort_order)); sets.push(`sort_order=$${vals.length}`); }
     if (typeof is_active === 'boolean') { vals.push(is_active); sets.push(`is_active=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_sent') }); return; }
     vals.push(id, cid);
     const { rows } = await pool.query(
         `UPDATE pug_custom_fields SET ${sets.join(', ')}, updated_at=NOW()
@@ -323,7 +324,7 @@ router.put('/custom-fields/:id', requireRole('superadmin'), asyncHandler(async (
         RETURNING id, name, field_type, options, is_required, sort_order, is_active, created_at, updated_at`,
         vals
     );
-    if (rows.length === 0) { res.status(404).json({ error: 'Câmp inexistent.' }); return; }
+    if (rows.length === 0) { res.status(404).json({ error: tError(req, 'field_not_found') }); return; }
     res.json({ field: rows[0] });
 }));
 
@@ -341,11 +342,11 @@ router.delete('/custom-fields/:id', requireRole('superadmin'), asyncHandler(asyn
         [id, cid]
     );
     if (Number(usageRows[0]?.c ?? '0') > 0) {
-        res.status(409).json({ error: 'Acest câmp are valori salvate în proiecte. Dezactivează-l în loc.' });
+        res.status(409).json({ error: tError(req, 'field_in_use') });
         return;
     }
     const result = await pool.query('DELETE FROM pug_custom_fields WHERE id=$1 AND company_id=$2', [id, cid]);
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Câmp inexistent.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'field_not_found') }); return; }
     res.status(204).end();
 }));
 
@@ -368,14 +369,14 @@ router.post('/reminder-levels', requireRole('superadmin'), asyncHandler(async (r
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { days_before, is_enabled } = req.body ?? {};
     if (!Number.isFinite(days_before) || !Number.isInteger(Number(days_before))) {
-        res.status(400).json({ error: 'days_before trebuie să fie un număr întreg.' });
+        res.status(400).json({ error: tError(req, 'level_days_must_be_int') });
         return;
     }
     const dbVal = Number(days_before);
     // Sanity range — reject obviously bogus values like 999 days or -365.
     // Negative numbers are valid (post-deadline reminders) but capped at -180.
     if (dbVal < -180 || dbVal > 180) {
-        res.status(400).json({ error: 'Numărul de zile trebuie să fie între -180 și 180.' });
+        res.status(400).json({ error: tError(req, 'level_days_range') });
         return;
     }
     try {
@@ -388,7 +389,7 @@ router.post('/reminder-levels', requireRole('superadmin'), asyncHandler(async (r
         res.status(201).json({ level: rows[0] });
     } catch (e: any) {
         if (e?.code === '23505') {
-            res.status(409).json({ error: 'Există deja un nivel cu acest număr de zile.' });
+            res.status(409).json({ error: tError(req, 'level_days_unique') });
             return;
         }
         throw e;
@@ -402,18 +403,18 @@ router.put('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(async
     const sets: string[] = []; const vals: any[] = [];
     if (days_before !== undefined) {
         if (!Number.isFinite(days_before) || !Number.isInteger(Number(days_before))) {
-            res.status(400).json({ error: 'days_before trebuie să fie un număr întreg.' });
+            res.status(400).json({ error: tError(req, 'level_days_must_be_int') });
             return;
         }
         const dbVal = Number(days_before);
         if (dbVal < -180 || dbVal > 180) {
-            res.status(400).json({ error: 'Numărul de zile trebuie să fie între -180 și 180.' });
+            res.status(400).json({ error: tError(req, 'level_days_range') });
             return;
         }
         vals.push(dbVal); sets.push(`days_before=$${vals.length}`);
     }
     if (typeof is_enabled === 'boolean') { vals.push(is_enabled); sets.push(`is_enabled=$${vals.length}`); }
-    if (sets.length === 0) { res.status(400).json({ error: 'Nu s-a trimis nimic.' }); return; }
+    if (sets.length === 0) { res.status(400).json({ error: tError(req, 'nothing_sent') }); return; }
     vals.push(id, cid);
     try {
         const { rows } = await pool.query(
@@ -422,11 +423,11 @@ router.put('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(async
             RETURNING id, days_before, is_enabled, created_at, updated_at`,
             vals
         );
-        if (rows.length === 0) { res.status(404).json({ error: 'Nivel inexistent.' }); return; }
+        if (rows.length === 0) { res.status(404).json({ error: tError(req, 'level_not_found') }); return; }
         res.json({ level: rows[0] });
     } catch (e: any) {
         if (e?.code === '23505') {
-            res.status(409).json({ error: 'Există deja un nivel cu acest număr de zile.' });
+            res.status(409).json({ error: tError(req, 'level_days_unique') });
             return;
         }
         throw e;
@@ -437,7 +438,7 @@ router.delete('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(as
     const cid = ensureCompany(req, res); if (cid === null) return;
     const { id } = req.params;
     const result = await pool.query('DELETE FROM pug_reminder_settings WHERE id=$1 AND company_id=$2', [id, cid]);
-    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Nivel inexistent.' }); return; }
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: tError(req, 'level_not_found') }); return; }
     res.status(204).end();
 }));
 

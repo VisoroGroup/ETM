@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -22,7 +23,7 @@ router.use(authMiddleware);
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 

@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router({ mergeParams: true });
 
@@ -11,7 +12,7 @@ router.get('/activity', authMiddleware, asyncHandler(async (req: AuthRequest, re
     const { id: taskId } = req.params;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 

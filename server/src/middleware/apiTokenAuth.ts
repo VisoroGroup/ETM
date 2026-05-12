@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import pool from '../config/database';
 import { User } from '../types';
+import { tError } from '../utils/serverErrors';
 
 export interface ApiAuthRequest extends Request {
     user?: User;
@@ -81,7 +82,7 @@ export async function apiTokenAuth(
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ error: 'API token lipsă. Utilizează header-ul: Authorization: Bearer <token>' });
+        res.status(401).json({ error: tError(req, 'api_token_missing') });
         return;
     }
 
@@ -98,7 +99,7 @@ export async function apiTokenAuth(
         );
 
         if (tokenRows.length === 0) {
-            res.status(401).json({ error: 'Token API invalid sau revocat.' });
+            res.status(401).json({ error: tError(req, 'api_token_invalid') });
             return;
         }
 
@@ -106,7 +107,7 @@ export async function apiTokenAuth(
 
         // Check expiry
         if (apiToken.expires_at && new Date(apiToken.expires_at) < new Date()) {
-            res.status(401).json({ error: 'Token API expirat.' });
+            res.status(401).json({ error: tError(req, 'api_token_expired') });
             return;
         }
 
@@ -117,7 +118,7 @@ export async function apiTokenAuth(
         );
 
         if (userRows.length === 0) {
-            res.status(401).json({ error: 'Utilizatorul asociat token-ului nu mai este activ.' });
+            res.status(401).json({ error: tError(req, 'api_token_user_inactive') });
             return;
         }
 
@@ -139,7 +140,7 @@ export async function apiTokenAuth(
 
         if (!req.userCompanyIds || req.userCompanyIds.length === 0) {
             res.status(401).json({
-                error: 'Utilizatorul asociat token-ului nu are acces la nicio companie.'
+                error: tError(req, 'api_token_user_no_company')
             });
             return;
         }
@@ -147,6 +148,6 @@ export async function apiTokenAuth(
         next();
     } catch (err) {
         console.error('API token auth error:', err);
-        res.status(500).json({ error: 'Eroare la autentificarea cu token API.' });
+        res.status(500).json({ error: tError(req, 'api_token_auth_error') });
     }
 }

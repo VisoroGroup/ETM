@@ -5,13 +5,14 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { testWebhook } from '../services/webhookService';
 import { z } from 'zod';
 import { validateWebhookUrlAsync as validateWebhookUrlDns, validateWebhookUrlSync as validateWebhookUrl } from '../utils/urlSafety';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
 // --- Middleware: admin-only ---
 const adminOnly = (req: AuthRequest, res: Response, next: any) => {
     if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
-        res.status(403).json({ error: 'Doar administratorii pot gestiona webhook-urile' });
+        res.status(403).json({ error: tError(req, 'webhook_admin_only') });
         return;
     }
     next();
@@ -48,7 +49,7 @@ const updateWebhookSchema = z.object({
 router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -86,7 +87,7 @@ router.get('/deliveries', authMiddleware, adminOnly, asyncHandler(async (req: Au
 router.get('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -108,7 +109,7 @@ router.get('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest,
 router.post('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -133,7 +134,7 @@ router.post('/', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest
 router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -157,7 +158,7 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
     if (parsed.is_active !== undefined) { fields.push(`is_active = $${idx++}`); values.push(parsed.is_active); }
 
     if (fields.length === 0) {
-        res.status(400).json({ error: 'Niciun câmp de actualizat' });
+        res.status(400).json({ error: tError(req, 'no_field_to_update') });
         return;
     }
 
@@ -173,7 +174,7 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
     );
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Webhook nu a fost găsit' });
+        res.status(404).json({ error: tError(req, 'webhook_not_found') });
         return;
     }
     res.json(rows[0]);
@@ -183,7 +184,7 @@ router.put('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthReque
 router.delete('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -192,7 +193,7 @@ router.delete('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRe
         [req.params.id, companyId]
     );
     if (rowCount === 0) {
-        res.status(404).json({ error: 'Webhook nu a fost găsit' });
+        res.status(404).json({ error: tError(req, 'webhook_not_found') });
         return;
     }
     res.json({ message: 'Webhook șters cu succes' });
@@ -202,7 +203,7 @@ router.delete('/:id', authMiddleware, adminOnly, asyncHandler(async (req: AuthRe
 router.post('/:id/test', authMiddleware, adminOnly, asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -212,7 +213,7 @@ router.post('/:id/test', authMiddleware, adminOnly, asyncHandler(async (req: Aut
         [req.params.id, companyId]
     );
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Webhook nu a fost găsit' });
+        res.status(404).json({ error: tError(req, 'webhook_not_found') });
         return;
     }
 

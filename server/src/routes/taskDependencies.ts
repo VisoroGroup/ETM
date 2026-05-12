@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router({ mergeParams: true });
 
@@ -11,7 +12,7 @@ router.get('/dependencies', authMiddleware, asyncHandler(async (req: AuthRequest
     const taskId = req.params.id;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
@@ -40,25 +41,25 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
     const companyId = req.activeCompanyId;
 
     if (!blocking_task_id || !blocked_task_id) {
-        res.status(400).json({ error: 'blocking_task_id și blocked_task_id sunt obligatorii.' });
+        res.status(400).json({ error: tError(req, 'dependency_tasks_required') });
         return;
     }
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(blocking_task_id) || !uuidRegex.test(blocked_task_id)) {
-        res.status(400).json({ error: 'Invalid task ID format.' });
+        res.status(400).json({ error: tError(req, 'invalid_task_id') });
         return;
     }
 
     if (blocking_task_id === blocked_task_id) {
-        res.status(400).json({ error: 'Un task nu se poate bloca pe sine.' });
+        res.status(400).json({ error: tError(req, 'task_cannot_block_self') });
         return;
     }
 
     // Check access to both tasks (tenant-scoped via 4th param)
     if (!await checkTaskAccess(blocking_task_id, req.user!.id, req.user!.role, companyId) ||
         !await checkTaskAccess(blocked_task_id, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
@@ -69,7 +70,7 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
         [[blocking_task_id, blocked_task_id], companyId]
     );
     if (tasks.length < 2) {
-        res.status(404).json({ error: 'Unul sau ambele task-uri nu au fost găsite.' });
+        res.status(404).json({ error: tError(req, 'dependency_tasks_missing') });
         return;
     }
 
@@ -90,7 +91,7 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
     `, [blocking_task_id, blocked_task_id]);
 
     if (circular.length > 0) {
-        res.status(400).json({ error: 'Nu se poate adăuga — ar crea o dependență circulară!' });
+        res.status(400).json({ error: tError(req, 'circular_dependency') });
         return;
     }
 
@@ -137,11 +138,11 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
     const companyId = req.activeCompanyId;
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -155,7 +156,7 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
         [depId, taskId, companyId]
     );
     if (depCheck.length === 0) {
-        res.status(404).json({ error: 'Dependența nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'dependency_not_found') });
         return;
     }
 
@@ -165,7 +166,7 @@ router.delete('/dependencies/:depId', authMiddleware, asyncHandler(async (req: A
     );
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Dependența nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'dependency_not_found') });
         return;
     }
 

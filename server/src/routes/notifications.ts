@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -23,7 +24,7 @@ function accessibleCompanyIds(req: AuthRequest): number[] {
 router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyIds = accessibleCompanyIds(req);
     if (companyIds.length === 0) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -40,7 +41,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         res.json(rows);
     } catch (err) {
         console.error('Notifications error:', err);
-        res.status(500).json({ error: 'Eroare la notificări.' });
+        res.status(500).json({ error: tError(req, 'notifications_load_error') });
     }
 }));
 
@@ -48,7 +49,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyIds = accessibleCompanyIds(req);
     if (companyIds.length === 0) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -59,7 +60,7 @@ router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response)
         );
         res.json({ count: parseInt(count, 10) });
     } catch (err) {
-        res.status(500).json({ error: 'Eroare.' });
+        res.status(500).json({ error: tError(req, 'internal_error') });
     }
 }));
 
@@ -67,7 +68,7 @@ router.get('/unread-count', asyncHandler(async (req: AuthRequest, res: Response)
 router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyIds = accessibleCompanyIds(req);
     if (companyIds.length === 0) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -78,7 +79,7 @@ router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) =
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Eroare.' });
+        res.status(500).json({ error: tError(req, 'internal_error') });
     }
 }));
 
@@ -86,7 +87,7 @@ router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res: Response) =
 router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyIds = accessibleCompanyIds(req);
     if (companyIds.length === 0) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -97,7 +98,7 @@ router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) =
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Eroare.' });
+        res.status(500).json({ error: tError(req, 'internal_error') });
     }
 }));
 
@@ -108,14 +109,14 @@ router.patch('/read-all', asyncHandler(async (req: AuthRequest, res: Response) =
 router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyIds = accessibleCompanyIds(req);
     if (companyIds.length === 0) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     const { taskId } = req.params;
     const types = Array.isArray(req.body?.types) ? req.body.types : [];
 
     if (types.length === 0) {
-        res.status(400).json({ error: 'types array is required.' });
+        res.status(400).json({ error: tError(req, 'types_array_required') });
         return;
     }
 
@@ -133,7 +134,7 @@ router.patch('/read-for-task/:taskId', asyncHandler(async (req: AuthRequest, res
         res.json({ success: true, updated: rowCount ?? 0 });
     } catch (err) {
         console.error('read-for-task error:', err);
-        res.status(500).json({ error: 'Eroare.' });
+        res.status(500).json({ error: tError(req, 'internal_error') });
     }
 }));
 

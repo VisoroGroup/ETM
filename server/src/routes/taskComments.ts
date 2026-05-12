@@ -4,6 +4,7 @@ import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { validateCreateComment } from '../middleware/validation';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 import {
     getSpecificStakeholders,
     buildNotificationHtml,
@@ -34,7 +35,7 @@ router.get('/comments', authMiddleware, asyncHandler(async (req: AuthRequest, re
         const offset = parseInt(req.query.offset as string, 10) || 0;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
@@ -81,12 +82,12 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (!content || content.trim() === '') {
-            res.status(400).json({ error: 'Conținutul comentariului este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'comment_content_required') });
             return;
         }
 
@@ -96,7 +97,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
         if (mentions && Array.isArray(mentions)) {
             for (const mid of mentions) {
                 if (!uuidRegex.test(mid)) {
-                    res.status(400).json({ error: 'Invalid mention ID format.' });
+                    res.status(400).json({ error: tError(req, 'invalid_mention') });
                     return;
                 }
             }
@@ -120,7 +121,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                 [parent_comment_id, taskId, companyId]
             );
             if (parentCheck.length === 0) {
-                res.status(400).json({ error: 'Parent comment not found in this task.' });
+                res.status(400).json({ error: tError(req, 'parent_comment_not_in_task') });
                 return;
             }
         }
@@ -235,23 +236,23 @@ router.put('/comments/:commentId', authMiddleware, asyncHandler(async (req: Auth
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         // Tenant + parent guard: comment must belong to :taskId AND active company
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const existing = await getCommentInTenant(commentId, taskId, companyId);
         if (!existing) {
-            res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'comment_not_found') });
             return;
         }
 
         if (existing.author_id !== req.user!.id) {
-            res.status(403).json({ error: 'Poți edita doar propriile comentarii.' });
+            res.status(403).json({ error: tError(req, 'can_edit_own_comments_only') });
             return;
         }
 
@@ -273,22 +274,22 @@ router.delete('/comments/:commentId', authMiddleware, asyncHandler(async (req: A
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const existing = await getCommentInTenant(commentId, taskId, companyId);
         if (!existing) {
-            res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'comment_not_found') });
             return;
         }
 
         if (existing.author_id !== req.user!.id && req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
-            res.status(403).json({ error: 'Poți șterge doar propriile comentarii.' });
+            res.status(403).json({ error: tError(req, 'can_delete_own_comments_only') });
             return;
         }
 
@@ -303,18 +304,18 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         // Tenant + parent guard: comment must belong to :taskId AND active company
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const parentComment = await getCommentInTenant(commentId, taskId, companyId);
         if (!parentComment) {
-            res.status(404).json({ error: 'Comentariul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'comment_not_found') });
             return;
         }
 

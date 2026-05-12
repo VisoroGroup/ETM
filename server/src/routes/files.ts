@@ -1,6 +1,7 @@
 import { Router, Response, Request } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
@@ -89,7 +90,7 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
             `, [task_id, userId, companyId]);
 
             if (access.length === 0) {
-                res.status(403).json({ error: 'Nincs hozzáférésed ehhez a fájlhoz.' });
+                res.status(403).json({ error: tError(req, 'file_no_access') });
                 return;
             }
         }

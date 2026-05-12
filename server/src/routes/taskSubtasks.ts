@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 import {
     getSpecificStakeholders,
     buildNotificationHtml,
@@ -32,12 +33,12 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (!title) {
-            res.status(400).json({ error: 'Titlul subtask-ului este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'subtask_title_required') });
             return;
         }
 
@@ -45,7 +46,7 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
         // user UUID from another tenant can be assigned as subtask owner
         // (then receives notifications + email in the wrong company).
         if (assigned_to && companyId !== undefined && !(await userIsInCompany(assigned_to, companyId))) {
-            res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+            res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
             return;
         }
 
@@ -145,26 +146,26 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
         // Tenant guard: subtask must belong to :taskId AND active company
         const oldSubtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
         if (!oldSubtask) {
-            res.status(404).json({ error: 'Subtask-ul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'subtask_not_found') });
             return;
         }
         const oldRows = [oldSubtask];
 
         // Tenant guard on assigned_to (audit-3 C11): reject UUIDs from other tenants.
         if (assigned_to && companyId !== undefined && !(await userIsInCompany(assigned_to, companyId))) {
-            res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+            res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
             return;
         }
 
@@ -297,7 +298,7 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
         }
 
         if (updates.length === 0) {
-            res.status(400).json({ error: 'Nimic de actualizat.' });
+            res.status(400).json({ error: tError(req, 'nothing_to_update') });
             return;
         }
 
@@ -332,12 +333,12 @@ router.put('/subtasks-reorder', authMiddleware, asyncHandler(async (req: AuthReq
         const { order } = req.body; // Array of { id, order_index }
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (!order || !Array.isArray(order)) {
-            res.status(400).json({ error: 'Ordinea este obligatorie.' });
+            res.status(400).json({ error: tError(req, 'order_required') });
             return;
         }
 
@@ -360,18 +361,18 @@ router.delete('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: A
         const companyId = req.activeCompanyId;
 
         if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
         // Tenant + parent guard
         const subtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
         if (!subtask) {
-            res.status(404).json({ error: 'Subtask-ul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'subtask_not_found') });
             return;
         }
 
@@ -381,7 +382,7 @@ router.delete('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: A
         );
 
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Subtask-ul nu a fost găsit.' });
+            res.status(404).json({ error: tError(req, 'subtask_not_found') });
             return;
         }
 

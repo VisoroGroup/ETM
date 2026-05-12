@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { sendTestEmail } from '../services/emailService';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -11,7 +12,7 @@ router.get('/logs', requireRole('admin', 'manager'), async (req: AuthRequest, re
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const { rows } = await pool.query(`
@@ -25,7 +26,7 @@ router.get('/logs', requireRole('admin', 'manager'), async (req: AuthRequest, re
         res.json(rows);
     } catch (err) {
         console.error('Email logs error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea log-urilor.' });
+        res.status(500).json({ error: tError(req, 'logs_load_error') });
     }
 });
 
@@ -34,7 +35,7 @@ router.get('/logs/my', async (req: AuthRequest, res: Response) => {
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const { rows } = await pool.query(`
@@ -46,7 +47,7 @@ router.get('/logs/my', async (req: AuthRequest, res: Response) => {
         `, [req.user!.id, companyId]);
         res.json(rows);
     } catch (err) {
-        res.status(500).json({ error: 'Eroare.' });
+        res.status(500).json({ error: tError(req, 'internal_error') });
     }
 });
 
@@ -55,7 +56,7 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const { to, name } = req.body;
@@ -65,13 +66,13 @@ router.post('/test', requireRole('admin'), async (req: AuthRequest, res: Respons
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (targetEmail && !emailRegex.test(targetEmail)) {
-            res.status(400).json({ error: 'Format de email invalid.' });
+            res.status(400).json({ error: tError(req, 'email_format_invalid') });
             return;
         }
 
         if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
             res.status(400).json({
-                error: 'Azure credentials not set. Add AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET and GRAPH_SENDER_EMAIL in Railway Variables.'
+                error: tError(req, 'azure_credentials_missing')
             });
             return;
         }

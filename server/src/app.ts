@@ -1,5 +1,6 @@
 // Load env FIRST — before any other import that reads process.env
 import './env';
+import { tError } from './utils/serverErrors';
 
 import express from 'express';
 import cors from 'cors';
@@ -136,7 +137,7 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(clientBuildPath));
     app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
-            res.status(404).json({ error: 'Endpoint API inexistent.' });
+            res.status(404).json({ error: tError(req, 'api_endpoint_not_found') });
             return;
         }
         res.sendFile(path.join(clientBuildPath, 'index.html'));

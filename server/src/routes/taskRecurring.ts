@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router({ mergeParams: true });
 
@@ -13,17 +14,17 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
 
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
     if (!frequency || !['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'].includes(frequency)) {
-        res.status(400).json({ error: 'Frecvența este obligatorie (daily, weekly, biweekly, monthly, quarterly, yearly).' });
+        res.status(400).json({ error: tError(req, 'recurring_freq_required') });
         return;
     }
 
@@ -33,12 +34,12 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
         [taskId, companyId]
     );
     if (taskRows.length === 0) {
-        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        res.status(404).json({ error: tError(req, 'task_not_yours') });
         return;
     }
 
     if (!taskRows[0].due_date) {
-        res.status(400).json({ error: 'Task-ul must have a due date to enable recurrence.' });
+        res.status(400).json({ error: tError(req, 'recurring_needs_due_date') });
         return;
     }
 
@@ -55,7 +56,7 @@ router.post('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest, 
     }
 
     if (isNaN(nextRunDate.getTime())) {
-        res.status(400).json({ error: 'Invalid next run date calculation.' });
+        res.status(400).json({ error: tError(req, 'recurring_invalid_next_run') });
         return;
     }
 
@@ -89,12 +90,12 @@ router.delete('/recurring', authMiddleware, asyncHandler(async (req: AuthRequest
 
     const companyId = req.activeCompanyId;
     if (companyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
     await pool.query(

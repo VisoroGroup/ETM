@@ -4,6 +4,7 @@ import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -90,7 +91,7 @@ router.get('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
         res.json(rows);
     } catch (err) {
         console.error('Admin users error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea utilizatorilor.' });
+        res.status(500).json({ error: tError(req, 'users_load_error') });
     }
 }));
 
@@ -100,7 +101,7 @@ router.put('/users/:id/companies', requireRole('superadmin'), asyncHandler(async
     const userId = req.params.id;
     const raw = req.body?.company_ids;
     if (!Array.isArray(raw)) {
-        res.status(400).json({ error: 'company_ids trebuie să fie un array.' });
+        res.status(400).json({ error: tError(req, 'company_ids_must_be_array') });
         return;
     }
     const companyIds = Array.from(new Set(raw.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0)));
@@ -108,7 +109,7 @@ router.put('/users/:id/companies', requireRole('superadmin'), asyncHandler(async
     // Verify the user exists.
     const userExists = await pool.query('SELECT 1 FROM users WHERE id = $1 LIMIT 1', [userId]);
     if (userExists.rowCount === 0) {
-        res.status(404).json({ error: 'Utilizator inexistent.' });
+        res.status(404).json({ error: tError(req, 'user_nonexistent') });
         return;
     }
 
@@ -173,7 +174,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         [id]
     );
     if (targetRows.length === 0) {
-        res.status(404).json({ error: 'Utilizator negăsit.' });
+        res.status(404).json({ error: tError(req, 'user_not_found') });
         return;
     }
     const target = targetRows[0];
@@ -182,7 +183,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     // Hierarchy guard: an admin cannot modify a peer admin or any superadmin
     // (only superadmins can touch admins/superadmins).
     if (!isSuperadmin && target.id !== callerId && rank(target.role) >= rank(callerRole)) {
-        res.status(403).json({ error: 'Nu poți modifica un utilizator cu rol egal sau superior.' });
+        res.status(403).json({ error: tError(req, 'cant_modify_peer_or_higher') });
         return;
     }
 
@@ -192,7 +193,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     // role/email writable across tenants.
     if (!isSuperadmin && target.id !== callerId && (role || departments || email)) {
         if (!(await callerCanTouchUser(callerId, callerRole, target.id))) {
-            res.status(403).json({ error: 'Nu poți modifica un utilizator dintr-o companie din afara ariei tale.' });
+            res.status(403).json({ error: tError(req, 'cant_modify_user_outside_company') });
             return;
         }
     }
@@ -205,16 +206,16 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
 
     if (role) {
         if (role === 'superadmin' && !isSuperadmin) {
-            res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+            res.status(403).json({ error: tError(req, 'cant_assign_superadmin') });
             return;
         }
         if (!allowed_roles.includes(role)) {
-            res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+            res.status(403).json({ error: tError(req, 'cant_assign_this_role') });
             return;
         }
         // Disallow demoting yourself or changing roles upward beyond your own rank.
         if (rank(role) > rank(callerRole)) {
-            res.status(403).json({ error: 'Nu poți atribui un rol superior celui propriu.' });
+            res.status(403).json({ error: tError(req, 'cant_assign_higher_role') });
             return;
         }
     }
@@ -222,7 +223,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     // Email change: only superadmin may change another user's email
     // (admins changing emails enables account takeover via SSO upsert).
     if (email && !isSuperadmin && target.id !== callerId) {
-        res.status(403).json({ error: 'Doar superadmin poate modifica email-ul altui utilizator.' });
+        res.status(403).json({ error: tError(req, 'only_superadmin_can_change_email') });
         return;
     }
 
@@ -231,7 +232,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
 
     if (departments) {
         if (!Array.isArray(departments)) {
-            res.status(400).json({ error: 'Departamentele trebuie să fie un array.' });
+            res.status(400).json({ error: tError(req, 'depts_must_be_array') });
             return;
         }
         for (const d of departments) {
@@ -243,7 +244,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
     }
 
     if (email && (typeof email !== 'string' || !email.includes('@'))) {
-        res.status(400).json({ error: 'Email invalid.' });
+        res.status(400).json({ error: tError(req, 'email_invalid') });
         return;
     }
 
@@ -257,7 +258,7 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         if (email) { setParts.push(`email = $${idx++}`); values.push(email); }
 
         if (setParts.length === 0) {
-            res.status(400).json({ error: 'Nimic de actualizat.' });
+            res.status(400).json({ error: tError(req, 'nothing_to_update') });
             return;
         }
 
@@ -270,14 +271,14 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
         );
 
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Utilizator negăsit.' });
+            res.status(404).json({ error: tError(req, 'user_not_found') });
             return;
         }
 
         res.json(rows[0]);
     } catch (err) {
         console.error('Admin update user error:', err);
-        res.status(500).json({ error: 'Eroare la actualizarea utilizatorului.' });
+        res.status(500).json({ error: tError(req, 'user_update_error') });
     }
 }));
 
@@ -286,7 +287,7 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { email, display_name, role, departments } = req.body;
 
     if (!email || !display_name) {
-        res.status(400).json({ error: 'Email și nume sunt obligatorii.' });
+        res.status(400).json({ error: tError(req, 'name_email_required') });
         return;
     }
 
@@ -300,11 +301,11 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     if (role) {
         if (role === 'superadmin' && !isSuperadmin) {
-            res.status(403).json({ error: 'Nu ai permisiunea să atribui rolul de superadmin.' });
+            res.status(403).json({ error: tError(req, 'cant_assign_superadmin') });
             return;
         }
         if (!allowed_roles.includes(role)) {
-            res.status(403).json({ error: 'Nu ai permisiunea să atribui acest rol.' });
+            res.status(403).json({ error: tError(req, 'cant_assign_this_role') });
             return;
         }
     }
@@ -326,7 +327,7 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
             res.status(200).json(rows[0]);
             return;
         }
-        res.status(409).json({ error: 'Un utilizator cu acest email există deja.' });
+        res.status(409).json({ error: tError(req, 'user_with_email_exists') });
         return;
     }
 
@@ -340,7 +341,7 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
         res.status(201).json(rows[0]);
     } catch (err) {
         console.error('Admin create user error:', err);
-        res.status(500).json({ error: 'Eroare la crearea utilizatorului.' });
+        res.status(500).json({ error: tError(req, 'user_create_error') });
     }
 }));
 
@@ -349,7 +350,7 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
     const { id } = req.params;
 
     if (req.user?.id === id) {
-        res.status(400).json({ error: 'Nu poți șterge propriul cont.' });
+        res.status(400).json({ error: tError(req, 'cannot_delete_self') });
         return;
     }
 
@@ -362,18 +363,18 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
         [id]
     );
     if (targetRows.length === 0) {
-        res.status(404).json({ error: 'Utilizator negăsit.' });
+        res.status(404).json({ error: tError(req, 'user_not_found') });
         return;
     }
     if (!isSuperadmin && rank(targetRows[0].role) >= rank(callerRole)) {
-        res.status(403).json({ error: 'Nu poți dezactiva un utilizator cu rol egal sau superior.' });
+        res.status(403).json({ error: tError(req, 'cant_deactivate_peer_or_higher') });
         return;
     }
     // Tenant scope guard: non-superadmin admins may only deactivate users
     // who share at least one company with them. Without this, a Hungary admin
     // could deactivate a Neo Plan user via direct API call.
     if (!isSuperadmin && !(await callerCanTouchUser(callerId, callerRole, id))) {
-        res.status(403).json({ error: 'Nu poți dezactiva un utilizator dintr-o companie din afara ariei tale.' });
+        res.status(403).json({ error: tError(req, 'cant_deactivate_user_outside_company') });
         return;
     }
 
@@ -384,21 +385,21 @@ router.delete('/users/:id', asyncHandler(async (req: AuthRequest, res: Response)
         );
 
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Utilizator negăsit.' });
+            res.status(404).json({ error: tError(req, 'user_not_found') });
             return;
         }
 
         res.json({ success: true, deactivated: rows[0] });
     } catch (err) {
         console.error('Admin delete user error:', err);
-        res.status(500).json({ error: 'Eroare la ștergerea utilizatorului.' });
+        res.status(500).json({ error: tError(req, 'user_delete_error') });
     }
 }));
 
 // GET /api/admin/stats — overview stats for admin (scoped to active company)
 router.get('/stats', asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     try {
@@ -418,7 +419,7 @@ router.get('/stats', asyncHandler(async (req: AuthRequest, res: Response) => {
         res.json(stats);
     } catch (err) {
         console.error('Admin stats error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea statisticilor.' });
+        res.status(500).json({ error: tError(req, 'stats_load_error') });
     }
 }));
 
@@ -432,7 +433,7 @@ router.post('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) 
         const { name, expires_at } = req.body;
 
         if (!name || name.trim() === '') {
-            res.status(400).json({ error: 'Numele token-ului este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'token_name_required') });
             return;
         }
 
@@ -454,7 +455,7 @@ router.post('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) 
         });
     } catch (err) {
         console.error('Generate API token error:', err);
-        res.status(500).json({ error: 'Eroare la generarea token-ului.' });
+        res.status(500).json({ error: tError(req, 'token_create_error') });
     }
 }));
 
@@ -482,7 +483,7 @@ router.get('/api-tokens', asyncHandler(async (req: AuthRequest, res: Response) =
         res.json(rows);
     } catch (err) {
         console.error('List API tokens error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea token-urilor.' });
+        res.status(500).json({ error: tError(req, 'tokens_load_error') });
     }
 }));
 
@@ -498,14 +499,14 @@ router.delete('/api-tokens/:id', asyncHandler(async (req: AuthRequest, res: Resp
         );
 
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Token negăsit sau deja revocat.' });
+            res.status(404).json({ error: tError(req, 'token_not_found_or_revoked') });
             return;
         }
 
         res.json({ success: true, revoked: rows[0] });
     } catch (err) {
         console.error('Revoke API token error:', err);
-        res.status(500).json({ error: 'Eroare la revocarea token-ului.' });
+        res.status(500).json({ error: tError(req, 'token_revoke_error') });
     }
 }));
 
@@ -527,14 +528,14 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
     const { id } = req.params;
     const file = req.file;
     if (!file) {
-        res.status(400).json({ error: 'Imaginea este obligatorie.' });
+        res.status(400).json({ error: tError(req, 'image_required') });
         return;
     }
 
     // Check user exists
     const { rows: currentUser } = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
     if (currentUser.length === 0) {
-        res.status(404).json({ error: 'Utilizator negăsit.' });
+        res.status(404).json({ error: tError(req, 'user_not_found') });
         return;
     }
 
@@ -544,7 +545,7 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
     const callerRole = req.user!.role;
     const callerId = req.user!.id;
     if (!(await callerCanTouchUser(callerId, callerRole, id))) {
-        res.status(403).json({ error: 'Nu poți modifica avatarul unui utilizator dintr-o companie din afara ariei tale.' });
+        res.status(403).json({ error: tError(req, 'cant_modify_avatar_outside_company') });
         return;
     }
 

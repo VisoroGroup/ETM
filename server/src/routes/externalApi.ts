@@ -25,15 +25,20 @@ import * as taskService from '../services/taskService';
 import { getAttachmentContent, getMimeType } from '../services/attachmentContentService';
 import { checkTaskAccess } from '../middleware/taskAccess';
 import rateLimit from 'express-rate-limit';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
-// Per-token rate limiting — 100 requests per minute
+// Per-token rate limiting — 100 requests per minute. Use a per-request
+// handler so the rate-limit error gets translated per the caller's locale
+// (audit-3 H18).
 const apiRateLimiter = rateLimit({
     windowMs: 60_000,
     max: 100,
     keyGenerator: (req: any) => req.apiToken?.id || req.ip,
-    message: { error: 'Rate limit exceeded. Max 100 requests per minute.' },
+    handler: (req, res) => {
+        res.status(429).json({ error: tError(req, 'rate_limit_external') });
+    },
 });
 
 // All /api/v1 routes use API token auth + rate limiting
@@ -48,7 +53,7 @@ router.use(apiRateLimiter);
  */
 function requireActiveCompany(req: ApiAuthRequest, res: Response): number | null {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return null;
     }
     return req.activeCompanyId;
@@ -235,20 +240,20 @@ router.get('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
         [req.params.id, companyId]
     );
     if (tenantRows.length === 0) {
-        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'task_not_found') });
         return;
     }
 
     const task = await taskService.getTaskById(req.params.id);
     if (!task) {
-        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'task_not_found') });
         return;
     }
 
     // checkTaskAccess will receive companyId once Agent 1 lands; for now the
     // tenant guard above already proves the task belongs to the active company.
     if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Access denied to this task.' });
+        res.status(403).json({ error: tError(req, 'access_denied_task') });
         return;
     }
 
@@ -279,18 +284,18 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
         [id, companyId]
     );
     if (tenantRows.length === 0) {
-        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'task_not_found') });
         return;
     }
 
     if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Access denied to this task.' });
+        res.status(403).json({ error: tError(req, 'access_denied_task') });
         return;
     }
 
     // Validate at least one field to update
     if (!status && assigned_to === undefined) {
-        res.status(400).json({ error: 'Trebuie să specifici cel puțin status sau assigned_to.' });
+        res.status(400).json({ error: tError(req, 'must_specify_status_or_assignee') });
         return;
     }
 
@@ -307,7 +312,7 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
 
         // Blocked requires reason
         if (status === 'blocat' && (!reason || reason.trim() === '')) {
-            res.status(400).json({ error: 'Motivul este obligatoriu pentru statusul "Blocat".' });
+            res.status(400).json({ error: tError(req, 'task_block_reason_required') });
             return;
         }
 
@@ -317,7 +322,7 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
             [id, companyId]
         );
         if (current.length === 0) {
-            res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+            res.status(404).json({ error: tError(req, 'task_not_found') });
             return;
         }
 
@@ -365,7 +370,7 @@ router.put('/tasks/:id', asyncHandler(async (req: ApiAuthRequest, res: Response)
         // FOR UPDATE falls back to the no-tenant query path.
         const result = await taskService.updateTask(id, { assigned_to: assigned_to || undefined }, req.user!.id, companyId);
         if (result === undefined) {
-            res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+            res.status(404).json({ error: tError(req, 'task_not_found') });
             return;
         }
     }
@@ -392,7 +397,7 @@ router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res:
     const { content } = req.body;
 
     if (!content || content.trim() === '') {
-        res.status(400).json({ error: 'Conținutul comentariului este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'comment_content_required') });
         return;
     }
 
@@ -402,12 +407,12 @@ router.post('/tasks/:id/comments', asyncHandler(async (req: ApiAuthRequest, res:
         [taskId, companyId]
     );
     if (taskRows.length === 0) {
-        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'task_not_found') });
         return;
     }
 
     if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Access denied to this task.' });
+        res.status(403).json({ error: tError(req, 'access_denied_task') });
         return;
     }
 
@@ -531,7 +536,7 @@ router.get('/tasks/:taskId/attachments', asyncHandler(async (req: ApiAuthRequest
         [taskId, companyId]
     );
     if (taskRows.length === 0) {
-        res.status(404).json({ error: 'Sarcina nu a fost găsită.' });
+        res.status(404).json({ error: tError(req, 'task_not_found') });
         return;
     }
 
@@ -581,7 +586,7 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
     );
 
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Atașamentul nu a fost găsit.' });
+        res.status(404).json({ error: tError(req, 'attachment_not_found') });
         return;
     }
 
@@ -593,13 +598,13 @@ router.get('/attachments/:attachmentId/content', asyncHandler(async (req: ApiAut
         [attachment.task_id, companyId]
     );
     if (taskRows.length === 0) {
-        res.status(404).json({ error: 'Sarcina părinte a fost ștearsă.' });
+        res.status(404).json({ error: tError(req, 'parent_task_deleted') });
         return;
     }
 
     // Check task access for the API token user
     if (!await checkTaskAccess(attachment.task_id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 

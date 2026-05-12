@@ -3,6 +3,7 @@ import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { Company, CompanyLanguage, CompanyTemplateType } from '../types';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -60,11 +61,11 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
     const { name, sidebar_name, slug, language, template_type, color, icon } = req.body ?? {};
 
     if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele companiei este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'company_name_required') });
         return;
     }
     if (typeof sidebar_name !== 'string' || sidebar_name.trim().length === 0) {
-        res.status(400).json({ error: 'Numele pentru sidebar este obligatoriu.' });
+        res.status(400).json({ error: tError(req, 'sidebar_name_required') });
         return;
     }
     const lang = ALLOWED_LANGUAGES.includes(language) ? language : 'ro';
@@ -75,7 +76,7 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
         ? slugify(slug)
         : slugify(sidebar_name);
     if (finalSlug.length === 0) {
-        res.status(400).json({ error: 'Slug invalid (folosește litere și cifre).' });
+        res.status(400).json({ error: tError(req, 'invalid_slug_chars') });
         return;
     }
 
@@ -96,7 +97,7 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
         res.status(201).json({ company: rows[0] });
     } catch (err: any) {
         if (err?.code === '23505') {
-            res.status(409).json({ error: 'Slug-ul este deja folosit. Alege altul.' });
+            res.status(409).json({ error: tError(req, 'slug_already_used_pick') });
             return;
         }
         throw err;
@@ -107,7 +108,7 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
 router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
-        res.status(400).json({ error: 'ID invalid.' });
+        res.status(400).json({ error: tError(req, 'invalid_id') });
         return;
     }
 
@@ -125,7 +126,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
     if (typeof slug === 'string' && slug.trim().length > 0) {
         const s = slugify(slug);
         if (s.length === 0) {
-            res.status(400).json({ error: 'Slug invalid.' });
+            res.status(400).json({ error: tError(req, 'invalid_slug') });
             return;
         }
         values.push(s); updates.push(`slug = $${values.length}`);
@@ -147,7 +148,7 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
     }
 
     if (updates.length === 0) {
-        res.status(400).json({ error: 'Nu s-a trimis niciun câmp pentru actualizare.' });
+        res.status(400).json({ error: tError(req, 'no_update_fields') });
         return;
     }
 
@@ -162,13 +163,13 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
             values
         );
         if (rows.length === 0) {
-            res.status(404).json({ error: 'Companie inexistentă.' });
+            res.status(404).json({ error: tError(req, 'company_not_found') });
             return;
         }
         res.json({ company: rows[0] });
     } catch (err: any) {
         if (err?.code === '23505') {
-            res.status(409).json({ error: 'Slug-ul este deja folosit.' });
+            res.status(409).json({ error: tError(req, 'slug_already_used') });
             return;
         }
         throw err;
@@ -179,12 +180,12 @@ router.put('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthReque
 router.patch('/:id/archive', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
-        res.status(400).json({ error: 'ID invalid.' });
+        res.status(400).json({ error: tError(req, 'invalid_id') });
         return;
     }
     const archive = req.body?.archive !== false; // default true
     if (id === 1 && archive) {
-        res.status(400).json({ error: 'Visoro Global nu poate fi arhivată.' });
+        res.status(400).json({ error: tError(req, 'visoro_global_cannot_archive') });
         return;
     }
     const { rows } = await pool.query<Company>(
@@ -195,7 +196,7 @@ router.patch('/:id/archive', requireRole('superadmin'), asyncHandler(async (req:
         [archive, id]
     );
     if (rows.length === 0) {
-        res.status(404).json({ error: 'Companie inexistentă.' });
+        res.status(404).json({ error: tError(req, 'company_not_found') });
         return;
     }
     res.json({ company: rows[0] });

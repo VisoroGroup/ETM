@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 /**
  * Generates a SQL WHERE clause fragment that limits visibility for 'user' role.
@@ -33,7 +34,7 @@ router.get('/stats', authMiddleware, asyncHandler(async (req: AuthRequest, res: 
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const today = new Date().toISOString().split('T')[0];
@@ -81,7 +82,7 @@ router.get('/stats', authMiddleware, asyncHandler(async (req: AuthRequest, res: 
         });
     } catch (err) {
         console.error('Dashboard stats error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea statisticilor.' });
+        res.status(500).json({ error: tError(req, 'stats_load_error') });
     }
 }));
 
@@ -90,7 +91,7 @@ router.get('/charts', authMiddleware, asyncHandler(async (req: AuthRequest, res:
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const scope = userScopeFilter(req.user!, 'tasks', 2);
@@ -164,7 +165,7 @@ router.get('/charts', authMiddleware, asyncHandler(async (req: AuthRequest, res:
         });
     } catch (err) {
         console.error('Dashboard charts error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea graficelor.' });
+        res.status(500).json({ error: tError(req, 'charts_load_error') });
     }
 }));
 
@@ -173,7 +174,7 @@ router.get('/active-alerts', authMiddleware, asyncHandler(async (req: AuthReques
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const scope = userScopeFilter(req.user!, 't', 2);
@@ -193,7 +194,7 @@ router.get('/active-alerts', authMiddleware, asyncHandler(async (req: AuthReques
         res.json(rows);
     } catch (err) {
         console.error('Active alerts error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea alertelor active.' });
+        res.status(500).json({ error: tError(req, 'active_alerts_load_error') });
     }
 }));
 
@@ -202,7 +203,7 @@ router.get('/my-stats', authMiddleware, asyncHandler(async (req: AuthRequest, re
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const userId = req.user!.id;
@@ -267,7 +268,7 @@ router.get('/my-stats', authMiddleware, asyncHandler(async (req: AuthRequest, re
         });
     } catch (err) {
         console.error('My stats error:', err);
-        res.status(500).json({ error: 'Eroare la încărcarea statisticilor personale.' });
+        res.status(500).json({ error: tError(req, 'my_stats_load_error') });
     }
 }));
 
@@ -276,7 +277,7 @@ router.get('/bottlenecks', authMiddleware, asyncHandler(async (req: AuthRequest,
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const scope = userScopeFilter(req.user!, 't', 2);
@@ -296,7 +297,7 @@ router.get('/bottlenecks', authMiddleware, asyncHandler(async (req: AuthRequest,
         res.json(rows);
     } catch (err) {
         console.error('Bottlenecks error:', err);
-        res.status(500).json({ error: 'Eroare la bottlenecks.' });
+        res.status(500).json({ error: tError(req, 'bottlenecks_load_error') });
     }
 }));
 
@@ -352,7 +353,7 @@ router.get('/preferences', authMiddleware, asyncHandler(async (req: AuthRequest,
         }
     } catch (err) {
         console.error('Preferences error:', err);
-        res.status(500).json({ error: 'Eroare la preferințe.' });
+        res.status(500).json({ error: tError(req, 'preferences_load_error') });
     }
 }));
 
@@ -361,7 +362,7 @@ router.put('/preferences', authMiddleware, asyncHandler(async (req: AuthRequest,
     try {
         const { widget_layout } = req.body;
         if (!Array.isArray(widget_layout)) {
-            res.status(400).json({ error: 'widget_layout trebuie să fie un array.' });
+            res.status(400).json({ error: tError(req, 'widget_layout_must_be_array') });
             return;
         }
         await pool.query(
@@ -373,7 +374,7 @@ router.put('/preferences', authMiddleware, asyncHandler(async (req: AuthRequest,
         res.json({ message: 'Preferințe salvate.' });
     } catch (err) {
         console.error('Save preferences error:', err);
-        res.status(500).json({ error: 'Eroare la salvare.' });
+        res.status(500).json({ error: tError(req, 'save_failed') });
     }
 }));
 
@@ -382,7 +383,7 @@ router.get('/calendar-events', authMiddleware, asyncHandler(async (req: AuthRequ
     try {
         const companyId = req.activeCompanyId;
         if (companyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
         const scope = userScopeFilter(req.user!, 't', 2);
@@ -417,7 +418,7 @@ router.get('/calendar-events', authMiddleware, asyncHandler(async (req: AuthRequ
         res.json([...tasks, ...subtasks]);
     } catch (err) {
         console.error('Calendar events error:', err);
-        res.status(500).json({ error: 'Eroare la evenimentele calendarului.' });
+        res.status(500).json({ error: tError(req, 'calendar_events_load_error') });
     }
 }));
 

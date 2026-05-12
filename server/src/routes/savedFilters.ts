@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 router.use(authMiddleware);
@@ -19,14 +20,14 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     const { name, page = 'tasks', filter_config } = req.body;
     if (!name || !filter_config) {
-        res.status(400).json({ error: 'Numele și configurația filtrului sunt obligatorii.' });
+        res.status(400).json({ error: tError(req, 'filter_name_required') });
         return;
     }
 
     // Limit config size to prevent abuse
     const configStr = JSON.stringify(filter_config);
     if (configStr.length > 10000) {
-        res.status(400).json({ error: 'Filter config too large (max 10KB).' });
+        res.status(400).json({ error: tError(req, 'filter_config_too_large') });
         return;
     }
 
@@ -36,7 +37,7 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
         [req.user!.id]
     );
     if (count >= 10) {
-        res.status(400).json({ error: 'Maxim 10 vederi salvate permise.' });
+        res.status(400).json({ error: tError(req, 'filter_max_10') });
         return;
     }
 
@@ -55,7 +56,7 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
         [req.params.id, req.user!.id]
     );
     if (rowCount === 0) {
-        res.status(404).json({ error: 'Filtru negăsit.' });
+        res.status(404).json({ error: tError(req, 'filter_not_found') });
         return;
     }
     res.status(204).send();

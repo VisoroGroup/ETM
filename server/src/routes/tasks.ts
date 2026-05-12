@@ -21,6 +21,7 @@ import taskRecurringRoutes from './taskRecurring';
 import taskAlertRoutes from './taskAlerts';
 import taskDependencyRoutes from './taskDependencies';
 import taskChecklistRoutes from './taskChecklist';
+import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         } = req.query;
 
         if (req.activeCompanyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
@@ -262,7 +263,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
 // POST /api/tasks — create task
 router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
     // Tenant guard on referenced UUIDs (audit-3 C9 + C13): assigned_to,
@@ -272,19 +273,19 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
     // into a task in the active tenant.
     const cid = req.activeCompanyId;
     if (req.body.assigned_to && !(await userIsInCompany(req.body.assigned_to, cid))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
     if (req.body.assigned_post_id && !(await rowIsInCompany('posts', req.body.assigned_post_id, cid))) {
-        res.status(400).json({ error: 'Postul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'post_not_in_company') });
         return;
     }
     if (req.body.assigned_section_id && !(await rowIsInCompany('sections', req.body.assigned_section_id, cid))) {
-        res.status(400).json({ error: 'Subdepartamentul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'section_not_in_company') });
         return;
     }
     if (req.body.assigned_department_id && !(await rowIsInCompany('departments', req.body.assigned_department_id, cid))) {
-        res.status(400).json({ error: 'Departamentul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'department_not_in_company') });
         return;
     }
     // The service now writes company_id directly in the initial INSERT, so
@@ -296,7 +297,7 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
 // GET /api/tasks/:id — task details
 router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -306,18 +307,18 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
         [req.params.id, req.activeCompanyId]
     );
     if (tenantCheck.length === 0) {
-        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        res.status(404).json({ error: tError(req, 'task_not_yours') });
         return;
     }
 
     const task = await taskService.getTaskById(req.params.id);
     if (!task) {
-        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        res.status(404).json({ error: tError(req, 'task_not_yours') });
         return;
     }
 
     if (!await checkTaskAccess(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-        res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
         return;
     }
 
@@ -327,7 +328,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Re
 // PUT /api/tasks/:id — update task
 router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -337,36 +338,36 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
         [req.params.id, req.activeCompanyId]
     );
     if (tenantCheck.length === 0) {
-        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        res.status(404).json({ error: tError(req, 'task_not_yours') });
         return;
     }
 
     // Tenant guard on referenced UUIDs in the body (audit-3 C9 + C13).
     const cid2 = req.activeCompanyId;
     if (req.body.assigned_to && !(await userIsInCompany(req.body.assigned_to, cid2))) {
-        res.status(400).json({ error: 'Responsabilul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
         return;
     }
     if (req.body.assigned_post_id && !(await rowIsInCompany('posts', req.body.assigned_post_id, cid2))) {
-        res.status(400).json({ error: 'Postul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'post_not_in_company') });
         return;
     }
     if (req.body.assigned_section_id && !(await rowIsInCompany('sections', req.body.assigned_section_id, cid2))) {
-        res.status(400).json({ error: 'Subdepartamentul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'section_not_in_company') });
         return;
     }
     if (req.body.assigned_department_id && !(await rowIsInCompany('departments', req.body.assigned_department_id, cid2))) {
-        res.status(400).json({ error: 'Departamentul nu aparține acestei companii.' });
+        res.status(400).json({ error: tError(req, 'department_not_in_company') });
         return;
     }
 
     const result = await taskService.updateTask(req.params.id, req.body, req.user!.id, req.activeCompanyId);
     if (result === null) {
-        res.status(400).json({ error: 'Nimic de actualizat.' });
+        res.status(400).json({ error: tError(req, 'nothing_to_update') });
         return;
     }
     if (result === undefined) {
-        res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+        res.status(404).json({ error: tError(req, 'task_not_yours') });
         return;
     }
     res.json(result);
@@ -378,23 +379,23 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
         const { status, reason } = req.body as { status: TaskStatus; reason?: string };
 
         if (req.activeCompanyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (!status) {
-            res.status(400).json({ error: 'Statusul este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'task_status_required') });
             return;
         }
 
         // CRITICAL RULE: reason is mandatory for 'blocat'
         if (status === 'blocat' && (!reason || reason.trim() === '')) {
-            res.status(400).json({ error: 'Motivul este obligatoriu pentru statusul "Blocat".' });
+            res.status(400).json({ error: tError(req, 'task_block_reason_required') });
             return;
         }
 
@@ -413,7 +414,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             );
             if (current.length === 0) {
                 await txClient.query('ROLLBACK');
-                res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+                res.status(404).json({ error: tError(req, 'task_not_yours') });
                 return;
             }
             oldStatus = current[0].status;
@@ -437,7 +438,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 const canReopen = callerRole === 'superadmin' || callerRole === 'admin' || callerRole === 'manager';
                 if (!canReopen) {
                     await txClient.query('ROLLBACK');
-                    res.status(403).json({ error: 'Doar managerii și administratorii pot redeschide o sarcină finalizată.' });
+                    res.status(403).json({ error: tError(req, 'only_managers_can_reopen') });
                     return;
                 }
             }
@@ -716,23 +717,23 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
         const { due_date, reason, realign_recurring } = req.body;
 
         if (req.activeCompanyId === undefined) {
-            res.status(400).json({ error: 'Companie activă lipsește.' });
+            res.status(400).json({ error: tError(req, 'company_missing') });
             return;
         }
 
         if (!await checkTaskAccess(id, req.user!.id, req.user!.role, req.activeCompanyId)) {
-            res.status(403).json({ error: 'Nu ai permisiunea pentru această sarcină.' });
+            res.status(403).json({ error: tError(req, 'task_no_permission') });
             return;
         }
 
         if (!due_date) {
-            res.status(400).json({ error: 'Data limită este obligatorie.' });
+            res.status(400).json({ error: tError(req, 'task_due_date_required') });
             return;
         }
 
         // CRITICAL RULE: reason is always mandatory
         if (!reason || reason.trim() === '') {
-            res.status(400).json({ error: 'Motivul reprogramării este obligatoriu.' });
+            res.status(400).json({ error: tError(req, 'task_reschedule_reason_required') });
             return;
         }
 
@@ -742,7 +743,7 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
             [id, req.activeCompanyId]
         );
         if (current.length === 0) {
-            res.status(404).json({ error: 'Această sarcină nu mai există sau nu ai acces la ea.' });
+            res.status(404).json({ error: tError(req, 'task_not_yours') });
             return;
         }
 
@@ -819,7 +820,7 @@ router.put('/:id/due-date', authMiddleware, asyncHandler(async (req: AuthRequest
 // DELETE /api/tasks/:id — soft delete task
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -829,14 +830,14 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
         [req.params.id, req.activeCompanyId]
     );
     if (tenantCheck.length === 0) {
-        res.status(404).json({ error: 'Task-ul nu a fost găsit sau a fost deja șters.' });
+        res.status(404).json({ error: tError(req, 'task_not_found_or_deleted') });
         return;
     }
 
     const result = await taskService.softDeleteTask(req.params.id, req.user!.id, req.user!.role, req.activeCompanyId);
     if ('error' in result) {
-        if (result.error === 'not_found') {
-            res.status(404).json({ error: 'Task-ul nu a fost găsit sau a fost deja șters.' });
+        if (result.error === tError(req, 'not_found')) {
+            res.status(404).json({ error: tError(req, 'task_not_found_or_deleted') });
             return;
         }
         res.status(403).json({ error: `Nu ai permisiunea de a șterge acest task. (role: ${req.user!.role})` });
@@ -848,7 +849,7 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res:
 // POST /api/tasks/:id/duplicate — duplicate task with subtasks
 router.post('/:id/duplicate', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
     if (req.activeCompanyId === undefined) {
-        res.status(400).json({ error: 'Companie activă lipsește.' });
+        res.status(400).json({ error: tError(req, 'company_missing') });
         return;
     }
 
@@ -858,13 +859,13 @@ router.post('/:id/duplicate', authMiddleware, asyncHandler(async (req: AuthReque
         [req.params.id, req.activeCompanyId]
     );
     if (tenantCheck.length === 0) {
-        res.status(404).json({ error: 'Task negăsit.' });
+        res.status(404).json({ error: tError(req, 'task_not_found_alt') });
         return;
     }
 
     const newTask = await taskService.duplicateTask(req.params.id, req.user!.id, req.activeCompanyId);
     if (!newTask) {
-        res.status(404).json({ error: 'Task negăsit.' });
+        res.status(404).json({ error: tError(req, 'task_not_found_alt') });
         return;
     }
     res.status(201).json(newTask);
