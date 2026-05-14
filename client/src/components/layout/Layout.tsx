@@ -80,7 +80,7 @@ export default function Layout() {
     // their preferred layout across sessions. Stored as a JSON map of
     // companyId -> boolean. Missing entries fall back to: only the active
     // company is expanded — keeps the sidebar short for users in many companies.
-    const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>(() => {
+    const [expandedCompanies, setExpandedCompanies] = useState<Record<number, boolean>>(() => {
         try {
             const raw = safeLocalStorage.get('sidebar-company-expanded');
             return raw ? JSON.parse(raw) : {};
@@ -91,10 +91,10 @@ export default function Layout() {
     useEffect(() => {
         safeLocalStorage.set('sidebar-company-expanded', JSON.stringify(expandedCompanies));
     }, [expandedCompanies]);
-    const toggleCompanyExpanded = (companyId: string, currentlyExpanded: boolean) => {
+    const toggleCompanyExpanded = (companyId: number, currentlyExpanded: boolean) => {
         setExpandedCompanies((prev) => ({ ...prev, [companyId]: !currentlyExpanded }));
     };
-    const isCompanyExpanded = (companyId: string) =>
+    const isCompanyExpanded = (companyId: number) =>
         expandedCompanies[companyId] ?? (companyId === activeCompany?.id);
 
     // Persist dark mode
