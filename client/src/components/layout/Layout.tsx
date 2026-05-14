@@ -5,7 +5,7 @@ import { useCompany } from '../../hooks/useCompany';
 import { useTranslation, TFunction } from '../../i18n/I18nContext';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
-    ChevronLeft, ChevronRight, Shield, Mail, Activity, CalendarClock, CheckCircle2,
+    ChevronLeft, ChevronRight, ChevronDown, Shield, Mail, Activity, CalendarClock, CheckCircle2,
     MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2, Settings
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
@@ -76,6 +76,26 @@ export default function Layout() {
     // Audit-3 H21/H24: Esc dismisses the logout confirm dialog.
     useModalDismiss(showLogoutConfirm, () => setShowLogoutConfirm(false));
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    // Per-company expanded state in the sidebar. Persisted so each user keeps
+    // their preferred layout across sessions. Stored as a JSON map of
+    // companyId -> boolean. Missing entries fall back to: only the active
+    // company is expanded — keeps the sidebar short for users in many companies.
+    const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>(() => {
+        try {
+            const raw = safeLocalStorage.get('sidebar-company-expanded');
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    });
+    useEffect(() => {
+        safeLocalStorage.set('sidebar-company-expanded', JSON.stringify(expandedCompanies));
+    }, [expandedCompanies]);
+    const toggleCompanyExpanded = (companyId: string, currentlyExpanded: boolean) => {
+        setExpandedCompanies((prev) => ({ ...prev, [companyId]: !currentlyExpanded }));
+    };
+    const isCompanyExpanded = (companyId: string) =>
+        expandedCompanies[companyId] ?? (companyId === activeCompany?.id);
 
     // Persist dark mode
     useEffect(() => {
@@ -103,20 +123,45 @@ export default function Layout() {
     const activeBlock = companyBlocks.find((b) => b.company.id === activeCompany?.id) ?? companyBlocks[0];
     const activeItems: NavItem[] = activeBlock?.items ?? [];
 
-    const renderCompanyHeader = (company: Company) => (
-        <div className={`flex items-center gap-2 px-3 py-2 ${collapsed ? 'justify-center' : ''}`}>
-            <span
-                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: company.color }}
-                aria-hidden
-            />
-            {!collapsed && (
-                <span className={`text-[11px] font-semibold uppercase tracking-wider truncate ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
+    const renderCompanyHeader = (company: Company, expanded: boolean) => {
+        // When the sidebar itself is collapsed (icon-only), the header is just
+        // a colored dot — no toggle, since per-company sections aren't shown.
+        if (collapsed) {
+            return (
+                <div className="flex items-center gap-2 px-3 py-2 justify-center">
+                    <span
+                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: company.color }}
+                        aria-hidden
+                    />
+                </div>
+            );
+        }
+        return (
+            <button
+                type="button"
+                onClick={() => toggleCompanyExpanded(company.id, expanded)}
+                aria-expanded={expanded}
+                aria-controls={`company-nav-${company.id}`}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors ${
+                    darkMode ? 'hover:bg-navy-800/60' : 'hover:bg-gray-100'
+                }`}
+            >
+                <span
+                    className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: company.color }}
+                    aria-hidden
+                />
+                <span className={`text-[11px] font-semibold uppercase tracking-wider truncate flex-1 ${darkMode ? 'text-navy-400' : 'text-gray-500'}`}>
                     {company.sidebar_name}
                 </span>
-            )}
-        </div>
-    );
+                <ChevronDown
+                    className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${expanded ? '' : '-rotate-90'} ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}
+                    aria-hidden
+                />
+            </button>
+        );
+    };
 
     return (
         <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -151,39 +196,47 @@ export default function Layout() {
                             {collapsed ? <Building2 className="w-5 h-5 mx-auto" /> : t('sidebar.no_companies')}
                         </div>
                     )}
-                    {companyBlocks.map(({ company, items }, idx) => (
-                        <div
-                            key={company.id}
-                            className={`${idx > 0 ? `mt-1 pt-2 border-t ${darkMode ? 'border-navy-800/60' : 'border-gray-200/70'}` : ''}`}
-                        >
-                            {renderCompanyHeader(company)}
-                            <div className="space-y-1 px-2">
-                                {items.map(({ to, icon: Icon, label }) => (
-                                    <NavLink
-                                        key={`${company.id}-${to}`}
-                                        to={to}
-                                        end={to === '/'}
-                                        onClick={() => setActiveCompany(company.id)}
-                                        className={({ isActive }) => {
-                                            const isReallyActive = isActive && company.id === activeCompany?.id;
-                                            return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
-                                                isReallyActive
-                                                    ? darkMode
-                                                        ? 'bg-blue-500/20 text-blue-400'
-                                                        : 'bg-blue-50 text-blue-600'
-                                                    : darkMode
-                                                        ? 'text-navy-300 hover:bg-navy-800 hover:text-white'
-                                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                            }`;
-                                        }}
-                                    >
-                                        <Icon className="w-5 h-5 flex-shrink-0" />
-                                        {!collapsed && <span className="truncate">{label}</span>}
-                                    </NavLink>
-                                ))}
+                    {companyBlocks.map(({ company, items }, idx) => {
+                        // When the whole sidebar is in icon-only mode, ignore the
+                        // per-company toggle and always show items — icons take
+                        // little space and there's no header label to expand.
+                        const expanded = collapsed ? true : isCompanyExpanded(company.id);
+                        return (
+                            <div
+                                key={company.id}
+                                className={`${idx > 0 ? `mt-1 pt-2 border-t ${darkMode ? 'border-navy-800/60' : 'border-gray-200/70'}` : ''}`}
+                            >
+                                {renderCompanyHeader(company, expanded)}
+                                {expanded && (
+                                    <div id={`company-nav-${company.id}`} className="space-y-1 px-2">
+                                        {items.map(({ to, icon: Icon, label }) => (
+                                            <NavLink
+                                                key={`${company.id}-${to}`}
+                                                to={to}
+                                                end={to === '/'}
+                                                onClick={() => setActiveCompany(company.id)}
+                                                className={({ isActive }) => {
+                                                    const isReallyActive = isActive && company.id === activeCompany?.id;
+                                                    return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
+                                                        isReallyActive
+                                                            ? darkMode
+                                                                ? 'bg-blue-500/20 text-blue-400'
+                                                                : 'bg-blue-50 text-blue-600'
+                                                            : darkMode
+                                                                ? 'text-navy-300 hover:bg-navy-800 hover:text-white'
+                                                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                                    }`;
+                                                }}
+                                            >
+                                                <Icon className="w-5 h-5 flex-shrink-0" />
+                                                {!collapsed && <span className="truncate">{label}</span>}
+                                            </NavLink>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 {/* Bottom section */}
