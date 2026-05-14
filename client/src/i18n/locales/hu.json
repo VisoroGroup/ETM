@@ -95,7 +95,10 @@
     "col_slug": "Slug",
     "col_type": "Típus",
     "error_generic": "Hiba történt.",
-    "set_color_aria": "Szín beállítása: {{color}}"
+    "set_color_aria": "Szín beállítása: {{color}}",
+    "filter_by_company": "Cég szerint szűrés",
+    "filter_all": "Mind",
+    "no_users_in_filter": "Nincs felhasználó ennél a cégnél."
   },
   "tasks": {
     "title": "Feladatok",
@@ -417,6 +420,12 @@
     "error_email_name_required": "Az e-mail és a név megadása kötelező.",
     "error_create_user": "Hiba a felhasználó létrehozásakor.",
     "error_delete": "Hiba a törlés során.",
+    "error_send_link": "A belépési link küldése nem sikerült.",
+    "send_login_link": "Belépési link küldése emailben",
+    "login_link_sent": "Link elküldve!",
+    "companies_field": "Cégek",
+    "companies_hint": "Válaszd ki, melyik cégekhez férjen hozzá a felhasználó. Admin/superadmin szerepkör automatikusan mindenhez hozzáfér.",
+    "no_companies_available": "Nincs elérhető cég.",
     "confirm_delete_user": "Törlöd {{name}} felhasználót? Ez törli az általa létrehozott összes feladatot is."
   },
   "admin_orphan": {

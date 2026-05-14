@@ -42,8 +42,19 @@ export default function CompaniesAdminPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [editing, setEditing] = useState<Company | null>(null);
     const [accessUserId, setAccessUserId] = useState<string | null>(null);
+    const [userFilterCompanyId, setUserFilterCompanyId] = useState<number | 'all'>('all');
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
+
+    // Filter users by selected company. Admins/superadmins implicitly have
+    // access to every company, so they always appear regardless of filter —
+    // otherwise the table would look empty when scoping to "Hungary" etc.
+    const visibleUsers = userFilterCompanyId === 'all'
+        ? users
+        : users.filter(u => {
+            const isAdminUser = u.role === 'admin' || u.role === 'superadmin';
+            return isAdminUser || (u.company_ids ?? []).includes(userFilterCompanyId);
+        });
 
     const load = async () => {
         setLoading(true);
@@ -186,9 +197,22 @@ export default function CompaniesAdminPage() {
             {/* User company access — superadmin only */}
             {isSuperAdmin && (
                 <div className="bg-navy-800/30 border border-navy-700/50 rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-navy-700/50 flex items-center gap-2">
+                    <div className="px-4 py-3 border-b border-navy-700/50 flex items-center gap-2 flex-wrap">
                         <Users className="w-4 h-4 text-navy-300" />
-                        <h2 className="text-sm font-semibold">{t('admin_companies.user_access_title')}</h2>
+                        <h2 className="text-sm font-semibold flex-1">{t('admin_companies.user_access_title')}</h2>
+                        <label className="flex items-center gap-2 text-[11px] text-navy-300">
+                            <span>{t('admin_companies.filter_by_company')}:</span>
+                            <select
+                                value={userFilterCompanyId === 'all' ? 'all' : String(userFilterCompanyId)}
+                                onChange={(e) => setUserFilterCompanyId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                className="bg-navy-800 border border-navy-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
+                            >
+                                <option value="all">{t('admin_companies.filter_all')}</option>
+                                {companies.filter(c => !c.is_archived).map(c => (
+                                    <option key={c.id} value={c.id}>{c.sidebar_name}</option>
+                                ))}
+                            </select>
+                        </label>
                     </div>
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
@@ -206,7 +230,10 @@ export default function CompaniesAdminPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.map((u) => {
+                                    {visibleUsers.length === 0 && (
+                                        <tr><td colSpan={4} className="px-4 py-6 text-center text-xs text-navy-400 italic">{t('admin_companies.no_users_in_filter')}</td></tr>
+                                    )}
+                                    {visibleUsers.map((u) => {
                                         // Admins/superadmins implicitly see every non-archived company.
                                         const isAdminUser = u.role === 'admin' || u.role === 'superadmin';
                                         return (

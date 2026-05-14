@@ -210,8 +210,10 @@ export const savedFiltersApi = {
 // Admin
 export const adminApi = {
     users: () => api.get('/admin/users').then(r => r.data),
-    createUser: (data: { email: string; display_name: string; role?: string; departments?: string[] }) =>
+    createUser: (data: { email: string; display_name: string; role?: string; departments?: string[]; company_ids?: number[] }) =>
         api.post('/admin/users', data).then(r => r.data),
+    sendMagicLink: (userId: string) =>
+        api.post<{ ok: true }>(`/admin/users/${userId}/send-magic-link`).then(r => r.data),
     updateUser: (id: string, data: { role?: string; departments?: string[]; email?: string }) =>
         api.patch(`/admin/users/${id}`, data).then(r => r.data),
     deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),

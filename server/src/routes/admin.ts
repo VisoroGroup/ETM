@@ -1,10 +1,28 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { generateApiToken, hashToken } from '../middleware/apiTokenAuth';
 import { tError } from '../utils/serverErrors';
+import { sendMagicLinkEmail } from '../services/emailService';
+
+// Same hardening as auth.ts — never trust Host header for the deep link.
+const LOCAL_HOST_RE_ADMIN = /^(localhost|127\.0\.0\.1)(:\d+)?$/i;
+function getClientUrlForAdmin(req: Request): string {
+    if (process.env.CLIENT_URL) return process.env.CLIENT_URL;
+    if (process.env.SERVER_URL) return process.env.SERVER_URL;
+    const host = req.headers.host;
+    if (host && LOCAL_HOST_RE_ADMIN.test(host)) return `http://${host}`;
+    throw new Error('CLIENT_URL must be configured (host header fallback only allowed for localhost).');
+}
+
+function hashMagicTokenAdmin(raw: string): string {
+    return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+const ADMIN_MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
 
 const router = Router();
 
@@ -283,8 +301,11 @@ router.patch('/users/:id', asyncHandler(async (req: AuthRequest, res: Response) 
 }));
 
 // POST /api/admin/users — create a new user manually (no Microsoft SSO needed)
+// Optional `company_ids`: a non-empty array assigns the new user to those
+// companies in the same transaction. An admin can only assign companies they
+// themselves have access to; superadmin can assign any non-archived company.
 router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { email, display_name, role, departments } = req.body;
+    const { email, display_name, role, departments, company_ids } = req.body;
 
     if (!email || !display_name) {
         res.status(400).json({ error: tError(req, 'name_email_required') });
@@ -292,6 +313,7 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
     }
 
     const callerRole = req.user!.role;
+    const callerId = req.user!.id;
     const isSuperadmin = callerRole === 'superadmin';
 
     // Superadmin may grant any role; a regular admin can only create users with role 'user' or 'manager'.
@@ -311,37 +333,171 @@ router.post('/users', asyncHandler(async (req: AuthRequest, res: Response) => {
     }
     const userRole = role && allowed_roles.includes(role) ? role : 'user';
 
+    // Normalize and validate company_ids. Admins must only assign companies
+    // they themselves are a member of (tenant scoping); superadmin may assign
+    // any non-archived company.
+    let normalizedCompanyIds: number[] = [];
+    if (company_ids !== undefined && company_ids !== null) {
+        if (!Array.isArray(company_ids)) {
+            res.status(400).json({ error: tError(req, 'company_ids_must_be_array') });
+            return;
+        }
+        normalizedCompanyIds = Array.from(new Set(
+            company_ids.map((v: unknown) => Number(v)).filter((n: number) => Number.isFinite(n) && n > 0)
+        ));
+        if (normalizedCompanyIds.length > 0) {
+            const { rows: validRows } = await pool.query<{ id: number }>(
+                isSuperadmin
+                    ? 'SELECT id FROM companies WHERE id = ANY($1::int[]) AND is_archived = false'
+                    : `SELECT c.id FROM companies c
+                         JOIN user_companies uc ON uc.company_id = c.id
+                        WHERE c.id = ANY($1::int[]) AND c.is_archived = false AND uc.user_id = $2`,
+                isSuperadmin ? [normalizedCompanyIds] : [normalizedCompanyIds, callerId]
+            );
+            const valid = new Set(validRows.map(r => r.id));
+            const invalid = normalizedCompanyIds.filter(id => !valid.has(id));
+            if (invalid.length > 0) {
+                res.status(400).json({ error: `Companii inaccesibile sau inexistente: ${invalid.join(', ')}` });
+                return;
+            }
+        }
+    }
+
     // Check if email already exists (including deactivated)
     const { rows: existing } = await pool.query(
         'SELECT id, is_active FROM users WHERE LOWER(email) = LOWER($1)',
         [email]
     );
-    if (existing.length > 0) {
-        if (!existing[0].is_active) {
-            // Reactivate
-            const { rows } = await pool.query(
-                `UPDATE users SET is_active = true, display_name = $2, role = $3, departments = $4, updated_at = NOW()
-                 WHERE id = $1 RETURNING *`,
-                [existing[0].id, display_name, userRole, departments || []]
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        let userRow;
+        let status = 201;
+        if (existing.length > 0) {
+            if (!existing[0].is_active) {
+                const { rows } = await client.query(
+                    `UPDATE users SET is_active = true, display_name = $2, role = $3, departments = $4, updated_at = NOW()
+                     WHERE id = $1 RETURNING *`,
+                    [existing[0].id, display_name, userRole, departments || []]
+                );
+                userRow = rows[0];
+                status = 200;
+            } else {
+                await client.query('ROLLBACK');
+                res.status(409).json({ error: tError(req, 'user_with_email_exists') });
+                return;
+            }
+        } else {
+            const { rows } = await client.query(
+                `INSERT INTO users (id, microsoft_id, email, display_name, role, departments)
+                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+                 RETURNING *`,
+                [`pending-${Date.now()}`, email, display_name, userRole, departments || []]
             );
-            res.status(200).json(rows[0]);
-            return;
+            userRow = rows[0];
         }
-        res.status(409).json({ error: tError(req, 'user_with_email_exists') });
+
+        // Replace user_companies in the same transaction when company_ids was
+        // explicitly provided (including an empty array, which means "no
+        // access"). Skip entirely when the field is absent.
+        if (Array.isArray(company_ids)) {
+            await client.query('DELETE FROM user_companies WHERE user_id = $1', [userRow.id]);
+            if (normalizedCompanyIds.length > 0) {
+                const valuesSql = normalizedCompanyIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+                await client.query(
+                    `INSERT INTO user_companies (user_id, company_id) VALUES ${valuesSql}`,
+                    [userRow.id, ...normalizedCompanyIds]
+                );
+            }
+        }
+
+        await client.query('COMMIT');
+        userRow.company_ids = normalizedCompanyIds;
+        res.status(status).json(userRow);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Admin create user error:', err);
+        res.status(500).json({ error: tError(req, 'user_create_error') });
+    } finally {
+        client.release();
+    }
+}));
+
+// POST /api/admin/users/:id/send-magic-link — admin or superadmin sends a
+// fresh magic-link email to the target user (used for inviting external
+// collaborators with one click). Tenant scoping: admins may only invite
+// users who share at least one company with them.
+router.post('/users/:id/send-magic-link', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const targetId = req.params.id;
+    const callerRole = req.user!.role;
+    const callerId = req.user!.id;
+
+    if (!(await callerCanTouchUser(callerId, callerRole, targetId))) {
+        res.status(403).json({ error: tError(req, 'no_permission') });
         return;
     }
 
+    const { rows } = await pool.query<{ id: string; email: string; is_active: boolean }>(
+        'SELECT id, email, is_active FROM users WHERE id = $1 LIMIT 1',
+        [targetId]
+    );
+    if (rows.length === 0) {
+        res.status(404).json({ error: tError(req, 'user_not_found') });
+        return;
+    }
+    const target = rows[0];
+    if (!target.is_active) {
+        res.status(400).json({ error: tError(req, 'user_inactive') });
+        return;
+    }
+
+    // Pick the recipient's preferred language from their first active company
+    // (falls back to RO) — same logic as the user-facing magic-link request.
+    let lang: 'ro' | 'hu' | 'en' = 'ro';
     try {
-        const { rows } = await pool.query(
-            `INSERT INTO users (id, microsoft_id, email, display_name, role, departments)
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
-             RETURNING *`,
-            [`pending-${Date.now()}`, email, display_name, userRole, departments || []]
+        const { rows: langRows } = await pool.query<{ language: string }>(
+            `SELECT c.language FROM companies c
+               JOIN user_companies uc ON uc.company_id = c.id
+              WHERE uc.user_id = $1 AND c.is_archived = false
+              ORDER BY c.sort_order, c.id
+              LIMIT 1`,
+            [target.id]
         );
-        res.status(201).json(rows[0]);
+        const v = langRows[0]?.language;
+        if (v === 'ro' || v === 'hu' || v === 'en') lang = v;
+    } catch { /* fall back to ro */ }
+
+    let clientUrl: string;
+    try {
+        clientUrl = getClientUrlForAdmin(req);
     } catch (err) {
-        console.error('Admin create user error:', err);
-        res.status(500).json({ error: tError(req, 'user_create_error') });
+        console.error('[admin send-magic-link] cannot derive CLIENT_URL:', err);
+        res.status(500).json({ error: tError(req, 'magic_link_verify_error') });
+        return;
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashMagicTokenAdmin(rawToken);
+    const expiresAt = new Date(Date.now() + ADMIN_MAGIC_LINK_TTL_MS);
+    const ip = req.ip || req.socket.remoteAddress || null;
+    const ua = (req.headers['user-agent'] as string) || null;
+
+    await pool.query(
+        `INSERT INTO magic_links (token_hash, email, expires_at, requested_ip, user_agent)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [tokenHash, target.email.toLowerCase(), expiresAt, ip, ua]
+    );
+
+    const link = `${clientUrl}/auth/magic-link?token=${encodeURIComponent(rawToken)}`;
+
+    try {
+        await sendMagicLinkEmail({ to: target.email, link, language: lang });
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[admin send-magic-link] email send failed:', err);
+        res.status(500).json({ error: tError(req, 'magic_link_send_failed') });
     }
 }));
 

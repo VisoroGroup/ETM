@@ -95,7 +95,10 @@
     "col_slug": "Slug",
     "col_type": "Tip",
     "error_generic": "Eroare.",
-    "set_color_aria": "Setează culoarea {{color}}"
+    "set_color_aria": "Setează culoarea {{color}}",
+    "filter_by_company": "Filtrează după companie",
+    "filter_all": "Toate",
+    "no_users_in_filter": "Niciun utilizator pentru această companie."
   },
   "tasks": {
     "title": "Sarcini",
@@ -417,6 +420,12 @@
     "error_email_name_required": "Email și nume sunt obligatorii.",
     "error_create_user": "Eroare la crearea utilizatorului.",
     "error_delete": "Eroare la ștergere.",
+    "error_send_link": "Trimiterea linkului de autentificare a eșuat.",
+    "send_login_link": "Trimite link de autentificare pe email",
+    "login_link_sent": "Link trimis!",
+    "companies_field": "Companii",
+    "companies_hint": "Selectează la ce companii are acces utilizatorul. Rolurile admin/superadmin au acces implicit la toate.",
+    "no_companies_available": "Nicio companie disponibilă.",
     "confirm_delete_user": "Ștergi utilizatorul {{name}}? Aceasta va șterge și toate sarcinile create de el."
   },
   "admin_orphan": {

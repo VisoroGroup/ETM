@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw, Camera, Loader2, Plus, X } from 'lucide-react';
+import { Shield, Users, Edit2, Trash2, CheckCircle, RefreshCw, Camera, Loader2, Plus, X, Send } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompany } from '../../hooks/useCompany';
 import { adminApi } from '../../services/api';
 import { User, DEPARTMENTS, Department } from '../../types';
 import WebhookManager from './WebhookManager';
@@ -15,6 +16,7 @@ const DEPT_KEYS = Object.keys(DEPARTMENTS) as Department[];
 export default function AdminPage() {
     const { t } = useTranslation();
     const { user: currentUser } = useAuth();
+    const { companies } = useCompany();
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -25,8 +27,10 @@ export default function AdminPage() {
     const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
     const [cropState, setCropState] = useState<{ userId: string; imageUrl: string } | null>(null);
     const [showCreateUser, setShowCreateUser] = useState(false);
-    const [newUser, setNewUser] = useState({ email: '', display_name: '', role: 'user', departments: [] as string[] });
+    const [newUser, setNewUser] = useState({ email: '', display_name: '', role: 'user', departments: [] as string[], company_ids: [] as number[] });
     const [creating, setCreating] = useState(false);
+    const [sendingLinkId, setSendingLinkId] = useState<string | null>(null);
+    const [linkSentForId, setLinkSentForId] = useState<string | null>(null);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleAvatarUpload = async (userId: string, file: File) => {
@@ -122,11 +126,25 @@ export default function AdminPage() {
             const created = await adminApi.createUser(newUser);
             setUsers(prev => [...prev, created]);
             setShowCreateUser(false);
-            setNewUser({ email: '', display_name: '', role: 'user', departments: [] });
+            setNewUser({ email: '', display_name: '', role: 'user', departments: [], company_ids: [] });
         } catch (err: any) {
             setError(err.response?.data?.error || t('admin_users.error_create_user'));
         } finally {
             setCreating(false);
+        }
+    };
+
+    const sendMagicLink = async (u: User) => {
+        setSendingLinkId(u.id);
+        setError('');
+        try {
+            await adminApi.sendMagicLink(u.id);
+            setLinkSentForId(u.id);
+            setTimeout(() => setLinkSentForId(prev => (prev === u.id ? null : prev)), 4000);
+        } catch (err: any) {
+            setError(err.response?.data?.error || t('admin_users.error_send_link'));
+        } finally {
+            setSendingLinkId(null);
         }
     };
 
@@ -323,6 +341,24 @@ export default function AdminPage() {
                                                     </button>
                                                     {u.id !== currentUser?.id && (
                                                         <button
+                                                            onClick={() => sendMagicLink(u)}
+                                                            disabled={sendingLinkId === u.id}
+                                                            className={`p-1.5 rounded transition-colors disabled:opacity-50 ${
+                                                                linkSentForId === u.id
+                                                                    ? 'text-emerald-400 bg-emerald-500/10'
+                                                                    : 'text-navy-400 hover:text-emerald-400 hover:bg-emerald-500/10'
+                                                            }`}
+                                                            title={linkSentForId === u.id ? t('admin_users.login_link_sent') : t('admin_users.send_login_link')}
+                                                        >
+                                                            {sendingLinkId === u.id
+                                                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                                : linkSentForId === u.id
+                                                                    ? <CheckCircle className="w-4 h-4" />
+                                                                    : <Send className="w-4 h-4" />}
+                                                        </button>
+                                                    )}
+                                                    {u.id !== currentUser?.id && (
+                                                        <button
                                                             onClick={() => deleteUser(u)}
                                                             className="p-1.5 rounded text-navy-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                                                             title={t('common.delete')}
@@ -432,6 +468,41 @@ export default function AdminPage() {
                                     })}
                                 </div>
                             </div>
+                            {newUser.role !== 'admin' && (
+                                <div>
+                                    <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('admin_users.companies_field')}</label>
+                                    <p className="text-[10px] text-navy-500 mb-2">{t('admin_users.companies_hint')}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {companies.length === 0 && (
+                                            <span className="text-[11px] text-navy-500 italic">{t('admin_users.no_companies_available')}</span>
+                                        )}
+                                        {companies.map(c => {
+                                            const active = newUser.company_ids.includes(c.id);
+                                            return (
+                                                <button
+                                                    key={c.id}
+                                                    type="button"
+                                                    onClick={() => setNewUser(prev => ({
+                                                        ...prev,
+                                                        company_ids: active
+                                                            ? prev.company_ids.filter(id => id !== c.id)
+                                                            : [...prev.company_ids, c.id]
+                                                    }))}
+                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
+                                                        active
+                                                            ? 'text-white shadow-md'
+                                                            : 'bg-navy-800/50 text-navy-400 hover:bg-navy-700/50 border-navy-700/50'
+                                                    }`}
+                                                    style={active ? { background: c.color, borderColor: c.color } : undefined}
+                                                >
+                                                    <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? '#ffffffaa' : c.color }} />
+                                                    {c.sidebar_name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3 mt-6">
