@@ -4,8 +4,8 @@ import { useTranslation } from '../../i18n/I18nContext';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { tasksApi, notificationsApi } from '../../services/api';
-import type { TaskDetail, TaskStatus, Department, TaskAlert } from '../../types';
-import { STATUSES, DEPARTMENTS, statusLabel, departmentLabel } from '../../types';
+import type { TaskDetail, TaskStatus, Department, TaskAlert, RecurringFrequency } from '../../types';
+import { STATUSES, DEPARTMENTS, FREQUENCIES, statusLabel, departmentLabel } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
@@ -192,11 +192,37 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
         });
     }
 
-    // Recurring toggle
-    async function toggleRecurring() {
+    // Recurring popover state — TaskDrawer used to flip recurring on/off with
+    // a hardcoded weekly frequency. Now the same button opens a small popover
+    // where the user picks the actual frequency (daily/weekly/biweekly/monthly/
+    // quarterly/yearly) or disables recurrence.
+    const [showFreqPicker, setShowFreqPicker] = useState(false);
+    const [workdaysOnly, setWorkdaysOnly] = useState(false);
+
+    async function pickFrequency(freq: RecurringFrequency) {
         if (!task) return;
+        // Recurrence requires a due date — backend rejects otherwise.
+        if (!task.due_date) {
+            showToast(t('task_drawer.recurring_needs_due_date'), 'error');
+            setShowFreqPicker(false);
+            return;
+        }
+        setShowFreqPicker(false);
+        td.setRecurringFreq.mutate(
+            { frequency: freq, workdays_only: freq === 'daily' ? workdaysOnly : false },
+            {
+                onSuccess: () => showToast(t('task_drawer.toast_recurring_on')),
+                onError: (err: any) => showToast(err?.response?.data?.error || t('tasks.try_again'), 'error'),
+            }
+        );
+    }
+
+    async function disableRecurring() {
+        if (!task) return;
+        setShowFreqPicker(false);
+        if (!task.is_recurring) return;
         td.toggleRecurring.mutate(undefined, {
-            onSuccess: () => showToast(task.is_recurring ? t('task_drawer.toast_recurring_off') : t('task_drawer.toast_recurring_on')),
+            onSuccess: () => showToast(t('task_drawer.toast_recurring_off')),
             onError: () => showToast(t('tasks.try_again'), 'error'),
         });
     }
@@ -361,17 +387,61 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             </button>
 
 
-                            {/* Recurring */}
-                            <button
-                                onClick={toggleRecurring}
-                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${task.is_recurring ? 'bg-cyan-500/20 text-cyan-400' : 'bg-navy-800/50 text-navy-500 hover:text-navy-300'
-                                    }`}
-                            >
-                                <RefreshCw className="w-3 h-3" />
-                                {task.is_recurring && task.recurring_frequency
-                                    ? t(`task_form.frequency_${task.recurring_frequency}`)
-                                    : t('task_drawer.recurring')}
-                            </button>
+                            {/* Recurring — opens a frequency picker popover */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowFreqPicker(v => !v)}
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${task.is_recurring ? 'bg-cyan-500/20 text-cyan-400' : 'bg-navy-800/50 text-navy-500 hover:text-navy-300'
+                                        }`}
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                    {task.is_recurring && task.recurring_frequency
+                                        ? t(`task_form.frequency_${task.recurring_frequency}`)
+                                        : t('task_drawer.recurring')}
+                                    <ChevronDown className="w-3 h-3 opacity-60" />
+                                </button>
+                                {showFreqPicker && (
+                                    <>
+                                        {/* Click-outside backdrop */}
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowFreqPicker(false)} />
+                                        <div className="absolute z-50 mt-1 left-0 bg-navy-800 border border-navy-700 rounded-lg shadow-xl py-1 min-w-[180px]">
+                                            {FREQUENCIES.map(f => {
+                                                const isActive = task.is_recurring && task.recurring_frequency === f;
+                                                return (
+                                                    <button
+                                                        key={f}
+                                                        onClick={() => pickFrequency(f)}
+                                                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                                                            isActive
+                                                                ? 'bg-cyan-500/20 text-cyan-400'
+                                                                : 'text-navy-200 hover:bg-navy-700/50'
+                                                        }`}
+                                                    >
+                                                        {t(`task_form.frequency_${f}`)}
+                                                    </button>
+                                                );
+                                            })}
+                                            <label className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-navy-300 border-t border-navy-700/50 mt-1 cursor-pointer hover:bg-navy-700/30">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={workdaysOnly}
+                                                    onChange={e => setWorkdaysOnly(e.target.checked)}
+                                                    className="w-3.5 h-3.5 rounded border-navy-600 bg-navy-800 text-blue-500 focus:ring-blue-500"
+                                                />
+                                                {t('task_form.workdays_only')}
+                                            </label>
+                                            {task.is_recurring && (
+                                                <button
+                                                    onClick={disableRecurring}
+                                                    className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 border-t border-navy-700/50"
+                                                >
+                                                    {t('task_drawer.disable_recurring')}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
                             {/* Blocked reason badge */}
                             {task.status === 'blocat' && task.blocked_reason && (

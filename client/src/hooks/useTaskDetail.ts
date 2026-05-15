@@ -227,6 +227,21 @@ export function useTaskDetail(taskId: string) {
         onSettled: () => refetch(),
     });
 
+    // Set/replace recurring frequency (also turns recurrence on if it wasn't).
+    const setRecurringFreq = useMutation({
+        mutationFn: async ({ frequency, workdays_only }: { frequency: string; workdays_only?: boolean }) => {
+            await recurringApi.set(taskId, frequency, workdays_only ?? false);
+        },
+        onMutate: async ({ frequency }) => {
+            await queryClient.cancelQueries({ queryKey: TASK_KEY(taskId) });
+            const ctx = snapshot();
+            optimistic(old => ({ ...old, is_recurring: true, recurring_frequency: frequency as any }));
+            return ctx;
+        },
+        onError: (_e, _v, ctx) => ctx && rollback(ctx),
+        onSettled: () => refetch(),
+    });
+
     // Delete task
     const deleteTask = useMutation({
         mutationFn: () => tasksApi.delete(taskId),
@@ -283,6 +298,7 @@ export function useTaskDetail(taskId: string) {
         deleteComment,
         changeDueDate,
         toggleRecurring,
+        setRecurringFreq,
         deleteTask,
         addAlert,
         resolveAlert,
