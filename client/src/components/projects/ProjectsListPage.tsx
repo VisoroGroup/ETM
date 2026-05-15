@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Folder, Plus, Loader2, RefreshCw, X, Calendar, MapPin, Building2, Archive, ArchiveRestore } from 'lucide-react';
 import { pugProjectsApi, pugAdminApi, PugProject, PugWorkType, authApi } from '../../services/api';
 import { useTranslation } from '../../i18n/I18nContext';
@@ -268,13 +268,19 @@ function CreateProjectModal({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Field label={`${t('projects.field_title')} *`} className="md:col-span-2">
-                        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="PUG Maroskeresztúr" className={inputCls} />
+                        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('projects.title_placeholder')} className={inputCls} />
                     </Field>
                     <Field label={t('projects.field_work_type')}>
-                        <select value={workTypeId} onChange={(e) => setWorkTypeId(e.target.value)} className={inputCls}>
-                            <option value="">—</option>
-                            {workTypes.filter((w) => w.is_active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
+                        {workTypes.filter((w) => w.is_active).length === 0 ? (
+                            <div className="text-[11px] text-navy-400 italic px-3 py-2 rounded-lg bg-navy-800/40 border border-navy-700/50">
+                                {t('projects.no_work_types_yet')} <Link to="/admin/pug" className="text-blue-400 hover:underline">{t('projects.go_to_settings')}</Link>
+                            </div>
+                        ) : (
+                            <select value={workTypeId} onChange={(e) => setWorkTypeId(e.target.value)} className={inputCls}>
+                                <option value="">—</option>
+                                {workTypes.filter((w) => w.is_active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                        )}
                     </Field>
                     <Field label={t('projects.field_client')}>
                         <input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputCls} />
