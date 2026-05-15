@@ -543,7 +543,8 @@
     "empty_work_types": "Niciun tip de lucrare definit încă.",
     "empty_custom_fields": "Niciun câmp personalizat definit încă.",
     "icon_placeholder": "lucide name (ex: layers)",
-    "name_placeholder": "Nume etapă / status / câmp"
+    "name_placeholder": "Nume etapă / status / câmp",
+    "work_type_placeholder": "Ex: Proiectare, Autorizare"
   },
   "pug_reminders": {
     "tab": "Reminder-e",

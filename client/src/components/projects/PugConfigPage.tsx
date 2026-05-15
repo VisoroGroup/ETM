@@ -595,7 +595,7 @@ function WorkTypeEditorModal({ workType, onClose, onSaved }: { workType?: PugWor
     return (
         <Modal title={isEdit ? t('pug_config.edit_work_type') : t('pug_config.add_work_type')} onClose={onClose} err={err}>
             <Field label={t('pug_config.col_name')}>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="PUG / PUZ" className={inputCls} />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('pug_config.work_type_placeholder')} className={inputCls} />
             </Field>
             <Field label={t('pug_config.col_sort_order')}>
                 <input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value || '0', 10))} className={inputCls} />

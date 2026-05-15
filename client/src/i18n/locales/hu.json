@@ -543,7 +543,8 @@
     "empty_work_types": "Még nincs egyetlen munkatípus sem.",
     "empty_custom_fields": "Még nincs egyetlen egyéni mező sem.",
     "icon_placeholder": "lucide név (pl: layers)",
-    "name_placeholder": "Stádium / státusz / mező neve"
+    "name_placeholder": "Stádium / státusz / mező neve",
+    "work_type_placeholder": "Pl.: Tervezés, Engedélyezés"
   },
   "pug_reminders": {
     "tab": "Emlékeztetők",
