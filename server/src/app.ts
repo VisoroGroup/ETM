@@ -134,12 +134,34 @@ app.get('/api/health', async (_req, res) => {
 // Serve frontend build in production
 if (process.env.NODE_ENV === 'production') {
     const clientBuildPath = path.join(__dirname, '../../client/dist');
-    app.use(express.static(clientBuildPath));
+    // Static assets get long-lived caching by default. We override only for
+    // index.html (the entry point that references all the hashed chunks) —
+    // it MUST be re-fetched on every load so the browser picks up the new
+    // chunk hashes after a deploy. Otherwise stale index.html references
+    // chunks that no longer exist and the SPA falls through to the catch-all
+    // below, getting index.html for a `.js` request and a MIME-type error.
+    app.use(express.static(clientBuildPath, {
+        setHeaders: (res, filePath) => {
+            if (filePath.endsWith('index.html')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            }
+        },
+    }));
     app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
             res.status(404).json({ error: tError(req, 'api_endpoint_not_found') });
             return;
         }
+        // Paths ending in a file extension (e.g. /assets/app.abc123.js,
+        // /favicon.ico) must NOT fall through to index.html — that's what
+        // produces the "'text/html' is not a valid JavaScript MIME type"
+        // browser error when a cached index.html references a now-stale
+        // hashed bundle. Return 404 so the browser knows to refetch.
+        if (path.extname(req.path)) {
+            res.status(404).end();
+            return;
+        }
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 }
