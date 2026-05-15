@@ -496,7 +496,14 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 const recurring = recurringRows[0];
                 const task = rows[0];
 
-                // Calculate next due date
+                // `recurring.next_run_date` was already set to the NEXT
+                // occurrence's due date during setup (and again at every prior
+                // completion). Use it AS-IS for the new task's due_date, then
+                // advance it by the frequency for the row update. The old code
+                // incremented twice — once at setup, once here — which made
+                // every recurring task skip its first occurrence (e.g. monthly
+                // task on Apr 30 would jump to Jun 30, skipping May).
+                const newDueDate = new Date(recurring.next_run_date);
                 let nextDueDate = new Date(recurring.next_run_date);
                 switch (recurring.frequency) {
                     case 'daily':
@@ -520,7 +527,12 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 }
                 // Roll forward to the next workday for ANY frequency that
                 // requested workdays_only (previously only daily honored it).
+                // Applied to BOTH the new task's due date and the stored
+                // next_run_date so the cycle stays on workdays.
                 if (recurring.workdays_only) {
+                    while (newDueDate.getDay() === 0 || newDueDate.getDay() === 6) {
+                        newDueDate.setDate(newDueDate.getDate() + 1);
+                    }
                     while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6) {
                         nextDueDate.setDate(nextDueDate.getDate() + 1);
                     }
@@ -537,7 +549,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                                             assigned_to, assigned_post_id, assigned_section_id, assigned_department_id,
                                             company_id)
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-                        [newTaskId, task.title, task.description, toLocalDateStr(nextDueDate),
+                        [newTaskId, task.title, task.description, toLocalDateStr(newDueDate),
                             task.created_by, task.department_label,
                             task.assigned_to, task.assigned_post_id,
                             task.assigned_section_id, task.assigned_department_id,
@@ -572,7 +584,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                         [newTaskId, req.user!.id, JSON.stringify({
                             source_task_id: id,
                             frequency: recurring.frequency,
-                            new_due_date: toLocalDateStr(nextDueDate)
+                            new_due_date: toLocalDateStr(newDueDate)
                         }), task.company_id ?? req.activeCompanyId]
                     );
 
