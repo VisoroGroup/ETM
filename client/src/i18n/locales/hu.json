@@ -58,7 +58,7 @@
     "orphan_tasks": "Árva feladatok",
     "email_log": "E-mail napló",
     "completed": "Elvégzett",
-    "pug_config": "PUG beállítások",
+    "pug_config": "Projekt beállítások",
     "profile": "Profil"
   },
   "admin_companies": {
@@ -498,7 +498,7 @@
     "custom_fields": "Egyéni mezők"
   },
   "pug_config": {
-    "title": "PUG beállítások",
+    "title": "Projekt beállítások",
     "subtitle": "Stádiumok, státuszok, munkatípusok és egyéni mezők katalógusa",
     "tab_stages": "Stádiumok",
     "tab_statuses": "Státuszok",

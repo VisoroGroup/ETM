@@ -58,7 +58,7 @@
     "orphan_tasks": "Sarcini orfane",
     "email_log": "Jurnal emailuri",
     "completed": "Terminate",
-    "pug_config": "Configurări PUG",
+    "pug_config": "Configurări proiect",
     "profile": "Profil"
   },
   "admin_companies": {
@@ -498,7 +498,7 @@
     "custom_fields": "Câmpuri personalizate"
   },
   "pug_config": {
-    "title": "Configurări PUG",
+    "title": "Configurări proiect",
     "subtitle": "Cataloage pentru etape, statusuri, tipuri de lucrare și câmpuri personalizate",
     "tab_stages": "Etape",
     "tab_statuses": "Statusuri",
