@@ -66,7 +66,12 @@ export default function DashboardPage() {
                 const [s, c, tasks, alerts, prefs] = await Promise.all([
                     dashboardApi.stats(),
                     dashboardApi.charts(),
-                    tasksApi.list(),
+                    // Dashboard only renders "assigned to me" + "created by me"
+                    // lists from these tasks, so server-side filter to my_tasks
+                    // (creator OR assignee OR subtask-assignee) and raise the
+                    // page limit. The default 50 was silently truncating users
+                    // with many open tasks and hiding entries from the lists.
+                    tasksApi.list({ my_tasks: 'true', exclude_status: 'terminat', limit: 500 }),
                     dashboardApi.activeAlerts().catch(() => []),
                     dashboardApi.getPreferences().catch(() => []),
                 ]);
@@ -501,8 +506,12 @@ export default function DashboardPage() {
                         taskId={selectedTaskId}
                         onClose={() => setSelectedTaskId(null)}
                         onUpdate={() => {
-                            // Reload tasks after update
-                            tasksApi.list().then(res => setAllTasks(res.tasks || res)).catch(() => {});
+                            // Reload tasks after update — same scoped list shape
+                            // as the initial load so the open-task count stays
+                            // accurate for users with > 50 tasks.
+                            tasksApi.list({ my_tasks: 'true', exclude_status: 'terminat', limit: 500 })
+                                .then(res => setAllTasks(res.tasks || res))
+                                .catch(() => {});
                         }}
                     />
                 </Suspense>
