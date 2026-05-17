@@ -522,6 +522,61 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
 }));
 
 // ---------------------------------------------------------------------------
+// SHARE TOKENS — public read-only link a project owner can send to a client.
+// The token-aware GET lives on a *separate* router (mounted at /api/public/...)
+// so it bypasses authMiddleware entirely. Token management (list / create /
+// revoke) stays on this auth-only router.
+// ---------------------------------------------------------------------------
+
+router.get('/:id/share-tokens', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const { rows } = await pool.query(
+        `SELECT id, token, created_at, expires_at, revoked_at, last_viewed_at, view_count
+           FROM pug_project_share_tokens
+          WHERE project_id = $1 AND company_id = $2
+          ORDER BY created_at DESC`,
+        [id, cid]
+    );
+    res.json(rows);
+}));
+
+router.post('/:id/share-tokens', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const { rows: pcheck } = await pool.query(
+        `SELECT 1 FROM pug_projects WHERE id = $1 AND company_id = $2`,
+        [id, cid]
+    );
+    if (pcheck.length === 0) {
+        res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+        return;
+    }
+    const { randomBytes } = await import('crypto');
+    const token = randomBytes(24).toString('base64url');
+    const expiresAt = req.body?.expires_at || null;
+    const { rows } = await pool.query(
+        `INSERT INTO pug_project_share_tokens (project_id, token, created_by, company_id, expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, token, created_at, expires_at, view_count`,
+        [id, token, req.user!.id, cid, expiresAt]
+    );
+    res.status(201).json(rows[0]);
+}));
+
+router.delete('/:id/share-tokens/:tokenId', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id, tokenId } = req.params;
+    await pool.query(
+        `UPDATE pug_project_share_tokens
+            SET revoked_at = NOW()
+          WHERE id = $1 AND project_id = $2 AND company_id = $3 AND revoked_at IS NULL`,
+        [tokenId, id, cid]
+    );
+    res.status(204).send();
+}));
+
+// ---------------------------------------------------------------------------
 // PROJECT REPORT (PDF) — client-facing project status, hands-to-customer.
 // Used by David (DAVID-GPR) to deliver an end-of-survey report to the
 // mayor's office, and by Neo Plan at project milestones.
@@ -553,8 +608,8 @@ router.get('/:id/report.pdf', asyncHandler(ensureProjectTemplate), asyncHandler(
                 sc.name AS stage_name,
                 st.name AS status_name, st.is_terminal
            FROM pug_project_stages ps
-           JOIN pug_stages_catalog sc ON sc.id = ps.stage_catalog_id
-           LEFT JOIN pug_statuses_catalog st ON st.id = ps.status_id
+           JOIN pug_stage_catalog sc ON sc.id = ps.stage_catalog_id
+           LEFT JOIN pug_status_catalog st ON st.id = ps.status_id
           WHERE ps.project_id = $1
           ORDER BY sc.sort_order ASC, sc.name ASC`,
         [id]

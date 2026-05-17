@@ -40,6 +40,7 @@ import companiesRoutes from './routes/companies';
 import adminCompaniesRoutes from './routes/adminCompanies';
 import pugAdminRoutes from './routes/pugAdmin';
 import pugProjectsRoutes from './routes/pugProjects';
+import publicProjectRoutes from './routes/publicProject';
 import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
@@ -108,6 +109,7 @@ app.use('/api/companies', companiesRoutes);
 app.use('/api/admin/companies', adminCompaniesRoutes);
 app.use('/api/admin/pug', pugAdminRoutes);
 app.use('/api/pug/projects', pugProjectsRoutes);
+app.use('/api/public', publicProjectRoutes);  // no-auth public read-only project status (token)
 app.use('/api/v1', externalApiRoutes);
 // Health check (enhanced)
 app.get('/api/health', async (_req, res) => {

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft, Loader2, Edit2, Save, X, Plus, Trash2, Archive, ArchiveRestore,
     Calendar, MapPin, Building2, FileText, Users as UsersIcon, Layers, Tag,
-    Check, AlertCircle,
+    Check, AlertCircle, Link2,
 } from 'lucide-react';
 import {
     pugProjectsApi, pugAdminApi, authApi,
@@ -15,6 +15,7 @@ import { useToast } from '../../hooks/useToast';
 import UserAvatar from '../ui/UserAvatar';
 import ProjectTasksSection from './ProjectTasksSection';
 import ProjectFilesSection from './ProjectFilesSection';
+import ProjectShareModal from './ProjectShareModal';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -119,6 +120,7 @@ export default function ProjectDetailPage() {
     const [showMetaEdit, setShowMetaEdit] = useState(false);
     const [showRespEdit, setShowRespEdit] = useState(false);
     const [showAddStage, setShowAddStage] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const load = async () => {
         if (!id) return;
@@ -300,14 +302,6 @@ export default function ProjectDetailPage() {
                         )}
                         <a
                             href={`/api/pug/projects/${project.id}/report.pdf`}
-                            // Magic-link headers can't be set via plain <a>; we
-                            // attach the token + active company as query-string
-                            // is overkill — just open in same tab and let the
-                            // axios-style auth on the fetch fail loudly. The
-                            // server uses cookies + JWT, so a fresh tab keeps
-                            // the JWT in localStorage; the GET pulls the JWT
-                            // via the standard authMiddleware. We rely on the
-                            // page already being authenticated.
                             onClick={(e) => {
                                 e.preventDefault();
                                 downloadProjectReport(project.id);
@@ -316,6 +310,14 @@ export default function ProjectDetailPage() {
                         >
                             <FileText className="w-3.5 h-3.5" /> {t('projects.export_pdf')}
                         </a>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="text-xs px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 flex items-center gap-1"
+                            >
+                                <Link2 className="w-3.5 h-3.5" /> {t('projects.share_button')}
+                            </button>
+                        )}
                         {isAdmin && (
                             <button
                                 onClick={onArchive}
@@ -508,6 +510,12 @@ export default function ProjectDetailPage() {
                     statuses={statusesCatalog}
                     onClose={() => setShowAddStage(false)}
                     onSaved={async () => { setShowAddStage(false); await load(); }}
+                />
+            )}
+            {showShareModal && (
+                <ProjectShareModal
+                    projectId={project.id}
+                    onClose={() => setShowShareModal(false)}
                 />
             )}
         </div>

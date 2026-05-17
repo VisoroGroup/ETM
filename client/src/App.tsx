@@ -30,6 +30,7 @@ const CompaniesAdminPage = lazy(() => import('./components/admin/CompaniesAdminP
 const ProjectsListPage = lazy(() => import('./components/projects/ProjectsListPage'));
 const ProjectDetailPage = lazy(() => import('./components/projects/ProjectDetailPage'));
 const PugConfigPage = lazy(() => import('./components/projects/PugConfigPage'));
+const PublicProjectPage = lazy(() => import('./components/projects/PublicProjectPage'));
 
 function RouteFallback() {
   return (
@@ -52,6 +53,20 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { t } = useTranslation();
+
+  // Public share routes — no auth gate. The /shared/:token URL is what
+  // David sends to the mayor's office; we early-return so the regular
+  // login redirect doesn't kick in.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/shared/')) {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/shared/:token" element={<ErrorBoundary><PublicProjectPage /></ErrorBoundary>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    );
+  }
 
   if (loading) {
     return (

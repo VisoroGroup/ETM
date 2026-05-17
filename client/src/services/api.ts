@@ -535,6 +535,15 @@ export const pugProjectsApi = {
     setCustomFieldValues: (projectId: string, values: Record<string, any>) => api.put(`/pug/projects/${projectId}/custom-fields`, { values }).then(r => r.data),
     setResponsibles: (projectId: string, userIds: string[]) => api.put(`/pug/projects/${projectId}/responsibles`, { user_ids: userIds }).then(r => r.data),
 
+    // Public share tokens — David sends one to the mayor's office, the
+    // public /shared/:token URL renders a read-only project status.
+    listShareTokens: (projectId: string) =>
+        api.get<PugShareToken[]>(`/pug/projects/${projectId}/share-tokens`).then(r => r.data),
+    createShareToken: (projectId: string, expiresAt?: string | null) =>
+        api.post<PugShareToken>(`/pug/projects/${projectId}/share-tokens`, { expires_at: expiresAt ?? null }).then(r => r.data),
+    revokeShareToken: (projectId: string, tokenId: string) =>
+        api.delete(`/pug/projects/${projectId}/share-tokens/${tokenId}`).then(r => r.data),
+
     // Project-scoped attachments (architecture / GPR / survey deliverables
     // belong here, not on individual tasks).
     listAttachments: (projectId: string) =>
@@ -544,6 +553,16 @@ export const pugProjectsApi = {
     deleteAttachment: (projectId: string, attachmentId: string) =>
         api.delete(`/pug/projects/${projectId}/attachments/${attachmentId}`).then(r => r.data),
 };
+
+export interface PugShareToken {
+    id: string;
+    token: string;
+    created_at: string;
+    expires_at: string | null;
+    revoked_at?: string | null;
+    last_viewed_at?: string | null;
+    view_count: number;
+}
 
 export interface PugProjectAttachment {
     id: string;
