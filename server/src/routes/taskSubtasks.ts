@@ -253,6 +253,23 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                     }), companyId]
                 );
 
+                // IN-APP NOTIFICATION: subtask reassigned (mirrors the POST path).
+                // Without this, the bell stays empty even though the email is sent.
+                if (assigned_to && assigned_to !== req.user!.id) {
+                    try {
+                        await pool.query(
+                            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
+                             VALUES ($1, $2, 'subtask_assigned', $3, $4, $5)`,
+                            [assigned_to, taskId,
+                                `${req.user!.display_name} ți-a atribuit o sub-sarcină: "${oldRows[0].title}"`,
+                                req.user!.id,
+                                companyId]
+                        );
+                    } catch (notifErr) {
+                        console.error('Notification error (non-critical):', notifErr);
+                    }
+                }
+
                 // EMAIL: subtask reassigned
                 if (assigned_to && assigned_to !== req.user!.id) {
                     (async () => {
