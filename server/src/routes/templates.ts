@@ -3,11 +3,13 @@ import pool from '../config/database';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { z } from 'zod';
 import { tError } from '../utils/serverErrors';
+import { userIsInCompany, rowIsInCompany } from '../utils/tenantGuard';
 
 const router = Router();
 
 const subtaskSchema = z.object({
     title: z.string().min(1, 'Subtask cím kötelező').max(200, 'Subtask cím max 200 karakter'),
+    assigned_to: z.string().uuid().nullable().optional(),
 });
 
 const createTemplateSchema = z.object({
@@ -15,6 +17,13 @@ const createTemplateSchema = z.object({
     description: z.string().max(5000).nullable().optional(),
     department_label: z.string().max(100).optional(),
     assigned_to: z.string().uuid().nullable().optional(),
+    // Org-aware scope (full-template tenants like Visoro Global). Recurring
+    // templates instantiated from the org tree route through the post →
+    // section → department head chain — same auto-resolution as for direct
+    // task creation. Templates therefore follow the role, not the person.
+    assigned_post_id: z.string().uuid().nullable().optional(),
+    assigned_section_id: z.string().uuid().nullable().optional(),
+    assigned_department_id: z.string().uuid().nullable().optional(),
     subtasks: z.array(subtaskSchema).max(50, 'Maximum 50 subtask engedélyezett').optional().default([]),
 });
 
@@ -54,15 +63,36 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         }
         const parsed = createTemplateSchema.parse(req.body);
 
+        // Tenant guards on every UUID. Without these a crafted payload could
+        // bind another company's post/section/dept/user into a template
+        // owned by the active tenant (audit-3 C9/C13 parity).
+        if (parsed.assigned_to && !(await userIsInCompany(parsed.assigned_to, companyId))) {
+            return res.status(400).json({ error: tError(req, 'assignee_not_in_company') });
+        }
+        if (parsed.assigned_post_id && !(await rowIsInCompany('posts', parsed.assigned_post_id, companyId))) {
+            return res.status(400).json({ error: tError(req, 'post_not_in_company') });
+        }
+        if (parsed.assigned_section_id && !(await rowIsInCompany('sections', parsed.assigned_section_id, companyId))) {
+            return res.status(400).json({ error: tError(req, 'section_not_in_company') });
+        }
+        if (parsed.assigned_department_id && !(await rowIsInCompany('departments', parsed.assigned_department_id, companyId))) {
+            return res.status(400).json({ error: tError(req, 'department_not_in_company') });
+        }
+
         const result = await pool.query(`
-            INSERT INTO task_templates (title, description, department_label, assigned_to, subtasks, created_by, company_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO task_templates (title, description, department_label, assigned_to,
+                                        assigned_post_id, assigned_section_id, assigned_department_id,
+                                        subtasks, created_by, company_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `, [
             parsed.title.trim(),
             parsed.description || null,
             parsed.department_label || 'departament_1',
             parsed.assigned_to || null,
+            parsed.assigned_post_id || null,
+            parsed.assigned_section_id || null,
+            parsed.assigned_department_id || null,
             JSON.stringify(parsed.subtasks),
             req.user?.id,
             companyId
@@ -132,21 +162,55 @@ router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) 
             return res.status(400).json({ error: tError(req, 'task_due_date_required_alt') });
         }
 
-        // Create task
+        // Auto-resolve assignee from the template's scope (post → section
+        // head → department head). Mirrors taskService.createTask so a
+        // template that targets a *role* (post) re-resolves to whoever
+        // currently holds that role, instead of the user who held it when
+        // the template was authored.
+        let resolvedAssignee: string | null = t.assigned_to || null;
+        if (!resolvedAssignee) {
+            if (t.assigned_post_id) {
+                const { rows: pr } = await client.query(
+                    'SELECT user_id FROM posts WHERE id = $1 AND company_id = $2',
+                    [t.assigned_post_id, companyId]
+                );
+                if (pr[0]?.user_id) resolvedAssignee = pr[0].user_id;
+            } else if (t.assigned_section_id) {
+                const { rows: sr } = await client.query(
+                    'SELECT head_user_id FROM sections WHERE id = $1 AND company_id = $2',
+                    [t.assigned_section_id, companyId]
+                );
+                if (sr[0]?.head_user_id) resolvedAssignee = sr[0].head_user_id;
+            } else if (t.assigned_department_id) {
+                const { rows: dr } = await client.query(
+                    'SELECT head_user_id FROM departments WHERE id = $1 AND company_id = $2',
+                    [t.assigned_department_id, companyId]
+                );
+                if (dr[0]?.head_user_id) resolvedAssignee = dr[0].head_user_id;
+            }
+        }
+
+        // Create task — including the org-scope columns so the new task
+        // shows the same chips Visoro Global users expect.
         const taskResult = await client.query(`
-            INSERT INTO tasks (title, description, department_label, assigned_to, due_date, created_by, status, company_id)
-            VALUES ($1, $2, $3, $4, $5, $6, 'de_rezolvat', $7)
+            INSERT INTO tasks (title, description, department_label, assigned_to,
+                               assigned_post_id, assigned_section_id, assigned_department_id,
+                               due_date, created_by, status, company_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'de_rezolvat', $10)
             RETURNING *
-        `, [t.title, t.description, t.department_label, t.assigned_to, due_date, req.user?.id, companyId]);
+        `, [t.title, t.description, t.department_label,
+            resolvedAssignee,
+            t.assigned_post_id || null, t.assigned_section_id || null, t.assigned_department_id || null,
+            due_date, req.user?.id, companyId]);
         const task = taskResult.rows[0];
 
-        // Create subtasks
-        const subtasks: { title: string }[] = t.subtasks || [];
+        // Create subtasks — preserve assigned_to from the template if set.
+        const subtasks: { title: string; assigned_to?: string | null }[] = t.subtasks || [];
         for (let i = 0; i < subtasks.length; i++) {
             await client.query(`
-                INSERT INTO subtasks (task_id, title, order_index, company_id)
-                VALUES ($1, $2, $3, $4)
-            `, [task.id, subtasks[i].title, i, companyId]);
+                INSERT INTO subtasks (task_id, title, assigned_to, order_index, company_id)
+                VALUES ($1, $2, $3, $4, $5)
+            `, [task.id, subtasks[i].title, subtasks[i].assigned_to || null, i, companyId]);
         }
 
         // Activity log
