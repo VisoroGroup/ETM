@@ -140,6 +140,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, [user?.id]);
 
+    // The users list is filtered by active company on the server. When the
+    // user switches companies, refetch so dropdowns (assignee, subtask owner,
+    // bulk-assign, etc.) show the right people for the new tenant. Without
+    // this, the dropdown options stay frozen from the company that was active
+    // on initial login — so a user that only exists in company B is invisible
+    // when you switch to B, and the assignee picker shows "Nincs felelős"
+    // even though the badge displays their name.
+    useEffect(() => {
+        if (!user) return;
+        const onCompanyChange = () => {
+            authApi.users().then(setUsers).catch(() => {});
+        };
+        window.addEventListener('etm:active-company-changed', onCompanyChange);
+        return () => window.removeEventListener('etm:active-company-changed', onCompanyChange);
+    }, [user?.id]);
+
     return (
         <AuthContext.Provider value={{ user, users, loading, login, logout, refreshUser }}>
             {children}

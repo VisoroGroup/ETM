@@ -29,6 +29,11 @@ export function setActiveCompanyId(id: number | null): void {
     if (previous !== id) {
         companyAbortController.abort('active-company-change');
         companyAbortController = new AbortController();
+        // Notify same-tab listeners (storage event only fires cross-tab) so
+        // company-scoped caches like the users dropdown can refresh.
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('etm:active-company-changed', { detail: id }));
+        }
     }
 }
 

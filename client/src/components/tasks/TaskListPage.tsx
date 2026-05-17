@@ -153,7 +153,9 @@ export default function TaskListPage() {
     }), [selectedTaskId, showCreateModal]);
     useKeyboardShortcuts(shortcuts);
 
-    useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, []);
+    // Refetch on company switch so the bulk-assign dropdown reflects the
+    // new tenant's users instead of the ones from initial mount.
+    useEffect(() => { authApi.users().then(setUsers).catch(() => {}); }, [activeCompany?.id]);
     useEffect(() => { savedFiltersApi.list().then(setSavedViews).catch(() => {}); }, []);
     const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== '');
     async function saveView() {
