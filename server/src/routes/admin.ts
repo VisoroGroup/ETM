@@ -718,5 +718,27 @@ router.post('/users/:id/avatar', (req: AuthRequest, res: Response, next) => {
     res.json(rows[0]);
 }));
 
+// GET /api/admin/org-activity — recent org-structure events for the active
+// company. Admin/superadmin only — Visoro Global needs this to track who
+// moved a post owner, who uploaded a Directivă, etc.
+router.get('/org-activity', requireRole('admin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    const limit = Math.min(parseInt(String(req.query.limit ?? '100'), 10) || 100, 500);
+    const { rows } = await pool.query(`
+        SELECT oal.id, oal.user_id, oal.action_type, oal.target_type, oal.target_id,
+               oal.details, oal.created_at,
+               u.display_name AS user_name, u.avatar_url AS user_avatar
+        FROM org_activity_log oal
+        LEFT JOIN users u ON oal.user_id = u.id
+        WHERE oal.company_id = $1
+        ORDER BY oal.created_at DESC
+        LIMIT $2
+    `, [req.activeCompanyId, limit]);
+    res.json(rows);
+}));
+
 export default router;
 

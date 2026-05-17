@@ -4,6 +4,7 @@ import pool from '../config/database';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { tError } from '../utils/serverErrors';
+import { logOrgEvent } from '../utils/orgActivity';
 
 const router = Router();
 
@@ -217,6 +218,16 @@ router.post('/upload', requireRole('superadmin'), htmlUpload.single('file'), asy
         }
 
         await client.query('COMMIT');
+
+        await logOrgEvent({
+            companyId,
+            userId: req.user!.id,
+            actionType: 'policy_uploaded',
+            targetType: 'policy',
+            targetId: policyId,
+            details: { title, scope, directive_number: directive_number || null },
+        });
+
         res.status(201).json(rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -342,6 +353,15 @@ router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRe
         res.status(404).json({ error: tError(req, 'policy_not_found') });
         return;
     }
+
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'policy_deleted',
+        targetType: 'policy',
+        targetId: id,
+    });
+
     res.json({ message: 'Directiva a fost dezactivată.' });
 }));
 

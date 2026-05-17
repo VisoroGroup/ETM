@@ -4,6 +4,7 @@ import { authMiddleware, requireRole, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 import { userIsInCompany } from '../utils/tenantGuard';
 import { tError } from '../utils/serverErrors';
+import { logOrgEvent } from '../utils/orgActivity';
 
 const router = Router();
 
@@ -177,6 +178,15 @@ router.post('/', requireRole('superadmin'), asyncHandler(async (req: AuthRequest
         RETURNING *
     `, [name, maxOrder[0].next_order, color, head_user_id || null, pfv || null, statistic_name || null, req.activeCompanyId]);
 
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'department_created',
+        targetType: 'department',
+        targetId: rows[0].id,
+        details: { name },
+    });
+
     res.status(201).json(rows[0]);
 }));
 
@@ -231,6 +241,15 @@ router.delete('/:id', requireRole('superadmin'), asyncHandler(async (req: AuthRe
         res.status(404).json({ error: tError(req, 'department_not_found') });
         return;
     }
+
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'department_deleted',
+        targetType: 'department',
+        targetId: id,
+    });
+
     res.json({ message: 'Departamentul a fost dezactivat.' });
 }));
 
@@ -295,6 +314,15 @@ router.post('/:id/sections', requireRole('superadmin'), asyncHandler(async (req:
         RETURNING *
     `, [name, department_id, head_user_id || null, pfv || null, maxOrder[0].next_order, req.activeCompanyId]);
 
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'section_created',
+        targetType: 'section',
+        targetId: rows[0].id,
+        details: { name, department_id },
+    });
+
     res.status(201).json(rows[0]);
 }));
 
@@ -347,6 +375,15 @@ router.delete('/sections/:id', requireRole('superadmin'), asyncHandler(async (re
         res.status(404).json({ error: tError(req, 'section_not_found') });
         return;
     }
+
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'section_deleted',
+        targetType: 'section',
+        targetId: id,
+    });
+
     res.json({ message: 'Subdepartamentul a fost dezactivat.' });
 }));
 
@@ -415,6 +452,15 @@ router.post('/sections/:sectionId/posts', requireRole('admin'), asyncHandler(asy
         RETURNING *
     `, [name, sectionId, user_id || null, description || null, maxOrder[0].next_order, req.activeCompanyId]);
 
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'post_created',
+        targetType: 'post',
+        targetId: rows[0].id,
+        details: { name, section_id: sectionId, user_id: user_id || null },
+    });
+
     res.status(201).json(rows[0]);
 }));
 
@@ -476,6 +522,22 @@ router.put('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: Aut
         }
 
         await client.query('COMMIT');
+
+        // Audit-log the user change AFTER commit so the trail reflects the
+        // actual persisted state. Cascade-update count of tasks is included
+        // so Visoro Global can see "moving Robert out of Facturare reassigned
+        // 6 open tasks to Andrei" without diffing the activity_log per-task.
+        if (user_id !== undefined && oldUserId !== newUserId) {
+            await logOrgEvent({
+                companyId,
+                userId: req.user!.id,
+                actionType: 'post_user_changed',
+                targetType: 'post',
+                targetId: id,
+                details: { old_user_id: oldUserId, new_user_id: newUserId, post_name: oldPost[0].name },
+            });
+        }
+
         res.json(rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -501,6 +563,15 @@ router.delete('/posts/:id', requireRole('superadmin'), asyncHandler(async (req: 
         res.status(404).json({ error: tError(req, 'post_not_found') });
         return;
     }
+
+    await logOrgEvent({
+        companyId: req.activeCompanyId,
+        userId: req.user!.id,
+        actionType: 'post_deleted',
+        targetType: 'post',
+        targetId: id,
+    });
+
     res.json({ message: 'Postul a fost dezactivat.' });
 }));
 
