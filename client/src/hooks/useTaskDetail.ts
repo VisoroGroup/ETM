@@ -12,7 +12,7 @@ export function useTaskDetail(taskId: string) {
     const queryClient = useQueryClient();
 
     // ---- Query ----
-    const { data: task, isLoading: loading, refetch } = useQuery({
+    const { data: task, isLoading: loading, error, refetch } = useQuery({
         queryKey: TASK_KEY(taskId),
         queryFn: () => tasksApi.get(taskId),
         staleTime: 5_000,
@@ -285,6 +285,7 @@ export function useTaskDetail(taskId: string) {
     return {
         task: task ?? null,
         loading,
+        error,
         refetch,
 
         // Mutations

@@ -41,6 +41,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const td = useTaskDetail(taskId);
     const task = td.task;
     const loading = td.loading;
+    const loadError = td.error;
     // Audit-3 H21/H24: Esc closes the drawer, focus restored on close.
     useModalDismiss(true, onClose);
     const [activeTab, setActiveTab] = useState<Tab>('subtasks');
@@ -225,6 +226,48 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
             onSuccess: () => showToast(t('task_drawer.toast_recurring_off')),
             onError: () => showToast(t('tasks.try_again'), 'error'),
         });
+    }
+
+    // Error state — shown when the fetch failed (404 tenant mismatch, network
+    // error, etc.). Without this branch the drawer would stay stuck on the
+    // skeleton+blur indefinitely because `loading` flips to false but `task`
+    // is still undefined, so the next `loading || !task` check still hits the
+    // loading return below.
+    if (!loading && !task && loadError) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={t('task_drawer.load_error_title')}>
+                <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in rounded-t-2xl md:rounded-none overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between p-5 border-b border-navy-700/50">
+                        <h2 className="text-lg font-bold text-white">{t('task_drawer.load_error_title')}</h2>
+                        <button
+                            onClick={onClose}
+                            className="text-navy-400 hover:text-white transition-colors"
+                            aria-label={t('common.close')}
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4">
+                        <AlertTriangle className="w-12 h-12 text-amber-400" />
+                        <p className="text-sm text-navy-300 max-w-sm">{t('task_drawer.load_error_body')}</p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => td.refetch()}
+                                className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm rounded-lg transition-colors"
+                            >
+                                {t('task_drawer.load_error_retry')}
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 bg-navy-700 hover:bg-navy-600 text-white text-sm rounded-lg transition-colors"
+                            >
+                                {t('common.close')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (loading || !task) {
