@@ -518,6 +518,136 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
 }));
 
 // ---------------------------------------------------------------------------
+// PROJECT REPORT (PDF) — client-facing project status, hands-to-customer.
+// Used by David (DAVID-GPR) to deliver an end-of-survey report to the
+// mayor's office, and by Neo Plan at project milestones.
+// ---------------------------------------------------------------------------
+router.get('/:id/report.pdf', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const PDFDocument = (await import('pdfkit')).default;
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+
+    const { rows: pRows } = await pool.query(
+        `SELECT p.title, p.client_name, p.location, p.contract_number,
+                p.contract_date, p.contract_amount, p.contract_currency,
+                p.area_hectares, p.deadline, p.notes,
+                p.created_at,
+                wt.name AS work_type_name
+           FROM pug_projects p
+           LEFT JOIN pug_work_types wt ON wt.id = p.work_type_id
+          WHERE p.id = $1 AND p.company_id = $2`,
+        [id, cid]
+    );
+    if (pRows.length === 0) {
+        res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+        return;
+    }
+    const project = pRows[0];
+
+    const { rows: stages } = await pool.query(
+        `SELECT ps.deadline, ps.notes,
+                sc.name AS stage_name,
+                st.name AS status_name, st.is_terminal
+           FROM pug_project_stages ps
+           JOIN pug_stages_catalog sc ON sc.id = ps.stage_catalog_id
+           LEFT JOIN pug_statuses_catalog st ON st.id = ps.status_id
+          WHERE ps.project_id = $1
+          ORDER BY sc.sort_order ASC, sc.name ASC`,
+        [id]
+    );
+
+    const { rows: responsibles } = await pool.query(
+        `SELECT u.display_name, u.email
+           FROM pug_project_responsibles r
+           JOIN users u ON u.id = r.user_id
+          WHERE r.project_id = $1`,
+        [id]
+    );
+
+    const filename = `proiect_${project.title?.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60) || id}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text(project.title || '—', { align: 'center' });
+    if (project.work_type_name) {
+        doc.fontSize(11).font('Helvetica').fillColor('#666').text(project.work_type_name, { align: 'center' });
+    }
+    doc.fillColor('#000').moveDown(1);
+
+    // Contract / client metadata block
+    doc.fontSize(12).font('Helvetica-Bold').text('Date contract').moveDown(0.3);
+    doc.strokeColor('#cccccc').lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown(0.4);
+    const metaRows: Array<[string, string]> = [
+        ['Client', project.client_name || '—'],
+        ['Locație', project.location || '—'],
+        ['Nr. contract', project.contract_number || '—'],
+        ['Dată contract', project.contract_date ? new Date(project.contract_date).toLocaleDateString('ro-RO') : '—'],
+        ['Valoare contract', project.contract_amount
+            ? `${project.contract_amount} ${project.contract_currency || ''}`.trim() : '—'],
+        ['Suprafață (ha)', project.area_hectares ? String(project.area_hectares) : '—'],
+        ['Termen', project.deadline ? new Date(project.deadline).toLocaleDateString('ro-RO') : '—'],
+    ];
+    doc.fontSize(10).font('Helvetica');
+    for (const [k, v] of metaRows) {
+        doc.font('Helvetica-Bold').text(`${k}: `, { continued: true });
+        doc.font('Helvetica').text(v);
+    }
+    doc.moveDown(1);
+
+    // Stages
+    doc.fontSize(12).font('Helvetica-Bold').text('Etape proiect').moveDown(0.3);
+    doc.strokeColor('#cccccc').lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown(0.4);
+    if (stages.length === 0) {
+        doc.fontSize(10).font('Helvetica').fillColor('#888').text('— Nicio etapă —').fillColor('#000');
+    } else {
+        const cols = [50, 270, 400];
+        doc.fontSize(9).font('Helvetica-Bold');
+        doc.text('Etapă', cols[0], doc.y, { width: 210 });
+        doc.text('Status', cols[1], doc.y, { width: 120 });
+        doc.text('Termen', cols[2], doc.y, { width: 100 });
+        doc.moveDown(0.3);
+        doc.strokeColor('#cccccc').lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10);
+        for (const s of stages) {
+            if (doc.y > 720) doc.addPage();
+            const y = doc.y;
+            doc.text(s.stage_name, cols[0], y, { width: 210 });
+            doc.text(s.status_name || '—', cols[1], y, { width: 120 });
+            doc.text(s.deadline ? new Date(s.deadline).toLocaleDateString('ro-RO') : '—', cols[2], y, { width: 100 });
+            doc.moveDown(0.5);
+        }
+    }
+    doc.moveDown(1);
+
+    // Responsibles
+    if (responsibles.length > 0) {
+        if (doc.y > 700) doc.addPage();
+        doc.fontSize(12).font('Helvetica-Bold').text('Responsabili').moveDown(0.3);
+        doc.strokeColor('#cccccc').lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+        doc.moveDown(0.4);
+        doc.fontSize(10).font('Helvetica');
+        for (const r of responsibles) {
+            doc.text(`• ${r.display_name} (${r.email})`);
+        }
+    }
+
+    // Footer
+    doc.fontSize(8).fillColor('#888').text(
+        `Generat la ${new Date().toLocaleDateString('ro-RO')} • Visoro ETM`,
+        50, 800, { align: 'center', width: 495 }
+    );
+
+    doc.end();
+}));
+
+// ---------------------------------------------------------------------------
 // PROJECT ATTACHMENTS — project-scoped files (contract PDF, plans, permits).
 // task_attachments is per-task; for architecture / GPR work the most
 // important files are project-level, not task-level. Reuses /api/upload for

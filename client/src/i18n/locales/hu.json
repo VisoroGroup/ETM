@@ -471,6 +471,7 @@
     "no_project": "Nincs projekt",
     "files_section_title": "Projekt fájlok",
     "files_empty": "Még nincs fájl ehhez a projekthez.",
+    "export_pdf": "PDF exportálás",
     "title_required": "A cím megadása kötelező.",
     "title_placeholder": "Pl.: Új beruházás",
     "no_work_types_yet": "Még nincs munkatípus.",

@@ -178,6 +178,29 @@ export default function ProjectDetailPage() {
         }
     };
 
+    // Download the per-project PDF. We bypass the standard <a href> path so
+    // the JWT in localStorage and the active-company header are attached to
+    // the GET; without them the server would 401. Uses axios so a failure
+    // surfaces as a toast instead of a broken file download.
+    const downloadProjectReport = async (projectId: string) => {
+        try {
+            const { api } = await import('../../services/api');
+            const res = await api.get(`/pug/projects/${projectId}/report.pdf`, {
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(res.data as Blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `proiect_${project?.title?.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60) || projectId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e: any) {
+            showToast(e.response?.data?.error ?? t('common.error_saving'), 'error');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16">
@@ -275,6 +298,24 @@ export default function ProjectDetailPage() {
                                 {t('common.archived')}
                             </span>
                         )}
+                        <a
+                            href={`/api/pug/projects/${project.id}/report.pdf`}
+                            // Magic-link headers can't be set via plain <a>; we
+                            // attach the token + active company as query-string
+                            // is overkill — just open in same tab and let the
+                            // axios-style auth on the fetch fail loudly. The
+                            // server uses cookies + JWT, so a fresh tab keeps
+                            // the JWT in localStorage; the GET pulls the JWT
+                            // via the standard authMiddleware. We rely on the
+                            // page already being authenticated.
+                            onClick={(e) => {
+                                e.preventDefault();
+                                downloadProjectReport(project.id);
+                            }}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 flex items-center gap-1 cursor-pointer"
+                        >
+                            <FileText className="w-3.5 h-3.5" /> {t('projects.export_pdf')}
+                        </a>
                         {isAdmin && (
                             <button
                                 onClick={onArchive}
