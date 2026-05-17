@@ -632,7 +632,8 @@
     "priority_high": "Ridicat",
     "empty_title": "Niciun subtask încă",
     "empty_subtitle": "Adaugă subtask-uri pentru a organiza task-ul.",
-    "reorder_error": "Eroare la reordonare"
+    "reorder_error": "Eroare la reordonare",
+    "expand_details": "Afișează comentarii și fișiere"
   },
   "comments": {
     "you": "tu",

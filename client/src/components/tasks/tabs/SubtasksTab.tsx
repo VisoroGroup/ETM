@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../../../i18n/I18nContext';
 import { subtasksApi, notificationsApi } from '../../../services/api';
-import type { TaskDetail, Subtask, User } from '../../../types';
+import type { TaskDetail, Subtask } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Plus, Check, Trash2, GripVertical, CheckCircle2, Calendar } from 'lucide-react';
-
-const PRIORITY_COLORS = {
-    low: { dot: 'bg-navy-500', label: 'Scăzut' },
-    medium: { dot: 'bg-yellow-400', label: 'Mediu' },
-    high: { dot: 'bg-red-400', label: 'Ridicat' },
-} as const;
+import { Plus, Check, Trash2, GripVertical, CheckCircle2, ChevronRight } from 'lucide-react';
+import SubtaskDetailsPanel from './SubtaskDetailsPanel';
 
 interface Props {
     task: TaskDetail;
@@ -26,6 +21,18 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
     const { users } = useAuth();
     const { showToast } = useToast();
     const [newSubtask, setNewSubtask] = useState('');
+    // Subtasks whose details panel (comments + files) is open. Set, not a
+    // single id, so multiple subtasks can be expanded at once.
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+    function toggleExpand(id: string) {
+        setExpanded(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
 
     // Switching to the Subtasks tab = the user has seen their assigned subtasks,
     // so subtask-assignment notifications for this task can be cleared.
@@ -139,9 +146,10 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                         <div
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            className={`flex items-center gap-2 p-2.5 rounded-lg transition-colors ${snapshot.isDragging ? 'bg-navy-700/50 shadow-lg' : 'hover:bg-navy-800/30'
+                                            className={`rounded-lg transition-colors ${snapshot.isDragging ? 'bg-navy-700/50 shadow-lg' : 'hover:bg-navy-800/30'
                                                 }`}
                                         >
+                                        <div className="flex items-center gap-2 p-2.5">
                                             <div {...provided.dragHandleProps} className="text-navy-600 hover:text-navy-400 cursor-grab">
                                                 <GripVertical className="w-4 h-4" />
                                             </div>
@@ -153,6 +161,14 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                                     }`}
                                             >
                                                 {subtask.is_completed && <Check className="w-3 h-3 text-white" />}
+                                            </button>
+                                            <button
+                                                onClick={() => toggleExpand(subtask.id)}
+                                                className={`text-navy-500 hover:text-navy-300 transition-transform ${expanded.has(subtask.id) ? 'rotate-90' : ''}`}
+                                                aria-label={t('subtasks.expand_details')}
+                                                title={t('subtasks.expand_details')}
+                                            >
+                                                <ChevronRight className="w-3.5 h-3.5" />
                                             </button>
                                             <span className={`flex-1 text-sm ${subtask.is_completed ? 'line-through text-navy-500' : ''}`}>
                                                 {subtask.title}
@@ -197,6 +213,10 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
+                                        </div>
+                                        {expanded.has(subtask.id) && (
+                                            <SubtaskDetailsPanel taskId={taskId} subtaskId={subtask.id} />
+                                        )}
                                         </div>
                                     )}
                                 </Draggable>

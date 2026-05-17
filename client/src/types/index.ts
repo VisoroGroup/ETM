@@ -168,6 +168,29 @@ export interface TaskAttachment {
     created_at: string;
 }
 
+export interface SubtaskComment {
+    id: string;
+    subtask_id: string;
+    author_id: string;
+    author_name?: string;
+    author_avatar?: string | null;
+    content: string;
+    mentions: string[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SubtaskAttachment {
+    id: string;
+    subtask_id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number;
+    uploaded_by: string;
+    uploaded_by_name?: string;
+    created_at: string;
+}
+
 export interface ActivityLogEntry {
     id: string;
     task_id: string;

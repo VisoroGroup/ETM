@@ -410,4 +410,217 @@ router.delete('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: A
     res.status(204).send();
 }));
 
+// ============================================================
+// SUBTASK COMMENTS
+// ============================================================
+// Hungary's umbrella-style workflow: subtasks are the unit of work, so
+// comments need to live ON the subtask, not on the parent task. Mirrors the
+// task_comments shape but scoped to subtask_id.
+
+// GET /api/tasks/:id/subtasks/:subtaskId/comments
+router.get('/subtasks/:subtaskId/comments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    const subtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
+    if (!subtask) {
+        res.status(404).json({ error: tError(req, 'subtask_not_found') });
+        return;
+    }
+    const { rows } = await pool.query(
+        `SELECT c.id, c.subtask_id, c.author_id, c.content, c.mentions,
+                c.created_at, c.updated_at,
+                u.display_name AS author_name, u.avatar_url AS author_avatar
+         FROM subtask_comments c
+         JOIN users u ON c.author_id = u.id
+         WHERE c.subtask_id = $1 AND c.company_id = $2
+         ORDER BY c.created_at ASC`,
+        [subtaskId, companyId]
+    );
+    res.json(rows);
+}));
+
+// POST /api/tasks/:id/subtasks/:subtaskId/comments
+router.post('/subtasks/:subtaskId/comments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
+    const { content } = req.body as { content?: string };
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    const subtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
+    if (!subtask) {
+        res.status(404).json({ error: tError(req, 'subtask_not_found') });
+        return;
+    }
+    if (!content || !content.trim()) {
+        res.status(400).json({ error: tError(req, 'comment_content_required') });
+        return;
+    }
+    const { rows } = await pool.query(
+        `INSERT INTO subtask_comments (subtask_id, author_id, content, company_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, subtask_id, author_id, content, mentions, created_at, updated_at`,
+        [subtaskId, req.user!.id, content.trim(), companyId]
+    );
+    const { rows: u } = await pool.query(
+        'SELECT display_name, avatar_url FROM users WHERE id = $1',
+        [req.user!.id]
+    );
+
+    // Notify the subtask owner (if any, not the commenter themselves).
+    if (subtask.assigned_to && subtask.assigned_to !== req.user!.id) {
+        const payload = { actor: req.user!.display_name, subtaskTitle: subtask.title };
+        await pool.query(
+            `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+             VALUES ($1, $2, 'subtask_comment', $3, $4, $5, $6)`,
+            [subtask.assigned_to, taskId,
+                `${req.user!.display_name} a comentat pe sub-sarcina: "${subtask.title}"`,
+                JSON.stringify(payload), req.user!.id, companyId]
+        );
+    }
+
+    res.status(201).json({
+        ...rows[0],
+        author_name: u[0]?.display_name,
+        author_avatar: u[0]?.avatar_url,
+    });
+}));
+
+// DELETE /api/tasks/:id/subtasks/:subtaskId/comments/:commentId
+router.delete('/subtasks/:subtaskId/comments/:commentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId, commentId } = req.params;
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    // Only the author (or an admin) can delete.
+    const { rows: existing } = await pool.query(
+        `SELECT author_id FROM subtask_comments
+         WHERE id = $1 AND subtask_id = $2 AND company_id = $3`,
+        [commentId, subtaskId, companyId]
+    );
+    if (existing.length === 0) {
+        res.status(404).json({ error: tError(req, 'comment_not_found') });
+        return;
+    }
+    const isAuthor = existing[0].author_id === req.user!.id;
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'superadmin';
+    if (!isAuthor && !isAdmin) {
+        res.status(403).json({ error: tError(req, 'comment_not_yours') });
+        return;
+    }
+    await pool.query(
+        `DELETE FROM subtask_comments WHERE id = $1 AND company_id = $2`,
+        [commentId, companyId]
+    );
+    res.status(204).send();
+}));
+
+// ============================================================
+// SUBTASK ATTACHMENTS
+// ============================================================
+// File metadata only — the actual blob storage uses the existing /api/upload
+// endpoint which already enforces tenant + size limits. The client posts to
+// /api/upload first, gets back a URL, then registers the file here.
+
+// GET /api/tasks/:id/subtasks/:subtaskId/attachments
+router.get('/subtasks/:subtaskId/attachments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    const subtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
+    if (!subtask) {
+        res.status(404).json({ error: tError(req, 'subtask_not_found') });
+        return;
+    }
+    const { rows } = await pool.query(
+        `SELECT a.id, a.subtask_id, a.file_name, a.file_url, a.file_size,
+                a.uploaded_by, a.created_at,
+                u.display_name AS uploaded_by_name
+         FROM subtask_attachments a
+         JOIN users u ON a.uploaded_by = u.id
+         WHERE a.subtask_id = $1 AND a.company_id = $2
+         ORDER BY a.created_at DESC`,
+        [subtaskId, companyId]
+    );
+    res.json(rows);
+}));
+
+// POST /api/tasks/:id/subtasks/:subtaskId/attachments
+router.post('/subtasks/:subtaskId/attachments', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId } = req.params;
+    const { file_name, file_url, file_size } = req.body as {
+        file_name?: string; file_url?: string; file_size?: number;
+    };
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    const subtask = await getSubtaskInTenant(subtaskId, taskId, companyId);
+    if (!subtask) {
+        res.status(404).json({ error: tError(req, 'subtask_not_found') });
+        return;
+    }
+    if (!file_name || !file_url || typeof file_size !== 'number') {
+        res.status(400).json({ error: tError(req, 'attachment_fields_required') });
+        return;
+    }
+    const { rows } = await pool.query(
+        `INSERT INTO subtask_attachments (subtask_id, file_name, file_url, file_size, uploaded_by, company_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [subtaskId, file_name, file_url, file_size, req.user!.id, companyId]
+    );
+    res.status(201).json(rows[0]);
+}));
+
+// DELETE /api/tasks/:id/subtasks/:subtaskId/attachments/:attachmentId
+router.delete('/subtasks/:subtaskId/attachments/:attachmentId', authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id: taskId, subtaskId, attachmentId } = req.params;
+    const companyId = req.activeCompanyId;
+    if (companyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    if (!await checkTaskAccess(taskId, req.user!.id, req.user!.role, companyId)) {
+        res.status(403).json({ error: tError(req, 'task_no_permission') });
+        return;
+    }
+    await pool.query(
+        `DELETE FROM subtask_attachments
+         WHERE id = $1 AND subtask_id = $2 AND company_id = $3`,
+        [attachmentId, subtaskId, companyId]
+    );
+    res.status(204).send();
+}));
+
 export default router;

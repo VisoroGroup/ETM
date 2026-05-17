@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy, Company } from '../types';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, SubtaskComment, SubtaskAttachment, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy, Company } from '../types';
 import { safeLocalStorage } from '../utils/storage';
 
 const api = axios.create({
@@ -107,6 +107,24 @@ export const subtasksApi = {
         api.put(`/tasks/${taskId}/subtasks-reorder`, { order }).then(r => r.data),
     delete: (taskId: string, subtaskId: string) =>
         api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`).then(r => r.data),
+
+    // Comments on subtasks (Hungary uses subtasks as the unit of work).
+    listComments: (taskId: string, subtaskId: string) =>
+        api.get<SubtaskComment[]>(`/tasks/${taskId}/subtasks/${subtaskId}/comments`).then(r => r.data),
+    addComment: (taskId: string, subtaskId: string, content: string) =>
+        api.post<SubtaskComment>(`/tasks/${taskId}/subtasks/${subtaskId}/comments`, { content }).then(r => r.data),
+    deleteComment: (taskId: string, subtaskId: string, commentId: string) =>
+        api.delete(`/tasks/${taskId}/subtasks/${subtaskId}/comments/${commentId}`).then(r => r.data),
+
+    // Attachments on subtasks. Upload still goes through /api/upload (parent
+    // task scope) to leverage existing virus scan + size limits; this just
+    // registers the file metadata against the subtask.
+    listAttachments: (taskId: string, subtaskId: string) =>
+        api.get<SubtaskAttachment[]>(`/tasks/${taskId}/subtasks/${subtaskId}/attachments`).then(r => r.data),
+    registerAttachment: (taskId: string, subtaskId: string, data: { file_name: string; file_url: string; file_size: number }) =>
+        api.post<SubtaskAttachment>(`/tasks/${taskId}/subtasks/${subtaskId}/attachments`, data).then(r => r.data),
+    deleteAttachment: (taskId: string, subtaskId: string, attachmentId: string) =>
+        api.delete(`/tasks/${taskId}/subtasks/${subtaskId}/attachments/${attachmentId}`).then(r => r.data),
 };
 
 // Comments
