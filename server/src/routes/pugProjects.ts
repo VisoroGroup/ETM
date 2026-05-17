@@ -838,6 +838,7 @@ router.get('/:id/attachments', asyncHandler(ensureProjectTemplate), asyncHandler
     const { rows } = await pool.query(
         `SELECT a.id, a.pug_project_id, a.file_name, a.file_url, a.file_size,
                 a.uploaded_by, a.created_at,
+                a.geo_lat, a.geo_lng, a.geo_accuracy, a.captured_at,
                 u.display_name AS uploaded_by_name
            FROM pug_project_attachments a
            JOIN users u ON a.uploaded_by = u.id

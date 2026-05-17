@@ -494,6 +494,7 @@
     "stage_dependencies_blocked_warning": "{{count}} fázis blokkolt befejezetlen előzmény miatt",
     "stage_dependencies_blocking_placeholder": "Blokkoló fázis...",
     "stage_dependencies_blocked_placeholder": "Blokkolt fázis...",
+    "capture_photo": "Fotó",
     "title_required": "A cím megadása kötelező.",
     "title_placeholder": "Pl.: Új beruházás",
     "no_work_types_yet": "Még nincs munkatípus.",

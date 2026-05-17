@@ -609,6 +609,13 @@ export interface PugProjectAttachment {
     uploaded_by: string;
     uploaded_by_name?: string;
     created_at: string;
+    // Optional field-work metadata (migration 093). Present when the
+    // browser had Geolocation permission at upload time — David's GPR
+    // photos use this to pin sample locations on a map.
+    geo_lat?: number | null;
+    geo_lng?: number | null;
+    geo_accuracy?: number | null;
+    captured_at?: string | null;
 }
 
 export { api };

@@ -144,6 +144,19 @@ router.post('/project/:projectId', authMiddleware, (req: AuthRequest, res: Respo
         const { projectId } = req.params;
         const file = req.file;
         const companyId = req.activeCompanyId;
+        // Optional geo metadata captured by the browser before upload — sent
+        // as plain form fields alongside the file. Parsed defensively; an
+        // invalid lat/lng is silently dropped rather than rejecting the upload.
+        const parseNum = (v: any): number | null => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+        };
+        const geoLat = parseNum(req.body?.geo_lat);
+        const geoLng = parseNum(req.body?.geo_lng);
+        const geoAcc = parseNum(req.body?.geo_accuracy);
+        const capturedAtRaw = req.body?.captured_at;
+        const capturedAt = (typeof capturedAtRaw === 'string' && !Number.isNaN(Date.parse(capturedAtRaw)))
+            ? capturedAtRaw : null;
         if (!file) {
             res.status(400).json({ error: tError(req, 'file_required') });
             return;
@@ -168,10 +181,13 @@ router.post('/project/:projectId', authMiddleware, (req: AuthRequest, res: Respo
             await client.query('BEGIN');
             const { rows } = await client.query(
                 `INSERT INTO pug_project_attachments
-                    (pug_project_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by, company_id)
-                 VALUES ($1, $2, '', $3, $4, $5, $6, $7)
-                 RETURNING id, pug_project_id, file_name, file_url, file_size, uploaded_by, created_at`,
-                [projectId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id, companyId]
+                    (pug_project_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by, company_id,
+                     geo_lat, geo_lng, geo_accuracy, captured_at)
+                 VALUES ($1, $2, '', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 RETURNING id, pug_project_id, file_name, file_url, file_size, uploaded_by, created_at,
+                           geo_lat, geo_lng, geo_accuracy, captured_at`,
+                [projectId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id, companyId,
+                 geoLat, geoLng, geoAcc, capturedAt]
             );
             const attachmentId = rows[0].id;
             const fileUrl = `/api/files/project-attachment/${attachmentId}`;

@@ -494,6 +494,7 @@
     "stage_dependencies_blocked_warning": "{{count}} etape sunt blocate de o etapă anterioară nefinalizată",
     "stage_dependencies_blocking_placeholder": "Etapă care blochează...",
     "stage_dependencies_blocked_placeholder": "Etapă blocată...",
+    "capture_photo": "Fotografie",
     "title_required": "Titlul este obligatoriu.",
     "title_placeholder": "Ex: Investiție nouă",
     "no_work_types_yet": "Niciun tip de lucrare definit.",
