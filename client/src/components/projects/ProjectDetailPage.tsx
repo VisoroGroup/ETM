@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import UserAvatar from '../ui/UserAvatar';
 import ProjectTasksSection from './ProjectTasksSection';
+import ProjectFilesSection from './ProjectFilesSection';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -423,6 +424,9 @@ export default function ProjectDetailPage() {
 
             {/* Tasks attached to this project */}
             <ProjectTasksSection projectId={project.id} />
+
+            {/* Project-scoped files (deliverables, plans, contract PDFs) */}
+            <ProjectFilesSection projectId={project.id} />
 
             {/* Modals */}
             {showMetaEdit && (

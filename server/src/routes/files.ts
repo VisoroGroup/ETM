@@ -113,4 +113,63 @@ router.get('/attachment/:attachmentId', authMiddleware, async (req: AuthRequest,
     }
 });
 
+/**
+ * GET /api/files/project-attachment/:attachmentId
+ * Serve PUG project attachment from PostgreSQL. Requires authentication.
+ * Admins/superadmins access all; others must be a project responsible
+ * (pug_project_responsibles) or have created the project.
+ */
+router.get('/project-attachment/:attachmentId', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+        const companyId = req.activeCompanyId;
+        if (companyId === undefined) {
+            res.status(400).json({ error: tError(req, 'company_missing') });
+            return;
+        }
+
+        const { rows } = await pool.query(
+            `SELECT file_data, file_mime, file_name, pug_project_id
+               FROM pug_project_attachments
+              WHERE id = $1 AND company_id = $2`,
+            [req.params.attachmentId, companyId]
+        );
+
+        if (rows.length === 0 || !rows[0].file_data) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        const { file_data, file_mime, file_name, pug_project_id } = rows[0];
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
+
+        if (userRole !== 'admin' && userRole !== 'superadmin') {
+            const { rows: access } = await pool.query(`
+                SELECT 1 FROM pug_projects p
+                  WHERE p.id = $1 AND p.company_id = $3
+                    AND (p.created_by = $2
+                         OR EXISTS (SELECT 1 FROM pug_project_responsibles r
+                                     WHERE r.project_id = p.id AND r.user_id = $2))
+            `, [pug_project_id, userId, companyId]);
+
+            if (access.length === 0) {
+                res.status(403).json({ error: tError(req, 'file_no_access') });
+                return;
+            }
+        }
+
+        const safeMime = ALLOWED_ATTACHMENT_MIMES.has(file_mime) ? file_mime : 'application/octet-stream';
+        const disposition = ALLOWED_ATTACHMENT_MIMES.has(file_mime) ? 'inline' : 'attachment';
+        res.set('Content-Type', safeMime);
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:");
+        res.set('Content-Disposition', `${disposition}; filename="${encodeURIComponent(file_name)}"`);
+        res.set('Cache-Control', 'no-store');
+        res.send(file_data);
+    } catch (err) {
+        console.error('Error serving project attachment:', err);
+        res.status(500).send('Error');
+    }
+});
+
 export default router;

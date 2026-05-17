@@ -517,4 +517,78 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
     }
 }));
 
+// ---------------------------------------------------------------------------
+// PROJECT ATTACHMENTS — project-scoped files (contract PDF, plans, permits).
+// task_attachments is per-task; for architecture / GPR work the most
+// important files are project-level, not task-level. Reuses /api/upload for
+// actual blob storage; this is metadata only.
+// ---------------------------------------------------------------------------
+
+router.get('/:id/attachments', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+
+    // Tenant guard: project must belong to active company.
+    const { rows: pcheck } = await pool.query(
+        `SELECT 1 FROM pug_projects WHERE id = $1 AND company_id = $2`,
+        [id, cid]
+    );
+    if (pcheck.length === 0) {
+        res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+        return;
+    }
+
+    const { rows } = await pool.query(
+        `SELECT a.id, a.pug_project_id, a.file_name, a.file_url, a.file_size,
+                a.uploaded_by, a.created_at,
+                u.display_name AS uploaded_by_name
+           FROM pug_project_attachments a
+           JOIN users u ON a.uploaded_by = u.id
+          WHERE a.pug_project_id = $1 AND a.company_id = $2
+          ORDER BY a.created_at DESC`,
+        [id, cid]
+    );
+    res.json(rows);
+}));
+
+router.post('/:id/attachments', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const { file_name, file_url, file_size } = req.body as {
+        file_name?: string; file_url?: string; file_size?: number;
+    };
+
+    const { rows: pcheck } = await pool.query(
+        `SELECT 1 FROM pug_projects WHERE id = $1 AND company_id = $2`,
+        [id, cid]
+    );
+    if (pcheck.length === 0) {
+        res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+        return;
+    }
+    if (!file_name || !file_url || typeof file_size !== 'number') {
+        res.status(400).json({ error: tError(req, 'attachment_fields_required') });
+        return;
+    }
+
+    const { rows } = await pool.query(
+        `INSERT INTO pug_project_attachments
+              (pug_project_id, file_name, file_url, file_size, uploaded_by, company_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [id, file_name, file_url, file_size, req.user!.id, cid]
+    );
+    res.status(201).json(rows[0]);
+}));
+
+router.delete('/:id/attachments/:attachmentId', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id, attachmentId } = req.params;
+    await pool.query(
+        `DELETE FROM pug_project_attachments
+          WHERE id = $1 AND pug_project_id = $2 AND company_id = $3`,
+        [attachmentId, id, cid]
+    );
+    res.status(204).send();
+}));
+
 export default router;

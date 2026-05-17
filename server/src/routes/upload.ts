@@ -128,4 +128,71 @@ router.post('/:taskId', authMiddleware, (req: AuthRequest, res: Response, next) 
     }
 });
 
+// POST /api/upload/project/:projectId — upload file to a PUG project.
+// Same multer pipeline (size limits, mime whitelist) as task upload.
+router.post('/project/:projectId', authMiddleware, (req: AuthRequest, res: Response, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: `Eroare la upload: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { projectId } = req.params;
+        const file = req.file;
+        const companyId = req.activeCompanyId;
+        if (!file) {
+            res.status(400).json({ error: tError(req, 'file_required') });
+            return;
+        }
+        if (companyId === undefined) {
+            res.status(400).json({ error: tError(req, 'company_missing') });
+            return;
+        }
+
+        // Tenant guard.
+        const { rows: pcheck } = await pool.query(
+            `SELECT 1 FROM pug_projects WHERE id = $1 AND company_id = $2`,
+            [projectId, companyId]
+        );
+        if (pcheck.length === 0) {
+            res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+            return;
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const { rows } = await client.query(
+                `INSERT INTO pug_project_attachments
+                    (pug_project_id, file_name, file_url, file_size, file_data, file_mime, uploaded_by, company_id)
+                 VALUES ($1, $2, '', $3, $4, $5, $6, $7)
+                 RETURNING id, pug_project_id, file_name, file_url, file_size, uploaded_by, created_at`,
+                [projectId, file.originalname, file.size, file.buffer, file.mimetype, req.user!.id, companyId]
+            );
+            const attachmentId = rows[0].id;
+            const fileUrl = `/api/files/project-attachment/${attachmentId}`;
+            await client.query(
+                `UPDATE pug_project_attachments SET file_url = $1 WHERE id = $2`,
+                [fileUrl, attachmentId]
+            );
+            rows[0].file_url = fileUrl;
+            await client.query('COMMIT');
+            rows[0].uploaded_by_name = req.user!.display_name;
+            res.status(201).json(rows[0]);
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Error uploading project file:', err);
+        res.status(500).json({ error: tError(req, 'file_upload_error') });
+    }
+});
+
 export default router;

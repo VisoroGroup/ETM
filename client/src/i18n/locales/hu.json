@@ -469,6 +469,8 @@
     "tasks_truncated": "Még {{count}} további feladat — kattints az „Összes feladat\"-ra a teljes listához.",
     "project_link_label": "Projekt",
     "no_project": "Nincs projekt",
+    "files_section_title": "Projekt fájlok",
+    "files_empty": "Még nincs fájl ehhez a projekthez.",
     "title_required": "A cím megadása kötelező.",
     "title_placeholder": "Pl.: Új beruházás",
     "no_work_types_yet": "Még nincs munkatípus.",

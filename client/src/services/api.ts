@@ -534,7 +534,27 @@ export const pugProjectsApi = {
     deleteStage: (projectId: string, stageId: string) => api.delete(`/pug/projects/${projectId}/stages/${stageId}`).then(r => r.data),
     setCustomFieldValues: (projectId: string, values: Record<string, any>) => api.put(`/pug/projects/${projectId}/custom-fields`, { values }).then(r => r.data),
     setResponsibles: (projectId: string, userIds: string[]) => api.put(`/pug/projects/${projectId}/responsibles`, { user_ids: userIds }).then(r => r.data),
+
+    // Project-scoped attachments (architecture / GPR / survey deliverables
+    // belong here, not on individual tasks).
+    listAttachments: (projectId: string) =>
+        api.get<PugProjectAttachment[]>(`/pug/projects/${projectId}/attachments`).then(r => r.data),
+    registerAttachment: (projectId: string, data: { file_name: string; file_url: string; file_size: number }) =>
+        api.post<PugProjectAttachment>(`/pug/projects/${projectId}/attachments`, data).then(r => r.data),
+    deleteAttachment: (projectId: string, attachmentId: string) =>
+        api.delete(`/pug/projects/${projectId}/attachments/${attachmentId}`).then(r => r.data),
 };
+
+export interface PugProjectAttachment {
+    id: string;
+    pug_project_id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number;
+    uploaded_by: string;
+    uploaded_by_name?: string;
+    created_at: string;
+}
 
 export { api };
 export default api;
