@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Folder, Plus, Loader2, RefreshCw, X, Calendar, MapPin, Building2, Archive, ArchiveRestore } from 'lucide-react';
-import { pugProjectsApi, pugAdminApi, PugProject, PugWorkType, authApi } from '../../services/api';
+import { Folder, Plus, Loader2, RefreshCw, X, Calendar, MapPin, Building2, Archive, ArchiveRestore, Layers } from 'lucide-react';
+import { pugProjectsApi, pugAdminApi, PugProject, PugWorkType, PugProjectTemplate, authApi } from '../../services/api';
 import { useTranslation } from '../../i18n/I18nContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
@@ -25,6 +25,42 @@ export default function ProjectsListPage() {
     const [error, setError] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
+    const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [templates, setTemplates] = useState<PugProjectTemplate[]>([]);
+    const [templateLoading, setTemplateLoading] = useState(false);
+    const [chosenTemplate, setChosenTemplate] = useState<PugProjectTemplate | null>(null);
+    const [tplTitle, setTplTitle] = useState('');
+    const [tplStartDate, setTplStartDate] = useState('');
+    const [tplSaving, setTplSaving] = useState(false);
+
+    async function openTemplatePicker() {
+        setShowTemplatePicker(true);
+        setTemplateLoading(true);
+        try {
+            const data = await pugAdminApi.listTemplates();
+            setTemplates(data.templates);
+        } catch {
+            setError(t('common.error_loading'));
+        } finally {
+            setTemplateLoading(false);
+        }
+    }
+
+    async function instantiateChosenTemplate() {
+        if (!chosenTemplate || !tplTitle.trim()) return;
+        setTplSaving(true);
+        try {
+            const res = await pugAdminApi.instantiateTemplate(chosenTemplate.id, {
+                title: tplTitle.trim(),
+                start_date: tplStartDate || null,
+            });
+            navigate(`/proiecte/${res.project_id}`);
+        } catch (e: any) {
+            setError(e.response?.data?.error || t('common.error_saving'));
+        } finally {
+            setTplSaving(false);
+        }
+    }
 
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
@@ -79,6 +115,14 @@ export default function ProjectsListPage() {
                     <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-sm">
                         <RefreshCw className="w-4 h-4" /> {t('admin_users.reload')}
                     </button>
+                    {isAdmin && (
+                        <button
+                            onClick={openTemplatePicker}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 hover:bg-navy-600 text-navy-100 rounded-lg text-sm font-medium"
+                        >
+                            <Layers className="w-4 h-4" /> {t('projects.from_template')}
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowCreate(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-medium"
@@ -178,6 +222,86 @@ export default function ProjectsListPage() {
                             )}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {showTemplatePicker && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setShowTemplatePicker(false); setChosenTemplate(null); }}>
+                    <div className="w-full max-w-lg bg-navy-900 border border-navy-700/50 rounded-2xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold flex items-center gap-2">
+                                <Layers className="w-5 h-5 text-blue-400" />
+                                {chosenTemplate ? t('projects.from_template_step2') : t('projects.from_template_step1')}
+                            </h3>
+                            <button onClick={() => { setShowTemplatePicker(false); setChosenTemplate(null); }} className="text-navy-400 hover:text-white">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {!chosenTemplate ? (
+                            templateLoading ? (
+                                <p className="text-sm text-navy-400 py-8 text-center">{t('common.loading')}</p>
+                            ) : templates.length === 0 ? (
+                                <div className="py-6 text-center">
+                                    <p className="text-sm text-navy-400 mb-2">{t('projects.no_templates')}</p>
+                                    <p className="text-xs text-navy-500">{t('projects.no_templates_hint')}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {templates.map(tpl => (
+                                        <button
+                                            key={tpl.id}
+                                            onClick={() => { setChosenTemplate(tpl); setTplTitle(tpl.name); }}
+                                            className="w-full text-left p-3 rounded-lg border border-navy-700 hover:border-blue-500 hover:bg-blue-500/5 transition-colors"
+                                        >
+                                            <div className="font-medium text-sm text-white">{tpl.name}</div>
+                                            {tpl.description && <div className="text-xs text-navy-400 mt-0.5">{tpl.description}</div>}
+                                            <div className="text-[11px] text-navy-500 mt-1">
+                                                {tpl.work_type_name && <>· {tpl.work_type_name} </>}
+                                                · {tpl.stage_count ?? 0} {t('projects.stage_count_suffix')}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )
+                        ) : (
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('projects.field_title')}</label>
+                                    <input
+                                        value={tplTitle}
+                                        onChange={e => setTplTitle(e.target.value)}
+                                        className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-navy-400 mb-1.5 block">{t('projects.field_start_date')}</label>
+                                    <input
+                                        type="date"
+                                        value={tplStartDate}
+                                        onChange={e => setTplStartDate(e.target.value)}
+                                        className="w-full px-3 py-2 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setChosenTemplate(null)}
+                                        className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm"
+                                    >
+                                        {t('common.back')}
+                                    </button>
+                                    <button
+                                        onClick={instantiateChosenTemplate}
+                                        disabled={tplSaving || !tplTitle.trim()}
+                                        className="flex-1 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white text-sm font-medium"
+                                    >
+                                        {tplSaving ? t('common.loading') : t('projects.from_template_create')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 

@@ -522,7 +522,28 @@ export const pugAdminApi = {
     updateReminderLevel: (id: string, data: { days_before?: number; is_enabled?: boolean }) =>
         api.put<{ level: PugReminderLevel }>(`/admin/pug/reminder-levels/${id}`, data).then(r => r.data),
     deleteReminderLevel: (id: string) => api.delete(`/admin/pug/reminder-levels/${id}`).then(r => r.data),
+
+    // Project templates — reusable project recipes (architecture phase chains,
+    // GPR survey workflow). Instantiate spawns a real project + stages.
+    listTemplates: () => api.get<{ templates: PugProjectTemplate[] }>('/admin/pug/templates').then(r => r.data),
+    createTemplate: (data: { name: string; description?: string; work_type_id?: string;
+                              stages?: Array<{ stage_catalog_id: string; sort_order?: number; default_deadline_offset_days?: number | null }> }) =>
+        api.post<PugProjectTemplate>('/admin/pug/templates', data).then(r => r.data),
+    deleteTemplate: (id: string) => api.delete(`/admin/pug/templates/${id}`).then(r => r.data),
+    instantiateTemplate: (id: string, data: { title: string; start_date?: string | null }) =>
+        api.post<{ project_id: string }>(`/admin/pug/templates/${id}/instantiate`, data).then(r => r.data),
 };
+
+export interface PugProjectTemplate {
+    id: string;
+    name: string;
+    description: string | null;
+    work_type_id: string | null;
+    work_type_name?: string | null;
+    is_active: boolean;
+    stage_count?: number;
+    created_at: string;
+}
 export const pugProjectsApi = {
     list: (includeArchived = false) => api.get<{ projects: PugProject[] }>('/pug/projects', { params: { archived: includeArchived } }).then(r => r.data),
     get: (id: string) => api.get<{ project: any }>(`/pug/projects/${id}`).then(r => r.data),

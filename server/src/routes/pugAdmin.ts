@@ -442,4 +442,144 @@ router.delete('/reminder-levels/:id', requireRole('superadmin'), asyncHandler(as
     res.status(204).end();
 }));
 
+// ---------------------------------------------------------------------------
+// PROJECT TEMPLATES — reusable project recipes.
+// ---------------------------------------------------------------------------
+
+router.get('/templates', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { rows } = await pool.query(
+        `SELECT t.id, t.name, t.description, t.work_type_id, t.is_active,
+                wt.name AS work_type_name, t.created_at,
+                COALESCE(s.stage_count, 0) AS stage_count
+           FROM pug_project_templates t
+           LEFT JOIN pug_work_types wt ON wt.id = t.work_type_id
+           LEFT JOIN (
+               SELECT template_id, COUNT(*) AS stage_count
+                 FROM pug_project_template_stages
+                GROUP BY template_id
+           ) s ON s.template_id = t.id
+          WHERE t.company_id = $1
+          ORDER BY t.created_at DESC`,
+        [cid]
+    );
+    res.json({ templates: rows });
+}));
+
+router.post('/templates', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { name, description, work_type_id, stages } = req.body as {
+        name?: string; description?: string; work_type_id?: string;
+        stages?: Array<{ stage_catalog_id: string; sort_order?: number; default_deadline_offset_days?: number | null }>;
+    };
+    if (!name?.trim()) { res.status(400).json({ error: tError(req, 'template_name_required') }); return; }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+            `INSERT INTO pug_project_templates (company_id, name, description, work_type_id, created_by)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [cid, name.trim(), description?.trim() || null, work_type_id || null, req.user!.id]
+        );
+        const tplId = rows[0].id;
+        if (Array.isArray(stages)) {
+            for (let i = 0; i < stages.length; i++) {
+                const s = stages[i];
+                if (!s.stage_catalog_id) continue;
+                await client.query(
+                    `INSERT INTO pug_project_template_stages
+                            (template_id, stage_catalog_id, sort_order, default_deadline_offset_days)
+                     VALUES ($1, $2, $3, $4)`,
+                    [tplId, s.stage_catalog_id, s.sort_order ?? i, s.default_deadline_offset_days ?? null]
+                );
+            }
+        }
+        await client.query('COMMIT');
+        res.status(201).json(rows[0]);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}));
+
+router.delete('/templates/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const result = await pool.query(
+        `DELETE FROM pug_project_templates WHERE id = $1 AND company_id = $2`,
+        [req.params.id, cid]
+    );
+    if ((result.rowCount ?? 0) === 0) {
+        res.status(404).json({ error: tError(req, 'template_not_found_or_unauth') });
+        return;
+    }
+    res.status(204).end();
+}));
+
+// Instantiate a template into a new project. Returns the created project id.
+router.post('/templates/:id/instantiate', asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { title, start_date } = req.body as { title?: string; start_date?: string };
+    if (!title?.trim()) {
+        res.status(400).json({ error: tError(req, 'pug_project_title_required') });
+        return;
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { rows: tplRows } = await client.query(
+            `SELECT id, work_type_id FROM pug_project_templates
+              WHERE id = $1 AND company_id = $2`,
+            [req.params.id, cid]
+        );
+        if (tplRows.length === 0) {
+            await client.query('ROLLBACK');
+            res.status(404).json({ error: tError(req, 'template_not_found') });
+            return;
+        }
+        const tpl = tplRows[0];
+
+        const { rows: pRows } = await client.query(
+            `INSERT INTO pug_projects (company_id, title, work_type_id, start_date, created_by)
+             VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+            [cid, title.trim(), tpl.work_type_id, start_date || null, req.user!.id]
+        );
+        const projectId = pRows[0].id;
+
+        const { rows: tplStages } = await client.query(
+            `SELECT stage_catalog_id, sort_order, default_deadline_offset_days
+               FROM pug_project_template_stages
+              WHERE template_id = $1
+              ORDER BY sort_order ASC`,
+            [tpl.id]
+        );
+
+        for (const s of tplStages) {
+            // Static SQL expression with a parsed integer offset (no injection).
+            const offset = s.default_deadline_offset_days != null
+                ? parseInt(String(s.default_deadline_offset_days), 10) : null;
+            const deadlineExpr = (start_date && offset != null && Number.isFinite(offset))
+                ? `(DATE '${start_date}' + INTERVAL '${offset} days')`
+                : 'NULL';
+            await client.query(
+                `INSERT INTO pug_project_stages (project_id, stage_catalog_id, sort_order, deadline)
+                 VALUES ($1, $2, $3, ${deadlineExpr})`,
+                [projectId, s.stage_catalog_id, s.sort_order]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json({ project_id: projectId });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}));
+
 export default router;
