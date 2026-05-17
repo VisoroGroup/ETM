@@ -62,14 +62,31 @@ function requireActiveCompany(req: ApiAuthRequest, res: Response): number | null
 // ==========================================
 // GET /api/v1/projects — list departments as "projects"
 // ==========================================
-router.get('/projects', (_req: ApiAuthRequest, res: Response) => {
-    const projects = Object.entries(DEPARTMENTS).map(([key, { label, color }]) => ({
-        id: key,
-        name: label,
-        color,
-    }));
-    res.json({ projects });
-});
+// Returns the active company's real departments table, scoped by company_id.
+// (Previously returned the legacy DEPARTMENTS enum across all companies —
+// which gave full-template tenants like Visoro Global the wrong view of
+// their org tree, and gave simple/project tenants a bunch of irrelevant
+// Romanian enum values.)
+router.get('/projects', asyncHandler(async (req: ApiAuthRequest, res: Response) => {
+    const companyId = requireActiveCompany(req, res);
+    if (companyId === null) return;
+
+    const { rows } = await pool.query(
+        `SELECT id, name, color, sort_order
+           FROM departments
+          WHERE company_id = $1
+            AND is_active = true
+          ORDER BY sort_order ASC, name ASC`,
+        [companyId]
+    );
+    res.json({
+        projects: rows.map(d => ({
+            id: d.id,
+            name: d.name,
+            color: d.color,
+        })),
+    });
+}));
 
 // ==========================================
 // GET /api/v1/users — list active users in the active company

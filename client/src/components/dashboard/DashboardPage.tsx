@@ -176,13 +176,25 @@ export default function DashboardPage() {
         });
     };
 
+    // Hungary/Neo Plan don't have department/section/post — those columns would
+    // always render '—' and waste 43% of horizontal space. Widen `title` and
+    // promote `assignee` to its own visible column instead.
+    const isFullTemplate = activeCompany?.template_type === 'full';
+
     // Fixed column width classes for consistent alignment across all tables
-    const COL = {
+    const COL = isFullTemplate ? {
         title: 'w-[35%]',
         dept: 'w-[14%]',
         subdept: 'w-[13%]',
         post: 'w-[16%]',
         date: 'w-[12%]',
+        status: 'w-[10%]',
+    } : {
+        title: 'w-[55%]',
+        dept: 'hidden',
+        subdept: 'hidden',
+        post: 'w-[22%]',
+        date: 'w-[13%]',
         status: 'w-[10%]',
     };
 
@@ -232,14 +244,20 @@ export default function DashboardPage() {
                         )}
                     </div>
                 </td>
-                <td className={`px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell truncate ${COL.dept}`}>
-                    {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
-                </td>
-                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden md:table-cell truncate ${COL.subdept}`}>
-                    {task.assigned_section_name || '—'}
-                </td>
+                {isFullTemplate && (
+                    <>
+                        <td className={`px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell truncate ${COL.dept}`}>
+                            {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
+                        </td>
+                        <td className={`px-4 py-2.5 text-navy-400 text-xs hidden md:table-cell truncate ${COL.subdept}`}>
+                            {task.assigned_section_name || '—'}
+                        </td>
+                    </>
+                )}
                 <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.post}`}>
-                    {showAssignee ? (task.assignee_name || '—') : (task.assigned_post_name || '—')}
+                    {isFullTemplate
+                        ? (showAssignee ? (task.assignee_name || '—') : (task.assigned_post_name || '—'))
+                        : (task.assignee_name || '—')}
                 </td>
                 <td className={`px-4 py-2.5 whitespace-nowrap ${COL.date}`}>
                     <span className={`text-xs font-medium ${
@@ -304,9 +322,13 @@ export default function DashboardPage() {
                                             <thead>
                                                 <tr className="bg-navy-800/20">
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>{t('dashboard.col_task')}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{fourthColHeader}</th>
+                                                    {isFullTemplate && (
+                                                        <>
+                                                            <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
+                                                            <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
+                                                        </>
+                                                    )}
+                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{isFullTemplate ? fourthColHeader : t('dashboard.col_assignee')}</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>{t('tasks.due_date')}</th>
                                                     <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>{t('common.status')}</th>
                                                 </tr>

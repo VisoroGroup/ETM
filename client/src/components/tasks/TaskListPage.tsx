@@ -550,28 +550,31 @@ export default function TaskListPage() {
                             </div>
                         </div>
 
-                        {/* Department filters */}
-                        <div>
-                            <label className="text-xs font-medium text-navy-400 mb-2 block">{t('tasks.department')}</label>
-                            <div className="flex flex-wrap gap-2">
-                                {(Object.keys(DEPARTMENTS) as Department[]).map(dept => {
-                                    const active = filters.department?.includes(dept);
-                                    return (
-                                        <button
-                                            key={dept}
-                                            onClick={() => toggleDeptFilter(dept)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${active
-                                                    ? 'text-white shadow-md'
-                                                    : 'bg-navy-800/50 text-navy-300 hover:bg-navy-700/50'
-                                                }`}
-                                            style={active ? { background: DEPARTMENTS[dept].color } : undefined}
-                                        >
-                                            {departmentLabel(dept, t)}
-                                        </button>
-                                    );
-                                })}
+                        {/* Department filters — only meaningful for 'full' template (Visoro Global).
+                            Hungary/Neo Plan tasks carry no department_label, so the chips would be noise. */}
+                        {activeCompany?.template_type === 'full' && (
+                            <div>
+                                <label className="text-xs font-medium text-navy-400 mb-2 block">{t('tasks.department')}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {(Object.keys(DEPARTMENTS) as Department[]).map(dept => {
+                                        const active = filters.department?.includes(dept);
+                                        return (
+                                            <button
+                                                key={dept}
+                                                onClick={() => toggleDeptFilter(dept)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${active
+                                                        ? 'text-white shadow-md'
+                                                        : 'bg-navy-800/50 text-navy-300 hover:bg-navy-700/50'
+                                                    }`}
+                                                style={active ? { background: DEPARTMENTS[dept].color } : undefined}
+                                            >
+                                                {departmentLabel(dept, t)}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Period filter */}
                         <div>

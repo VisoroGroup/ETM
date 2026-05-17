@@ -12,6 +12,7 @@ import { getTaskStakeholders, buildNotificationHtml, sendNotificationEmail, reso
 import { tServer } from '../i18n/serverI18n';
 import { getCompletionReportRecipients, buildCompletionReportHtml } from '../services/taskCompletionReportService';
 import { todayLocal, toLocalDateStr, getDayOfWeek } from '../utils/dateUtils';
+import { rollForwardToWorkday } from '../utils/workdays';
 import { userIsInCompany, rowIsInCompany } from '../utils/tenantGuard';
 import taskSubtaskRoutes from './taskSubtasks';
 import taskCommentRoutes from './taskComments';
@@ -529,13 +530,15 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 // requested workdays_only (previously only daily honored it).
                 // Applied to BOTH the new task's due date and the stored
                 // next_run_date so the cycle stays on workdays.
+                //
+                // "Workday" now means: not a weekend AND not in the
+                // company_holidays table. That covers Hungarian national days
+                // (Mar 15, Aug 20, Oct 23, …) and Romanian ones — the
+                // recurring task no longer fires on a day nobody is working.
                 if (recurring.workdays_only) {
-                    while (newDueDate.getDay() === 0 || newDueDate.getDay() === 6) {
-                        newDueDate.setDate(newDueDate.getDate() + 1);
-                    }
-                    while (nextDueDate.getDay() === 0 || nextDueDate.getDay() === 6) {
-                        nextDueDate.setDate(nextDueDate.getDate() + 1);
-                    }
+                    const cid = task.company_id ?? req.activeCompanyId!;
+                    await rollForwardToWorkday(newDueDate, cid);
+                    await rollForwardToWorkday(nextDueDate, cid);
                 }
 
                 // Use a transaction to ensure all recurring task operations succeed or fail together
