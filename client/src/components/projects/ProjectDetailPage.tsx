@@ -396,6 +396,21 @@ export default function ProjectDetailPage() {
                             label={t('projects.field_deadline')}
                             value={formatDate(project.deadline)}
                         />
+                        <MetaRow
+                            icon={<FileText className="w-3.5 h-3.5" />}
+                            label={t('projects.field_invoice_number')}
+                            value={(project as any).invoice_number}
+                        />
+                        <MetaRow
+                            icon={<Calendar className="w-3.5 h-3.5" />}
+                            label={t('projects.field_invoice_issued_date')}
+                            value={formatDate((project as any).invoice_issued_date)}
+                        />
+                        <MetaRow
+                            icon={<Calendar className="w-3.5 h-3.5" />}
+                            label={t('projects.field_paid_at')}
+                            value={formatDate((project as any).paid_at)}
+                        />
                     </div>
                     {project.notes && (
                         <div className="mt-3 pt-3 border-t border-navy-700/40">
@@ -1014,6 +1029,12 @@ function MetaEditModal({
     const [startDate, setStartDate] = useState(project.start_date ?? '');
     const [deadline, setDeadline] = useState(project.deadline ?? '');
     const [notes, setNotes] = useState(project.notes ?? '');
+    // Minimum invoicing — three nullable fields added in migration 089.
+    // Enough for "we issued the invoice on X, got paid on Y" without
+    // resurrecting the full finance module.
+    const [invoiceIssuedDate, setInvoiceIssuedDate] = useState((project as any).invoice_issued_date ?? '');
+    const [invoiceNumber, setInvoiceNumber] = useState((project as any).invoice_number ?? '');
+    const [paidAt, setPaidAt] = useState((project as any).paid_at ?? '');
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
 
@@ -1033,7 +1054,10 @@ function MetaEditModal({
                 start_date: startDate || null,
                 deadline: deadline || null,
                 notes: notes.trim() || null,
-            });
+                invoice_issued_date: invoiceIssuedDate || null,
+                invoice_number: invoiceNumber.trim() || null,
+                paid_at: paidAt || null,
+            } as any);
             showToast(t('common.save'), 'success');
             onSaved();
         } catch (e: any) {
@@ -1091,6 +1115,15 @@ function MetaEditModal({
                 </Field>
                 <Field label={t('projects.field_notes')} className="md:col-span-2">
                     <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={inputCls} />
+                </Field>
+                <Field label={t('projects.field_invoice_issued_date')}>
+                    <input type="date" value={invoiceIssuedDate ?? ''} onChange={(e) => setInvoiceIssuedDate(e.target.value)} className={inputCls} />
+                </Field>
+                <Field label={t('projects.field_invoice_number')}>
+                    <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputCls} />
+                </Field>
+                <Field label={t('projects.field_paid_at')}>
+                    <input type="date" value={paidAt ?? ''} onChange={(e) => setPaidAt(e.target.value)} className={inputCls} />
                 </Field>
             </div>
             <div className="flex gap-2 mt-5">

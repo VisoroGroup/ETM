@@ -263,6 +263,10 @@ router.put('/:id', requireRole('admin'), asyncHandler(ensureProjectTemplate), as
         'title', 'work_type_id', 'client_name', 'location', 'contract_number',
         'contract_date', 'contract_amount', 'contract_currency', 'area_hectares',
         'start_date', 'deadline', 'notes',
+        // Minimum invoicing (migration 089) — full finance module dropped in
+        // 069, these three nullable fields cover the common "is this paid?"
+        // need without rebuilding the whole module.
+        'invoice_issued_date', 'invoice_number', 'paid_at',
     ];
     const sets: string[] = []; const vals: any[] = [];
     for (const f of fields) {
