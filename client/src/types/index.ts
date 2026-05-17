@@ -77,6 +77,9 @@ export interface Task {
     assigned_post_name?: string;
     assigned_section_name?: string;
     assigned_department_name?: string;
+    // PUG project link (project-template tenants).
+    pug_project_id?: string | null;
+    pug_project_title?: string | null;
 }
 
 export interface TaskDependency {
@@ -226,6 +229,8 @@ export interface TaskFilters {
     assigned_to?: string;
     my_tasks?: string;
     exclude_status?: string;
+    /** PUG project filter — pass an id, or the literal 'null' to find unlinked. */
+    pug_project_id?: string;
     page?: number;
     limit?: number;
 }

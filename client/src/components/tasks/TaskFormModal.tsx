@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { tasksApi, authApi, departmentsApi, postsApi } from '../../services/api';
+import { tasksApi, authApi, departmentsApi, postsApi, pugProjectsApi } from '../../services/api';
 import { Department, DEPARTMENTS, RecurringFrequency, FREQUENCIES, User, OrgDepartment, OrgSection, OrgPost } from '../../types';
 import { X, Calendar, Tag, FileText, RefreshCw, UserCircle, Building2, Layers, Briefcase, Plus } from 'lucide-react';
 import { useTranslation } from '../../i18n/I18nContext';
@@ -29,6 +29,13 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [users, setUsers] = useState<User[]>([]);
+
+    // PUG projects (project-template tenants — Neo Plan, DAVID-GPR). The
+    // dropdown lets a user attach the task to a specific project; the
+    // selection writes tasks.pug_project_id.
+    const isProjectTemplate = activeCompany?.template_type === 'project';
+    const [pugProjects, setPugProjects] = useState<{ id: string; title: string }[]>([]);
+    const [pugProjectId, setPugProjectId] = useState<string>('');
 
     // Org structure state
     const [orgDepts, setOrgDepts] = useState<OrgDepartment[]>([]);
@@ -89,8 +96,16 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
         if (!useFlatForm) {
             reloadOrgStructure().catch(() => {});
         }
+        // Project-template tenants get a Project dropdown to attach the new
+        // task to a PUG project. Skip the call entirely otherwise so we don't
+        // waste a request when the field will never render.
+        if (isProjectTemplate) {
+            pugProjectsApi.list(false)
+                .then(res => setPugProjects((res.projects || []).map((p: any) => ({ id: p.id, title: p.title }))))
+                .catch(() => {});
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [useFlatForm]);
+    }, [useFlatForm, isProjectTemplate]);
 
     // When department changes, reset section and post
     const selectedDept = orgDepts.find(d => d.id === selectedDeptId);
@@ -173,6 +188,7 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                 due_date: dueDate,
                 department_label: department,
                 assigned_to: assignedTo || null,
+                pug_project_id: isProjectTemplate ? (pugProjectId || null) : undefined,
                 ...scopePayload,
             } as any);
 
@@ -268,6 +284,27 @@ export default function TaskFormModal({ onClose, onCreated }: Props) {
                                 <option value="">— {t('tasks.unassigned')} —</option>
                                 {users.map(u => (
                                     <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* PUG project — only for 'project' template (Neo Plan, DAVID-GPR).
+                        Lets the new task attach to a specific project so it shows up
+                        on the project detail page's Tasks section. */}
+                    {isProjectTemplate && (
+                        <div>
+                            <label className="text-xs font-medium text-navy-400 mb-1.5 block">
+                                <FileText className="w-3.5 h-3.5 inline mr-1" /> {t('projects.project_link_label')}
+                            </label>
+                            <select
+                                value={pugProjectId}
+                                onChange={e => setPugProjectId(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500/50"
+                            >
+                                <option value="">— {t('projects.no_project')} —</option>
+                                {pugProjects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.title}</option>
                                 ))}
                             </select>
                         </div>

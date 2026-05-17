@@ -42,7 +42,7 @@ export async function filterUsersInCompany(userIds: string[], companyId: number)
 // Verify a post/section/department UUID belongs to the active tenant.
 // We could write three separate functions, but they all hit the same shape.
 export async function rowIsInCompany(
-    table: 'posts' | 'sections' | 'departments',
+    table: 'posts' | 'sections' | 'departments' | 'pug_projects',
     id: string,
     companyId: number,
 ): Promise<boolean> {

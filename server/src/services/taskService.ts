@@ -183,11 +183,12 @@ export async function createTask(
         assigned_post_id?: string;
         assigned_section_id?: string;
         assigned_department_id?: string;
+        pug_project_id?: string;
     },
     userId: string,
     companyId: number
 ) {
-    const { title, description, due_date, department_label, assigned_post_id, assigned_section_id, assigned_department_id } = data;
+    const { title, description, due_date, department_label, assigned_post_id, assigned_section_id, assigned_department_id, pug_project_id } = data;
     let { assigned_to } = data;
     const taskId = uuidv4();
 
@@ -232,12 +233,12 @@ export async function createTask(
     const { rows } = await pool.query(
         `INSERT INTO tasks (id, title, description, due_date, created_by, department_label,
                             assigned_to, assigned_post_id, assigned_section_id, assigned_department_id,
-                            company_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            pug_project_id, company_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
         [taskId, title, description || null, due_date, userId, department_label,
          assigned_to || null, assigned_post_id || null, assigned_section_id || null, assigned_department_id || null,
-         companyId]
+         pug_project_id || null, companyId]
     );
 
     // Activity log
@@ -315,6 +316,7 @@ export async function updateTask(
         assigned_post_id?: string;
         assigned_section_id?: string;
         assigned_department_id?: string;
+        pug_project_id?: string | null;
     },
     userId: string,
     companyId?: number
@@ -359,6 +361,10 @@ export async function updateTask(
         if (data.assigned_to !== undefined) {
             updates.push(`assigned_to = $${paramIndex++}`);
             values.push(data.assigned_to || null);
+        }
+        if (data.pug_project_id !== undefined) {
+            updates.push(`pug_project_id = $${paramIndex++}`);
+            values.push(data.pug_project_id || null);
         }
         // Scope changes: clear the other two scope fields when one is set.
         // This guarantees "exactly one" at the DB level even without a CHECK.

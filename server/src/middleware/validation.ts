@@ -34,6 +34,7 @@ export const createTaskSchema = z.object({
     assigned_post_id: z.string().uuid().nullable().optional(),
     assigned_section_id: z.string().uuid().nullable().optional(),
     assigned_department_id: z.string().uuid().nullable().optional(),
+    pug_project_id: z.string().uuid().nullable().optional(),
     parent_id: z.string().uuid().nullable().optional(),
     is_recurring: z.boolean().optional(),
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
@@ -62,6 +63,7 @@ export const updateTaskSchema = z.object({
     assigned_post_id: z.string().uuid().nullable().optional(),
     assigned_section_id: z.string().uuid().nullable().optional(),
     assigned_department_id: z.string().uuid().nullable().optional(),
+    pug_project_id: z.string().uuid().nullable().optional(),
     is_recurring: z.boolean().optional(),
     recurring_interval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
 });

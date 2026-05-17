@@ -37,6 +37,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             assigned_to,
             my_tasks,
             exclude_status,
+            pug_project_id,
             page = '1',
             limit = '50'
         } = req.query;
@@ -72,6 +73,18 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             const depts = (department as string).split(',');
             conditions.push(`t.department_label = ANY($${paramIndex++})`);
             values.push(depts);
+        }
+
+        // PUG project filter — used by ProjectDetailPage to list tasks
+        // attached to a specific project. Pass `pug_project_id=null` (literal
+        // string) to filter for unlinked tasks.
+        if (pug_project_id) {
+            if (pug_project_id === 'null') {
+                conditions.push(`t.pug_project_id IS NULL`);
+            } else {
+                conditions.push(`t.pug_project_id = $${paramIndex++}`);
+                values.push(pug_project_id);
+            }
         }
 
         // Full-text search — tsvector (GIN index) + ILIKE prefix fallback for short queries
@@ -181,6 +194,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         au.display_name AS assignee_name,
         au.avatar_url AS assignee_avatar,
         au.email AS assignee_email,
+        pp.title AS pug_project_title,
         ap.name AS assigned_post_name,
         COALESCE(aps.name, direct_sec.name) AS assigned_section_name,
         COALESCE(apd.name, direct_sec_dept.name, direct_dept.name) AS assigned_department_name,
@@ -203,6 +217,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
       FROM tasks t
       JOIN users u ON t.created_by = u.id
       LEFT JOIN users au ON t.assigned_to = au.id
+      LEFT JOIN pug_projects pp ON t.pug_project_id = pp.id
       -- Post scope
       LEFT JOIN posts ap ON t.assigned_post_id = ap.id
       LEFT JOIN sections aps ON ap.section_id = aps.id
@@ -289,6 +304,10 @@ router.post('/', authMiddleware, validateCreateTask, asyncHandler(async (req: Au
         res.status(400).json({ error: tError(req, 'department_not_in_company') });
         return;
     }
+    if (req.body.pug_project_id && !(await rowIsInCompany('pug_projects', req.body.pug_project_id, cid))) {
+        res.status(400).json({ error: tError(req, 'pug_project_not_in_company') });
+        return;
+    }
     // The service now writes company_id directly in the initial INSERT, so
     // side-effect inserts (activity_log, notifications) all see the right tenant.
     const task = await taskService.createTask(req.body, req.user!.id, cid);
@@ -359,6 +378,10 @@ router.put('/:id', authMiddleware, validateUpdateTask, asyncHandler(async (req: 
     }
     if (req.body.assigned_department_id && !(await rowIsInCompany('departments', req.body.assigned_department_id, cid2))) {
         res.status(400).json({ error: tError(req, 'department_not_in_company') });
+        return;
+    }
+    if (req.body.pug_project_id && !(await rowIsInCompany('pug_projects', req.body.pug_project_id, cid2))) {
+        res.status(400).json({ error: tError(req, 'pug_project_not_in_company') });
         return;
     }
 

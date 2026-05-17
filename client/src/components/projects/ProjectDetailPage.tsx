@@ -13,6 +13,7 @@ import { useTranslation } from '../../i18n/I18nContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import UserAvatar from '../ui/UserAvatar';
+import ProjectTasksSection from './ProjectTasksSection';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -419,6 +420,9 @@ export default function ProjectDetailPage() {
                     onSaved={load}
                 />
             )}
+
+            {/* Tasks attached to this project */}
+            <ProjectTasksSection projectId={project.id} />
 
             {/* Modals */}
             {showMetaEdit && (
