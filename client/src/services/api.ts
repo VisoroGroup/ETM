@@ -556,6 +556,14 @@ export const pugProjectsApi = {
     setCustomFieldValues: (projectId: string, values: Record<string, any>) => api.put(`/pug/projects/${projectId}/custom-fields`, { values }).then(r => r.data),
     setResponsibles: (projectId: string, userIds: string[]) => api.put(`/pug/projects/${projectId}/responsibles`, { user_ids: userIds }).then(r => r.data),
 
+    // Stage dependencies — phase sequencing for architecture / permit work.
+    listStageDependencies: (projectId: string) =>
+        api.get<PugStageDependency[]>(`/pug/projects/${projectId}/stage-dependencies`).then(r => r.data),
+    addStageDependency: (projectId: string, data: { blocking_stage_id: string; blocked_stage_id: string }) =>
+        api.post<PugStageDependency>(`/pug/projects/${projectId}/stage-dependencies`, data).then(r => r.data),
+    removeStageDependency: (projectId: string, depId: string) =>
+        api.delete(`/pug/projects/${projectId}/stage-dependencies/${depId}`).then(r => r.data),
+
     // Public share tokens — David sends one to the mayor's office, the
     // public /shared/:token URL renders a read-only project status.
     listShareTokens: (projectId: string) =>
@@ -574,6 +582,13 @@ export const pugProjectsApi = {
     deleteAttachment: (projectId: string, attachmentId: string) =>
         api.delete(`/pug/projects/${projectId}/attachments/${attachmentId}`).then(r => r.data),
 };
+
+export interface PugStageDependency {
+    id: string;
+    blocking_stage_id: string;
+    blocked_stage_id: string;
+    created_at: string;
+}
 
 export interface PugShareToken {
     id: string;

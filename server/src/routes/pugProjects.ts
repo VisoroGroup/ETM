@@ -522,6 +522,114 @@ router.put('/:id/responsibles', requireRole('admin'), asyncHandler(ensureProject
 }));
 
 // ---------------------------------------------------------------------------
+// STAGE DEPENDENCIES — sequence the phases. For architecture work the chain
+// Tervezés → Egyeztetés → Engedélyezés → Kivitelezés is real; making it
+// explicit lets the UI highlight blocked stages and warn before starting
+// work on a stage whose prerequisite is still open.
+// ---------------------------------------------------------------------------
+
+router.get('/:id/stage-dependencies', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    // Verify project tenancy.
+    const { rows: pcheck } = await pool.query(
+        `SELECT 1 FROM pug_projects WHERE id = $1 AND company_id = $2`,
+        [id, cid]
+    );
+    if (pcheck.length === 0) {
+        res.status(404).json({ error: tError(req, 'pug_project_not_found') });
+        return;
+    }
+    const { rows } = await pool.query(
+        `SELECT id, blocking_stage_id, blocked_stage_id, created_at
+           FROM pug_stage_dependencies
+          WHERE project_id = $1`,
+        [id]
+    );
+    res.json(rows);
+}));
+
+router.post('/:id/stage-dependencies', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id } = req.params;
+    const { blocking_stage_id, blocked_stage_id } = req.body as {
+        blocking_stage_id?: string; blocked_stage_id?: string;
+    };
+    if (!blocking_stage_id || !blocked_stage_id) {
+        res.status(400).json({ error: tError(req, 'stage_dep_ids_required') });
+        return;
+    }
+    if (blocking_stage_id === blocked_stage_id) {
+        res.status(400).json({ error: tError(req, 'stage_dep_self') });
+        return;
+    }
+
+    // Verify project + both stages belong to active company.
+    const { rows: scheck } = await pool.query(
+        `SELECT ps.id FROM pug_project_stages ps
+          JOIN pug_projects p ON p.id = ps.project_id
+         WHERE ps.id IN ($1, $2) AND p.id = $3 AND p.company_id = $4`,
+        [blocking_stage_id, blocked_stage_id, id, cid]
+    );
+    if (scheck.length !== 2) {
+        res.status(404).json({ error: tError(req, 'stage_dep_not_in_project') });
+        return;
+    }
+
+    // Cycle check: would adding this edge create a cycle?
+    // Walk the existing dependency graph from blocked_stage_id and see if
+    // we can reach blocking_stage_id; if yes the new edge would close a cycle.
+    const visited = new Set<string>();
+    const queue: string[] = [blocked_stage_id];
+    while (queue.length) {
+        const cur = queue.shift()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        const { rows: edges } = await pool.query(
+            `SELECT blocked_stage_id AS next FROM pug_stage_dependencies
+              WHERE project_id = $1 AND blocking_stage_id = $2`,
+            [id, cur]
+        );
+        for (const e of edges) {
+            if (e.next === blocking_stage_id) {
+                res.status(409).json({ error: tError(req, 'stage_dep_cycle') });
+                return;
+            }
+            queue.push(e.next);
+        }
+    }
+
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO pug_stage_dependencies (project_id, blocking_stage_id, blocked_stage_id)
+             VALUES ($1, $2, $3) RETURNING *`,
+            [id, blocking_stage_id, blocked_stage_id]
+        );
+        res.status(201).json(rows[0]);
+    } catch (e: any) {
+        if (e?.code === '23505') {
+            res.status(409).json({ error: tError(req, 'stage_dep_duplicate') });
+            return;
+        }
+        throw e;
+    }
+}));
+
+router.delete('/:id/stage-dependencies/:depId', asyncHandler(ensureProjectTemplate), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const cid = ensureCompany(req, res); if (cid === null) return;
+    const { id, depId } = req.params;
+    // Re-verify tenancy via project_id.
+    await pool.query(
+        `DELETE FROM pug_stage_dependencies dep
+          USING pug_projects p
+          WHERE dep.project_id = p.id
+            AND dep.id = $1 AND dep.project_id = $2 AND p.company_id = $3`,
+        [depId, id, cid]
+    );
+    res.status(204).send();
+}));
+
+// ---------------------------------------------------------------------------
 // SHARE TOKENS — public read-only link a project owner can send to a client.
 // The token-aware GET lives on a *separate* router (mounted at /api/public/...)
 // so it bypasses authMiddleware entirely. Token management (list / create /

@@ -16,6 +16,7 @@ import UserAvatar from '../ui/UserAvatar';
 import ProjectTasksSection from './ProjectTasksSection';
 import ProjectFilesSection from './ProjectFilesSection';
 import ProjectShareModal from './ProjectShareModal';
+import ProjectStageSequenceIndicator from './ProjectStageSequenceIndicator';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -802,6 +803,15 @@ function StagesSection({
                     })}
                 </div>
             )}
+            <ProjectStageSequenceIndicator
+                projectId={project.id}
+                stages={project.stages.map(s => ({
+                    id: s.id,
+                    stage_name: s.stage_name,
+                    status_is_terminal: s.status_is_terminal,
+                }))}
+                isAdmin={isAdmin}
+            />
         </div>
     );
 }
