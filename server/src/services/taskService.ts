@@ -259,11 +259,16 @@ export async function createTask(
         const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
         const creatorName = creator[0]?.display_name || 'Cineva';
 
-        // In-app notification
+        // In-app notification — write structured payload so the bell can
+        // render in the recipient's locale (Hungarian users no longer see
+        // Romanian text).
+        const payload = { actor: creatorName, taskTitle: title };
         await pool.query(
-            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-             VALUES ($1, $2, 'task_assigned', $3, $4, $5)`,
-            [assigned_to, taskId, `${creatorName} ți-a atribuit o sarcină nouă: "${title}"`, userId, companyId]
+            `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+             VALUES ($1, $2, 'task_assigned', $3, $4, $5, $6)`,
+            [assigned_to, taskId,
+                `${creatorName} ți-a atribuit o sarcină nouă: "${title}"`,
+                JSON.stringify(payload), userId, companyId]
         );
 
         // Email notification (fire-and-forget)
@@ -486,10 +491,16 @@ export async function updateTask(
         if (data.assigned_to && data.assigned_to !== userId) {
             const { rows: creator } = await pool.query('SELECT display_name FROM users WHERE id = $1', [userId]);
             const creatorName = creator[0]?.display_name || 'Cineva';
+            const reassignPayload = {
+                actor: creatorName,
+                taskTitle: data.title || oldTask.title,
+            };
             await pool.query(
-                `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                 VALUES ($1, $2, 'task_assigned', $3, $4, $5)`,
-                [data.assigned_to, id, `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`, userId, taskCompanyId]
+                `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                 VALUES ($1, $2, 'task_reassigned', $3, $4, $5, $6)`,
+                [data.assigned_to, id,
+                    `${creatorName} ți-a atribuit sarcina: "${data.title || oldTask.title}"`,
+                    JSON.stringify(reassignPayload), userId, taskCompanyId]
             );
 
             // EMAIL: notify new assignee (fire-and-forget)

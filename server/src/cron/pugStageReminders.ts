@@ -386,10 +386,15 @@ async function runPugStageReminderJob() {
 
                     // In-app notification (task_id NULL because this is a stage).
                     try {
+                        const payload = {
+                            stageName: s.stage_name,
+                            projectTitle: s.project_title,
+                            daysUntil: days,
+                        };
                         await pool.query(
-                            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                             VALUES ($1, NULL, 'pug_stage_deadline', $2, NULL, $3)`,
-                            [u.user_id, phrases.notifMessage, s.company_id]
+                            `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                             VALUES ($1, NULL, 'pug_stage_reminder', $2, $3, NULL, $4)`,
+                            [u.user_id, phrases.notifMessage, JSON.stringify(payload), s.company_id]
                         );
                     } catch (err: any) {
                         console.error(`[PUG-REMIND] notification insert failed for user ${u.user_id}:`, err?.message);

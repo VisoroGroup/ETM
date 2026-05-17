@@ -29,7 +29,9 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     }
     try {
         const { rows } = await pool.query(`
-            SELECT n.*, n.company_id, u.display_name as created_by_name, u.avatar_url as created_by_avatar,
+            SELECT n.id, n.user_id, n.task_id, n.type, n.message, n.payload,
+                   n.is_read, n.created_at, n.created_by, n.company_id,
+                   u.display_name as created_by_name, u.avatar_url as created_by_avatar,
                    t.title as task_title
             FROM notifications n
             LEFT JOIN users u ON n.created_by = u.id

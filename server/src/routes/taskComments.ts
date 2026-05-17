@@ -168,14 +168,18 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
 
             for (const userId of notifyUsers) {
                 const isMention = mentionsToStore.includes(userId);
+                const payload = isMention
+                    ? { actor: req.user!.display_name }
+                    : { actor: req.user!.display_name, taskTitle };
                 await pool.query(
-                    `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                     [userId, taskId,
                         isMention ? 'mention' : 'comment',
                         isMention
                             ? `${req.user!.display_name} te-a menționat într-un comentariu`
                             : `${req.user!.display_name} a adăugat un comentariu la sarcina: "${taskTitle}"`,
+                        JSON.stringify(payload),
                         req.user!.id,
                         companyId]
                 );
@@ -347,10 +351,13 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                     const taskTitle = commentRows[0].task_title;
 
                     // In-app notification
+                    const reactionPayload = { actor: req.user!.display_name };
                     await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                         VALUES ($1, $2, 'comment', $3, $4, $5)`,
-                        [authorId, taskId, `${req.user!.display_name} a reacționat ${reaction} la comentariul tău`, req.user!.id, companyId]
+                        `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                         VALUES ($1, $2, 'comment_reaction', $3, $4, $5, $6)`,
+                        [authorId, taskId,
+                            `${req.user!.display_name} a reacționat ${reaction} la comentariul tău`,
+                            JSON.stringify(reactionPayload), req.user!.id, companyId]
                     );
 
                     // Email notification

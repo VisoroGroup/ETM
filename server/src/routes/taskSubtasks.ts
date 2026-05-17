@@ -90,11 +90,13 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
             // NOTIFICATION: notify the assigned user (if different from assigner)
             if (assigned_to !== req.user!.id) {
                 try {
+                    const payload = { actor: req.user!.display_name, subtaskTitle: title };
                     await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                         VALUES ($1, $2, 'subtask_assigned', $3, $4, $5)`,
+                        `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                         VALUES ($1, $2, 'subtask_assigned', $3, $4, $5, $6)`,
                         [assigned_to, taskId,
                             `${req.user!.display_name} ți-a atribuit o sub-sarcină: "${title}"`,
+                            JSON.stringify(payload),
                             req.user!.id,
                             companyId]
                     );
@@ -257,11 +259,13 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                 // Without this, the bell stays empty even though the email is sent.
                 if (assigned_to && assigned_to !== req.user!.id) {
                     try {
+                        const payload = { actor: req.user!.display_name, subtaskTitle: oldRows[0].title };
                         await pool.query(
-                            `INSERT INTO notifications (user_id, task_id, type, message, created_by, company_id)
-                             VALUES ($1, $2, 'subtask_assigned', $3, $4, $5)`,
+                            `INSERT INTO notifications (user_id, task_id, type, message, payload, created_by, company_id)
+                             VALUES ($1, $2, 'subtask_assigned', $3, $4, $5, $6)`,
                             [assigned_to, taskId,
                                 `${req.user!.display_name} ți-a atribuit o sub-sarcină: "${oldRows[0].title}"`,
+                                JSON.stringify(payload),
                                 req.user!.id,
                                 companyId]
                         );

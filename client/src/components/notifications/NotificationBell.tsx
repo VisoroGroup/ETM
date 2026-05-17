@@ -14,7 +14,12 @@ interface Notification {
     id: string;
     company_id: number;
     type: string;
+    /** Legacy pre-rendered Romanian text. Kept as fallback for rows that
+     *  predate the structured `payload` migration (084). */
     message: string;
+    /** Structured ingredients for client-side localization. When present,
+     *  the bell looks up `notif.msg_<type>` and interpolates the payload. */
+    payload?: Record<string, string | number> | null;
     is_read: boolean;
     task_id: string | null;
     task_title: string | null;
@@ -207,6 +212,21 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         });
     };
 
+    // Render a notification's message text. Prefer the structured payload
+    // (looked up by `notif.msg_<type>`) so the text follows the viewer's
+    // locale; fall back to the pre-rendered Romanian `message` for legacy
+    // rows that predate migration 084.
+    const renderMessage = (n: Notification): string => {
+        if (n.payload && typeof n.payload === 'object') {
+            const key = `notif.msg_${n.type}`;
+            const translated = t(key, n.payload as Record<string, string | number>);
+            // `t()` returns the raw key if missing in both target language and
+            // the RO fallback, so detect that and fall back to message.
+            if (translated && translated !== key) return translated;
+        }
+        return n.message;
+    };
+
     const timeAgoShort = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
@@ -286,7 +306,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         title={company.sidebar_name}
                                                     />
                                                 )}
-                                                <span className="flex-1">{n.message}</span>
+                                                <span className="flex-1">{renderMessage(n)}</span>
                                             </p>
                                             {n.task_title && (
                                                 <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
@@ -384,7 +404,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                                 : darkMode ? 'border-amber-500/20 bg-amber-500/15 hover:bg-amber-500/20' : 'border-amber-200 bg-amber-100/80 hover:bg-amber-100'
                                                         }`}
                                                     >
-                                                        <p className={`text-[11px] ${n.is_read ? 'font-normal text-navy-300' : 'font-medium'}`}>{n.message}</p>
+                                                        <p className={`text-[11px] ${n.is_read ? 'font-normal text-navy-300' : 'font-medium'}`}>{renderMessage(n)}</p>
                                                         <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>
                                                             {timeAgoShort(n.created_at)}
                                                             {n.created_by_name && ` · ${n.created_by_name}`}

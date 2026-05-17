@@ -120,11 +120,17 @@ router.post('/dependencies', authMiddleware, asyncHandler(async (req: AuthReques
 
     // Notification to blocked task assignee
     if (blockedTask?.assigned_to) {
+        const payload = {
+            actor: req.user!.display_name,
+            taskTitle: blockedTask?.title || '',
+            blockingTaskTitle: blockingTask?.title || '',
+        };
         await pool.query(
-            `INSERT INTO notifications (user_id, task_id, type, message, company_id)
-             VALUES ($1, $2, 'dependency_added', $3, $4)`,
+            `INSERT INTO notifications (user_id, task_id, type, message, payload, company_id)
+             VALUES ($1, $2, 'dependency_added', $3, $4, $5)`,
             [blockedTask.assigned_to, blocked_task_id,
              `„${blockingTask?.title}" acum blochează sarcina ta: „${blockedTask?.title}"`,
+             JSON.stringify(payload),
              companyId]
         );
     }

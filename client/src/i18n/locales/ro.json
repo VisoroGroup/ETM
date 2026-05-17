@@ -710,7 +710,16 @@
     "unread_one": "{{count}} necitită",
     "unread_many": "{{count}} necitite",
     "now": "acum",
-    "days_short": "z"
+    "days_short": "z",
+    "msg_task_assigned": "{{actor}} ți-a atribuit o sarcină nouă: „{{taskTitle}}\"",
+    "msg_task_reassigned": "{{actor}} ți-a atribuit sarcina: „{{taskTitle}}\"",
+    "msg_subtask_assigned": "{{actor}} ți-a atribuit o sub-sarcină: „{{subtaskTitle}}\"",
+    "msg_comment": "{{actor}} a comentat: „{{taskTitle}}\"",
+    "msg_mention": "{{actor}} te-a menționat într-un comentariu",
+    "msg_comment_reaction": "{{actor}} a reacționat la comentariul tău",
+    "msg_dependency_resolved": "Sarcina „{{blockingTaskTitle}}\" a fost rezolvată — nu îți mai blochează sarcina",
+    "msg_dependency_added": "{{actor}} a adăugat o dependență: „{{taskTitle}}\"",
+    "msg_pug_stage_reminder": "Se apropie deadline-ul: „{{stageName}}\" ({{daysUntil}} zile)"
   },
   "profile": {
     "title": "Profilul meu",

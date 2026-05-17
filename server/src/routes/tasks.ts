@@ -618,11 +618,16 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     [bt.blocked_task_id, req.user!.id, JSON.stringify({ resolved_by_task: id, resolved_task_title: completedTaskTitle }), req.activeCompanyId]
                 );
                 if (bt.assigned_to) {
+                    const payload = {
+                        blockingTaskTitle: completedTaskTitle,
+                        taskTitle: bt.title,
+                    };
                     await pool.query(
-                        `INSERT INTO notifications (user_id, task_id, type, message, company_id)
-                         VALUES ($1, $2, 'dependency_resolved', $3, $4)`,
+                        `INSERT INTO notifications (user_id, task_id, type, message, payload, company_id)
+                         VALUES ($1, $2, 'dependency_resolved', $3, $4, $5)`,
                         [bt.assigned_to, bt.blocked_task_id,
                          `\u201E${completedTaskTitle}\u201D s-a finalizat \u2014 sarcina ta \u201E${bt.title}\u201D este deblocat\u0103!`,
+                         JSON.stringify(payload),
                          req.activeCompanyId]
                     );
                 }

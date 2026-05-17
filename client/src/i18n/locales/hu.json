@@ -710,7 +710,16 @@
     "unread_one": "{{count}} olvasatlan",
     "unread_many": "{{count}} olvasatlan",
     "now": "most",
-    "days_short": "n"
+    "days_short": "n",
+    "msg_task_assigned": "{{actor}} hozzád rendelt egy új feladatot: „{{taskTitle}}\"",
+    "msg_task_reassigned": "{{actor}} hozzád rendelte a feladatot: „{{taskTitle}}\"",
+    "msg_subtask_assigned": "{{actor}} hozzád rendelt egy részfeladatot: „{{subtaskTitle}}\"",
+    "msg_comment": "{{actor}} hozzászólt: „{{taskTitle}}\"",
+    "msg_mention": "{{actor}} megemlített téged egy hozzászólásban",
+    "msg_comment_reaction": "{{actor}} reagált a hozzászólásodra",
+    "msg_dependency_resolved": "A „{{blockingTaskTitle}}\" feladat lezárult — már nem blokkolja a tiédet",
+    "msg_dependency_added": "{{actor}} függőséget adott hozzá: „{{taskTitle}}\"",
+    "msg_pug_stage_reminder": "Közelít a határidő: „{{stageName}}\" ({{daysUntil}} nap)"
   },
   "profile": {
     "title": "Saját profil",
