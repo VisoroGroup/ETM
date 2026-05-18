@@ -7,8 +7,9 @@
 -- capture the site coordinates from the browser's Geolocation API at
 -- upload time.
 
+-- geo_accuracy is in meters; captured_at is the browser clock at upload.
 ALTER TABLE pug_project_attachments
     ADD COLUMN IF NOT EXISTS geo_lat       NUMERIC(9, 6),
     ADD COLUMN IF NOT EXISTS geo_lng       NUMERIC(9, 6),
-    ADD COLUMN IF NOT EXISTS geo_accuracy  NUMERIC(7, 2),  -- meters
-    ADD COLUMN IF NOT EXISTS captured_at   TIMESTAMPTZ;     -- when the photo was taken (browser clock)
+    ADD COLUMN IF NOT EXISTS geo_accuracy  NUMERIC(7, 2),
+    ADD COLUMN IF NOT EXISTS captured_at   TIMESTAMPTZ;

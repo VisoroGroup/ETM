@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS pug_project_share_tokens (
     token           TEXT UNIQUE NOT NULL,
     created_by      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     company_id      INTEGER NOT NULL REFERENCES companies(id),
-    expires_at      TIMESTAMPTZ,            -- null = never expires; UI can revoke instead
+    -- expires_at NULL = never expires (the UI can revoke instead).
+    expires_at      TIMESTAMPTZ,
     revoked_at      TIMESTAMPTZ,
     last_viewed_at  TIMESTAMPTZ,
     view_count      INTEGER NOT NULL DEFAULT 0,
