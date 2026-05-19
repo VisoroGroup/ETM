@@ -280,6 +280,8 @@
     "calendar_title": "Naptár nézet — határidők",
     "my_tasks": "Saját feladataim",
     "created_by_me": "Általam létrehozott",
+    "all_tasks_by_user": "Összes feladat felhasználónként",
+    "unassigned": "Nincs felelős",
     "col_task": "Feladat",
     "col_subdepartment": "Alosztály",
     "col_post": "Poszt",

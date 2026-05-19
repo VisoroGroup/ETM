@@ -8,7 +8,7 @@ import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
-    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw
+    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw, Users
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import InlineStatusPill from '../tasks/InlineStatusPill';
@@ -49,6 +49,12 @@ export default function DashboardPage() {
     const { activeCompany } = useCompany();
     const { t } = useTranslation();
 
+    // Admins/superadmins also see "all tasks grouped by user" — for that we
+    // need every open task in the company, not just the ones the current user
+    // is involved in. Regular users + managers keep the scoped `my_tasks`
+    // call so the page stays lightweight for them.
+    const isOverseer = user?.role === 'superadmin' || user?.role === 'admin';
+
     useEffect(() => {
         // Skip until we know which company to query — the X-Active-Company
         // header would otherwise be missing and the API would 400.
@@ -63,15 +69,13 @@ export default function DashboardPage() {
         async function loadDashboard() {
             try {
                 setLoading(true);
+                const taskParams = isOverseer
+                    ? { exclude_status: 'terminat', limit: 1000 }
+                    : { my_tasks: 'true', exclude_status: 'terminat', limit: 500 };
                 const [s, c, tasks, alerts, prefs] = await Promise.all([
                     dashboardApi.stats(),
                     dashboardApi.charts(),
-                    // Dashboard only renders "assigned to me" + "created by me"
-                    // lists from these tasks, so server-side filter to my_tasks
-                    // (creator OR assignee OR subtask-assignee) and raise the
-                    // page limit. The default 50 was silently truncating users
-                    // with many open tasks and hiding entries from the lists.
-                    tasksApi.list({ my_tasks: 'true', exclude_status: 'terminat', limit: 500 }),
+                    tasksApi.list(taskParams),
                     dashboardApi.activeAlerts().catch(() => []),
                     dashboardApi.getPreferences().catch(() => []),
                 ]);
@@ -91,7 +95,7 @@ export default function DashboardPage() {
 
         loadDashboard();
         return () => { cancelled = true; };
-    }, [activeCompany?.id]);
+    }, [activeCompany?.id, isOverseer]);
 
     if (loading) {
         return (
@@ -146,6 +150,34 @@ export default function DashboardPage() {
 
     // CREATED BY ME: tasks I created but someone else is responsible
     const myCreatedTasks = allTasks.filter(t => t.created_by === user?.id && t.assigned_to !== user?.id && t.status !== 'terminat');
+
+    // ALL TASKS PER USER (overseer only): group every open task by assignee
+    // so admins can see the full org-wide workload at a glance. Tasks I'm
+    // already personally involved in still appear here under their owner,
+    // because the goal is full visibility into who's working on what.
+    type UserBucket = { userId: string | null; userName: string; tasks: Task[] };
+    const tasksByUser: UserBucket[] = (() => {
+        if (!isOverseer) return [];
+        const open = allTasks.filter(task => task.status !== 'terminat');
+        const buckets = new Map<string, UserBucket>();
+        const unassignedLabel = t('dashboard.unassigned');
+        for (const task of open) {
+            const key = task.assigned_to || '__unassigned__';
+            const name = task.assigned_to
+                ? (task.assignee_name || task.assignee_email || '—')
+                : unassignedLabel;
+            if (!buckets.has(key)) {
+                buckets.set(key, { userId: task.assigned_to, userName: name, tasks: [] });
+            }
+            buckets.get(key)!.tasks.push(task);
+        }
+        return Array.from(buckets.values()).sort((a, b) => {
+            // Unassigned bucket goes last; everyone else alphabetical
+            if (a.userId === null) return 1;
+            if (b.userId === null) return -1;
+            return a.userName.localeCompare(b.userName, 'hu');
+        });
+    })();
 
     // Group tasks by status
     const statusOrder: TaskStatus[] = ['de_rezolvat', 'in_realizare', 'blocat', 'terminat'];
@@ -510,6 +542,80 @@ export default function DashboardPage() {
                         'created',
                         true // show assignee name instead of post
                     )}
+
+                    {/* ALL TASKS PER USER (overseer only) — full org workload */}
+                    {isOverseer && tasksByUser.length > 0 && (
+                        <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
+                            <div className="px-5 py-4 border-b border-navy-700/50 flex items-center gap-2">
+                                <Users className="w-4 h-4 text-emerald-400" />
+                                <h3 className="text-sm font-semibold">{t('dashboard.all_tasks_by_user')}</h3>
+                                <span className="text-xs text-navy-400 font-normal ml-1">
+                                    ({tasksByUser.reduce((sum, b) => sum + b.tasks.length, 0)})
+                                </span>
+                            </div>
+                            <div className="divide-y divide-navy-700/40">
+                                {tasksByUser.map(bucket => {
+                                    const key = `user_${bucket.userId || 'unassigned'}`;
+                                    const isCollapsed = collapsedStatuses.has(key);
+                                    return (
+                                        <div key={key}>
+                                            <button
+                                                onClick={() => toggleStatusCollapse(key)}
+                                                className="w-full flex items-center gap-2 px-5 py-3 bg-navy-800/20 hover:bg-navy-800/40 transition-colors"
+                                            >
+                                                <ChevronRight className={`w-3.5 h-3.5 text-navy-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                                                <UserCircle className="w-4 h-4 text-navy-300" />
+                                                <span className="text-sm font-medium text-white">{bucket.userName}</span>
+                                                <span className="text-xs text-navy-400 ml-1">({bucket.tasks.length})</span>
+                                            </button>
+                                            {!isCollapsed && (
+                                                <div className="px-3 pb-3 pt-1">
+                                                    {groupByStatus(bucket.tasks).map(group => {
+                                                        const innerKey = `${key}_${group.status}`;
+                                                        const innerCollapsed = collapsedStatuses.has(innerKey);
+                                                        return (
+                                                            <div key={group.status} className="rounded-lg overflow-hidden border border-navy-700/30 mt-2">
+                                                                <button
+                                                                    onClick={() => toggleStatusCollapse(innerKey)}
+                                                                    className="w-full flex items-center gap-2 px-3 py-2 bg-navy-800/30 hover:bg-navy-800/50 transition-colors"
+                                                                >
+                                                                    <ChevronRight className={`w-3 h-3 text-navy-400 transition-transform ${innerCollapsed ? '' : 'rotate-90'}`} />
+                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
+                                                                    <span className="text-xs font-semibold" style={{ color: group.color }}>{group.label}</span>
+                                                                    <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
+                                                                </button>
+                                                                {!innerCollapsed && (
+                                                                    <table className="w-full text-sm table-fixed">
+                                                                        <thead>
+                                                                            <tr className="bg-navy-800/20">
+                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>{t('dashboard.col_task')}</th>
+                                                                                {isFullTemplate && (
+                                                                                    <>
+                                                                                        <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
+                                                                                        <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
+                                                                                    </>
+                                                                                )}
+                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{isFullTemplate ? t('dashboard.col_post') : t('dashboard.col_assignee')}</th>
+                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>{t('tasks.due_date')}</th>
+                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>{t('common.status')}</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {group.tasks.map(task => renderTaskRow(task, false))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
             {showReport && (
@@ -528,10 +634,13 @@ export default function DashboardPage() {
                         taskId={selectedTaskId}
                         onClose={() => setSelectedTaskId(null)}
                         onUpdate={() => {
-                            // Reload tasks after update — same scoped list shape
-                            // as the initial load so the open-task count stays
-                            // accurate for users with > 50 tasks.
-                            tasksApi.list({ my_tasks: 'true', exclude_status: 'terminat', limit: 500 })
+                            // Reload tasks after update — mirror the initial
+                            // call's shape so superadmin's per-user view and
+                            // regular users' scoped lists both stay accurate.
+                            const taskParams = isOverseer
+                                ? { exclude_status: 'terminat', limit: 1000 }
+                                : { my_tasks: 'true', exclude_status: 'terminat', limit: 500 };
+                            tasksApi.list(taskParams)
                                 .then(res => setAllTasks(res.tasks || res))
                                 .catch(() => {});
                         }}

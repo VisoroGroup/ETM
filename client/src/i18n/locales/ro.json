@@ -280,6 +280,8 @@
     "calendar_title": "Vedere calendar — termene limită",
     "my_tasks": "Sarcinile mele",
     "created_by_me": "Create de mine",
+    "all_tasks_by_user": "Toate sarcinile pe utilizator",
+    "unassigned": "Fără responsabil",
     "col_task": "Sarcină",
     "col_subdepartment": "Subdepartament",
     "col_post": "Post",
