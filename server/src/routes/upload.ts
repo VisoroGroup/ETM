@@ -18,14 +18,14 @@ const ALLOWED_MIME_TYPES = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain', 'text/csv'
+    'text/plain', 'text/csv', 'text/html'
 ];
 
 const ALLOWED_EXTENSIONS = [
     '.jpg', '.jpeg', '.png', '.gif', '.webp',
     '.pdf', '.doc', '.docx', '.xls', '.xlsx',
     '.ppt', '.pptx',
-    '.txt', '.csv'
+    '.txt', '.csv', '.html', '.htm'
 ];
 
 // Use memory storage — we store in PostgreSQL, not filesystem
