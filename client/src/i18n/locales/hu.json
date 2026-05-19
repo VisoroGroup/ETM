@@ -1095,5 +1095,22 @@
     "in_realizare": "Folyamatban",
     "terminat": "Befejezve",
     "blocat": "Blokkolva"
+  },
+  "public_project": {
+    "loading": "Betöltés...",
+    "link_invalid_title": "A link érvénytelen",
+    "link_invalid_default": "Ez a megosztó-link már nem működik.",
+    "public_view": "Publikus nézet",
+    "project_data": "Projekt adatok",
+    "client": "Megrendelő",
+    "location": "Helyszín",
+    "contract_number": "Szerz. szám",
+    "contract_date": "Szerz. dátum",
+    "area_hectares": "Terület (ha)",
+    "deadline": "Határidő",
+    "notes": "Megjegyzések",
+    "stages": "Szakaszok",
+    "no_stages": "Nincs szakasz megadva.",
+    "auto_update_note": "Ez az oldal automatikusan frissül, amikor a(z) {{company}} módosítja a projektet."
   }
 }

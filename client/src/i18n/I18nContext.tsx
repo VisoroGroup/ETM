@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import ro from './locales/ro.json';
 import hu from './locales/hu.json';
 import en from './locales/en.json';
@@ -80,11 +80,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const { activeCompany } = useCompany();
     const language: CompanyLanguage = activeCompany?.language ?? 'ro';
 
-    // Keep date-fns formatters (timeAgo, formatDate, ...) in sync with the
-    // active UI language so relative-time strings render in the right locale.
-    useEffect(() => {
-        setDateLocale(language);
-    }, [language]);
+    // Sync the date-fns formatters' locale during render (not in useEffect)
+    // so the very first render of children already sees the right locale.
+    // An effect runs after children render, which means relative-time strings
+    // ("2 napja") would briefly render in the default locale ("2 zile în urmă")
+    // and only switch on the next re-render — visible to the user on Hungarian
+    // companies.
+    setDateLocale(language);
 
     const value = useMemo<I18nContextType>(() => ({
         language,

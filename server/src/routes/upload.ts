@@ -35,6 +35,11 @@ const upload = multer({
         fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10) // 10MB default
     },
     fileFilter: (_req, file, cb) => {
+        // multer/busboy parses multipart filename headers as latin1 by default,
+        // which mangles non-ASCII characters (e.g. Hungarian "és MÁV — ó" turns
+        // into "Ã©s MÃV â projektbemutatÃ³"). Re-decode as UTF-8 here so the
+        // original Unicode characters are preserved end-to-end (DB + display).
+        file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
         const ext = path.extname(file.originalname).toLowerCase();
         if (ALLOWED_MIME_TYPES.includes(file.mimetype) && ALLOWED_EXTENSIONS.includes(ext)) {
             cb(null, true);

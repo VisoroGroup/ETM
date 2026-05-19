@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import { makeT } from '../../i18n/I18nContext';
+import { setDateLocale } from '../../utils/helpers';
+import { CompanyLanguage } from '../../types';
 
 // Public, no-auth project status view — the page the mayor's office opens
 // when David sends them a share link. Renders contract metadata, stages with
@@ -39,7 +42,7 @@ interface PublicStage {
 
 export default function PublicProjectPage() {
     const { token } = useParams<{ token: string }>();
-    const [data, setData] = useState<{ project: PublicProject; stages: PublicStage[] } | null>(null);
+    const [data, setData] = useState<{ project: PublicProject; stages: PublicStage[]; language: CompanyLanguage } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -47,14 +50,25 @@ export default function PublicProjectPage() {
         if (!token) return;
         axios.get(`/api/public/projects/${token}`)
             .then(res => setData(res.data))
-            .catch(err => setError(err.response?.data?.error || 'Link invalid sau expirat.'))
+            .catch(err => setError(err.response?.data?.error || null))
             .finally(() => setLoading(false));
     }, [token]);
+
+    // Pick the renderer language from the response (set by the API based on
+    // the token's company). Default to RO while loading or on error, to keep
+    // legacy behavior for already-issued links.
+    const language: CompanyLanguage = data?.language ?? 'ro';
+    const t = useMemo(() => makeT(language), [language]);
+
+    // Sync date-fns locale synchronously during render — same reason as
+    // I18nProvider: an effect would run after the first paint and leave a
+    // visible Romanian flash.
+    setDateLocale(language);
 
     if (loading) {
         return (
             <div className="min-h-screen bg-navy-950 text-white flex items-center justify-center">
-                <p className="text-navy-400">Se încarcă...</p>
+                <p className="text-navy-400">{t('public_project.loading')}</p>
             </div>
         );
     }
@@ -63,15 +77,16 @@ export default function PublicProjectPage() {
         return (
             <div className="min-h-screen bg-navy-950 text-white flex items-center justify-center p-6">
                 <div className="max-w-md text-center">
-                    <h1 className="text-2xl font-bold mb-2">Linkul nu este valid</h1>
-                    <p className="text-navy-400">{error || 'Acest link de partajare nu mai funcționează.'}</p>
+                    <h1 className="text-2xl font-bold mb-2">{t('public_project.link_invalid_title')}</h1>
+                    <p className="text-navy-400">{error || t('public_project.link_invalid_default')}</p>
                 </div>
             </div>
         );
     }
 
     const { project, stages } = data;
-    const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString('ro-RO') : '—';
+    const dateLocaleTag = language === 'hu' ? 'hu-HU' : language === 'en' ? 'en-US' : 'ro-RO';
+    const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString(dateLocaleTag) : '—';
 
     return (
         <div className="min-h-screen bg-navy-950 text-white">
@@ -82,7 +97,7 @@ export default function PublicProjectPage() {
             >
                 <div className="max-w-3xl mx-auto flex items-center justify-between">
                     <span className="text-xs uppercase tracking-wider text-navy-300">{project.company_name}</span>
-                    <span className="text-xs text-navy-500">Vizualizare publică</span>
+                    <span className="text-xs text-navy-500">{t('public_project.public_view')}</span>
                 </div>
             </div>
 
@@ -95,27 +110,27 @@ export default function PublicProjectPage() {
                 </div>
 
                 <div className="bg-navy-800/40 border border-navy-700/40 rounded-xl p-5">
-                    <h2 className="text-sm font-semibold text-navy-200 mb-3">Date proiect</h2>
+                    <h2 className="text-sm font-semibold text-navy-200 mb-3">{t('public_project.project_data')}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                        <Row label="Client" value={project.client_name} />
-                        <Row label="Locație" value={project.location} />
-                        <Row label="Nr. contract" value={project.contract_number} />
-                        <Row label="Dată contract" value={fmt(project.contract_date)} />
-                        <Row label="Suprafață (ha)" value={project.area_hectares ? String(project.area_hectares) : null} />
-                        <Row label="Termen" value={fmt(project.deadline)} />
+                        <Row label={t('public_project.client')} value={project.client_name} />
+                        <Row label={t('public_project.location')} value={project.location} />
+                        <Row label={t('public_project.contract_number')} value={project.contract_number} />
+                        <Row label={t('public_project.contract_date')} value={fmt(project.contract_date)} />
+                        <Row label={t('public_project.area_hectares')} value={project.area_hectares ? String(project.area_hectares) : null} />
+                        <Row label={t('public_project.deadline')} value={fmt(project.deadline)} />
                     </div>
                     {project.notes && (
                         <div className="mt-3 pt-3 border-t border-navy-700/30">
-                            <div className="text-[11px] uppercase tracking-wider text-navy-400 mb-1">Observații</div>
+                            <div className="text-[11px] uppercase tracking-wider text-navy-400 mb-1">{t('public_project.notes')}</div>
                             <p className="text-sm text-navy-200 whitespace-pre-wrap">{project.notes}</p>
                         </div>
                     )}
                 </div>
 
                 <div className="bg-navy-800/40 border border-navy-700/40 rounded-xl p-5">
-                    <h2 className="text-sm font-semibold text-navy-200 mb-3">Etape ({stages.length})</h2>
+                    <h2 className="text-sm font-semibold text-navy-200 mb-3">{t('public_project.stages')} ({stages.length})</h2>
                     {stages.length === 0 ? (
-                        <p className="text-sm text-navy-500">Nicio etapă definită.</p>
+                        <p className="text-sm text-navy-500">{t('public_project.no_stages')}</p>
                     ) : (
                         <div className="space-y-2">
                             {stages.map(s => (
@@ -144,7 +159,7 @@ export default function PublicProjectPage() {
                 </div>
 
                 <p className="text-[11px] text-navy-500 text-center pt-4">
-                    Această pagină se actualizează automat când {project.company_name} modifică proiectul.
+                    {t('public_project.auto_update_note', { company: project.company_name })}
                 </p>
             </div>
         </div>

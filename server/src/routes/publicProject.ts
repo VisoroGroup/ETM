@@ -9,10 +9,33 @@ import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
+// Localized strings keyed by company language. We don't have a server-side
+// i18n framework — this page is one of the rare public endpoints, so a small
+// inline dictionary is simpler than wiring up a full server translator.
+const ERR_MESSAGES = {
+    ro: {
+        link_invalid: 'Link invalid sau expirat.',
+        project_not_found: 'Proiectul nu mai există.',
+    },
+    hu: {
+        link_invalid: 'Érvénytelen vagy lejárt link.',
+        project_not_found: 'A projekt már nem létezik.',
+    },
+    en: {
+        link_invalid: 'Link is invalid or has expired.',
+        project_not_found: 'Project no longer exists.',
+    },
+} as const;
+
+type Lang = keyof typeof ERR_MESSAGES;
+const toLang = (v: unknown): Lang => (v === 'hu' || v === 'en' ? v : 'ro');
+
 async function loadValidToken(token: string) {
     const { rows } = await pool.query(
-        `SELECT t.id, t.project_id, t.company_id, t.expires_at, t.revoked_at
+        `SELECT t.id, t.project_id, t.company_id, t.expires_at, t.revoked_at,
+                c.language AS company_language
            FROM pug_project_share_tokens t
+           JOIN companies c ON c.id = t.company_id
           WHERE t.token = $1
           LIMIT 1`,
         [token]
@@ -27,9 +50,11 @@ async function loadValidToken(token: string) {
 router.get('/projects/:token', asyncHandler(async (req: Request, res: Response) => {
     const t = await loadValidToken(req.params.token);
     if (!t) {
-        res.status(404).json({ error: 'Link invalid sau expirat.' });
+        // No token → no language context. Default to RO (legacy behavior).
+        res.status(404).json({ error: ERR_MESSAGES.ro.link_invalid });
         return;
     }
+    const lang = toLang(t.company_language);
 
     // Record the view (best-effort).
     pool.query(
@@ -57,7 +82,7 @@ router.get('/projects/:token', asyncHandler(async (req: Request, res: Response) 
         [t.project_id, t.company_id]
     );
     if (pRows.length === 0) {
-        res.status(404).json({ error: 'Proiectul nu mai există.' });
+        res.status(404).json({ error: ERR_MESSAGES[lang].project_not_found });
         return;
     }
 
@@ -73,7 +98,7 @@ router.get('/projects/:token', asyncHandler(async (req: Request, res: Response) 
         [t.project_id]
     );
 
-    res.json({ project: pRows[0], stages });
+    res.json({ project: pRows[0], stages, language: lang });
 }));
 
 export default router;

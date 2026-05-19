@@ -1095,5 +1095,22 @@
     "in_realizare": "În realizare",
     "terminat": "Terminat",
     "blocat": "Blocat"
+  },
+  "public_project": {
+    "loading": "Se încarcă...",
+    "link_invalid_title": "Linkul nu este valid",
+    "link_invalid_default": "Acest link de partajare nu mai funcționează.",
+    "public_view": "Vizualizare publică",
+    "project_data": "Date proiect",
+    "client": "Client",
+    "location": "Locație",
+    "contract_number": "Nr. contract",
+    "contract_date": "Dată contract",
+    "area_hectares": "Suprafață (ha)",
+    "deadline": "Termen",
+    "notes": "Observații",
+    "stages": "Etape",
+    "no_stages": "Nicio etapă definită.",
+    "auto_update_note": "Această pagină se actualizează automat când {{company}} modifică proiectul."
   }
 }
