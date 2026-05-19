@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useEffect, ReactNode } from 'react';
 import ro from './locales/ro.json';
 import hu from './locales/hu.json';
 import en from './locales/en.json';
 import { useCompany } from '../hooks/useCompany';
 import { CompanyLanguage } from '../types';
+import { setDateLocale } from '../utils/helpers';
 
 type Translations = typeof ro;
 
@@ -78,6 +79,12 @@ const I18nContext = createContext<I18nContextType>({
 export function I18nProvider({ children }: { children: ReactNode }) {
     const { activeCompany } = useCompany();
     const language: CompanyLanguage = activeCompany?.language ?? 'ro';
+
+    // Keep date-fns formatters (timeAgo, formatDate, ...) in sync with the
+    // active UI language so relative-time strings render in the right locale.
+    useEffect(() => {
+        setDateLocale(language);
+    }, [language]);
 
     const value = useMemo<I18nContextType>(() => ({
         language,
