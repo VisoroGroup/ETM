@@ -56,6 +56,8 @@ export interface Task {
     created_by: string;
     assigned_to: string | null;
     assigned_post_id: string | null;
+    assigned_section_id?: string | null;
+    assigned_department_id?: string | null;
     department_label: Department;
     created_at: string;
     updated_at: string;
@@ -305,6 +307,7 @@ export interface OrgDepartment {
     color: string;
     head_user_id: string | null;
     head_user_name?: string;
+    head_user_avatar?: string | null;
     pfv: string | null;
     statistic_name: string | null;
     is_active: boolean;
@@ -320,6 +323,7 @@ export interface OrgSection {
     department_id: string;
     head_user_id: string | null;
     head_user_name?: string;
+    head_user_avatar?: string | null;
     pfv: string | null;
     sort_order: number;
     is_active: boolean;

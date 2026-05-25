@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Settings, FileText, Users } from 'lucide-react';
 import { OrgDepartment, OrgSection, OrgPost, Task } from '../../types';
 import OrgPostRow from './OrgPostRow';
+import OrgHeadRow from './OrgHeadRow';
 import { useTranslation } from '../../i18n/I18nContext';
 
 interface Props {
@@ -25,11 +26,18 @@ export default function OrgDepartmentAccordion({
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(defaultExpanded);
 
-    // Count active tasks for this department
+    // Tasks assigned directly to this department's head (department scope)
+    const deptDirectTasks = tasks.filter(t => t.assigned_department_id === department.id);
+
+    // Count includes all three scopes: post-level, section-head-level, department-head-level.
+    // Before this fix, tasks assigned to a section head or department head were
+    // invisible in the seven-department layout because only assigned_post_id was checked.
     const deptTaskCount = tasks.filter(t =>
-        department.sections?.some(s =>
-            s.posts?.some(p => p.id === t.assigned_post_id)
-        )
+        t.assigned_department_id === department.id
+        || (department.sections?.some(s =>
+            t.assigned_section_id === s.id
+            || s.posts?.some(p => p.id === t.assigned_post_id)
+        ) ?? false)
     ).length;
 
     return (
@@ -109,6 +117,17 @@ export default function OrgDepartmentAccordion({
             {/* Expanded content — sections and posts */}
             {expanded && (
                 <div className={`border-t ${darkMode ? 'border-navy-700/30' : 'border-gray-100'}`}>
+                    {/* Department-head row: tasks assigned directly to the department head */}
+                    <OrgHeadRow
+                        scope="department"
+                        headUserName={department.head_user_name}
+                        headUserAvatar={department.head_user_avatar}
+                        tasks={deptDirectTasks}
+                        onTaskClick={onTaskClick}
+                        onTaskStatusChange={onTaskStatusChange}
+                        darkMode={darkMode}
+                    />
+
                     {department.sections?.map((section) => (
                         <OrgSectionBlock
                             key={section.id}
@@ -188,6 +207,19 @@ function OrgSectionBlock({
                 )}
                 {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
+
+            {/* Section-head row: tasks assigned directly to the section head */}
+            {expanded && (
+                <OrgHeadRow
+                    scope="section"
+                    headUserName={section.head_user_name}
+                    headUserAvatar={section.head_user_avatar}
+                    tasks={tasks.filter(t => t.assigned_section_id === section.id)}
+                    onTaskClick={onTaskClick}
+                    onTaskStatusChange={onTaskStatusChange}
+                    darkMode={darkMode}
+                />
+            )}
 
             {/* Posts */}
             {expanded && section.posts?.map((post) => (

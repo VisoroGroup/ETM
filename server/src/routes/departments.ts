@@ -25,7 +25,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     // Departments
     const { rows: departments } = await pool.query(`
-        SELECT d.*, u.display_name as head_user_name
+        SELECT d.*, u.display_name as head_user_name, u.avatar_url as head_user_avatar
         FROM departments d
         LEFT JOIN users u ON d.head_user_id = u.id
         WHERE d.is_active = true AND d.company_id = $1
@@ -34,7 +34,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
 
     // Sections with post counts
     const { rows: sections } = await pool.query(`
-        SELECT s.*, u.display_name as head_user_name, d.name as department_name
+        SELECT s.*, u.display_name as head_user_name, u.avatar_url as head_user_avatar, d.name as department_name
         FROM sections s
         LEFT JOIN users u ON s.head_user_id = u.id
         JOIN departments d ON s.department_id = d.id
