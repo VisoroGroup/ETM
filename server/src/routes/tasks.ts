@@ -686,6 +686,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                             taskId: id,
                             taskTitle,
                             language,
+                            companyId: req.activeCompanyId,
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,

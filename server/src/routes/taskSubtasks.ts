@@ -123,6 +123,7 @@ router.post('/subtasks', authMiddleware, asyncHandler(async (req: AuthRequest, r
                                 taskId,
                                 taskTitle,
                                 language,
+                                companyId,
                             });
                             sendNotificationEmail({
                                 userId: user.id, userEmail: user.email, userName: user.display_name,
@@ -216,6 +217,7 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                                     taskId,
                                     taskTitle: task.title,
                                     language,
+                                    companyId,
                                 });
                                 sendNotificationEmail({
                                     userId: user.id, userEmail: user.email, userName: user.display_name,
@@ -294,6 +296,7 @@ router.put('/subtasks/:subtaskId', authMiddleware, asyncHandler(async (req: Auth
                                     taskId,
                                     taskTitle,
                                     language,
+                                    companyId,
                                 });
                                 sendNotificationEmail({
                                     userId: user.id, userEmail: user.email, userName: user.display_name,

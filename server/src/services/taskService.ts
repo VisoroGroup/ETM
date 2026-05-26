@@ -287,6 +287,7 @@ export async function createTask(
                         taskId,
                         taskTitle: title,
                         language,
+                        companyId,
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,
@@ -525,6 +526,7 @@ export async function updateTask(
                             taskId: id,
                             taskTitle,
                             language,
+                            companyId: taskCompanyId ?? null,
                         });
                         sendNotificationEmail({
                             userId: user.id, userEmail: user.email, userName: user.display_name,

@@ -119,16 +119,22 @@ export function buildNotificationHtml(params: {
     taskTitle: string;
     ctaLabel?: string;          // defaults to translated "Open task"
     language?: ServerLocale;    // defaults to 'ro' for backward compatibility
+    companyId?: number | null;  // task's tenant — frontend switches active company before opening
 }): string {
     const {
         recipientName, subtitle, bodyLines, taskId, taskTitle,
-        language = 'ro',
+        language = 'ro', companyId,
     } = params;
     const ctaLabel = params.ctaLabel || tServer(language, 'notif_email.cta_open_task');
     const firstName = escapeHtml(recipientName.split(' ')[0]);
     const safeSubtitle = escapeHtml(subtitle);
     const safeTaskTitle = escapeHtml(taskTitle);
-    const taskUrl = `${APP_URL}/tasks?openTaskId=${encodeURIComponent(taskId)}`;
+    // companyId is appended so the recipient lands on the right tenant — without
+    // it, a cross-tenant recipient (Robert, Maria, or anyone in multiple companies)
+    // would hit a 404 when their currently-active company doesn't own the task.
+    const taskUrl = `${APP_URL}/tasks?openTaskId=${encodeURIComponent(taskId)}${
+        companyId != null ? `&companyId=${companyId}` : ''
+    }`;
 
     const greeting = tServer(language, 'notif_email.greeting', { name: firstName });
     const footer = tServer(language, 'notif_email.footer');
@@ -302,6 +308,7 @@ export function notifyStakeholders(params: {
             taskId,
             taskTitle,
             language,
+            companyId,
         });
 
         sendNotificationEmail({

@@ -164,6 +164,7 @@ router.put('/checklist/:itemId', authMiddleware, asyncHandler(async (req: AuthRe
                         taskId,
                         taskTitle: task.title,
                         language,
+                        companyId,
                     });
                     sendNotificationEmail({
                         userId: user.id, userEmail: user.email, userName: user.display_name,

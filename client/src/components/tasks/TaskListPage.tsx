@@ -38,6 +38,7 @@ export default function TaskListPage() {
     const [showFilters, setShowFilters] = useState(false);
     const [orgDepartments, setOrgDepartments] = useState<OrgDepartment[]>([]);
     const [companyPolicyCount, setCompanyPolicyCount] = useState(0);
+    const { companies, activeCompany, setActiveCompany } = useCompany();
     const [policyDrawer, setPolicyDrawer] = useState<{ open: boolean; scope?: 'COMPANY' | 'DEPARTMENT' | 'POST'; departmentId?: string; postId?: string; title?: string }>({ open: false });
     const [editDept, setEditDept] = useState<any>(null);
     const [editSection, setEditSection] = useState<any>(null);
@@ -54,7 +55,6 @@ export default function TaskListPage() {
     const [savingView, setSavingView] = useState(false);
     const [viewName, setViewName] = useState('');
     const { user } = useAuth();
-    const { activeCompany } = useCompany();
     const { showToast } = useToast();
     const { t } = useTranslation();
     const location = useLocation();
@@ -213,14 +213,31 @@ export default function TaskListPage() {
             setSelectedTaskId(state.openTaskId);
             window.history.replaceState({}, document.title);
         }
-        // Support email links: /tasks?openTaskId=xyz
+        // Support email links: /tasks?openTaskId=xyz&companyId=N
+        // If companyId points to a different tenant than the one currently active,
+        // switch first — otherwise the task fetch returns 404 ("no permission in
+        // this company") because the X-Active-Company header doesn't match the
+        // task's owning tenant. companies is loaded async by CompanyProvider, so
+        // wait for it before deciding: clearing the URL too early would lose the
+        // companyId hint, and we'd open the task in the wrong tenant.
         const urlParams = new URLSearchParams(window.location.search);
         const openTaskIdParam = urlParams.get('openTaskId');
+        const companyIdParam = urlParams.get('companyId');
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (openTaskIdParam && uuidRegex.test(openTaskIdParam)) {
+        if (openTaskIdParam && uuidRegex.test(openTaskIdParam) && companies.length > 0) {
+            const targetCompanyId = companyIdParam ? Number(companyIdParam) : null;
+            const userIsInTarget = targetCompanyId != null
+                && companies.some((c) => c.id === targetCompanyId);
+            if (targetCompanyId != null && userIsInTarget && targetCompanyId !== activeCompany?.id) {
+                // setActiveCompany updates both React state and the API service's
+                // X-Active-Company header synchronously, so the TaskDrawer fetch
+                // that follows lands on the correct tenant.
+                setActiveCompany(targetCompanyId);
+            }
             setSelectedTaskId(openTaskIdParam);
             // Clean URL without reload
             urlParams.delete('openTaskId');
+            urlParams.delete('companyId');
             const cleanUrl = urlParams.toString()
                 ? `${window.location.pathname}?${urlParams.toString()}`
                 : window.location.pathname;
@@ -236,7 +253,7 @@ export default function TaskListPage() {
             setShowFilters(true);
             window.history.replaceState({}, document.title);
         }
-    }, [location]);
+    }, [location, companies, activeCompany?.id, setActiveCompany]);
 
     const loadTasks = useCallback(async () => {
         const scrollY = window.scrollY;
