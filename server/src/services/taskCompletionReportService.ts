@@ -40,6 +40,35 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         activity: 'Jurnal de activitate',
         not_found: 'Sarcina nu a fost găsită.',
         dash: '—',
+        // Status labels (mirror types/index.ts STATUSES)
+        status_de_rezolvat: 'De rezolvat',
+        status_in_realizare: 'În realizare',
+        status_terminat: 'Terminat',
+        status_blocat: 'Blocat',
+        // Activity log action labels
+        action_created: 'Creat',
+        action_status_changed: 'Status schimbat',
+        action_due_date_changed: 'Termen modificat',
+        action_comment_added: 'Comentariu adăugat',
+        action_subtask_added: 'Subsarcină adăugată',
+        action_subtask_completed: 'Subsarcină finalizată',
+        action_subtask_assigned: 'Subsarcină atribuită',
+        action_attachment_added: 'Fișier atașat',
+        action_label_changed: 'Etichetă schimbată',
+        action_recurring_created: 'Sarcină recurentă creată',
+        action_alert_added: 'Alertă adăugată',
+        action_alert_resolved: 'Alertă rezolvată',
+        action_dependency_added: 'Dependență adăugată',
+        action_dependency_removed: 'Dependență eliminată',
+        action_dependency_resolved: 'Dependență rezolvată',
+        action_checklist_updated: 'Lista de verificare actualizată',
+        action_title_changed: 'Titlu schimbat',
+        action_description_changed: 'Descriere schimbată',
+        action_assigned_to_changed: 'Responsabil schimbat',
+        action_department_changed: 'Departament schimbat',
+        action_task_created: 'Sarcină creată',
+        action_task_duplicated: 'Sarcină duplicată',
+        action_task_deleted: 'Sarcină ștearsă',
     },
     hu: {
         title: 'Sarcinator Visoro',
@@ -74,6 +103,35 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         activity: 'Tevékenységnapló',
         not_found: 'A feladat nem található.',
         dash: '—',
+        // Státusz feliratok
+        status_de_rezolvat: 'Megoldandó',
+        status_in_realizare: 'Folyamatban',
+        status_terminat: 'Befejezve',
+        status_blocat: 'Blokkolva',
+        // Tevékenységnapló feliratok
+        action_created: 'Létrehozva',
+        action_status_changed: 'Státusz módosítva',
+        action_due_date_changed: 'Határidő módosítva',
+        action_comment_added: 'Hozzászólás hozzáadva',
+        action_subtask_added: 'Részfeladat hozzáadva',
+        action_subtask_completed: 'Részfeladat befejezve',
+        action_subtask_assigned: 'Részfeladat hozzárendelve',
+        action_attachment_added: 'Csatolmány hozzáadva',
+        action_label_changed: 'Címke módosítva',
+        action_recurring_created: 'Ismétlődő feladat létrehozva',
+        action_alert_added: 'Riasztás hozzáadva',
+        action_alert_resolved: 'Riasztás megoldva',
+        action_dependency_added: 'Függőség hozzáadva',
+        action_dependency_removed: 'Függőség eltávolítva',
+        action_dependency_resolved: 'Függőség megoldva',
+        action_checklist_updated: 'Ellenőrzőlista frissítve',
+        action_title_changed: 'Cím módosítva',
+        action_description_changed: 'Leírás módosítva',
+        action_assigned_to_changed: 'Felelős módosítva',
+        action_department_changed: 'Részleg módosítva',
+        action_task_created: 'Feladat létrehozva',
+        action_task_duplicated: 'Feladat duplikálva',
+        action_task_deleted: 'Feladat törölve',
     },
     en: {
         title: 'Sarcinator Visoro',
@@ -108,6 +166,35 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         activity: 'Activity log',
         not_found: 'Task not found.',
         dash: '—',
+        // Status labels
+        status_de_rezolvat: 'To do',
+        status_in_realizare: 'In progress',
+        status_terminat: 'Completed',
+        status_blocat: 'Blocked',
+        // Activity log action labels
+        action_created: 'Created',
+        action_status_changed: 'Status changed',
+        action_due_date_changed: 'Due date changed',
+        action_comment_added: 'Comment added',
+        action_subtask_added: 'Subtask added',
+        action_subtask_completed: 'Subtask completed',
+        action_subtask_assigned: 'Subtask assigned',
+        action_attachment_added: 'Attachment added',
+        action_label_changed: 'Label changed',
+        action_recurring_created: 'Recurring task created',
+        action_alert_added: 'Alert added',
+        action_alert_resolved: 'Alert resolved',
+        action_dependency_added: 'Dependency added',
+        action_dependency_removed: 'Dependency removed',
+        action_dependency_resolved: 'Dependency resolved',
+        action_checklist_updated: 'Checklist updated',
+        action_title_changed: 'Title changed',
+        action_description_changed: 'Description changed',
+        action_assigned_to_changed: 'Assignee changed',
+        action_department_changed: 'Department changed',
+        action_task_created: 'Task created',
+        action_task_duplicated: 'Task duplicated',
+        action_task_deleted: 'Task deleted',
     },
 };
 
@@ -378,8 +465,8 @@ export async function buildCompletionReportHtml(taskId: string, language: Server
     if (statusChanges.length > 0) {
         sections += sectionTitle(`${t('status_history')} (${statusChanges.length})`);
         for (const sc of statusChanges) {
-            const oldLabel = STATUSES[sc.old_status as keyof typeof STATUSES]?.label || sc.old_status;
-            const newLabel = STATUSES[sc.new_status as keyof typeof STATUSES]?.label || sc.new_status;
+            const oldLabel = t(`status_${sc.old_status}`) || STATUSES[sc.old_status as keyof typeof STATUSES]?.label || sc.old_status;
+            const newLabel = t(`status_${sc.new_status}`) || STATUSES[sc.new_status as keyof typeof STATUSES]?.label || sc.new_status;
             const reasonText = sc.reason ? ` — <em>${t('reason_label')}: ${escapeHtml(sc.reason)}</em>` : '';
             sections += `<tr><td style="padding: 4px 0 4px 12px; font-size: 13px; color: #333; border-left: 3px solid #e5e7eb;">
                 <strong>${escapeHtml(sc.changed_by_name || dash)}</strong>: ${escapeHtml(oldLabel)} → ${escapeHtml(newLabel)}${reasonText}
@@ -470,13 +557,13 @@ export async function buildCompletionReportHtml(taskId: string, language: Server
     if (blockingDeps.length > 0 || blockedDeps.length > 0) {
         sections += sectionTitle(t('dependencies'));
         for (const dep of blockingDeps) {
-            const statusLabel = STATUSES[dep.blocking_status as keyof typeof STATUSES]?.label || dep.blocking_status;
+            const statusLabel = t(`status_${dep.blocking_status}`) || STATUSES[dep.blocking_status as keyof typeof STATUSES]?.label || dep.blocking_status;
             sections += `<tr><td style="padding: 3px 0 3px 12px; font-size: 13px; color: #333;">
                 🔒 ${t('blocked_by')}: <strong>${escapeHtml(dep.blocking_title)}</strong> (${escapeHtml(statusLabel)})
             </td></tr>`;
         }
         for (const dep of blockedDeps) {
-            const statusLabel = STATUSES[dep.blocked_status as keyof typeof STATUSES]?.label || dep.blocked_status;
+            const statusLabel = t(`status_${dep.blocked_status}`) || STATUSES[dep.blocked_status as keyof typeof STATUSES]?.label || dep.blocked_status;
             sections += `<tr><td style="padding: 3px 0 3px 12px; font-size: 13px; color: #333;">
                 🔓 ${t('blocks')}: <strong>${escapeHtml(dep.blocked_title)}</strong> (${escapeHtml(statusLabel)})
             </td></tr>`;
@@ -486,39 +573,19 @@ export async function buildCompletionReportHtml(taskId: string, language: Server
     // === ACTIVITY LOG ===
     if (activityLog.length > 0) {
         sections += sectionTitle(`${t('activity')} (${activityLog.length})`);
-        const actionLabels: Record<string, string> = {
-            created: 'Creat',
-            status_changed: 'Status schimbat',
-            due_date_changed: 'Termen modificat',
-            comment_added: 'Comentariu adăugat',
-            subtask_added: 'Subsarcină adăugată',
-            subtask_completed: 'Subsarcină finalizată',
-            subtask_assigned: 'Subsarcină atribuită',
-            attachment_added: 'Fișier atașat',
-            label_changed: 'Etichetă schimbată',
-            recurring_created: 'Sarcină recurentă creată',
-            alert_added: 'Alertă adăugată',
-            alert_resolved: 'Alertă rezolvată',
-            dependency_added: 'Dependență adăugată',
-            dependency_removed: 'Dependență eliminată',
-            dependency_resolved: 'Dependență rezolvată',
-            checklist_updated: 'Lista de verificare actualizată',
-            title_changed: 'Titlu schimbat',
-            description_changed: 'Descriere schimbată',
-            assigned_to_changed: 'Responsabil schimbat',
-            department_changed: 'Departament schimbat',
-            task_created: 'Sarcină creată',
-            task_duplicated: 'Sarcină duplicată',
-            task_deleted: 'Sarcină ștearsă',
-        };
         for (const entry of activityLog) {
-            const label = actionLabels[entry.action_type] || entry.action_type;
+            // Look up the localized action label; fall back to the raw action_type
+            // if no translation exists (covers new actions added after this list).
+            const localized = t(`action_${entry.action_type}`);
+            const label = (localized && localized !== `action_${entry.action_type}`)
+                ? localized
+                : entry.action_type;
             let detailText = '';
             if (entry.details) {
                 const d = typeof entry.details === 'string' ? JSON.parse(entry.details) : entry.details;
                 if (d.old_status && d.new_status) {
-                    const oldL = STATUSES[d.old_status as keyof typeof STATUSES]?.label || d.old_status;
-                    const newL = STATUSES[d.new_status as keyof typeof STATUSES]?.label || d.new_status;
+                    const oldL = t(`status_${d.old_status}`) || STATUSES[d.old_status as keyof typeof STATUSES]?.label || d.old_status;
+                    const newL = t(`status_${d.new_status}`) || STATUSES[d.new_status as keyof typeof STATUSES]?.label || d.new_status;
                     detailText = `: ${oldL} → ${newL}`;
                     if (d.reason) detailText += ` (${escapeHtml(d.reason)})`;
                 } else if (d.old_date && d.new_date) {

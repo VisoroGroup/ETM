@@ -46,11 +46,20 @@ function cacheKey(userId: string, companyId?: number | null): string {
 /**
  * Look up the language to use for a notification email destined for `userId`.
  *
+ * The email is about a task that lives in a specific tenant, so the language
+ * should match that tenant — NOT the recipient's personal preference. This
+ * matters for two recipient categories:
+ *   - "Always-receive" superadmins (Robert, Maria) who get reports across all
+ *     companies. They aren't necessarily members of user_companies for the
+ *     foreign tenant. An email about a Hungarian-company task should still
+ *     arrive in Hungarian for them.
+ *   - Regular members: same answer (the company's language).
+ *
  * Priority:
- *   1. If a `companyId` is passed and the user is a member of it → that
- *      company's language (the email is about a task in that tenant).
- *   2. Otherwise → the language of any company the user belongs to (first
- *      match), falling back to 'ro' for legacy behaviour.
+ *   1. If `companyId` is provided → that company's `language` column.
+ *   2. Otherwise → the language of the first company the user belongs to
+ *      (legacy fallback for callers that don't know the company).
+ *   3. Final fallback: 'ro'.
  */
 export async function resolveRecipientLocale(
     userId: string,
@@ -64,16 +73,11 @@ export async function resolveRecipientLocale(
     try {
         if (companyId != null) {
             const { rows } = await pool.query(
-                `SELECT c.language
-                   FROM companies c
-                   JOIN user_companies uc ON uc.company_id = c.id
-                  WHERE uc.user_id = $1 AND c.id = $2
-                  LIMIT 1`,
-                [userId, companyId]
+                `SELECT language FROM companies WHERE id = $1 LIMIT 1`,
+                [companyId]
             );
             if (rows.length > 0) resolved = pickLocale(rows[0].language);
-        }
-        if (resolved === 'ro' && companyId == null) {
+        } else {
             const { rows } = await pool.query(
                 `SELECT c.language
                    FROM companies c
