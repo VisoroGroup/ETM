@@ -643,6 +643,13 @@ export default function DashboardPage() {
                             tasksApi.list(taskParams)
                                 .then(res => setAllTasks(res.tasks || res))
                                 .catch(() => {});
+                            // Also refresh the "În Atenție" banner: a new
+                            // alert / resolved alert inside the drawer would
+                            // otherwise leave the dashboard's aggregated list
+                            // stale until the next company switch.
+                            dashboardApi.activeAlerts()
+                                .then(setActiveAlerts)
+                                .catch(() => {});
                         }}
                     />
                 </Suspense>

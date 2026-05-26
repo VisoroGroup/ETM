@@ -11,9 +11,14 @@ interface Props {
     task: TaskDetail;
     taskId: string;
     onReload: () => void;
+    // Notify parent (Dashboard, TaskListPage…) that alerts changed so it can
+    // refresh aggregated views like the "În Atenție" banner. Without this the
+    // banner stays stale after add/resolve/delete because it only refetches
+    // on company switch.
+    onUpdate?: () => void;
 }
 
-export default function AlertsTab({ task, taskId, onReload }: Props) {
+export default function AlertsTab({ task, taskId, onReload, onUpdate }: Props) {
     const { t } = useTranslation();
     const { user } = useAuth();
     const { showToast } = useToast();
@@ -29,6 +34,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
             setNewAlertText('');
             showToast(t('alerts.toast_added'));
             onReload();
+            onUpdate?.();
         } catch {
             showToast(t('alerts.toast_add_error'), 'error');
         }
@@ -39,6 +45,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
             await alertsApi.resolve(taskId, alertId);
             showToast(t('alerts.toast_resolved'));
             onReload();
+            onUpdate?.();
         } catch {
             showToast(t('tasks.try_again'), 'error');
         }
@@ -49,6 +56,7 @@ export default function AlertsTab({ task, taskId, onReload }: Props) {
             await alertsApi.delete(taskId, alertId);
             showToast(t('alerts.toast_deleted'));
             onReload();
+            onUpdate?.();
         } catch {
             showToast(t('tasks.try_again'), 'error');
         }

@@ -606,7 +606,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             <ErrorBoundary><ActivityTab task={task} /></ErrorBoundary>
                         )}
                         {activeTab === 'alerts' && (
-                            <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
+                            <ErrorBoundary><AlertsTab task={task} taskId={taskId} onReload={td.refetch} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'dependencies' && (
                             <ErrorBoundary><DependenciesTab taskId={taskId} onReload={td.refetch} task={task} onOpenTask={(id) => { onClose(); setTimeout(() => window.dispatchEvent(new CustomEvent('etm:open-task', { detail: id })), 100); }} /></ErrorBoundary>
