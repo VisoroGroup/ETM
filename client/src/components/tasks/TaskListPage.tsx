@@ -732,14 +732,14 @@ export default function TaskListPage() {
                         </button>
                     </div>
 
-                    {orgDepartments.map((dept, idx) => (
+                    {orgDepartments.map((dept) => (
                         <OrgDepartmentAccordion
                             key={dept.id}
                             department={dept}
                             tasks={tasks}
                             onTaskClick={(id) => setSelectedTaskId(id)}
                             darkMode={true}
-                            defaultExpanded={idx === 0}
+                            defaultExpanded={false}
                             isSuperAdmin={user?.role === 'superadmin'}
                             onEditDepartment={(d) => setEditDept(d)}
                             onEditSection={(s) => setEditSection(s)}

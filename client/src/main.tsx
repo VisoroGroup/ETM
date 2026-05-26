@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
 import App from './App'
 
+// Claim the named window target used by notification emails (target="sarcinator-app"),
+// so subsequent clicks from the inbox reuse this tab instead of opening a new one.
+if (typeof window !== 'undefined') {
+  window.name = 'sarcinator-app';
+}
+
 // Init Sentry (only if DSN is set via env)
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
