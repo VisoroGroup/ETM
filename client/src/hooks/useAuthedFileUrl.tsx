@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { ImgHTMLAttributes } from 'react';
 import { safeLocalStorage } from '../utils/storage';
+import { getActiveCompanyId } from '../services/api';
+
+// These raw fetch() calls bypass the axios instance, so they must add the
+// tenant header by hand. Without X-Active-Company the server falls back to the
+// user's first company and the attachment lookup 404s for any other tenant.
+function authedFileHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    const token = safeLocalStorage.get('visoro_token');
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const companyId = getActiveCompanyId();
+    if (companyId != null) headers['X-Active-Company'] = String(companyId);
+    return headers;
+}
 
 /**
  * Fetches a protected file with the JWT in the Authorization header and
@@ -23,10 +36,7 @@ export function useAuthedFileUrl(url: string | null | undefined) {
         setLoading(true);
         setError(false);
 
-        const token = safeLocalStorage.get('visoro_token');
-        fetch(url, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
+        fetch(url, { headers: authedFileHeaders() })
             .then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
                 return r.blob();
@@ -57,10 +67,7 @@ export function useAuthedFileUrl(url: string | null | undefined) {
  * Fetches with the Bearer token, creates a blob URL, clicks a hidden <a>.
  */
 export async function downloadAuthedFile(url: string, filename: string): Promise<void> {
-    const token = safeLocalStorage.get('visoro_token');
-    const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const res = await fetch(url, { headers: authedFileHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);

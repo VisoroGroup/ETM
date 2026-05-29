@@ -692,7 +692,8 @@
     "toast_uploaded": "Fájl feltöltve!",
     "toast_upload_error": "Hiba a feltöltés során",
     "toast_deleted": "Fájl törölve",
-    "toast_download_error": "Hiba a letöltés során"
+    "toast_download_error": "Hiba a letöltés során",
+    "preview_error": "Az előnézetet nem sikerült betölteni"
   },
   "checklist": {
     "progress": "{{checked}} / {{total}} kész",

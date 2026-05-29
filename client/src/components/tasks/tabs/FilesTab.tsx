@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from '../../../i18n/I18nContext';
 import { attachmentsApi } from '../../../services/api';
-import type { TaskDetail, TaskAttachment } from '../../../types';
+import type { TaskDetail } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { AuthedImage, useAuthedFileUrl, downloadAuthedFile } from '../../../hooks/useAuthedFileUrl';
@@ -40,7 +40,7 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const [pdfPreview, setPdfPreview] = useState<string | null>(null);
-    const { blobUrl: pdfPreviewBlob } = useAuthedFileUrl(pdfPreview);
+    const { blobUrl: pdfPreviewBlob, error: pdfPreviewError } = useAuthedFileUrl(pdfPreview);
 
     // Separate images from other files
     const images = task.attachments.filter(a => isImage(a.file_name));
@@ -196,6 +196,10 @@ export default function FilesTab({ task, taskId, onReload, onUpdate }: Props) {
                                     className="w-full h-96 bg-white"
                                     title={t('attachments.pdf_preview_title')}
                                 />
+                            ) : pdfPreviewError ? (
+                                <div className="w-full h-96 bg-navy-900/40 flex items-center justify-center text-sm text-red-300">
+                                    {t('attachments.preview_error')}
+                                </div>
                             ) : (
                                 <div className="w-full h-96 bg-navy-900/40 flex items-center justify-center text-sm text-navy-400">
                                     {t('common.loading')}

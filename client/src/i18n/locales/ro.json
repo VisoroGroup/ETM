@@ -692,7 +692,8 @@
     "toast_uploaded": "Fișier încărcat!",
     "toast_upload_error": "Eroare la încărcare",
     "toast_deleted": "Fișier șters",
-    "toast_download_error": "Eroare la descărcare"
+    "toast_download_error": "Eroare la descărcare",
+    "preview_error": "Previzualizarea nu a putut fi încărcată"
   },
   "checklist": {
     "progress": "{{checked}} / {{total}} completate",
