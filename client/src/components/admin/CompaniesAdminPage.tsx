@@ -11,10 +11,13 @@ import {
 import { Company, User, CompanyLanguage, CompanyTemplateType } from '../../types';
 import { useTranslation, TFunction } from '../../i18n/I18nContext';
 
+// English is intentionally NOT offered as a company language: the EN locale is
+// only ~9% translated (it silently falls back to Romanian) and nobody uses it.
+// Decision 2026-05-29 — re-add only if a full EN translation is shipped.
+// See PLANNING.md §8 and brain/2026-05-29-project-anchors-bootstrap.md.
 const LANGUAGE_OPTIONS = (t: TFunction): { value: CompanyLanguage; label: string }[] => [
     { value: 'ro', label: t('admin_companies.language_ro') },
     { value: 'hu', label: t('admin_companies.language_hu') },
-    { value: 'en', label: t('admin_companies.language_en') },
 ];
 
 const TEMPLATE_OPTIONS = (t: TFunction): { value: CompanyTemplateType; label: string; hint: string }[] => [

@@ -18,13 +18,6 @@
 
 ## Backlog
 
-### `[ ]` Angol nyelv kivétele a választható nyelvek közül
-- **Hozzáadva:** 2026-05-29
-- **Megjegyzés:** Az EN csak ~9%-ban van lefordítva (93/1001 string), senki nem
-  használja (Robert, 2026-05-29). Kivesszük a nyelvválasztóból; nem fordítjuk le.
-  Előbb ellenőrizni: van-e cég `language='en'`-re állítva — ha igen, románra/
-  magyarra kell állítani, mielőtt az opció eltűnik.
-
 ### `[ ]` Megfontolandó: közös `authedFetch` wrapper
 - **Hozzáadva:** 2026-05-29
 - **Megjegyzés:** Ha harmadszor is felbukkan a "raw fetch kihagyta az
@@ -40,6 +33,15 @@
 ---
 
 ## Done
+
+### `[x]` Angol nyelv kivétele a választható nyelvek közül
+- **Hozzáadva / kész:** 2026-05-29 / 2026-05-30
+- **Megjegyzés:** Az `en` opció eltávolítva a cég-nyelv választóból
+  (`CompaniesAdminPage.tsx`, `LANGUAGE_OPTIONS` — ez volt az egyetlen hely, ahol
+  nyelvet lehet választani). A `CompanyLanguage` típus és az `en.json` szándékosan
+  érintetlen: így a meglévő (ha van) `language='en'` cégek továbbra is működnek
+  RO-fallbackkel — nincs migráció, nincs DB-művelet. Csak akkor jön vissza, ha
+  teljes EN fordítás készül. Lásd PLANNING.md §8.
 
 ### `[x]` Projekt alapfájlok felépítése a meglévő kódból
 - **Hozzáadva / kész:** 2026-05-29
