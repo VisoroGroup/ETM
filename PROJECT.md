@@ -1,5 +1,12 @@
 # 🧠 ETM — Visoro Task Manager — Project Brain
 
+> **ELAVULT — 2026-03-24. Történeti rekord, ne használd aktuális forrásként.**
+> A projekt jelenlegi állapotát a `PLANNING.md` írja le. Ez a fájl a
+> multi-tenancy / i18n / magic-link / PUG **előtti** állapotot tükrözi; a
+> roadmap, az env-lista és a tábla-lista nagyrészt elavult. Megbízhatóan
+> csak a lenti "Fejlesztési napló" szekció használható (történeti dátumok,
+> 2026-03), mert az a brain/ rendszer előtti időszak egyetlen rendezett rekordja.
+
 > Central tudásbázis az ETM projekthez.
 
 ---
