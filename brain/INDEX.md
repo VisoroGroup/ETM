@@ -5,6 +5,7 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-05-29 | [2026-05-29-project-anchors-bootstrap](2026-05-29-project-anchors-bootstrap.md) | planning, governance, i18n, docs, setup | Alapfájlok (PLANNING/TASK/examples/PRPs) felépítve a kódból; PROJECT.md elavult; EN nyelv elejtve; push-gate lecke |
 | 2026-05-29 | [2026-05-29-attachment-tenant-header](2026-05-29-attachment-tenant-header.md) | attachments, multitenancy, frontend, files, ux | Csatolmány megnézés/letöltés cross-tenant 404 — raw fetch kihagyta az X-Active-Company headert (+ PDF-előnézet hiba-ág) |
 | 2026-05-26 | [2026-05-26-dashboard-alerts-stale](2026-05-26-dashboard-alerts-stale.md) | dashboard, alerts, react-state, ui | "În Atenție" banner stale az új alertek után — AlertsTab nem hívott onUpdate-et a parent felé |
 | 2026-05-26 | [2026-05-26-email-link-tenant-and-tab-handoff](2026-05-26-email-link-tenant-and-tab-handoff.md) | email, multitenancy, frontend, broadcastchannel, ux | Email link cross-tenant 404 fix (companyId an URL-ben) + BroadcastChannel tab handoff (Apple Mail / Outlook stripeli a `target`-et) |
