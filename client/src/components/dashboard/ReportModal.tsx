@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { X, FileDown, Loader2 } from 'lucide-react';
 import { safeLocalStorage } from '../../utils/storage';
+import { getActiveCompanyId } from '../../services/api';
 import { useTranslation, TFunction } from '../../i18n/I18nContext';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 
@@ -8,8 +9,6 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
 }
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 function getLast12Months(t: TFunction): { value: string; label: string }[] {
     const months: { value: string; label: string }[] = [];
@@ -48,12 +47,22 @@ export default function ReportModal({ isOpen, onClose }: Props) {
     async function generate() {
         setGenerating(true);
         const sectionList = Object.entries(sections).filter(([, v]) => v).map(([k]) => k).join(',');
-        const token = safeLocalStorage.get('token');
-        const url = `${API_BASE}/reports/monthly?month=${month}&format=${format}&sections=${sectionList}`;
+        const token = safeLocalStorage.get('visoro_token');
+        const companyId = getActiveCompanyId();
+        // Same-origin relative base, exactly like the axios `api` instance. The old
+        // `VITE_API_URL || localhost:3001` fallback pointed the browser at localhost
+        // in production (VITE_API_URL is unset), which threw "Load failed".
+        const url = `/api/reports/monthly?month=${month}&format=${format}&sections=${sectionList}`;
 
         try {
             const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    // Raw fetch bypasses the axios interceptor, so the tenant header
+                    // must be set by hand — otherwise the server falls back to the
+                    // user's first company and generates the wrong tenant's report.
+                    ...(companyId != null ? { 'X-Active-Company': String(companyId) } : {}),
+                },
             });
             if (!response.ok) {
                 let errorMsg = `${t('report.error_prefix')} ${response.status}`;
