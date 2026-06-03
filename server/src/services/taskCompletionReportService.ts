@@ -22,6 +22,7 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         due_date: 'Termen limită',
         created_at: 'Data creării',
         completed_at: 'Data finalizării',
+        completed_by: 'Finalizat de {name}',
         status_history: 'Istoricul statusurilor',
         due_date_changes: 'Modificări termen limită',
         reason_label: 'Motiv',
@@ -85,6 +86,7 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         due_date: 'Határidő',
         created_at: 'Létrehozás dátuma',
         completed_at: 'Befejezés dátuma',
+        completed_by: 'Lezárta: {name}',
         status_history: 'Státuszelőzmények',
         due_date_changes: 'Határidő-módosítások',
         reason_label: 'Indok',
@@ -148,6 +150,7 @@ const REPORT_LABELS: Record<ServerLocale, Record<string, string>> = {
         due_date: 'Due date',
         created_at: 'Created at',
         completed_at: 'Completed at',
+        completed_by: 'Completed by {name}',
         status_history: 'Status history',
         due_date_changes: 'Due date changes',
         reason_label: 'Reason',
@@ -327,7 +330,11 @@ const infoRow = (label: string, value: string) => `
  * Gathers ALL data: basic info, status changes, due date changes,
  * comments, subtasks, checklist items, alerts, attachments, dependencies, activity log.
  */
-export async function buildCompletionReportHtml(taskId: string, language: ServerLocale = 'ro'): Promise<string> {
+export async function buildCompletionReportHtml(
+    taskId: string,
+    language: ServerLocale = 'ro',
+    statusChange?: { oldStatus: string; newStatus: string; actorName: string; reason?: string | null },
+): Promise<string> {
     const t = (k: string, vars?: Record<string, string | number>) => L(language, k, vars);
     // 1. Task basic info
     const { rows: [task] } = await pool.query(
@@ -610,6 +617,25 @@ export async function buildCompletionReportHtml(taskId: string, language: Server
 
     const safeTitle = escapeHtml(task.title);
 
+    // When this report doubles as the completion email (on `terminat` the separate
+    // status-change email is suppressed), render the status transition and who
+    // completed the task at the very top, inside the success banner.
+    let statusChangeHtml = '';
+    if (statusChange) {
+        const oldLabel = escapeHtml(t(`status_${statusChange.oldStatus}`));
+        const newLabel = escapeHtml(t(`status_${statusChange.newStatus}`));
+        const reasonLine = statusChange.reason
+            ? `<p style="margin: 6px 0 0; color: #b45309; font-size: 12px;">${t('reason_label')}: ${escapeHtml(statusChange.reason)}</p>`
+            : '';
+        statusChangeHtml = `
+          <p style="margin: 10px 0 0; font-size: 13px;">
+            <span style="background: #e5e7eb; color: #374151; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${oldLabel}</span>
+            → <span style="background: #10B981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
+          </p>
+          <p style="margin: 6px 0 0; color: #047857; font-size: 12px;">${t('completed_by', { name: escapeHtml(statusChange.actorName) })}</p>
+          ${reasonLine}`;
+    }
+
     return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
       <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -619,7 +645,7 @@ export async function buildCompletionReportHtml(taskId: string, language: Server
       <div style="background: white; padding: 24px; border-radius: 0 0 8px 8px;">
         <div style="background: #d1fae5; border-left: 4px solid #10B981; padding: 12px 16px; margin: 0 0 20px 0; border-radius: 0 8px 8px 0;">
           <p style="margin: 0; font-weight: bold; color: #065f46; font-size: 16px;">✅ ${safeTitle}</p>
-          <p style="margin: 4px 0 0; color: #047857; font-size: 13px;">${t('success')}</p>
+          <p style="margin: 4px 0 0; color: #047857; font-size: 13px;">${t('success')}</p>${statusChangeHtml}
         </div>
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
           ${sections}

@@ -657,12 +657,19 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
             }
         }
 
-        // EMAIL: notify stakeholders about status change
+        // EMAIL: notify stakeholders about the status change.
+        //
+        // On completion (`terminat`) we deliberately do NOT send a separate
+        // status-change email. Instead a single merged email goes out below —
+        // the completion report with the status banner (old → Terminat + who
+        // completed it) at the top — to the UNION of stakeholders and report
+        // recipients, so nobody receives two emails for one completion.
+        // (Robert, 2026-06-03 — see brain entry.)
         {
             const taskTitle = rows[0].title;
             const actor = req.user!.display_name;
 
-            (async () => {
+            if (status !== 'terminat') (async () => {
                 try {
                     const stakeholders = await getTaskStakeholders(id, req.user!.id);
                     for (const user of stakeholders) {
@@ -673,7 +680,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                             `<p style="color: #555; font-size: 14px;">${tServer(language, 'notif_email.body_user_changed_status', { actor })}</p>`,
                             `<p style="font-size: 14px; margin: 8px 0;">
                                 <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${oldLabel}</span>
-                                → <span style="background: ${status === 'terminat' ? '#d1fae5' : status === 'blocat' ? '#fee2e2' : '#dbeafe'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
+                                → <span style="background: ${status === 'blocat' ? '#fee2e2' : '#dbeafe'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newLabel}</span>
                             </p>`,
                         ];
                         if (status === 'blocat' && reason) {
@@ -700,31 +707,41 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                 }
             })();
 
-            // COMPLETION REPORT: send detailed summary email when task is completed
+            // COMPLETION: a single merged email (status banner + full summary)
+            // sent to the union of stakeholders and report recipients, deduped by
+            // id so each person receives exactly one email for the completion.
             if (status === 'terminat') {
                 (async () => {
                     try {
-                        const recipients = await getCompletionReportRecipients(id, req.user!.id);
-                        if (recipients.length > 0) {
-                            // Build the report once per language so each recipient
-                            // gets it in their own locale instead of hardcoded RO.
-                            const reportHtmlByLang = new Map<string, string>();
-                            for (const recipient of recipients) {
-                                const language = await resolveRecipientLocale(recipient.id, req.activeCompanyId);
-                                if (!reportHtmlByLang.has(language)) {
-                                    reportHtmlByLang.set(language, await buildCompletionReportHtml(id, language));
-                                }
-                                sendNotificationEmail({
-                                    userId: recipient.id,
-                                    userEmail: recipient.email,
-                                    userName: recipient.display_name,
-                                    taskId: id,
-                                    subject: tServer(language, 'notif_email.subj_completion_report', { title: taskTitle }),
-                                    htmlBody: reportHtmlByLang.get(language)!,
-                                    emailType: 'completion_report',
-                                    companyId: req.activeCompanyId,
-                                }).catch(err => console.error('[completion_report] Email error:', err));
+                        const [stakeholders, reportRecipients] = await Promise.all([
+                            getTaskStakeholders(id, req.user!.id),
+                            getCompletionReportRecipients(id, req.user!.id),
+                        ]);
+                        const recipientsById = new Map<string, { id: string; email: string; display_name: string }>();
+                        for (const u of stakeholders) recipientsById.set(u.id, u);
+                        for (const u of reportRecipients) recipientsById.set(u.id, u);
+                        const recipients = Array.from(recipientsById.values());
+
+                        // Build the report once per language so each recipient gets
+                        // it in their own locale instead of a hardcoded one.
+                        const reportHtmlByLang = new Map<string, string>();
+                        for (const recipient of recipients) {
+                            const language = await resolveRecipientLocale(recipient.id, req.activeCompanyId);
+                            if (!reportHtmlByLang.has(language)) {
+                                reportHtmlByLang.set(language, await buildCompletionReportHtml(id, language, {
+                                    oldStatus, newStatus: status, actorName: actor, reason,
+                                }));
                             }
+                            sendNotificationEmail({
+                                userId: recipient.id,
+                                userEmail: recipient.email,
+                                userName: recipient.display_name,
+                                taskId: id,
+                                subject: tServer(language, 'notif_email.subj_completion_report', { title: taskTitle }),
+                                htmlBody: reportHtmlByLang.get(language)!,
+                                emailType: 'completion_report',
+                                companyId: req.activeCompanyId,
+                            }).catch(err => console.error('[completion_report] Email error:', err));
                         }
                     } catch (err) {
                         console.error('[completion_report] Error:', err);
