@@ -18,11 +18,15 @@
 
 ## Backlog
 
-### `[ ]` Megfontolandó: közös `authedFetch` wrapper
-- **Hozzáadva:** 2026-05-29
-- **Megjegyzés:** Ha harmadszor is felbukkan a "raw fetch kihagyta az
-  X-Active-Company headert" osztályú bug, érdemes közös wrappert csinálni.
-  Lásd brain `2026-05-29-attachment-tenant-header`. Addig (Simplicity, CLAUDE.md 3. §) nem.
+### `[ ]` Megfontolandó: közös `authedFetch` wrapper — 3. előfordulás elérve
+- **Hozzáadva:** 2026-05-29 · **Eszkalálva:** 2026-06-04
+- **Megjegyzés:** A "raw fetch kihagyta az X-Active-Company headert" osztályú bug
+  immár HARMADSZOR jött elő (1. email-link, 2. csatolmány, 3. havi riport — utóbbinál
+  ráadásul rossz bázis-URL + token-kulcs is volt). A brain szabálya szerint a 3.
+  előfordulásnál érdemes közös wrappert csinálni, ami a bázist + `visoro_token`-t +
+  `X-Active-Company`-t mindig ráteszi (érintene: `useAuthedFileUrl`, `ReportModal`,
+  vsz. `ProjectFilesSection`). **Robert döntésére vár** — nem építettem be (Simplicity
+  §3 + külön, több fájlos meló). Lásd brain `2026-06-04-monthly-report-load-failed`.
 
 ---
 
@@ -33,6 +37,21 @@
 ---
 
 ## Done
+
+### `[x]` Lezáráskor a státusz + összesítő email egybeolvasztása
+- **Hozzáadva / kész:** 2026-06-04
+- **Commit:** d324fcf
+- **Megjegyzés:** `terminat`-nál már nincs külön `status_changed` email; egy merged
+  `completion_report` megy a stakeholderek ∪ riport-címzettek uniójának (dedup),
+  a státusz-banner az összesítő tetején. Robert B opciója. Lásd brain
+  `2026-06-04-merge-completion-emails`.
+
+### `[x]` Havi riport "Load failed" javítása
+- **Hozzáadva / kész:** 2026-06-04
+- **Commit:** 0d6f46e
+- **Megjegyzés:** A `ReportModal.tsx` nyers fetch-e élesben localhost-ra mutatott
+  (`VITE_API_URL` unset) → "Load failed". Relatív `/api` bázis + helyes `visoro_token`
+  kulcs + `X-Active-Company` header. Lásd brain `2026-06-04-monthly-report-load-failed`.
 
 ### `[x]` Angol nyelv kivétele a választható nyelvek közül
 - **Hozzáadva / kész:** 2026-05-29 / 2026-05-30

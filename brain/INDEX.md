@@ -5,6 +5,8 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-06-04 | [2026-06-04-monthly-report-load-failed](2026-06-04-monthly-report-load-failed.md) | reports, raw-fetch, multitenancy, frontend, pdf, excel | Havi riport "Load failed" — ReportModal nyers fetch localhost bázisra esett (VITE_API_URL unset); + rossz token-kulcs (`visoro_token`) + hiányzó X-Active-Company. 3. raw-fetch tenant bug |
+| 2026-06-04 | [2026-06-04-merge-completion-emails](2026-06-04-merge-completion-emails.md) | email, notifications, tasks, completion-report, multitenancy | Lezáráskor a státusz + összesítő email egybeolvasztva — egy merged completion_report az unió(stakeholders ∪ report-címzettek)-nak, státusz-banner a tetején (B opció) |
 | 2026-05-30 | [2026-05-30-drop-english-language](2026-05-30-drop-english-language.md) | i18n, multitenancy, frontend, ux, communication | Angol kivéve a cég-nyelv választóból — csak frontend (DB/típus/en.json érintetlen, RO-fallback marad); kommunikációs lecke: ne tolj technikai kérdést Robertre |
 | 2026-05-29 | [2026-05-29-project-anchors-bootstrap](2026-05-29-project-anchors-bootstrap.md) | planning, governance, i18n, docs, setup | Alapfájlok (PLANNING/TASK/examples/PRPs) felépítve a kódból; PROJECT.md elavult; EN nyelv elejtve; push-gate lecke |
 | 2026-05-29 | [2026-05-29-attachment-tenant-header](2026-05-29-attachment-tenant-header.md) | attachments, multitenancy, frontend, files, ux | Csatolmány megnézés/letöltés cross-tenant 404 — raw fetch kihagyta az X-Active-Company headert (+ PDF-előnézet hiba-ág) |
