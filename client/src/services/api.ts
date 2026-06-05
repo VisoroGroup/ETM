@@ -308,7 +308,7 @@ export const webhookApi = {
     getDeliveries: (params?: { event_type?: string; status?: string; subscription_id?: string; limit?: number; offset?: number }) =>
         api.get('/webhooks/deliveries', { params }).then(r => r.data),
 };
-// Day View (superadmin)
+// Day View (all authenticated company members)
 export const dayViewApi = {
     get: (date: string) => api.get(`/day-view`, { params: { date } }).then(r => r.data),
     getWeek: (start: string) => api.get(`/day-view/week`, { params: { start } }).then(r => r.data),

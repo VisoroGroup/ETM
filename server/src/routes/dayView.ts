@@ -7,6 +7,12 @@ import { tError } from '../utils/serverErrors';
 
 const router = Router();
 
+// Access: all routes below are open to any authenticated member of the active
+// company. requireRole('user') passes every role (superadmin/admin/manager/user)
+// via ROLE_INHERITANCE — it means "logged in", not "user-tier only". Tenant
+// isolation is enforced in getDayViewData, which scopes every query to
+// req.activeCompanyId and returns [] when no company is resolved.
+
 const STATUS_LABELS: Record<string, string> = {
     de_rezolvat: 'De rezolvat',
     in_realizare: 'În realizare',
@@ -58,7 +64,7 @@ async function getTemplateType(companyId: number | undefined): Promise<TemplateT
 // GET /api/day-view/week?start=YYYY-MM-DD — 7 days starting at `start`
 // Returns { days: [{ date, users: [...] }, ...] } where each day uses the same
 // shape as /day-view so the client can re-use renderers.
-router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get('/week', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const startStr = (req.query.start as string) || new Date().toISOString().split('T')[0];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) {
         res.status(400).json({ error: tError(req, 'invalid_date_format_ymd') });
@@ -90,7 +96,7 @@ router.get('/week', authMiddleware, requireRole('superadmin'), asyncHandler(asyn
 }));
 
 // GET /api/day-view?date=YYYY-MM-DD
-router.get('/', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
     // Validate date format
@@ -105,7 +111,7 @@ router.get('/', authMiddleware, requireRole('superadmin'), asyncHandler(async (r
 }));
 
 // GET /api/day-view/pdf/:userId?date=YYYY-MM-DD
-router.get('/pdf/:userId', authMiddleware, requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get('/pdf/:userId', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const { userId } = req.params;
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
 

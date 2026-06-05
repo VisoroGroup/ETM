@@ -12,7 +12,15 @@
 
 ## Active
 
-(nincs aktív feladat)
+### `[~]` Napi/heti nézet + havi riport megnyitása minden belépett usernek
+- **Hozzáadva:** 2026-06-05
+- **Tulajdonos:** Robert
+- **Akceptálási kritérium:** minden belépett user a saját cégén belül eléri a napi
+  és heti nézetet és a havi riportot, és bennük mindenki feladatát látja; cégek
+  között nincs átlátás (a backend végig `company_id`-re szűr).
+- **Megjegyzés:** Backend `requireRole('superadmin'/'admin','manager')` →
+  `requireRole('user')` (dayView 3 végpont + reports/monthly); frontend route/menü/
+  gomb feloldva. Robert jóváhagyta ("mehet").
 
 ---
 

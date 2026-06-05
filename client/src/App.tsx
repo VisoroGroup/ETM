@@ -101,8 +101,8 @@ function AppRoutes() {
           <Route path="/proiecte/:id" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager', 'user']}><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
-          <Route path="/day-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><DayViewPage /></ErrorBoundary></ProtectedRoute>} />
-          <Route path="/week-view" element={<ProtectedRoute allowedRoles={['superadmin']}><ErrorBoundary><WeekViewPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/day-view" element={<ErrorBoundary><DayViewPage /></ErrorBoundary>} />
+          <Route path="/week-view" element={<ErrorBoundary><WeekViewPage /></ErrorBoundary>} />
           <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

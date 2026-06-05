@@ -388,16 +388,14 @@ export default function DashboardPage() {
                     <p className="text-navy-400 text-sm mt-1">{t('dashboard.welcome')}</p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                    {/* Report button — admin/manager only */}
-                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && (
-                        <button
-                            onClick={() => setShowReport(true)}
-                            className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
-                        >
-                            <FileDown className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('dashboard.report')}</span>
-                        </button>
-                    )}
+                    {/* Report button — available to every authenticated company member */}
+                    <button
+                        onClick={() => setShowReport(true)}
+                        className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
+                    >
+                        <FileDown className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{t('dashboard.report')}</span>
+                    </button>
 
                     {/* Calendar / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">

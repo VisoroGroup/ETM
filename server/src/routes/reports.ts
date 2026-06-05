@@ -19,7 +19,9 @@ function monthName(locale: ServerLocale, monthIndex1Based: number): string {
 }
 
 // GET /api/reports/monthly?month=2026-03&format=pdf&sections=tasks,departments,users
-router.get('/monthly', authMiddleware, requireRole('admin', 'manager'), asyncHandler(async (req: AuthRequest, res: Response) => {
+// Open to any authenticated company member: requireRole('user') passes every role
+// via ROLE_INHERITANCE. The report stays tenant-scoped to req.activeCompanyId below.
+router.get('/monthly', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const companyId = req.activeCompanyId;
 
     // Resolve the company language up-front so even validation errors come
