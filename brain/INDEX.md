@@ -5,6 +5,7 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-06-05 | [2026-06-05-open-day-week-monthly-views](2026-06-05-open-day-week-monthly-views.md) | access-control, permissions, dayview, weekview, reports, multitenancy | Napi/heti nézet + havi riport megnyitva minden belépett usernek (requireRole('user') + route/menü/gomb feloldva); tenant-szűrés érintetlen, cégek közt nincs átlátás |
 | 2026-06-04 | [2026-06-04-monthly-report-load-failed](2026-06-04-monthly-report-load-failed.md) | reports, raw-fetch, multitenancy, frontend, pdf, excel | Havi riport "Load failed" — ReportModal nyers fetch localhost bázisra esett (VITE_API_URL unset); + rossz token-kulcs (`visoro_token`) + hiányzó X-Active-Company. 3. raw-fetch tenant bug |
 | 2026-06-04 | [2026-06-04-merge-completion-emails](2026-06-04-merge-completion-emails.md) | email, notifications, tasks, completion-report, multitenancy | Lezáráskor a státusz + összesítő email egybeolvasztva — egy merged completion_report az unió(stakeholders ∪ report-címzettek)-nak, státusz-banner a tetején (B opció) |
 | 2026-05-30 | [2026-05-30-drop-english-language](2026-05-30-drop-english-language.md) | i18n, multitenancy, frontend, ux, communication | Angol kivéve a cég-nyelv választóból — csak frontend (DB/típus/en.json érintetlen, RO-fallback marad); kommunikációs lecke: ne tolj technikai kérdést Robertre |

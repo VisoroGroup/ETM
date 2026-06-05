@@ -12,15 +12,7 @@
 
 ## Active
 
-### `[~]` Napi/heti nézet + havi riport megnyitása minden belépett usernek
-- **Hozzáadva:** 2026-06-05
-- **Tulajdonos:** Robert
-- **Akceptálási kritérium:** minden belépett user a saját cégén belül eléri a napi
-  és heti nézetet és a havi riportot, és bennük mindenki feladatát látja; cégek
-  között nincs átlátás (a backend végig `company_id`-re szűr).
-- **Megjegyzés:** Backend `requireRole('superadmin'/'admin','manager')` →
-  `requireRole('user')` (dayView 3 végpont + reports/monthly); frontend route/menü/
-  gomb feloldva. Robert jóváhagyta ("mehet").
+(nincs aktív feladat)
 
 ---
 
@@ -45,6 +37,15 @@
 ---
 
 ## Done
+
+### `[x]` Napi/heti nézet + havi riport megnyitva minden belépett usernek
+- **Hozzáadva / kész:** 2026-06-05
+- **Commit:** 8dfd746
+- **Megjegyzés:** Backend `requireRole('user')` a dayView 3 végpontján + a
+  reports/monthly-n; frontend route/menü/riport-gomb feloldva (mindkét sablonnál).
+  A "mindenki lássa a mindenkiet" már az adat-rétegben megvolt (cég-szintű, `company_id`-szűrt) —
+  csak a hozzáférési gátakat vettem le; tenant-izoláció érintetlen. Lásd brain
+  `2026-06-05-open-day-week-monthly-views`.
 
 ### `[x]` Lezáráskor a státusz + összesítő email egybeolvasztása
 - **Hozzáadva / kész:** 2026-06-04
