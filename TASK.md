@@ -46,6 +46,8 @@
   A "mindenki lássa a mindenkiet" már az adat-rétegben megvolt (cég-szintű, `company_id`-szűrt) —
   csak a hozzáférési gátakat vettem le; tenant-izoláció érintetlen. Lásd brain
   `2026-06-05-open-day-week-monthly-views`.
+- **Ellenőrzés:** code review + szerver/kliens production build zöld (élesen ez fut).
+  Élő, sima-user vizuális ellenőrzés nem készült el (nem-admin belépés kellene; lásd brain gotcha).
 
 ### `[x]` Lezáráskor a státusz + összesítő email egybeolvasztása
 - **Hozzáadva / kész:** 2026-06-04

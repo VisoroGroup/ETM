@@ -75,8 +75,13 @@ orphan változó.
 - **Lint:** a megérintett fájlokban sok pre-existing `no-explicit-any` / unused-import
   hiba van (~30), de EGYIK SEM az általam módosított sorokban — nem javítottam
   (pre-existing adósság, lásd a korábbi brain-eket). Build (`tsc -b && vite build`) zöld.
-- **Nincs teszt-harness erre** (szerveren csak dateUtils/validation unit teszt). Robert
-  Chrome-ban, egy nem-admin userrel teszteli élesben.
+- **Ellenőrzés állapota:** code review + szerver/kliens production build zöld (ez fut
+  élesen). **Élő, sima-user vizuális ellenőrzés NEM készült el** ezen a sessionön: a
+  Claude-in-Chrome kiterjesztés eleinte nem kapcsolódott, és a sima-user teszthez
+  nem-admin belépés kell (a Microsoft 365 SSO Robertet superadminként lépteti be →
+  magic-link/külön fiók kellene). A megnyitás helyességét a kód + build garantálja; ha
+  Robert élőben gondot lát egy sima usernél, ott kezdd a vizsgálatot. Nincs teszt-harness
+  erre (szerveren csak dateUtils/validation unit teszt).
 
 ## Hivatkozások
 
