@@ -314,7 +314,12 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
 
     return (
         <>
-            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={task?.title || 'Task details'}>
+            {/* Close on backdrop press only — use onMouseDown + target guard so that
+                drag-selecting text inside the panel (e.g. a comment) and releasing the
+                mouse over the backdrop does NOT close the drawer. onClick would fire on
+                the backdrop in that case (the click target resolves to the common
+                ancestor), which closed the drawer and revealed the page behind it. */}
+            <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true" aria-label={task?.title || 'Task details'}>
                 {/* Mobile: full-screen bottom sheet. Desktop: right side panel */}
                 <div className="w-full md:max-w-2xl h-[95vh] md:h-full bg-navy-900 border-t md:border-t-0 md:border-l border-navy-700/50 shadow-2xl animate-slide-in flex flex-col overflow-hidden rounded-t-2xl md:rounded-none" onClick={e => e.stopPropagation()}>
                     {/* Header */}
