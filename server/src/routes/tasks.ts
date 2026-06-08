@@ -36,6 +36,8 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             recurring,
             assigned_to,
             my_tasks,
+            assigned_to_me,
+            created_by_me,
             exclude_status,
             pug_project_id,
             page = '1',
@@ -164,6 +166,19 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
             )`);
             values.push(req.user!.id);
             paramIndex++;
+        }
+
+        // Assigned-to-me filter (Bug 1): strictly the user's own assignments
+        // ("Atribuite mie" toggle), NOT the old "involved in anything" semantics.
+        if (assigned_to_me === 'true') {
+            conditions.push(`t.assigned_to = $${paramIndex++}`);
+            values.push(req.user!.id);
+        }
+
+        // Created-by-me filter (Bug 1): tasks the user created ("Create de mine" toggle).
+        if (created_by_me === 'true') {
+            conditions.push(`t.created_by = $${paramIndex++}`);
+            values.push(req.user!.id);
         }
 
         // TEAM-BASED VIEW: regular 'user' role sees only tasks they created, are assigned to, or have subtasks assigned to them

@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import OrgDepartmentAccordion from './OrgDepartmentAccordion';
+import OrgTaskRowsList from './OrgTaskRowsList';
 import InlineStatusPill from './InlineStatusPill';
 import PolicyDrawer from './PolicyDrawer';
 import { DepartmentEditModal, SectionEditModal, PostEditModal } from './OrgEditModals';
@@ -260,7 +261,7 @@ export default function TaskListPage() {
         const isInitialLoad = tasks.length === 0;
         try {
             if (isInitialLoad) setLoading(true);
-            const result = await tasksApi.list({ ...filters, exclude_status: 'terminat' });
+            const result = await tasksApi.list({ ...filters, exclude_status: 'terminat', limit: 500 });
             setTasks(result.tasks);
             setTotal(result.total);
             // Restore scroll position after DOM update (only on reload, not initial)
@@ -318,7 +319,19 @@ export default function TaskListPage() {
         setSearchText('');
     }
 
-    const activeFilterCount = Object.entries(filters).filter(([k, v]) => k !== 'my_tasks' && Boolean(v)).length;
+    const activeFilterCount = Object.entries(filters).filter(([k, v]) => !['my_tasks', 'assigned_to_me', 'created_by_me'].includes(k) && Boolean(v)).length;
+
+    // Bug 1 fix: "Atribuite mie" (assigned to me) and "Create de mine" (created by me)
+    // replace the old single "my tasks" toggle. Either one switches to the flat list.
+    const isPersonalView = filters.assigned_to_me === 'true' || filters.created_by_me === 'true';
+
+    // Bug 2 fix: in the org-structure view, tasks with no post/section/department
+    // scope match no accordion node and would otherwise be invisible. Surface them
+    // in a dedicated group so nothing is silently dropped from the list.
+    const unscopedTasks = useMemo(
+        () => tasks.filter(t => !t.assigned_post_id && !t.assigned_section_id && !t.assigned_department_id),
+        [tasks]
+    );
 
     // Bulk helpers
     const allSelected = tasks.length > 0 && selectedIds.size === tasks.length;
@@ -462,7 +475,7 @@ export default function TaskListPage() {
                             className="w-full pl-10 pr-4 py-2.5 bg-navy-900/50 border border-navy-700/50 rounded-lg text-sm text-white placeholder:text-navy-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <button
                             onClick={handleSearch}
                             className="flex-1 md:flex-none px-4 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
@@ -472,16 +485,32 @@ export default function TaskListPage() {
                         <button
                             onClick={() => setFilters(prev => ({
                                 ...prev,
-                                my_tasks: prev.my_tasks === 'true' ? undefined : 'true'
+                                assigned_to_me: prev.assigned_to_me === 'true' ? undefined : 'true',
+                                created_by_me: undefined,
                             }))}
                             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg text-sm transition-colors ${
-                                filters.my_tasks === 'true'
+                                filters.assigned_to_me === 'true'
                                     ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
                                     : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
                             }`}
                         >
                             <UserCircle className="w-4 h-4" />
-                            {t('dashboard.my_tasks')}
+                            {t('tasks.filter_assigned_to_me')}
+                        </button>
+                        <button
+                            onClick={() => setFilters(prev => ({
+                                ...prev,
+                                created_by_me: prev.created_by_me === 'true' ? undefined : 'true',
+                                assigned_to_me: undefined,
+                            }))}
+                            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg text-sm transition-colors ${
+                                filters.created_by_me === 'true'
+                                    ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
+                                    : 'bg-navy-800/50 border-navy-700/50 text-navy-300 hover:bg-navy-700/50'
+                            }`}
+                        >
+                            <UserCircle className="w-4 h-4" />
+                            {t('tasks.filter_created_by_me')}
                         </button>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
@@ -629,16 +658,16 @@ export default function TaskListPage() {
             {/* Task List — My Tasks flat list OR Org Structure Accordion */}
             {loading ? (
                 <SkeletonTaskList rows={6} />
-            ) : tasks.length === 0 && (filters.my_tasks === 'true' || orgDepartments.length === 0) ? (
+            ) : tasks.length === 0 && (isPersonalView || orgDepartments.length === 0) ? (
                 <div className="text-center py-20">
                     <ListTodo className="w-16 h-16 text-navy-700 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-navy-400 mb-1">
-                        {filters.my_tasks === 'true' ? t('tasks.empty_my_title') : t('tasks.empty_title')}
+                        {isPersonalView ? t('tasks.empty_my_title') : t('tasks.empty_title')}
                     </h3>
                     <p className="text-sm text-navy-500 mb-4">
-                        {filters.my_tasks === 'true' ? t('tasks.empty_my_subtitle') : t('tasks.empty_subtitle')}
+                        {isPersonalView ? t('tasks.empty_my_subtitle') : t('tasks.empty_subtitle')}
                     </p>
-                    {filters.my_tasks !== 'true' && (
+                    {!isPersonalView && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm transition-colors"
@@ -647,8 +676,8 @@ export default function TaskListPage() {
                         </button>
                     )}
                 </div>
-            ) : filters.my_tasks === 'true' ? (
-                /* ===== MY TASKS — FLAT LIST VIEW ===== */
+            ) : isPersonalView ? (
+                /* ===== MY TASKS — FLAT LIST VIEW (assigned-to-me / created-by-me) ===== */
                 <div className="border border-navy-700/50 rounded-xl overflow-hidden">
                     <table className="w-full text-sm table-fixed">
                         <thead>
@@ -748,6 +777,33 @@ export default function TaskListPage() {
                             {t('tasks.open')}
                         </button>
                     </div>
+
+                    {/* Bug 2 fix: tasks with no org scope (assigned only to a person,
+                        or unassigned) match no department/section/post node below, so
+                        they'd be invisible in this view. Show them in a labeled group. */}
+                    {unscopedTasks.length > 0 && (
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5">
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-1.5 h-10 rounded-full flex-shrink-0 bg-amber-500" />
+                                <div className="flex-1 text-left">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-sm">{t('tasks.unscoped_group')}</h3>
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                            {unscopedTasks.length}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="border-t border-navy-700/30 pt-1 pb-2">
+                                <OrgTaskRowsList
+                                    tasks={unscopedTasks}
+                                    onTaskClick={(id) => setSelectedTaskId(id)}
+                                    onTaskStatusChange={loadTasks}
+                                    darkMode={true}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {orgDepartments.map((dept) => (
                         <OrgDepartmentAccordion

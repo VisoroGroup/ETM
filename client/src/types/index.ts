@@ -230,6 +230,9 @@ export interface TaskFilters {
     recurring?: string;
     assigned_to?: string;
     my_tasks?: string;
+    /** Bug 1 fix: split the old "my tasks" toggle into two strict filters. */
+    assigned_to_me?: string;
+    created_by_me?: string;
     exclude_status?: string;
     /** PUG project filter — pass an id, or the literal 'null' to find unlinked. */
     pug_project_id?: string;
