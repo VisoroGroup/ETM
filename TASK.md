@@ -32,11 +32,29 @@
 
 ## Blocked
 
-(nincs)
+### `[!]` Bug (Robert): egyes feladatok nem nyithatók meg ("Sarcina nu există sau nu ai acces...")
+- **Hozzáadva:** 2026-06-08 · **Bejelentő:** Robert (master admin)
+- **Tünet:** a feladat-panel "Sarcina nu poate fi deschisă" hibát mutat (404 `task_not_yours`).
+- **Eddig:** a megnyitás-kód (GET /tasks/:id, getTaskById) a mai munkában ÉRINTETLEN; a 404 azt
+  jelenti: a feladat nincs az aktív cégben VAGY törölve lett. A most láthatóvá tett feladatok
+  (500-limit + "besorolás nélkül") mind aktív-cég-szűrtek → nyílniuk kell, tehát valószínűleg
+  meglévő helyzet (stale lista cégváltás után, vagy időközben törölt "ghost" feladat).
+- **Blokkolva:** reprodukció hiányában. Kell: melyik feladat / honnan nyitva / cégváltás után-e /
+  a Reîncearcă megoldja-e. Lásd brain `2026-06-08-drawer-drag-close-and-open-404`.
 
 ---
 
 ## Done
+
+### `[x]` Bug (Robert): a feladat-panel bezárult komment-szöveg kijelölésekor
+- **Hozzáadva / kész:** 2026-06-08
+- **Commit:** 64cb532
+- **Megjegyzés:** A TaskDrawer háttere `onClick={onClose}`-zal záródott; ha a komment szövegét
+  húzással jelölted ki és az egér a panelen kívül engedett fel, a kattintás a háttérre esett →
+  bezárt a panel (mögötte a dashboard). Javítva: `onMouseDown` + `e.target === e.currentTarget`
+  őr, így csak a háttéren INDULÓ lenyomás zár. Pre-existing bug, nem a task-lista változás okozta.
+  Lásd brain `2026-06-08-drawer-drag-close-and-open-404`.
+- **Ellenőrzés:** kliens build zöld; élő teszt Robertnél.
 
 ### `[x]` Bug (Emo): "Sarcinile mele" kettéválasztása (Nálam / Általam) + rejtett taskok láthatóvá tétele
 - **Hozzáadva / kész:** 2026-06-08
