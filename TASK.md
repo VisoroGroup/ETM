@@ -38,6 +38,19 @@
 
 ## Done
 
+### `[x]` Bug (Emo): "Sarcinile mele" kettéválasztása (Nálam / Általam) + rejtett taskok láthatóvá tétele
+- **Hozzáadva / kész:** 2026-06-08
+- **Commit:** 21eab7a · **PRP:** PRPs/001-task-list-visibility-fixes.md
+- **Megjegyzés:** Bug 1 — a "Sarcinile mele" szűrő "érintett vagyok" (created OR assigned OR
+  subtask) helyett két szigorú szűrőre vált: **Atribuite mie** (assigned_to=én) és **Create de
+  mine** (created_by=én). Backend `assigned_to_me`/`created_by_me` query-paraméterek; a `my_tasks`
+  (dashboard használja) érintetlen. Bug 2 (Visoro Global, 'full') — a lista 50→500 limit, és a
+  szervezeti nézetbe bekerült egy "Fără atribuire organizatorică" csoport a poszt/szekció/részleg
+  besorolás nélküli taskoknak (eddig láthatatlanok voltak, bár a kereső megtalálta őket). Lásd brain
+  `2026-06-08-task-list-visibility-fixes`.
+- **Ellenőrzés:** kliens `tsc -b && vite build` zöld, szerver `tsc` zöld; lint csak pre-existing.
+  Élő, nem-admin vizuális teszt Robertnél (Visoro Global) folyamatban.
+
 ### `[x]` Napi/heti nézet + havi riport megnyitva minden belépett usernek
 - **Hozzáadva / kész:** 2026-06-05
 - **Commit:** 8dfd746
