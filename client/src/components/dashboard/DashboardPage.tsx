@@ -518,12 +518,12 @@ export default function DashboardPage() {
                                 </span>
                             </button>
                             {!collapsedStatuses.has('sect_all_by_user') && (
-                            <div className="divide-y divide-navy-700/40">
+                            <div className="p-3 space-y-3">
                                 {tasksByUser.map(bucket => {
                                     const key = `user_${bucket.userId || 'unassigned'}`;
                                     const isCollapsed = collapsedStatuses.has(key);
                                     return (
-                                        <div key={key}>
+                                        <div key={key} className="rounded-lg overflow-hidden border border-navy-700/50 bg-navy-900/30">
                                             <button
                                                 onClick={() => toggleStatusCollapse(key)}
                                                 className="w-full flex items-center gap-3 px-4 py-3 bg-navy-800/60 hover:bg-navy-800/80 transition-colors border-l-[3px] border-l-navy-500"
