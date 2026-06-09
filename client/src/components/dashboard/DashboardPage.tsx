@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import InlineStatusPill from '../tasks/InlineStatusPill';
+import UserAvatar from '../ui/UserAvatar';
 import type { WidgetConfig } from '../../types';
 
 // Lazy-load the heavy children (audit-3 H30). These three pull in
@@ -221,14 +222,16 @@ export default function DashboardPage() {
         const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
         const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
         const statusColor = STATUSES[task.status]?.color || '#475569';
-        // Compact meta line under the title — replaces the old separate columns.
-        // Empty bits are filtered out (e.g. Hungary/Neo Plan have no dept/post).
-        const metaBits = (isFullTemplate
+        // Location meta (dept · section · post), muted. The responsible person is
+        // shown SEPARATELY as a distinct chip (only when relevant — "Create de mine"),
+        // so it doesn't blend into the grey location text.
+        const locBits = (isFullTemplate
             ? [task.assigned_department_name || DEPARTMENTS[task.department_label]?.label,
                task.assigned_section_name,
-               showAssignee ? task.assignee_name : task.assigned_post_name]
-            : [task.assignee_name]
+               task.assigned_post_name]
+            : []
         ).filter(Boolean);
+        const showResponsible = showAssignee && !!task.assignee_name;
         return (
             <div
                 key={task.id}
@@ -254,8 +257,18 @@ export default function DashboardPage() {
                         )}
                         <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
-                    {metaBits.length > 0 && (
-                        <div className="text-[10.5px] text-navy-500 mt-0.5 truncate">{metaBits.join(' · ')}</div>
+                    {(locBits.length > 0 || showResponsible) && (
+                        <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                            {locBits.length > 0 && (
+                                <span className="text-[10.5px] text-navy-500 truncate">{locBits.join(' · ')}</span>
+                            )}
+                            {showResponsible && (
+                                <span className="flex items-center gap-1 text-[10.5px] text-navy-200 font-medium flex-shrink-0">
+                                    <UserCircle className="w-3 h-3 text-navy-400" />
+                                    {task.assignee_name}
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
                 {/* Due date */}
@@ -513,12 +526,12 @@ export default function DashboardPage() {
                                         <div key={key}>
                                             <button
                                                 onClick={() => toggleStatusCollapse(key)}
-                                                className="w-full flex items-center gap-2 px-5 py-3 bg-navy-800/20 hover:bg-navy-800/40 transition-colors"
+                                                className="w-full flex items-center gap-3 px-4 py-3 bg-navy-800/60 hover:bg-navy-800/80 transition-colors border-l-[3px] border-l-navy-500"
                                             >
-                                                <ChevronRight className={`w-3.5 h-3.5 text-navy-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                                                <UserCircle className="w-4 h-4 text-navy-300" />
-                                                <span className="text-sm font-medium text-white">{bucket.userName}</span>
-                                                <span className="text-xs text-navy-400 ml-1">({bucket.tasks.length})</span>
+                                                <ChevronRight className={`w-4 h-4 text-navy-400 flex-shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                                                <UserAvatar name={bucket.userName} avatarUrl={bucket.tasks[0]?.assignee_avatar} size="sm" />
+                                                <span className="text-[15px] font-semibold text-white">{bucket.userName}</span>
+                                                <span className="text-xs text-navy-300 bg-navy-700/70 rounded-full px-2 py-0.5 ml-1">{bucket.tasks.length}</span>
                                             </button>
                                             {!isCollapsed && (
                                                 <div className="px-3 pb-3 pt-1">
