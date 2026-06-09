@@ -283,8 +283,20 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                 {t('notif.empty')}
                             </p>
                         ) : (
-                            displayed.map(group => {
+                            displayed.map((group, idx) => {
                                 const key = group.task_id || group.notifications[0].id;
+                                // Section divider: "Necitite" before the first unread group, "Citite"
+                                // at the unread→read boundary — the two are physically separated.
+                                const sectionHeader =
+                                    idx === 0 && group.hasUnread ? (
+                                        <div key="hdr-unread" className={`px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-blue-300' : 'text-blue-500'}`}>
+                                            {t('notif.section_unread')}
+                                        </div>
+                                    ) : (!group.hasUnread && (idx === 0 || displayed[idx - 1].hasUnread)) ? (
+                                        <div key="hdr-read" className={`px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider border-t ${darkMode ? 'text-navy-500 border-navy-700/60' : 'text-gray-400 border-gray-100'}`}>
+                                            {t('notif.section_read')}
+                                        </div>
+                                    ) : null;
                                 const isSingle = group.notifications.length === 1;
                                 const isExpanded = expandedGroups.has(key);
 
@@ -292,8 +304,9 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                 if (isSingle || !group.task_id) {
                                     const n = group.notifications[0];
                                     return (
+                                        <React.Fragment key={n.id}>
+                                        {sectionHeader}
                                         <div
-                                            key={n.id}
                                             onClick={() => {
                                                 if (!n.is_read) markRead(n.id);
                                                 if (n.task_id) {
@@ -323,14 +336,16 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                 <span className="w-2 h-2 mt-1 rounded-full bg-blue-500 flex-shrink-0" style={{ boxShadow: '0 0 0 3px rgba(59,130,246,.18)' }} />
                                             )}
                                         </div>
+                                        </React.Fragment>
                                     );
                                 }
 
                                 // Grouped notifications for same task
                                 const unreadCount = group.notifications.filter(n => !n.is_read).length;
                                 return (
+                                    <React.Fragment key={key}>
+                                    {sectionHeader}
                                     <div
-                                        key={key}
                                         className={`border-b last:border-0 ${
                                             group.hasUnread
                                                 ? `border-l-[3px] border-l-blue-400 bg-blue-500/[0.1] ${darkMode ? 'border-navy-700/60' : 'border-gray-100'}`
@@ -411,6 +426,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                             </div>
                                         )}
                                     </div>
+                                    </React.Fragment>
                                 );
                             })
                         )}

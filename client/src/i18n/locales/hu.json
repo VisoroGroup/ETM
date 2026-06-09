@@ -746,6 +746,8 @@
     "mark_all_read": "Mind olvasottnak jelöl",
     "only_unread": "Csak olvasatlan",
     "new_short": "új",
+    "section_unread": "Olvasatlan",
+    "section_read": "Olvasott",
     "mark_read": "Olvasottnak jelöl",
     "empty": "Nincsenek értesítéseid",
     "open_task": "Feladat megnyitása →",

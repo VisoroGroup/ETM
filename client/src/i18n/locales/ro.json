@@ -746,6 +746,8 @@
     "mark_all_read": "Marchează toate citite",
     "only_unread": "Doar necitite",
     "new_short": "noi",
+    "section_unread": "Necitite",
+    "section_read": "Citite",
     "mark_read": "Marchează citite",
     "empty": "Nu ai notificări",
     "open_task": "Deschide sarcina →",
