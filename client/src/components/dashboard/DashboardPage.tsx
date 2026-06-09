@@ -42,7 +42,9 @@ export default function DashboardPage() {
     const [showReport, setShowReport] = useState(false);
     const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
     const [showCustomizer, setShowCustomizer] = useState(false);
-    const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+    // Heavy sections start collapsed so the dashboard opens calm (alerts + stats
+    // + "my tasks"); the user expands "created by me" / "all per user" on demand.
+    const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set(['sect_created', 'sect_all_by_user']));
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -208,27 +210,9 @@ export default function DashboardPage() {
         });
     };
 
-    // Hungary/Neo Plan don't have department/section/post — those columns would
-    // always render '—' and waste 43% of horizontal space. Widen `title` and
-    // promote `assignee` to its own visible column instead.
+    // Hungary/Neo Plan don't have department/section/post; the row's meta line
+    // simply omits the empty bits. `isFullTemplate` still gates which fields show.
     const isFullTemplate = activeCompany?.template_type === 'full';
-
-    // Fixed column width classes for consistent alignment across all tables
-    const COL = isFullTemplate ? {
-        title: 'w-[35%]',
-        dept: 'w-[14%]',
-        subdept: 'w-[13%]',
-        post: 'w-[16%]',
-        date: 'w-[12%]',
-        status: 'w-[10%]',
-    } : {
-        title: 'w-[55%]',
-        dept: 'hidden',
-        subdept: 'hidden',
-        post: 'w-[22%]',
-        date: 'w-[13%]',
-        status: 'w-[10%]',
-    };
 
     // Render a task row for the flat list
     const renderTaskRow = (task: Task, showAssignee = false) => {
@@ -236,22 +220,28 @@ export default function DashboardPage() {
         const daysUntil = getDaysUntil(task.due_date);
         const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
         const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
+        const statusColor = STATUSES[task.status]?.color || '#475569';
+        // Compact meta line under the title — replaces the old separate columns.
+        // Empty bits are filtered out (e.g. Hungary/Neo Plan have no dept/post).
+        const metaBits = (isFullTemplate
+            ? [task.assigned_department_name || DEPARTMENTS[task.department_label]?.label,
+               task.assigned_section_name,
+               showAssignee ? task.assignee_name : task.assigned_post_name]
+            : [task.assignee_name]
+        ).filter(Boolean);
         return (
-            <tr
+            <div
                 key={task.id}
                 onClick={() => setSelectedTaskId(task.id)}
-                className={`border-t border-navy-700/30 cursor-pointer transition-colors hover:bg-navy-800/40 ${
+                className={`flex items-center gap-3 md:gap-4 px-4 py-2.5 border-t border-navy-700/30 cursor-pointer transition-colors hover:bg-navy-800/40 ${
                     isOverdue ? 'bg-red-500/5' : isDueSoon ? 'bg-amber-500/5' : ''
                 }`}
+                style={{ borderLeft: `3px solid ${statusColor}` }}
             >
-                <td className={`px-4 py-2.5 ${COL.title}`}>
+                {/* Title + compact meta. Capped width so the date sits next to the
+                    title instead of being pushed to the far right edge. */}
+                <div className="flex-1 min-w-0 max-w-[560px]">
                     <div className="flex items-center gap-2">
-                        <div
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: STATUSES[task.status]?.color }}
-                            title={STATUSES[task.status]?.label}
-                            aria-label={`${t('common.status')}: ${STATUSES[task.status]?.label}`}
-                        />
                         {task.is_recurring && (
                             <span
                                 title={t('dashboard.recurring_tooltip')}
@@ -263,72 +253,51 @@ export default function DashboardPage() {
                         )}
                         <span className="font-medium text-white text-sm truncate">{task.title}</span>
                     </div>
-                    <div className="md:hidden mt-1 text-[10px] text-navy-400 space-y-0.5">
-                        <div>
-                            {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
-                            {task.assigned_section_name && ` · ${task.assigned_section_name}`}
-                        </div>
-                        {task.assigned_post_name && (
-                            <div className="text-navy-500">
-                                {task.assigned_post_name}
-                                {showAssignee && task.assignee_name && ` → ${task.assignee_name}`}
-                            </div>
-                        )}
-                    </div>
-                </td>
-                {isFullTemplate && (
-                    <>
-                        <td className={`px-4 py-2.5 text-navy-300 text-xs hidden md:table-cell truncate ${COL.dept}`}>
-                            {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
-                        </td>
-                        <td className={`px-4 py-2.5 text-navy-400 text-xs hidden md:table-cell truncate ${COL.subdept}`}>
-                            {task.assigned_section_name || '—'}
-                        </td>
-                    </>
-                )}
-                <td className={`px-4 py-2.5 text-navy-400 text-xs hidden lg:table-cell truncate ${COL.post}`}>
-                    {isFullTemplate
-                        ? (showAssignee ? (task.assignee_name || '—') : (task.assigned_post_name || '—'))
-                        : (task.assignee_name || '—')}
-                </td>
-                <td className={`px-4 py-2.5 whitespace-nowrap ${COL.date}`}>
-                    <span className={`text-xs font-medium ${
-                        isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
-                    }`}>
-                        {formatDate(task.due_date)}
-                        {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}{t('dashboard.days_short')})</span>}
-                    </span>
-                </td>
-                <td className={`px-4 py-2.5 ${COL.status}`}>
+                    {metaBits.length > 0 && (
+                        <div className="text-[10.5px] text-navy-500 mt-0.5 truncate">{metaBits.join(' · ')}</div>
+                    )}
+                </div>
+                {/* Due date */}
+                <div className={`flex-shrink-0 w-[104px] text-xs whitespace-nowrap ${
+                    isOverdue ? 'text-red-400 font-semibold' : isDueSoon ? 'text-amber-400' : 'text-navy-400'
+                }`}>
+                    {formatDate(task.due_date)}
+                    {isOverdue && <span className="ml-1 text-[10px]">-{daysOverdue}{t('dashboard.days_short')}</span>}
+                </div>
+                {/* Status control — click to change the stage inline. stopPropagation
+                    so the dropdown doesn't also open the task drawer. */}
+                <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <InlineStatusPill
                         taskId={task.id}
                         currentStatus={task.status}
                         onChanged={(newStatus) => {
-                            // Optimistically update allTasks so the row and groupings reflect the change
                             setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
                         }}
                     />
-                </td>
-            </tr>
+                </div>
+            </div>
         );
     };
 
     // Render a grouped task section
     const renderTaskSection = (title: string, icon: React.ReactNode, tasks: Task[], sectionKey: string, showAssignee = false) => {
         const groups = groupByStatus(tasks);
-        const fourthColHeader = showAssignee ? t('dashboard.col_assignee') : t('dashboard.col_post');
+        const sectKey = `sect_${sectionKey}`;
+        const sectionCollapsed = collapsedStatuses.has(sectKey);
 
         return (
             <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-navy-700/50 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
-                        {icon}
-                        {title}
-                        <span className="text-xs text-navy-400 font-normal ml-1">({tasks.length})</span>
-                    </h3>
-                </div>
+                <button
+                    onClick={() => toggleStatusCollapse(sectKey)}
+                    className="w-full px-5 py-4 border-b border-navy-700/50 flex items-center gap-2.5 hover:bg-navy-800/30 transition-colors text-left"
+                >
+                    <ChevronRight className={`w-4 h-4 text-navy-400 flex-shrink-0 transition-transform ${sectionCollapsed ? '' : 'rotate-90'}`} />
+                    {icon}
+                    <h3 className="text-sm font-semibold">{title}</h3>
+                    <span className="text-xs text-navy-400 font-normal bg-navy-800/60 rounded-full px-2 py-0.5">{tasks.length}</span>
+                </button>
 
-                {tasks.length === 0 ? (
+                {!sectionCollapsed && (tasks.length === 0 ? (
                     <div className="text-center py-8">
                         <CheckCircle2 className="w-8 h-8 text-green-400/30 mx-auto mb-2" />
                         <p className="text-navy-500 text-sm">{t('tasks.no_tasks')}</p>
@@ -350,37 +319,21 @@ export default function DashboardPage() {
                                         <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
                                     </button>
                                     {!isCollapsed && (
-                                        <table className="w-full text-sm table-fixed">
-                                            <thead>
-                                                <tr className="bg-navy-800/20">
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>{t('dashboard.col_task')}</th>
-                                                    {isFullTemplate && (
-                                                        <>
-                                                            <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
-                                                            <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
-                                                        </>
-                                                    )}
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{isFullTemplate ? fourthColHeader : t('dashboard.col_assignee')}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>{t('tasks.due_date')}</th>
-                                                    <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>{t('common.status')}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {group.tasks.map(task => renderTaskRow(task, showAssignee))}
-                                            </tbody>
-                                        </table>
+                                        <div>
+                                            {group.tasks.map(task => renderTaskRow(task, showAssignee))}
+                                        </div>
                                     )}
                                 </div>
                             );
                         })}
                     </div>
-                )}
+                ))}
             </div>
         );
     };
 
     return (
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6 animate-fade-in overflow-x-hidden max-w-full">
+        <div className="p-4 md:p-6 space-y-5 md:space-y-7 animate-fade-in overflow-x-hidden max-w-full">
             {/* Header + Controls */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
@@ -431,17 +384,12 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* "În Atenție" — Active alerts panel (compact; still pulsing) */}
+            {/* "În Atenție" — Active alerts panel (compact, calm) */}
             {isVisible('active_alerts') && activeAlerts.length > 0 && (
-                <div className="relative rounded-xl border-2 border-red-500/60 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 p-2.5 md:p-3 shadow-lg shadow-red-500/5 animate-slide-up overflow-hidden">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 blur-sm animate-pulse pointer-events-none" />
+                <div className="relative rounded-xl border border-red-500/30 border-l-[3px] border-l-red-500 bg-red-500/5 p-3 md:p-3.5 animate-slide-up overflow-hidden">
                     <div className="relative">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-xs md:text-sm font-bold flex items-center gap-2 text-red-400">
-                                <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
-                                </span>
                                 <Bell className="w-3.5 h-3.5" />
                                 {t('dashboard.attention')} — {activeAlerts.length} {activeAlerts.length === 1 ? t('dashboard.alert_singular') : t('dashboard.alert_plural')}
                             </h3>
@@ -544,13 +492,18 @@ export default function DashboardPage() {
                     {/* ALL TASKS PER USER (overseer only) — full org workload */}
                     {isOverseer && tasksByUser.length > 0 && (
                         <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
-                            <div className="px-5 py-4 border-b border-navy-700/50 flex items-center gap-2">
+                            <button
+                                onClick={() => toggleStatusCollapse('sect_all_by_user')}
+                                className="w-full px-5 py-4 border-b border-navy-700/50 flex items-center gap-2.5 hover:bg-navy-800/30 transition-colors text-left"
+                            >
+                                <ChevronRight className={`w-4 h-4 text-navy-400 flex-shrink-0 transition-transform ${collapsedStatuses.has('sect_all_by_user') ? '' : 'rotate-90'}`} />
                                 <Users className="w-4 h-4 text-emerald-400" />
                                 <h3 className="text-sm font-semibold">{t('dashboard.all_tasks_by_user')}</h3>
-                                <span className="text-xs text-navy-400 font-normal ml-1">
-                                    ({tasksByUser.reduce((sum, b) => sum + b.tasks.length, 0)})
+                                <span className="text-xs text-navy-400 font-normal bg-navy-800/60 rounded-full px-2 py-0.5">
+                                    {tasksByUser.reduce((sum, b) => sum + b.tasks.length, 0)}
                                 </span>
-                            </div>
+                            </button>
+                            {!collapsedStatuses.has('sect_all_by_user') && (
                             <div className="divide-y divide-navy-700/40">
                                 {tasksByUser.map(bucket => {
                                     const key = `user_${bucket.userId || 'unassigned'}`;
@@ -583,25 +536,9 @@ export default function DashboardPage() {
                                                                     <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
                                                                 </button>
                                                                 {!innerCollapsed && (
-                                                                    <table className="w-full text-sm table-fixed">
-                                                                        <thead>
-                                                                            <tr className="bg-navy-800/20">
-                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.title}`}>{t('dashboard.col_task')}</th>
-                                                                                {isFullTemplate && (
-                                                                                    <>
-                                                                                        <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.dept}`}>{t('tasks.department')}</th>
-                                                                                        <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden md:table-cell ${COL.subdept}`}>{t('dashboard.col_subdepartment')}</th>
-                                                                                    </>
-                                                                                )}
-                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider hidden lg:table-cell ${COL.post}`}>{isFullTemplate ? t('dashboard.col_post') : t('dashboard.col_assignee')}</th>
-                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.date}`}>{t('tasks.due_date')}</th>
-                                                                                <th className={`text-left px-4 py-2 font-medium text-navy-400 text-[10px] uppercase tracking-wider ${COL.status}`}>{t('common.status')}</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {group.tasks.map(task => renderTaskRow(task, false))}
-                                                                        </tbody>
-                                                                    </table>
+                                                                    <div>
+                                                                        {group.tasks.map(task => renderTaskRow(task, false))}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         );
@@ -612,6 +549,7 @@ export default function DashboardPage() {
                                     );
                                 })}
                             </div>
+                            )}
                         </div>
                     )}
                 </>

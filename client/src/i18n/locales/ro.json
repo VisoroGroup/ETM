@@ -744,6 +744,8 @@
     "title_count_one": "{{count}} notificare necitită",
     "title_count_many": "{{count}} notificări necitite",
     "mark_all_read": "Marchează toate citite",
+    "only_unread": "Doar necitite",
+    "new_short": "noi",
     "mark_read": "Marchează citite",
     "empty": "Nu ai notificări",
     "open_task": "Deschide sarcina →",

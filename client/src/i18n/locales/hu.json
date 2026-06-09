@@ -744,6 +744,8 @@
     "title_count_one": "{{count}} olvasatlan értesítés",
     "title_count_many": "{{count}} olvasatlan értesítés",
     "mark_all_read": "Mind olvasottnak jelöl",
+    "only_unread": "Csak olvasatlan",
+    "new_short": "új",
     "mark_read": "Olvasottnak jelöl",
     "empty": "Nincsenek értesítéseid",
     "open_task": "Feladat megnyitása →",

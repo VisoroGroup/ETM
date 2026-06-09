@@ -64,6 +64,7 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [onlyUnread, setOnlyUnread] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
 
@@ -187,20 +188,28 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
         });
     })();
 
-    // Look up a notification's company by its company_id. Used for the
-    // per-company color-coded background in the dropdown (Q34).
+    // "Doar necitite" filter: when on, hide groups that are fully read.
+    const displayed = onlyUnread ? grouped.filter(g => g.hasUnread) : grouped;
+
+    // Look up a notification's company by its company_id.
     const companyForId = (companyId: number) => companies.find(c => c.id === companyId);
 
-    // Build the inline style for a notification row. We tint the background
-    // with the company's color (heavier when unread, lighter when read) and
-    // add a thin colored left border as accent. Falls back to no inline
-    // style if the company isn't visible (e.g. user lost access) — Tailwind
-    // classes still provide a neutral default.
-    const companyTintStyle = (companyId: number, unread: boolean): React.CSSProperties => {
-        const color = companyForId(companyId)?.color;
-        const bg = hexToRgba(color, unread ? 0.22 : 0.08);
-        if (!bg || !color) return {};
-        return { backgroundColor: bg, borderLeft: `3px solid ${color}` };
+    // A small named pill (colored dot + company name) shown on every row so the
+    // company is always identifiable — on its own channel, separate from the
+    // read/unread accent (which is blue). Read rows keep the pill, just dimmed.
+    const companyPill = (companyId: number) => {
+        const c = companyForId(companyId);
+        if (!c) return null;
+        const bg = hexToRgba(c.color, 0.12) || undefined;
+        return (
+            <span
+                className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mb-1"
+                style={{ color: c.color, borderColor: c.color, background: bg }}
+            >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                {c.sidebar_name}
+            </span>
+        );
     };
 
     const toggleGroup = (taskId: string) => {
@@ -257,20 +266,39 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
             {open && (
                 <div className={`absolute left-full top-0 ml-2 w-80 rounded-xl shadow-2xl border z-[100] ${darkMode ? 'bg-navy-800 border-navy-600' : 'bg-white border-gray-200'}`}>
                     <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-navy-600' : 'border-gray-100'}`}>
-                        <h3 className="text-sm font-semibold">{t('notif.title')}</h3>
-                        {count > 0 && (
-                            <button onClick={markAllRead} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                                {t('notif.mark_all_read')}
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                            {t('notif.title')}
+                            {count > 0 && (
+                                <span className="text-[10px] font-bold bg-blue-500 text-white rounded-full px-1.5 py-0.5">
+                                    {count} {t('notif.new_short')}
+                                </span>
+                            )}
+                        </h3>
+                        <div className="flex items-center gap-2.5">
+                            <button
+                                onClick={() => setOnlyUnread(v => !v)}
+                                className={`text-[11px] rounded-full px-2 py-0.5 border transition-colors ${
+                                    onlyUnread
+                                        ? 'text-blue-300 bg-blue-500/15 border-blue-500/40'
+                                        : darkMode ? 'text-navy-400 border-navy-600 hover:text-navy-200' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                                }`}
+                            >
+                                {t('notif.only_unread')}
                             </button>
-                        )}
+                            {count > 0 && (
+                                <button onClick={markAllRead} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                    {t('notif.mark_all_read')}
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
-                        {grouped.length === 0 ? (
+                        {displayed.length === 0 ? (
                             <p className={`text-center py-8 text-sm ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
                                 {t('notif.empty')}
                             </p>
                         ) : (
-                            grouped.map(group => {
+                            displayed.map(group => {
                                 const key = group.task_id || group.notifications[0].id;
                                 const isSingle = group.notifications.length === 1;
                                 const isExpanded = expandedGroups.has(key);
@@ -278,8 +306,6 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                 // Single notification (no task or only 1) — show directly
                                 if (isSingle || !group.task_id) {
                                     const n = group.notifications[0];
-                                    const company = companyForId(n.company_id);
-                                    const tint = companyTintStyle(n.company_id, !n.is_read);
                                     return (
                                         <div
                                             key={n.id}
@@ -291,75 +317,61 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                     navigate('/tasks', { state: { openTaskId: n.task_id } });
                                                 }
                                             }}
-                                            style={tint}
-                                            className={`px-4 py-3 border-b last:border-0 cursor-pointer transition-colors ${
+                                            className={`flex gap-2.5 px-4 py-2.5 border-b last:border-0 cursor-pointer transition-colors ${
                                                 n.is_read
-                                                    ? darkMode ? 'border-navy-700 hover:bg-navy-700/40' : 'border-gray-50 hover:bg-gray-50'
-                                                    : darkMode ? 'border-b-amber-500/30' : 'border-b-amber-200'
+                                                    ? `opacity-60 ${darkMode ? 'border-navy-700 hover:bg-navy-700/30' : 'border-gray-50 hover:bg-gray-50'}`
+                                                    : `border-l-[3px] border-l-blue-500 bg-blue-500/[0.06] ${darkMode ? 'border-navy-700 hover:bg-blue-500/[0.1]' : 'border-gray-50 hover:bg-blue-50'}`
                                             }`}
                                         >
-                                            <p className={`text-xs flex items-center gap-1.5 ${n.is_read ? 'font-normal' : 'font-semibold'}`}>
-                                                {company && (
-                                                    <span
-                                                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                                                        style={{ backgroundColor: company.color }}
-                                                        title={company.sidebar_name}
-                                                    />
+                                            <div className="flex-1 min-w-0">
+                                                <div>{companyPill(n.company_id)}</div>
+                                                <p className={`text-xs ${n.is_read ? 'font-normal text-navy-300' : 'font-semibold text-white'}`}>{renderMessage(n)}</p>
+                                                {n.task_title && (
+                                                    <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{n.task_title}</p>
                                                 )}
-                                                <span className="flex-1">{renderMessage(n)}</span>
-                                            </p>
-                                            {n.task_title && (
-                                                <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
-                                                    {n.task_title}
+                                                <p className={`text-[10px] mt-1 ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>
+                                                    {timeAgoShort(n.created_at)}
+                                                    {n.created_by_name && ` · ${n.created_by_name}`}
                                                 </p>
+                                            </div>
+                                            {!n.is_read && (
+                                                <span className="w-2 h-2 mt-1 rounded-full bg-blue-500 flex-shrink-0" style={{ boxShadow: '0 0 0 3px rgba(59,130,246,.18)' }} />
                                             )}
-                                            <p className={`text-[10px] mt-1 ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>
-                                                {timeAgoShort(n.created_at)}
-                                                {n.created_by_name && ` · ${n.created_by_name}`}
-                                            </p>
                                         </div>
                                     );
                                 }
 
                                 // Grouped notifications for same task
                                 const unreadCount = group.notifications.filter(n => !n.is_read).length;
-                                const groupCompany = companyForId(group.company_id);
-                                const groupTint = companyTintStyle(group.company_id, group.hasUnread);
                                 return (
                                     <div
                                         key={key}
-                                        style={groupTint}
                                         className={`border-b last:border-0 ${
                                             group.hasUnread
-                                                ? darkMode ? 'border-b-amber-500/30' : 'border-b-amber-200'
-                                                : darkMode ? 'border-navy-700' : 'border-gray-50'
+                                                ? `border-l-[3px] border-l-blue-500 bg-blue-500/[0.06] ${darkMode ? 'border-navy-700' : 'border-gray-50'}`
+                                                : `opacity-60 ${darkMode ? 'border-navy-700' : 'border-gray-50'}`
                                         }`}
                                     >
                                         {/* Group header */}
                                         <div
-                                            className="px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-navy-700/30 transition-colors"
+                                            className="px-4 py-2.5 cursor-pointer flex items-start gap-2 hover:bg-navy-700/30 transition-colors"
                                             onClick={() => toggleGroup(key)}
                                         >
-                                            <ChevronRight className={`w-3 h-3 text-navy-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                            <ChevronRight className={`w-3 h-3 text-navy-400 flex-shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-xs truncate flex items-center gap-1.5 ${group.hasUnread ? 'font-semibold' : 'font-normal'}`}>
-                                                    {groupCompany && (
-                                                        <span
-                                                            className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                                                            style={{ backgroundColor: groupCompany.color }}
-                                                            title={groupCompany.sidebar_name}
-                                                        />
-                                                    )}
-                                                    <span className="flex-1 truncate">{group.task_title}</span>
+                                                <div>{companyPill(group.company_id)}</div>
+                                                <p className={`text-xs truncate ${group.hasUnread ? 'font-semibold text-white' : 'font-normal text-navy-300'}`}>
+                                                    {group.task_title}
                                                 </p>
                                                 <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
                                                     {group.notifications.length === 1 ? t('notif.count_one', { count: group.notifications.length }) : t('notif.count_many', { count: group.notifications.length })}
                                                     {unreadCount > 0 && ` · ${unreadCount === 1 ? t('notif.unread_one', { count: unreadCount }) : t('notif.unread_many', { count: unreadCount })}`}
                                                 </p>
                                             </div>
-                                            <span className={`text-[10px] flex-shrink-0 ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>
-                                                {timeAgoShort(group.latestAt)}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                                <span className={`text-[10px] ${darkMode ? 'text-navy-500' : 'text-gray-300'}`}>{timeAgoShort(group.latestAt)}</span>
+                                                {group.hasUnread && <span className="w-2 h-2 rounded-full bg-blue-500" style={{ boxShadow: '0 0 0 3px rgba(59,130,246,.18)' }} />}
+                                            </div>
                                         </div>
 
                                         {/* Expanded: show individual notifications */}
@@ -400,8 +412,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         }}
                                                         className={`px-4 py-2 cursor-pointer transition-colors border-t ${
                                                             n.is_read
-                                                                ? darkMode ? 'border-navy-700/50 hover:bg-navy-700/30' : 'border-gray-100 hover:bg-gray-50'
-                                                                : darkMode ? 'border-amber-500/20 bg-amber-500/15 hover:bg-amber-500/20' : 'border-amber-200 bg-amber-100/80 hover:bg-amber-100'
+                                                                ? `opacity-60 ${darkMode ? 'border-navy-700/50 hover:bg-navy-700/30' : 'border-gray-100 hover:bg-gray-50'}`
+                                                                : `border-l-2 border-l-blue-500 bg-blue-500/[0.1] ${darkMode ? 'border-t-navy-700/50 hover:bg-blue-500/[0.14]' : 'border-t-gray-100 hover:bg-blue-50'}`
                                                         }`}
                                                     >
                                                         <p className={`text-[11px] ${n.is_read ? 'font-normal text-navy-300' : 'font-medium'}`}>{renderMessage(n)}</p>
