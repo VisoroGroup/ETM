@@ -126,7 +126,8 @@ külön dobozban — nem folynak egybe.
 
 ## Hivatkozások
 
-- Commit: b29fd17; cf2bd08; e8dcb74 (Necitite/Citite); eaea25a (felelős-chip + per-user fejléc); bdbaba2 (szekció-elválasztás + chevron); 5af48c1 (per-user blokkok térköze).
+- Commit: b29fd17; cf2bd08; e8dcb74 (Necitite/Citite); eaea25a (felelős-chip + per-user fejléc); bdbaba2 (szekció-elválasztás + chevron); 5af48c1 (per-user blokkok térköze); 2f3ac68 (per-user fejléc-sáv kiemelése: világosabb bg + alsó vonal + nagyobb név + bal accent).
+- **Gotcha:** a sok egymás utáni deploy után aktív usernél „Importing a module script failed" (elavult chunk-hash) jöhet → kemény frissítés (Cmd+Shift+R) megoldja. Robert felvetette az auto-reload védőhálót (chunk-hibánál egyszeri újratöltés) — NINCS még beépítve, ha kell, külön task.
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
