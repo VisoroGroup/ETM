@@ -95,9 +95,21 @@ olvasatlan→olvasott határnál + a lista elején), a sor-body változatlan, `R
 csomagolva a kulcsokkal. A „Doar necitite" szűrő továbbra is elrejti az olvasott szekciót.
 i18n: `notif.section_unread`, `notif.section_read` (RO Necitite/Citite, HU Olvasatlan/Olvasott).
 
+## Frissítés — 4. kör (eaea25a)
+
+Robert élesben: (1) a „Create de mine"-nál a poszt + felelős neve ne folyjon össze a
+többivel, de jól látszódjon; (2) a „Toate pe utilizator"-nál a user-fejléc összemosódott a
+sorokkal, nem látszott kié.
+- `renderTaskRow`: a `metaBits` szétbontva **`locBits`** (dept · szekció · poszt, halvány) +
+  külön **felelős-chip** (UserCircle + világosabb, közepes súlyú név), csak `showAssignee`-nél
+  (Create de mine). Így a poszt látszik (halvány), a felelős kiugrik.
+- Per-user fejléc kiemelve: **UserAvatar** (a bucket első taskjának `assignee_avatar`-ja) +
+  nagyobb (15px) félkövér név + erősebb háttér (`bg-navy-800/60`) + bal accent-csík + szám-pill.
+  Most egyértelműen elkülönül a státusz-sávoktól és a soroktól. `UserAvatar` import hozzáadva.
+
 ## Hivatkozások
 
-- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás); e8dcb74 (Necitite/Citite szekciók).
+- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás); e8dcb74 (Necitite/Citite szekciók); eaea25a (felelős-chip + per-user fejléc).
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
