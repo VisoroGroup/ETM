@@ -238,9 +238,10 @@ export default function DashboardPage() {
                 }`}
                 style={{ borderLeft: `3px solid ${statusColor}` }}
             >
-                {/* Title + compact meta. Capped width so the date sits next to the
-                    title instead of being pushed to the far right edge. */}
-                <div className="flex-1 min-w-0 max-w-[560px]">
+                {/* Title + compact meta. The dashboard is now a centered narrow
+                    column, so the title fills it and the date sits at the column's
+                    right edge (not the far screen edge). */}
+                <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         {task.is_recurring && (
                             <span
@@ -333,7 +334,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="p-4 md:p-6 space-y-5 md:space-y-7 animate-fade-in overflow-x-hidden max-w-full">
+        <div className="p-4 md:p-6 space-y-5 md:space-y-7 animate-fade-in overflow-x-hidden max-w-[1040px] mx-auto w-full">
             {/* Header + Controls */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>

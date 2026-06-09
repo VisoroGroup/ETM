@@ -36,19 +36,6 @@ interface GroupedNotification {
     latestAt: string;
 }
 
-// Convert a hex color (#RRGGBB or #RGB) to rgba() with the given alpha.
-// Returns null for invalid input so callers can fall back to neutral styling.
-function hexToRgba(hex: string | undefined | null, alpha: number): string | null {
-    if (!hex) return null;
-    let h = hex.trim().replace(/^#/, '');
-    if (h.length === 3) h = h.split('').map(c => c + c).join('');
-    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
-    const r = parseInt(h.slice(0, 2), 16);
-    const g = parseInt(h.slice(2, 4), 16);
-    const b = parseInt(h.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 export default function NotificationBell({ collapsed, darkMode }: Props) {
     const { t } = useTranslation();
     const { companies, activeCompany, setActiveCompany } = useCompany();
@@ -194,20 +181,18 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
     // Look up a notification's company by its company_id.
     const companyForId = (companyId: number) => companies.find(c => c.id === companyId);
 
-    // A small named pill (colored dot + company name) shown on every row so the
-    // company is always identifiable — on its own channel, separate from the
-    // read/unread accent (which is blue). Read rows keep the pill, just dimmed.
-    const companyPill = (companyId: number) => {
+    // Company indicator: a borderless colored dot + name (cleaner than a boxed
+    // pill). The dot always carries the company colour; the name is coloured on
+    // unread rows and muted on read rows, so read/unread stays the dominant cue.
+    const companyChip = (companyId: number, unread: boolean) => {
         const c = companyForId(companyId);
         if (!c) return null;
-        const bg = hexToRgba(c.color, 0.12) || undefined;
         return (
-            <span
-                className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mb-1"
-                style={{ color: c.color, borderColor: c.color, background: bg }}
-            >
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold mb-0.5">
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                {c.sidebar_name}
+                <span style={unread ? { color: c.color } : undefined} className={unread ? '' : (darkMode ? 'text-navy-500' : 'text-gray-400')}>
+                    {c.sidebar_name}
+                </span>
             </span>
         );
     };
@@ -319,13 +304,13 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                             }}
                                             className={`flex gap-2.5 px-4 py-2.5 border-b last:border-0 cursor-pointer transition-colors ${
                                                 n.is_read
-                                                    ? `opacity-60 ${darkMode ? 'border-navy-700 hover:bg-navy-700/30' : 'border-gray-50 hover:bg-gray-50'}`
-                                                    : `border-l-[3px] border-l-blue-500 bg-blue-500/[0.06] ${darkMode ? 'border-navy-700 hover:bg-blue-500/[0.1]' : 'border-gray-50 hover:bg-blue-50'}`
+                                                    ? darkMode ? 'border-navy-700/60 hover:bg-navy-800/40' : 'border-gray-100 hover:bg-gray-50'
+                                                    : `border-l-[3px] border-l-blue-400 bg-blue-500/[0.1] ${darkMode ? 'border-navy-700/60 hover:bg-blue-500/[0.14]' : 'border-gray-100 hover:bg-blue-50'}`
                                             }`}
                                         >
                                             <div className="flex-1 min-w-0">
-                                                <div>{companyPill(n.company_id)}</div>
-                                                <p className={`text-xs ${n.is_read ? 'font-normal text-navy-300' : 'font-semibold text-white'}`}>{renderMessage(n)}</p>
+                                                <div>{companyChip(n.company_id, !n.is_read)}</div>
+                                                <p className={`text-xs ${n.is_read ? (darkMode ? 'font-normal text-navy-400' : 'font-normal text-gray-400') : 'font-semibold text-white'}`}>{renderMessage(n)}</p>
                                                 {n.task_title && (
                                                     <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>{n.task_title}</p>
                                                 )}
@@ -348,8 +333,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                         key={key}
                                         className={`border-b last:border-0 ${
                                             group.hasUnread
-                                                ? `border-l-[3px] border-l-blue-500 bg-blue-500/[0.06] ${darkMode ? 'border-navy-700' : 'border-gray-50'}`
-                                                : `opacity-60 ${darkMode ? 'border-navy-700' : 'border-gray-50'}`
+                                                ? `border-l-[3px] border-l-blue-400 bg-blue-500/[0.1] ${darkMode ? 'border-navy-700/60' : 'border-gray-100'}`
+                                                : darkMode ? 'border-navy-700/60' : 'border-gray-100'
                                         }`}
                                     >
                                         {/* Group header */}
@@ -359,8 +344,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                         >
                                             <ChevronRight className={`w-3 h-3 text-navy-400 flex-shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                             <div className="flex-1 min-w-0">
-                                                <div>{companyPill(group.company_id)}</div>
-                                                <p className={`text-xs truncate ${group.hasUnread ? 'font-semibold text-white' : 'font-normal text-navy-300'}`}>
+                                                <div>{companyChip(group.company_id, group.hasUnread)}</div>
+                                                <p className={`text-xs truncate ${group.hasUnread ? 'font-semibold text-white' : (darkMode ? 'font-normal text-navy-400' : 'font-normal text-gray-400')}`}>
                                                     {group.task_title}
                                                 </p>
                                                 <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-navy-400' : 'text-gray-400'}`}>
@@ -412,8 +397,8 @@ export default function NotificationBell({ collapsed, darkMode }: Props) {
                                                         }}
                                                         className={`px-4 py-2 cursor-pointer transition-colors border-t ${
                                                             n.is_read
-                                                                ? `opacity-60 ${darkMode ? 'border-navy-700/50 hover:bg-navy-700/30' : 'border-gray-100 hover:bg-gray-50'}`
-                                                                : `border-l-2 border-l-blue-500 bg-blue-500/[0.1] ${darkMode ? 'border-t-navy-700/50 hover:bg-blue-500/[0.14]' : 'border-t-gray-100 hover:bg-blue-50'}`
+                                                                ? darkMode ? 'border-navy-700/50 hover:bg-navy-700/30' : 'border-gray-100 hover:bg-gray-50'
+                                                                : `border-l-2 border-l-blue-400 bg-blue-500/[0.12] ${darkMode ? 'border-t-navy-700/50 hover:bg-blue-500/[0.16]' : 'border-t-gray-100 hover:bg-blue-50'}`
                                                         }`}
                                                     >
                                                         <p className={`text-[11px] ${n.is_read ? 'font-normal text-navy-300' : 'font-medium'}`}>{renderMessage(n)}</p>
