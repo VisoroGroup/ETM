@@ -107,9 +107,19 @@ sorokkal, nem látszott kié.
   nagyobb (15px) félkövér név + erősebb háttér (`bg-navy-800/60`) + bal accent-csík + szám-pill.
   Most egyértelműen elkülönül a státusz-sávoktól és a soroktól. `UserAvatar` import hozzáadva.
 
+## Frissítés — 5. kör (bdbaba2)
+
+Robert: válasszam el még jobban a Citite/Necitite-et, és a chevron-ikon „nem jó".
+- **Erősebb szekció-elválasztás:** a „Citite" fejléc kapott `mt-3` rést + látható felső
+  vonalat + halvány sávot (`bg-navy-900/40`); a fejlécek nagyobb betűköz (`tracking-[0.14em]`).
+- **Chevron a jobb szélre:** a csoportos értesítés kinyitó-chevronja eddig balra FENT lógott
+  (`items-start mt-1`), a sima soroknál meg nem volt → a cég-chipek nem igazodtak. Most a chevron
+  a jobb szélen (idő után), a fejléc `items-center` → minden sor tartalma (cég-chip + szöveg)
+  egy vonalban kezdődik.
+
 ## Hivatkozások
 
-- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás); e8dcb74 (Necitite/Citite szekciók); eaea25a (felelős-chip + per-user fejléc).
+- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08; e8dcb74 (Necitite/Citite); eaea25a (felelős-chip + per-user fejléc); bdbaba2 (erősebb szekció-elválasztás + chevron jobbra).
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
