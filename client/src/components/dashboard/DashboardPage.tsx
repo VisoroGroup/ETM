@@ -526,12 +526,12 @@ export default function DashboardPage() {
                                         <div key={key} className="rounded-lg overflow-hidden border border-navy-700/50 bg-navy-900/30">
                                             <button
                                                 onClick={() => toggleStatusCollapse(key)}
-                                                className="w-full flex items-center gap-3 px-4 py-3 bg-navy-800/60 hover:bg-navy-800/80 transition-colors border-l-[3px] border-l-navy-500"
+                                                className="w-full flex items-center gap-3 px-4 py-3.5 bg-navy-700/45 hover:bg-navy-700/65 transition-colors border-b border-navy-700/60 border-l-[3px] border-l-blue-500/60"
                                             >
-                                                <ChevronRight className={`w-4 h-4 text-navy-400 flex-shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                                                <ChevronRight className={`w-4 h-4 text-navy-300 flex-shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
                                                 <UserAvatar name={bucket.userName} avatarUrl={bucket.tasks[0]?.assignee_avatar} size="sm" />
-                                                <span className="text-[15px] font-semibold text-white">{bucket.userName}</span>
-                                                <span className="text-xs text-navy-300 bg-navy-700/70 rounded-full px-2 py-0.5 ml-1">{bucket.tasks.length}</span>
+                                                <span className="text-base font-semibold text-white tracking-tight">{bucket.userName}</span>
+                                                <span className="text-xs font-medium text-navy-200 bg-navy-900/50 rounded-full px-2 py-0.5 ml-1">{bucket.tasks.length}</span>
                                             </button>
                                             {!isCollapsed && (
                                                 <div className="px-3 pb-3 pt-1">
