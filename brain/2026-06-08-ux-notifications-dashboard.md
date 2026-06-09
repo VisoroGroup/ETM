@@ -86,9 +86,18 @@ csúnya; a Dashboard lista az egész szélességet elfoglalta, de az infók balr
   keskenyebb oszlop); a sor címe kitölti az oszlopot, a dátum/státusz az oszlop jobb szélén
   (nem a képernyő szélén). Robert: „keskenyebb ablak középen, kompaktan egy helyen".
 
+## Frissítés — 3. kör (e8dcb74)
+
+Robert: válasszuk **fizikailag külön**. A notifications mostantól **két szekció**: fent
+**„Necitite"** fejléc + olvasatlan csoportok, majd felső elválasztóval **„Citite"** fejléc +
+(halvány) olvasott csoportok. Index-alapú fejléc-beszúrás a `displayed.map`-ben (az
+olvasatlan→olvasott határnál + a lista elején), a sor-body változatlan, `React.Fragment`-be
+csomagolva a kulcsokkal. A „Doar necitite" szűrő továbbra is elrejti az olvasott szekciót.
+i18n: `notif.section_unread`, `notif.section_read` (RO Necitite/Citite, HU Olvasatlan/Olvasott).
+
 ## Hivatkozások
 
-- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás).
+- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás); e8dcb74 (Necitite/Citite szekciók).
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
