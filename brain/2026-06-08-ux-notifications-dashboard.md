@@ -117,9 +117,16 @@ Robert: válasszam el még jobban a Citite/Necitite-et, és a chevron-ikon „ne
   a jobb szélen (idő után), a fejléc `items-center` → minden sor tartalma (cég-chip + szöveg)
   egy vonalban kezdődik.
 
+## Frissítés — 6. kör (5af48c1)
+
+Robert: a „Toate pe utilizator"-ban a userek KÖZÖTT legyen hely. A bucket-wrapper
+`divide-y` (vékony vonal, 0 rés) → **`p-3 space-y-3`**, és minden user-bucket külön
+**kártya** (`rounded-lg border bg-navy-900/30`). Így a userek blokkjai térközzel,
+külön dobozban — nem folynak egybe.
+
 ## Hivatkozások
 
-- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08; e8dcb74 (Necitite/Citite); eaea25a (felelős-chip + per-user fejléc); bdbaba2 (erősebb szekció-elválasztás + chevron jobbra).
+- Commit: b29fd17; cf2bd08; e8dcb74 (Necitite/Citite); eaea25a (felelős-chip + per-user fejléc); bdbaba2 (szekció-elválasztás + chevron); 5af48c1 (per-user blokkok térköze).
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
