@@ -48,7 +48,8 @@
 
 ### `[x]` UX: notifications olvasott/olvasatlan + Dashboard „lenyugtatás"
 - **Hozzáadva / kész:** 2026-06-08
-- **Commit:** b29fd17 · **PRP:** PRPs/002-ux-calm-dashboard-and-notifications.md
+- **Commit:** b29fd17 (+ cf2bd08 finomítás: élesebb olvasott/olvasatlan, keret nélküli cég-jelölő,
+  középre zárt keskeny Dashboard) · **PRP:** PRPs/002-ux-calm-dashboard-and-notifications.md
 - **Megjegyzés:** Robert UX-visszajelzése, 4 mockup-körrel hangolva. **Notifications:** nevesített
   cég-pill minden soron (a szín olvasotton is megmarad) + kék olvasatlan-jel (bal csík + félkövér +
   pötty) + olvasatlan-számláló + „Doar necitite" szűrő. **Dashboard:** tiszta flex-sorok (státusz-csík

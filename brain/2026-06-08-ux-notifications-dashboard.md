@@ -74,9 +74,21 @@ státusz; a maradék jobb oldal üres (levegő). Így a dátum a tartalomhoz tap
 - **Élő vizuális teszt Robertnél** — a mockup ≈ a valódi app, de nem 1:1; ha élesben valami
   csúszik (sor-térköz, InlineStatusPill szélesség, meta-sor hossz), ott finomíts.
 
+## Frissítés — 2. kör (cf2bd08, élő visszajelzés)
+
+Robert élesben: az olvasott/olvasatlan MÉG MINDIG nem volt elég éles, a keretes cég-pill
+csúnya; a Dashboard lista az egész szélességet elfoglalta, de az infók balra lógtak.
+- **Notifications:** `companyPill` (keretes) → **`companyChip`** (keret nélküli színes pötty +
+  név; a név a cég színében olvasatlannál, szürke olvasottnál). Kontraszt élesítve: az
+  `opacity-60` (fakó, csúnya) helyett az olvasott **lapos + szürke szöveg**; az olvasatlan
+  **erősebb kék háttér (0.1) + kék bal csík (blue-400) + félkövér fehér**. `hexToRgba` törölve.
+- **Dashboard:** outer konténer `max-w-full` → **`max-w-[1040px] mx-auto`** (középre zárt,
+  keskenyebb oszlop); a sor címe kitölti az oszlopot, a dátum/státusz az oszlop jobb szélén
+  (nem a képernyő szélén). Robert: „keskenyebb ablak középen, kompaktan egy helyen".
+
 ## Hivatkozások
 
-- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`).
+- Commit: b29fd17 (`feat(ux): clarify notifications read/unread + calm and clean the dashboard`); cf2bd08 (finomítás).
 - PRP: PRPs/002-ux-calm-dashboard-and-notifications.md.
 - Érintett: `InlineStatusPill` (tasks/InlineStatusPill.tsx) — a státusz-vezérlő.
 - Ugyanennek a napnak a többi munkája: [[2026-06-08-task-list-visibility-fixes]], [[2026-06-08-drawer-drag-close-and-open-404]].
