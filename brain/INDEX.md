@@ -5,6 +5,7 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-06-08 | [2026-06-08-ux-notifications-dashboard](2026-06-08-ux-notifications-dashboard.md) | ux, dashboard, notifications, frontend, design | Notifications olvasott/olvasatlan tisztítva (kék jel + nevesített cég-pill, szín megmarad olvasotton is); Dashboard tiszta flex-sorok (státusz-csík + dátum a cím mellett + InlineStatusPill) + szekció-collapse + szelíd alerts; 4 mockup-kör |
 | 2026-06-08 | [2026-06-08-drawer-drag-close-and-open-404](2026-06-08-drawer-drag-close-and-open-404.md) | tasks, task-drawer, comments, ux, multitenancy | Drawer nem zár be komment-szöveg kijelölésekor (onMouseDown + target-őr); task-open 404 ("nu există/acces") vizsgálva, NYITVA (repro kell) |
 | 2026-06-08 | [2026-06-08-task-list-visibility-fixes](2026-06-08-task-list-visibility-fixes.md) | tasks, task-list, filtering, org-view, multitenancy, frontend, backend | "Sarcinile mele" kettéválasztva (Atribuite mie / Create de mine); lista 50→500 limit; szervezeti nézetbe "Fără atribuire" csoport a besorolatlan taskoknak (Emo 2 bug) |
 | 2026-06-05 | [2026-06-05-open-day-week-monthly-views](2026-06-05-open-day-week-monthly-views.md) | access-control, permissions, dayview, weekview, reports, multitenancy | Napi/heti nézet + havi riport megnyitva minden belépett usernek (requireRole('user') + route/menü/gomb feloldva); tenant-szűrés érintetlen, cégek közt nincs átlátás |

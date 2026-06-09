@@ -46,6 +46,17 @@
 
 ## Done
 
+### `[x]` UX: notifications olvasott/olvasatlan + Dashboard „lenyugtatás"
+- **Hozzáadva / kész:** 2026-06-08
+- **Commit:** b29fd17 · **PRP:** PRPs/002-ux-calm-dashboard-and-notifications.md
+- **Megjegyzés:** Robert UX-visszajelzése, 4 mockup-körrel hangolva. **Notifications:** nevesített
+  cég-pill minden soron (a szín olvasotton is megmarad) + kék olvasatlan-jel (bal csík + félkövér +
+  pötty) + olvasatlan-számláló + „Doar necitite" szűrő. **Dashboard:** tiszta flex-sorok (státusz-csík
+  + cím + halvány „részleg · poszt" + dátum a cím mellett + a meglévő InlineStatusPill mint
+  státusz-vezérlő); a nehéz szekciók („Create de mine", „Toate pe utilizator") alapból összecsukva;
+  szelíd „În Atenție" panel; több levegő. Lásd brain `2026-06-08-ux-notifications-dashboard`.
+- **Ellenőrzés:** kliens `tsc -b && vite build` zöld; lint csak pre-existing. Élő vizuális teszt Robertnél.
+
 ### `[x]` Bug (Robert): a feladat-panel bezárult komment-szöveg kijelölésekor
 - **Hozzáadva / kész:** 2026-06-08
 - **Commit:** 64cb532
