@@ -5,6 +5,7 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-06-12 | [2026-06-12-email-link-navigation-and-reliability](2026-06-12-email-link-navigation-and-reliability.md) | email, auth, tasks, task-list, filtering, notifications, deploy, frontend, backend | Email-link mindig célba ér: returnTo a belépés után (MS365+magic), handoff törölve (helyben nyit, nincs üres lap), komment-horgony görgetéssel; + lista válasz-sorrend őr + stale-chunk auto-reload (Emo 2 bejelentése) |
 | 2026-06-08 | [2026-06-08-ux-notifications-dashboard](2026-06-08-ux-notifications-dashboard.md) | ux, dashboard, notifications, frontend, design | Notifications olvasott/olvasatlan tisztítva (kék jel + nevesített cég-pill, szín megmarad olvasotton is); Dashboard tiszta flex-sorok (státusz-csík + dátum a cím mellett + InlineStatusPill) + szekció-collapse + szelíd alerts; 4 mockup-kör |
 | 2026-06-08 | [2026-06-08-drawer-drag-close-and-open-404](2026-06-08-drawer-drag-close-and-open-404.md) | tasks, task-drawer, comments, ux, multitenancy | Drawer nem zár be komment-szöveg kijelölésekor (onMouseDown + target-őr); task-open 404 ("nu există/acces") vizsgálva, NYITVA (repro kell) |
 | 2026-06-08 | [2026-06-08-task-list-visibility-fixes](2026-06-08-task-list-visibility-fixes.md) | tasks, task-list, filtering, org-view, multitenancy, frontend, backend | "Sarcinile mele" kettéválasztva (Atribuite mie / Create de mine); lista 50→500 limit; szervezeti nézetbe "Fără atribuire" csoport a besorolatlan taskoknak (Emo 2 bug) |

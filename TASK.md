@@ -12,13 +12,7 @@
 
 ## Active
 
-### `[~]` Email-link navigáció + lista-megbízhatóság (Emo bejelentések köre)
-- **Hozzáadva:** 2026-06-12 · **Bejelentő:** Emo (Roberton keresztül) · **PRP:** PRPs/003-email-link-navigation-and-list-reliability.md
-- **Akceptálási kritérium:** (1) lejárt belépésnél az email-link a belépés után is a
-  taskhoz visz (MS365 + magic link); (2) nyitott app-fül mellett a link nem hagy üres
-  lapot — a task helyben nyílik; (3) komment-email a kommenthez görget; (4) a két
-  szűrőgomb gyors váltásánál nem ragad be elavult lista; (5) deploy után a régi
-  böngésző-verzió egyszer magától újratölt chunk-hiba helyett.
+(nincs aktív feladat)
 
 ---
 
@@ -51,6 +45,17 @@
 ---
 
 ## Done
+
+### `[x]` Email-link navigáció + lista-megbízhatóság (Emo bejelentések köre)
+- **Hozzáadva / kész:** 2026-06-12 · **Bejelentő:** Emo (Roberton keresztül)
+- **Commit:** 5e13076 · **PRP:** PRPs/003-email-link-navigation-and-list-reliability.md
+- **Megjegyzés:** (1) belépés után visszavisz az eredeti email-linkhez (MS365 + magic
+  link, `returnTo` localStorage-stash); (2) a fül-átadás (BroadcastChannel) törölve —
+  a task helyben nyílik, nincs többé üres lap; (3) komment/mention/reakció email a
+  kommenthez görget kiemeléssel (`commentId` az URL-ben); (4) lista válasz-sorrend őr
+  a szűrőgomb-váltás race ellen; (5) `vite:preloadError` → egyszeri auto-reload deploy
+  utáni elavult chunkokra. Élő teszt deploy után. Lásd brain
+  `2026-06-12-email-link-navigation-and-reliability`.
 
 ### `[x]` UX: notifications olvasott/olvasatlan + Dashboard „lenyugtatás"
 - **Hozzáadva / kész:** 2026-06-08
