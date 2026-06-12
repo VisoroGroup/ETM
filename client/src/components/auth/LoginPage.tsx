@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from '../../i18n/I18nContext';
 import { authApi } from '../../services/api';
+import { stashReturnTo } from '../../utils/returnTo';
 import { Shield, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 type Mode = 'choice' | 'magic-link';
@@ -18,6 +19,10 @@ export default function LoginPage() {
 
     useEffect(() => {
         setAnimateIn(true);
+        // The login wall just interrupted a navigation (e.g. an email task
+        // link with an expired session). Remember the destination so the
+        // post-login redirect can land there instead of the dashboard.
+        stashReturnTo();
     }, []);
 
     const handleSendLink = async (e: React.FormEvent) => {

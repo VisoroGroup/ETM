@@ -12,7 +12,13 @@
 
 ## Active
 
-(nincs aktív feladat)
+### `[~]` Email-link navigáció + lista-megbízhatóság (Emo bejelentések köre)
+- **Hozzáadva:** 2026-06-12 · **Bejelentő:** Emo (Roberton keresztül) · **PRP:** PRPs/003-email-link-navigation-and-list-reliability.md
+- **Akceptálási kritérium:** (1) lejárt belépésnél az email-link a belépés után is a
+  taskhoz visz (MS365 + magic link); (2) nyitott app-fül mellett a link nem hagy üres
+  lapot — a task helyben nyílik; (3) komment-email a kommenthez görget; (4) a két
+  szűrőgomb gyors váltásánál nem ragad be elavult lista; (5) deploy után a régi
+  böngésző-verzió egyszer magától újratölt chunk-hiba helyett.
 
 ---
 

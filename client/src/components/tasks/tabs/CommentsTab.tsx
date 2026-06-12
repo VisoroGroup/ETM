@@ -65,13 +65,37 @@ interface Props {
     task: TaskDetail;
     taskId: string;
     onReload: () => void;
+    // Set when the tab was opened from a comment-notification email link:
+    // scroll that comment into view and flash it briefly.
+    highlightCommentId?: string | null;
 }
 
-export default function CommentsTab({ task, taskId, onReload }: Props) {
+export default function CommentsTab({ task, taskId, onReload, highlightCommentId }: Props) {
     const { t } = useTranslation();
     const { user, users } = useAuth();
     const { showToast } = useToast();
     const [newComment, setNewComment] = useState('');
+
+    // Email-link anchor: once the linked comment is in the loaded list, scroll
+    // to it and highlight for a moment. One-shot — later refetches (5s poll)
+    // must not yank the scroll position back.
+    const [flashCommentId, setFlashCommentId] = useState<string | null>(null);
+    const scrolledToHighlight = useRef(false);
+    useEffect(() => {
+        if (!highlightCommentId || scrolledToHighlight.current) return;
+        if (!task.comments.some(c => c.id === highlightCommentId)) return;
+        scrolledToHighlight.current = true;
+        setFlashCommentId(highlightCommentId);
+        // Next frame: the card must be in the DOM before we can scroll to it.
+        requestAnimationFrame(() => {
+            document.getElementById(`comment-${highlightCommentId}`)
+                ?.scrollIntoView({ block: 'center' });
+        });
+        // Deliberately not cleaned up: the 5s drawer poll re-runs this effect's
+        // deps and a cleanup would cancel the flash before its 2.5s elapsed.
+        // A post-unmount fire is a no-op setState in React 18.
+        setTimeout(() => setFlashCommentId(null), 2500);
+    }, [highlightCommentId, task.comments]);
 
     // Switching to the Comments tab = the user has seen the comment thread,
     // so comment/mention notifications for this task can be cleared.
@@ -229,7 +253,12 @@ export default function CommentsTab({ task, taskId, onReload }: Props) {
         const likedByNames = reactions.map(r => r.display_name);
 
         return (
-            <div className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60`}>
+            <div
+                id={`comment-${comment.id}`}
+                className={`rounded-lg border-l-[3px] ${borderColor} bg-navy-800/40 border border-navy-700/30 px-3.5 py-2.5 group transition-all hover:bg-navy-800/60 ${
+                    flashCommentId === comment.id ? 'ring-2 ring-blue-400/70 bg-blue-500/10' : ''
+                }`}
+            >
                 {/* Reply-to indicator */}
                 {isReply && parentComment && (
                     <div className="flex items-center gap-1.5 mb-1.5 pl-7">

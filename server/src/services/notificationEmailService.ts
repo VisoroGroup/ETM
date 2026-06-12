@@ -120,10 +120,11 @@ export function buildNotificationHtml(params: {
     ctaLabel?: string;          // defaults to translated "Open task"
     language?: ServerLocale;    // defaults to 'ro' for backward compatibility
     companyId?: number | null;  // task's tenant — frontend switches active company before opening
+    commentId?: string | null;  // comment/mention/reaction emails — frontend scrolls to it
 }): string {
     const {
         recipientName, subtitle, bodyLines, taskId, taskTitle,
-        language = 'ro', companyId,
+        language = 'ro', companyId, commentId,
     } = params;
     const ctaLabel = params.ctaLabel || tServer(language, 'notif_email.cta_open_task');
     const firstName = escapeHtml(recipientName.split(' ')[0]);
@@ -134,6 +135,8 @@ export function buildNotificationHtml(params: {
     // would hit a 404 when their currently-active company doesn't own the task.
     const taskUrl = `${APP_URL}/tasks?openTaskId=${encodeURIComponent(taskId)}${
         companyId != null ? `&companyId=${companyId}` : ''
+    }${
+        commentId ? `&commentId=${encodeURIComponent(commentId)}` : ''
     }`;
 
     const greeting = tServer(language, 'notif_email.greeting', { name: firstName });

@@ -3,6 +3,7 @@ import { User } from '../types';
 import { authApi } from '../services/api';
 import axios from 'axios';
 import { safeLocalStorage } from '../utils/storage';
+import { consumeReturnTo } from '../utils/returnTo';
 import { makeT } from '../i18n/I18nContext';
 
 interface AuthContextType {
@@ -49,6 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .then(({ data }) => {
                     sessionStorage.removeItem('visoro_pending_magic_link');
                     safeLocalStorage.set('visoro_token', data.token);
+                    // Land back where the login wall interrupted the user
+                    // (e.g. an email task link) instead of the dashboard.
+                    // replaceState alone is invisible to React Router — the
+                    // synthetic popstate makes it re-read the URL.
+                    window.history.replaceState({}, '', consumeReturnTo() ?? '/');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                     checkAuth();
                 })
                 .catch((err) => {
@@ -69,6 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             axios.post('/api/auth/exchange', { code: oauthCode })
                 .then(({ data }) => {
                     safeLocalStorage.set('visoro_token', data.token);
+                    // Land back where the login wall interrupted the user
+                    // (e.g. an email task link) instead of the dashboard.
+                    // replaceState alone is invisible to React Router — the
+                    // synthetic popstate makes it re-read the URL.
+                    window.history.replaceState({}, '', consumeReturnTo() ?? '/');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                     checkAuth();
                 })
                 .catch((err) => {

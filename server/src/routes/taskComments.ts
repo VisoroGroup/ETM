@@ -209,6 +209,7 @@ router.post('/comments', authMiddleware, validateCreateComment, asyncHandler(asy
                         taskTitle,
                         language,
                         companyId,
+                        commentId: rows[0].id,
                     });
 
                     sendNotificationEmail({
@@ -376,6 +377,7 @@ router.post('/comments/:commentId/react', authMiddleware, asyncHandler(async (re
                             taskTitle,
                             language,
                             companyId,
+                            commentId,
                         });
                         sendNotificationEmail({
                             userId: su.id, userEmail: su.email, userName: su.display_name,

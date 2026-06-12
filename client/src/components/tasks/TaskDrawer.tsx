@@ -32,11 +32,14 @@ interface Props {
     taskId: string;
     onClose: () => void;
     onUpdate: () => void;
+    // Comment-notification email links: open on the Comments tab and scroll
+    // to this comment. Absent for every other way of opening the drawer.
+    initialCommentId?: string | null;
 }
 
 type Tab = 'subtasks' | 'checklist' | 'comments' | 'files' | 'activity' | 'alerts' | 'dependencies';
 
-export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
+export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId }: Props) {
     const { t } = useTranslation();
     const td = useTaskDetail(taskId);
     const task = td.task;
@@ -44,7 +47,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
     const loadError = td.error;
     // Audit-3 H21/H24: Esc closes the drawer, focus restored on close.
     useModalDismiss(true, onClose);
-    const [activeTab, setActiveTab] = useState<Tab>('subtasks');
+    const [activeTab, setActiveTab] = useState<Tab>(initialCommentId ? 'comments' : 'subtasks');
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
     const { user, users } = useAuth();
     const { activeCompany } = useCompany();
@@ -602,7 +605,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate }: Props) {
                             <ErrorBoundary><SubtasksTab task={task} taskId={taskId} onReload={td.refetch} onUpdate={onUpdate} /></ErrorBoundary>
                         )}
                         {activeTab === 'comments' && (
-                            <ErrorBoundary><CommentsTab task={task} taskId={taskId} onReload={td.refetch} /></ErrorBoundary>
+                            <ErrorBoundary><CommentsTab task={task} taskId={taskId} onReload={td.refetch} highlightCommentId={initialCommentId} /></ErrorBoundary>
                         )}
                         {activeTab === 'files' && (
                             <ErrorBoundary><FilesTab task={task} taskId={taskId} onReload={td.refetch} onUpdate={onUpdate} /></ErrorBoundary>

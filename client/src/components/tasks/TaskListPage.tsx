@@ -35,6 +35,9 @@ export default function TaskListPage() {
     const [searchText, setSearchText] = useState('');
     const debouncedSearch = useDebouncedValue(searchText, 300);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    // Comment-notification emails carry a commentId — the drawer opens on the
+    // Comments tab and scrolls to it. Cleared together with selectedTaskId.
+    const [pendingCommentId, setPendingCommentId] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [orgDepartments, setOrgDepartments] = useState<OrgDepartment[]>([]);
@@ -60,6 +63,8 @@ export default function TaskListPage() {
     const { t } = useTranslation();
     const location = useLocation();
     const searchRef = useRef<HTMLInputElement>(null);
+    // Monotonic id of the latest loadTasks call — stale responses are dropped.
+    const loadSeqRef = useRef(0);
 
     // Collapsible groups & custom order
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -224,6 +229,7 @@ export default function TaskListPage() {
         const urlParams = new URLSearchParams(window.location.search);
         const openTaskIdParam = urlParams.get('openTaskId');
         const companyIdParam = urlParams.get('companyId');
+        const commentIdParam = urlParams.get('commentId');
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (openTaskIdParam && uuidRegex.test(openTaskIdParam) && companies.length > 0) {
             const targetCompanyId = companyIdParam ? Number(companyIdParam) : null;
@@ -236,9 +242,14 @@ export default function TaskListPage() {
                 setActiveCompany(targetCompanyId);
             }
             setSelectedTaskId(openTaskIdParam);
+            // Comment-notification links also carry the comment to scroll to.
+            setPendingCommentId(
+                commentIdParam && uuidRegex.test(commentIdParam) ? commentIdParam : null
+            );
             // Clean URL without reload
             urlParams.delete('openTaskId');
             urlParams.delete('companyId');
+            urlParams.delete('commentId');
             const cleanUrl = urlParams.toString()
                 ? `${window.location.pathname}?${urlParams.toString()}`
                 : window.location.pathname;
@@ -259,9 +270,14 @@ export default function TaskListPage() {
     const loadTasks = useCallback(async () => {
         const scrollY = window.scrollY;
         const isInitialLoad = tasks.length === 0;
+        // Out-of-order guard: quick filter toggles fire overlapping requests,
+        // and without this the slower (stale) response would overwrite the
+        // list of the filter that's actually active.
+        const seq = ++loadSeqRef.current;
         try {
             if (isInitialLoad) setLoading(true);
             const result = await tasksApi.list({ ...filters, exclude_status: 'terminat', limit: 500 });
+            if (seq !== loadSeqRef.current) return;
             setTasks(result.tasks);
             setTotal(result.total);
             // Restore scroll position after DOM update (only on reload, not initial)
@@ -269,9 +285,10 @@ export default function TaskListPage() {
                 requestAnimationFrame(() => window.scrollTo(0, scrollY));
             }
         } catch (err) {
+            if (seq !== loadSeqRef.current) return;
             showToast(t('tasks.error_loading_tasks'), 'error');
         } finally {
-            setLoading(false);
+            if (seq === loadSeqRef.current) setLoading(false);
         }
     }, [filters, showToast]);
 
@@ -977,7 +994,8 @@ export default function TaskListPage() {
             {selectedTaskId && (
                 <TaskDrawer
                     taskId={selectedTaskId}
-                    onClose={() => setSelectedTaskId(null)}
+                    initialCommentId={pendingCommentId}
+                    onClose={() => { setSelectedTaskId(null); setPendingCommentId(null); }}
                     onUpdate={loadTasks}
                 />
             )}
