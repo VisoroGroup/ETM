@@ -231,7 +231,7 @@ async function generateExcel(res: Response, data: ReportData) {
     const t = (key: string, vars?: Record<string, string | number>) => tServer(locale, key, vars);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'ETM';
+    workbook.creator = 'Sarcinator';
     workbook.created = new Date();
 
     const headerStyle: Partial<ExcelJS.Style> = {

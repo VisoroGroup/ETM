@@ -16,7 +16,7 @@ type Dict = Record<string, any>;
 
 const RO: Dict = {
     report: {
-        title: 'ETM — Raport lunar',
+        title: 'Sarcinator — Raport lunar',
         generated_at: 'Generat la: {{date}}',
         section_summary: 'Sumar sarcini',
         section_departments: 'Detalii pe departamente',
@@ -63,7 +63,7 @@ const RO: Dict = {
         month_12: 'Decembrie',
     },
     daily_email: {
-        subject: '[ETM] Sumar zilnic — {{date}}',
+        subject: '[Sarcinator] Sumar zilnic — {{date}}',
         header_subtitle: 'Sumar zilnic — {{date}}',
         greeting: 'Bună dimineața, {{name}}!',
         intro: 'Iată sumarul sarcinilor tale pentru astăzi:',
@@ -78,7 +78,7 @@ const RO: Dict = {
         weekly_due_on: 'scadent pe {{date}} (peste {{days}} zile)',
         blocked_reason_prefix: 'Motiv',
         no_tasks: 'Nu ai sarcini active astăzi.',
-        footer: 'Această notificare a fost generată automat de ETM.',
+        footer: 'Această notificare a fost generată automat de Sarcinator.',
         col_title: 'Sarcină',
         col_due: 'Scadență',
         col_status: 'Status',
@@ -87,19 +87,19 @@ const RO: Dict = {
     notif_email: {
         greeting: 'Bună, {{name}}!',
         cta_open_task: 'Deschide sarcina',
-        footer: 'Această notificare a fost generată automat de ETM.',
+        footer: 'Această notificare a fost generată automat de Sarcinator.',
 
-        // Subjects (used as `[ETM] {{subject}} — {{title}}`)
-        subj_task_assigned: '[ETM] Sarcină atribuită — {{title}}',
-        subj_task_reassigned: '[ETM] Sarcină nouă atribuită — {{title}}',
-        subj_comment: '[ETM] Comentariu nou — {{title}}',
-        subj_mention: '[ETM] Mențiune — {{title}}',
-        subj_reaction: '[ETM] Reacție {{reaction}} — {{title}}',
-        subj_subtask_assigned: '[ETM] Sub-sarcină atribuită — {{title}}',
-        subj_subtask_completed: '[ETM] Sub-sarcină finalizată — {{title}}',
-        subj_checklist_checked: '[ETM] Checklist bifat — {{title}}',
-        subj_status_changed: '[ETM] Status: {{status}} — {{title}}',
-        subj_completion_report: '[ETM] Raport finalizare — {{title}}',
+        // Subjects (used as `[Sarcinator] {{subject}} — {{title}}`)
+        subj_task_assigned: '[Sarcinator] Sarcină atribuită — {{title}}',
+        subj_task_reassigned: '[Sarcinator] Sarcină nouă atribuită — {{title}}',
+        subj_comment: '[Sarcinator] Comentariu nou — {{title}}',
+        subj_mention: '[Sarcinator] Mențiune — {{title}}',
+        subj_reaction: '[Sarcinator] Reacție {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[Sarcinator] Sub-sarcină atribuită — {{title}}',
+        subj_subtask_completed: '[Sarcinator] Sub-sarcină finalizată — {{title}}',
+        subj_checklist_checked: '[Sarcinator] Checklist bifat — {{title}}',
+        subj_status_changed: '[Sarcinator] Status: {{status}} — {{title}}',
+        subj_completion_report: '[Sarcinator] Raport finalizare — {{title}}',
 
         // Subtitles (short header lines in the email body)
         sub_task_assigned: 'Sarcină atribuită',
@@ -353,7 +353,7 @@ const RO: Dict = {
 
 const HU: Dict = {
     report: {
-        title: 'ETM — Havi jelentés',
+        title: 'Sarcinator — Havi jelentés',
         generated_at: 'Készült: {{date}}',
         section_summary: 'Feladatok összesítése',
         section_departments: 'Bontás osztályok szerint',
@@ -401,7 +401,7 @@ const HU: Dict = {
         month_12: 'december',
     },
     daily_email: {
-        subject: '[ETM] Napi összefoglaló — {{date}}',
+        subject: '[Sarcinator] Napi összefoglaló — {{date}}',
         header_subtitle: 'Napi összefoglaló — {{date}}',
         greeting: 'Jó reggelt, {{name}}!',
         intro: 'Itt a mai feladataid összefoglalója:',
@@ -416,7 +416,7 @@ const HU: Dict = {
         weekly_due_on: '{{date}}-án esedékes ({{days}} nap múlva)',
         blocked_reason_prefix: 'Indok',
         no_tasks: 'Ma nincs aktív feladatod.',
-        footer: 'Ezt az értesítést automatikusan az ETM küldte.',
+        footer: 'Ezt az értesítést automatikusan a Sarcinator küldte.',
         col_title: 'Feladat',
         col_due: 'Határidő',
         col_status: 'Állapot',
@@ -425,19 +425,19 @@ const HU: Dict = {
     notif_email: {
         greeting: 'Szia, {{name}}!',
         cta_open_task: 'Feladat megnyitása',
-        footer: 'Ezt az értesítést automatikusan az ETM küldte.',
+        footer: 'Ezt az értesítést automatikusan a Sarcinator küldte.',
 
         // Subjects
-        subj_task_assigned: '[ETM] Feladat hozzárendelve — {{title}}',
-        subj_task_reassigned: '[ETM] Új feladat hozzárendelve — {{title}}',
-        subj_comment: '[ETM] Új hozzászólás — {{title}}',
-        subj_mention: '[ETM] Említés — {{title}}',
-        subj_reaction: '[ETM] Reakció {{reaction}} — {{title}}',
-        subj_subtask_assigned: '[ETM] Részfeladat hozzárendelve — {{title}}',
-        subj_subtask_completed: '[ETM] Részfeladat befejezve — {{title}}',
-        subj_checklist_checked: '[ETM] Ellenőrzőlista pipálva — {{title}}',
-        subj_status_changed: '[ETM] Állapot: {{status}} — {{title}}',
-        subj_completion_report: '[ETM] Befejezési jelentés — {{title}}',
+        subj_task_assigned: '[Sarcinator] Feladat hozzárendelve — {{title}}',
+        subj_task_reassigned: '[Sarcinator] Új feladat hozzárendelve — {{title}}',
+        subj_comment: '[Sarcinator] Új hozzászólás — {{title}}',
+        subj_mention: '[Sarcinator] Említés — {{title}}',
+        subj_reaction: '[Sarcinator] Reakció {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[Sarcinator] Részfeladat hozzárendelve — {{title}}',
+        subj_subtask_completed: '[Sarcinator] Részfeladat befejezve — {{title}}',
+        subj_checklist_checked: '[Sarcinator] Ellenőrzőlista pipálva — {{title}}',
+        subj_status_changed: '[Sarcinator] Állapot: {{status}} — {{title}}',
+        subj_completion_report: '[Sarcinator] Befejezési jelentés — {{title}}',
 
         // Subtitles
         sub_task_assigned: 'Feladat hozzárendelve',
@@ -691,7 +691,7 @@ const HU: Dict = {
 
 const EN: Dict = {
     report: {
-        title: 'ETM — Monthly report',
+        title: 'Sarcinator — Monthly report',
         generated_at: 'Generated at: {{date}}',
         section_summary: 'Task summary',
         section_departments: 'Breakdown by department',
@@ -738,7 +738,7 @@ const EN: Dict = {
         month_12: 'December',
     },
     daily_email: {
-        subject: '[ETM] Daily summary — {{date}}',
+        subject: '[Sarcinator] Daily summary — {{date}}',
         header_subtitle: 'Daily summary — {{date}}',
         greeting: 'Good morning, {{name}}!',
         intro: 'Here is the summary of your tasks for today:',
@@ -753,7 +753,7 @@ const EN: Dict = {
         weekly_due_on: 'due on {{date}} (in {{days}} days)',
         blocked_reason_prefix: 'Reason',
         no_tasks: 'You have no active tasks today.',
-        footer: 'This notification was generated automatically by ETM.',
+        footer: 'This notification was generated automatically by Sarcinator.',
         col_title: 'Task',
         col_due: 'Due',
         col_status: 'Status',
@@ -762,19 +762,19 @@ const EN: Dict = {
     notif_email: {
         greeting: 'Hi {{name}}!',
         cta_open_task: 'Open task',
-        footer: 'This notification was generated automatically by ETM.',
+        footer: 'This notification was generated automatically by Sarcinator.',
 
         // Subjects
-        subj_task_assigned: '[ETM] Task assigned — {{title}}',
-        subj_task_reassigned: '[ETM] New task assigned — {{title}}',
-        subj_comment: '[ETM] New comment — {{title}}',
-        subj_mention: '[ETM] Mention — {{title}}',
-        subj_reaction: '[ETM] Reaction {{reaction}} — {{title}}',
-        subj_subtask_assigned: '[ETM] Subtask assigned — {{title}}',
-        subj_subtask_completed: '[ETM] Subtask completed — {{title}}',
-        subj_checklist_checked: '[ETM] Checklist checked — {{title}}',
-        subj_status_changed: '[ETM] Status: {{status}} — {{title}}',
-        subj_completion_report: '[ETM] Completion report — {{title}}',
+        subj_task_assigned: '[Sarcinator] Task assigned — {{title}}',
+        subj_task_reassigned: '[Sarcinator] New task assigned — {{title}}',
+        subj_comment: '[Sarcinator] New comment — {{title}}',
+        subj_mention: '[Sarcinator] Mention — {{title}}',
+        subj_reaction: '[Sarcinator] Reaction {{reaction}} — {{title}}',
+        subj_subtask_assigned: '[Sarcinator] Subtask assigned — {{title}}',
+        subj_subtask_completed: '[Sarcinator] Subtask completed — {{title}}',
+        subj_checklist_checked: '[Sarcinator] Checklist checked — {{title}}',
+        subj_status_changed: '[Sarcinator] Status: {{status}} — {{title}}',
+        subj_completion_report: '[Sarcinator] Completion report — {{title}}',
 
         // Subtitles
         sub_task_assigned: 'Task assigned',

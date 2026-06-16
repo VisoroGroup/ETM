@@ -479,7 +479,7 @@
     "export_pdf": "Export PDF",
     "share_button": "Partajează",
     "share_modal_title": "Partajare proiect",
-    "share_modal_help": "Creează un link public pe care îl poți trimite clientului. Linkul oferă acces doar la citire — vizitatorul nu are nevoie de cont ETM.",
+    "share_modal_help": "Creează un link public pe care îl poți trimite clientului. Linkul oferă acces doar la citire — vizitatorul nu are nevoie de cont Sarcinator.",
     "share_create_link": "Creează link nou",
     "share_link_copied": "Link copiat în clipboard",
     "share_no_tokens": "Niciun link de partajare creat.",

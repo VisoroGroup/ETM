@@ -479,7 +479,7 @@
     "export_pdf": "PDF exportálás",
     "share_button": "Megosztás",
     "share_modal_title": "Projekt megosztása",
-    "share_modal_help": "Hozz létre egy publikus linket, amit elküldhetsz az ügyfélnek. A link csak olvasásra ad hozzáférést — a látogatónak nem kell ETM-fiók.",
+    "share_modal_help": "Hozz létre egy publikus linket, amit elküldhetsz az ügyfélnek. A link csak olvasásra ad hozzáférést — a látogatónak nem kell Sarcinator-fiók.",
     "share_create_link": "Új link létrehozása",
     "share_link_copied": "Link a vágólapra másolva",
     "share_no_tokens": "Még nincs megosztott link.",

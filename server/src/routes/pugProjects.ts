@@ -807,7 +807,7 @@ router.get('/:id/report.pdf', asyncHandler(ensureProjectTemplate), asyncHandler(
 
     // Footer
     doc.fontSize(8).fillColor('#888').text(
-        `Generat la ${new Date().toLocaleDateString('ro-RO')} • Visoro ETM`,
+        `Generat la ${new Date().toLocaleDateString('ro-RO')} • Visoro Sarcinator`,
         50, 800, { align: 'center', width: 495 }
     );
 
