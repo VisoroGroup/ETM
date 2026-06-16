@@ -5,6 +5,7 @@
 
 | Dátum | Slug | Tags | Cím |
 |-------|------|------|-----|
+| 2026-06-16 | [2026-06-16-email-rebrand-etm-to-sarcinator](2026-06-16-email-rebrand-etm-to-sarcinator.md) | email, i18n, branding, notifications, reports | E-mail márkanév ETM → Sarcinator (tárgysorok, fejléc-wordmark ×2 fájl, láblécek RO/HU/EN; + Excel/PUG-PDF/megosztó-szöveg). Webhook fejlécek szándékosan maradtak. HU névelő-csapda: "az ETM" → "a Sarcinator" |
 | 2026-06-12 | [2026-06-12-email-link-navigation-and-reliability](2026-06-12-email-link-navigation-and-reliability.md) | email, auth, tasks, task-list, filtering, notifications, deploy, frontend, backend | Email-link mindig célba ér: returnTo a belépés után (MS365+magic), handoff törölve (helyben nyit, nincs üres lap), komment-horgony görgetéssel; + lista válasz-sorrend őr + stale-chunk auto-reload (Emo 2 bejelentése) |
 | 2026-06-08 | [2026-06-08-ux-notifications-dashboard](2026-06-08-ux-notifications-dashboard.md) | ux, dashboard, notifications, frontend, design | Notifications olvasott/olvasatlan tisztítva (kék jel + nevesített cég-pill, szín megmarad olvasotton is); Dashboard tiszta flex-sorok (státusz-csík + dátum a cím mellett + InlineStatusPill) + szekció-collapse + szelíd alerts; 4 mockup-kör |
 | 2026-06-08 | [2026-06-08-drawer-drag-close-and-open-404](2026-06-08-drawer-drag-close-and-open-404.md) | tasks, task-drawer, comments, ux, multitenancy | Drawer nem zár be komment-szöveg kijelölésekor (onMouseDown + target-őr); task-open 404 ("nu există/acces") vizsgálva, NYITVA (repro kell) |

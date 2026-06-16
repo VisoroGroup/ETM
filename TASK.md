@@ -46,6 +46,20 @@
 
 ## Done
 
+### `[x]` E-mail és látható márkanév átnevezése ETM → Sarcinator
+- **Hozzáadva / kész:** 2026-06-16 · **Bejelentő:** Robert
+- **Commit:** 017db45
+- **Megjegyzés:** A kimenő értesítő e-mailek tárgysora, a fejléc nagy wordmark-ja és
+  a láblécek "ETM" helyett "Sarcinator" (RO/HU/EN, `serverI18n.ts` + a két `<h1>`
+  wordmark `notificationEmailService.ts` / `emailScheduler.ts`). Plusz: Excel-export
+  szerző-mező, PUG projekt-PDF lábléc, appon belüli megosztó-szöveg. A webhook
+  technikai fejlécek (`X-ETM-*`, `User-Agent`) szándékosan érintetlenek. Magyar
+  névelő-javítás: "az ETM" → "a Sarcinator". Lásd brain
+  `2026-06-16-email-rebrand-etm-to-sarcinator`.
+- **Ellenőrzés:** szerver `tsc` zöld; locale-JSON-ok érvényesek; grep szerint "ETM"
+  már csak a szándékosan kihagyott helyeken. Élő teszt: a 6:00-s napi összefoglaló +
+  bármely említés/komment/státusz e-mail tárgysora Robertnél.
+
 ### `[x]` Email-link navigáció + lista-megbízhatóság (Emo bejelentések köre)
 - **Hozzáadva / kész:** 2026-06-12 · **Bejelentő:** Emo (Roberton keresztül)
 - **Commit:** 5e13076 · **PRP:** PRPs/003-email-link-navigation-and-list-reliability.md
