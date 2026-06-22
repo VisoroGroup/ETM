@@ -80,7 +80,9 @@
     "removed": "Scos din plan",
     "remove_error": "Eroare la scoaterea din plan",
     "empty": "Niciun task în plan pentru această perioadă.",
-    "rolled_over": "Reportat din perioada anterioară"
+    "rolled_over": "Reportat din perioada anterioară",
+    "add_not_allowed": "Doar sarcinile atribuite ție pot fi adăugate în plan.",
+    "empty_hint": "Adaugă sarcini din panoul unei sarcini: deschide o sarcină și apasă «Adaugă în planul săptămânii» sau «...lunii»."
   },
   "admin_companies": {
     "title": "Companii",

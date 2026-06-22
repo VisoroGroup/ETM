@@ -80,7 +80,9 @@
     "removed": "Kivéve a tervből",
     "remove_error": "Hiba a tervből kivételkor",
     "empty": "Nincs feladat a tervben erre az időszakra.",
-    "rolled_over": "Áthozva az előző időszakból"
+    "rolled_over": "Áthozva az előző időszakból",
+    "add_not_allowed": "Csak a hozzád rendelt feladatokat teheted a tervbe.",
+    "empty_hint": "Adj hozzá feladatokat egy feladat paneljéből: nyiss meg egy feladatot, és nyomd meg a «Hozzáadás a heti tervhez» vagy «...havi tervhez» gombot."
   },
   "admin_companies": {
     "title": "Cégek",

@@ -3,7 +3,7 @@ import { SkeletonDrawer } from '../ui/Skeleton';
 import { useTranslation } from '../../i18n/I18nContext';
 import { useTaskDetail } from '../../hooks/useTaskDetail';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { tasksApi, notificationsApi } from '../../services/api';
+import { tasksApi, notificationsApi, plannerApi } from '../../services/api';
 import type { TaskDetail, TaskStatus, Department, TaskAlert, RecurringFrequency } from '../../types';
 import { STATUSES, DEPARTMENTS, FREQUENCIES, statusLabel, departmentLabel } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,7 +12,7 @@ import { useToast } from '../../hooks/useToast';
 import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue } from '../../utils/helpers';
 import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
-    ChevronDown, Ban, Trash2, Copy,
+    ChevronDown, Ban, Trash2, Copy, CalendarRange,
     Loader2, RefreshCw,
     CheckCircle2, ArrowRight, AlertTriangle, ShieldCheck, Pencil, Link2, ListChecks
 } from 'lucide-react';
@@ -68,6 +68,33 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
     // Defaults to false (safer — only this instance) and is reset every time the modal opens.
     const [realignRecurring, setRealignRecurring] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
+    const [addingToPlan, setAddingToPlan] = useState(false);
+
+    // Add the open task to the caller's weekly/monthly plan. The plan is a
+    // separate layer (never touches due_date). The week anchor is this week's
+    // Monday, matching the planner/list convention. The backend silently drops
+    // a task that isn't the caller's, so added === 0 => show a friendly notice.
+    async function addToPlan(scope: 'week' | 'month') {
+        setAddingToPlan(true);
+        try {
+            const now = new Date();
+            let added: number;
+            if (scope === 'week') {
+                const monday = new Date(now);
+                monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+                const start = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+                ({ added } = await plannerApi.addToWeek(start, [taskId]));
+            } else {
+                const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                ({ added } = await plannerApi.addToMonth(month, [taskId]));
+            }
+            showToast(added > 0 ? t('planner.added_count', { count: String(added) }) : t('planner.add_not_allowed'), added > 0 ? undefined : 'error');
+        } catch {
+            showToast(t('planner.add_error'), 'error');
+        } finally {
+            setAddingToPlan(false);
+        }
+    }
 
     // Delete confirm
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -626,7 +653,7 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
 
                     {/* Footer actions */}
                     <div className="flex-shrink-0 p-4 border-t border-navy-700/50 flex justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                             <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-500/70 hover:text-red-400 flex items-center gap-1 transition-colors">
                                 <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                             </button>
@@ -644,6 +671,20 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
                                 className="text-xs text-navy-400 hover:text-blue-400 flex items-center gap-1 transition-colors disabled:opacity-40"
                             >
                                 {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />} {t('task_drawer.duplicate')}
+                            </button>
+                            <button
+                                disabled={addingToPlan}
+                                onClick={() => addToPlan('week')}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors disabled:opacity-40"
+                            >
+                                <CalendarRange className="w-3.5 h-3.5" /> {t('planner.add_to_week')}
+                            </button>
+                            <button
+                                disabled={addingToPlan}
+                                onClick={() => addToPlan('month')}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors disabled:opacity-40"
+                            >
+                                <CalendarRange className="w-3.5 h-3.5" /> {t('planner.add_to_month')}
                             </button>
                         </div>
                         <button onClick={onClose} className="px-4 py-2 bg-navy-800/50 text-navy-300 rounded-lg text-sm hover:bg-navy-700/50 transition-colors">

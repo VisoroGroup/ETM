@@ -285,8 +285,9 @@ export default function PlannerPage() {
             {/* My plan */}
             {!isLoading && viewMode === 'mine' && (
                 myItems.length === 0 ? (
-                    <div className="text-center py-16 text-navy-400 text-sm border border-navy-700/50 rounded-xl bg-navy-900/30">
-                        {t('planner.empty')}
+                    <div className="text-center py-16 px-6 text-navy-400 text-sm border border-navy-700/50 rounded-xl bg-navy-900/30">
+                        <p>{t('planner.empty')}</p>
+                        <p className="mt-2 text-xs text-navy-500 max-w-md mx-auto">{t('planner.empty_hint')}</p>
                     </div>
                 ) : (
                     <div className="border border-navy-700/50 rounded-xl bg-navy-900/30 overflow-hidden">
