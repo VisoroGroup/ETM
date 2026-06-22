@@ -25,9 +25,9 @@ import emailRoutes from './routes/emails';
 import templatesRoutes from './routes/templates';
 import savedFiltersRoutes from './routes/savedFilters';
 import activityFeedRoutes from './routes/activityFeed';
-import reportsRoutes from './routes/reports';
 import webhookRoutes from './routes/webhooks';
 import dayViewRoutes from './routes/dayView';
+import plannerRoutes from './routes/planner';
 import externalApiRoutes from './routes/externalApi';
 import filesRoutes from './routes/files';
 import userPreferencesRoutes from './routes/userPreferences';
@@ -45,6 +45,7 @@ import { globalLimiter, authLimiter, uploadLimiter } from './middleware/rateLimi
 import { globalErrorHandler } from './middleware/errorHandler';
 import { startEmailScheduler } from './cron/emailScheduler';
 import { startPugStageReminderScheduler } from './cron/pugStageReminders';
+import { startPlannerRolloverScheduler } from './cron/plannerRollover';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -96,9 +97,9 @@ app.use('/api/emails', emailRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/saved-filters', savedFiltersRoutes);
 app.use('/api/activity-feed', activityFeedRoutes);
-app.use('/api/reports', reportsRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/day-view', dayViewRoutes);
+app.use('/api/planner', plannerRoutes);
 app.use('/api/user-preferences', userPreferencesRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/policies', policyRoutes);
@@ -285,6 +286,9 @@ const server = app.listen(PORT, async () => {
 
     // Start PUG stage deadline reminder scheduler
     startPugStageReminderScheduler();
+
+    // Start planner rollover scheduler (carries unfinished plan items forward)
+    startPlannerRolloverScheduler();
 
     // Start webhook retry processor (DB-based, survives restarts)
     startWebhookRetryProcessor();

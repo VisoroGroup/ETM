@@ -8,7 +8,7 @@ import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
-    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, FileDown, Settings, UserCircle, Briefcase, RefreshCw, Users
+    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, Settings, UserCircle, Briefcase, RefreshCw, Users
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import InlineStatusPill from '../tasks/InlineStatusPill';
@@ -21,7 +21,6 @@ import type { WidgetConfig } from '../../types';
 // never opens the calendar/customizer/drawer. Lazy-loading drops the
 // dashboard's first-paint cost dramatically.
 const CalendarView = lazy(() => import('./CalendarView'));
-const ReportModal = lazy(() => import('./ReportModal'));
 const DashboardCustomizer = lazy(() => import('./DashboardCustomizer'));
 const TaskDrawer = lazy(() => import('../tasks/TaskDrawer'));
 
@@ -40,7 +39,6 @@ export default function DashboardPage() {
     const [showCalendar, setShowCalendar] = useState(false);
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
-    const [showReport, setShowReport] = useState(false);
     const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
     const [showCustomizer, setShowCustomizer] = useState(false);
     // Heavy sections start collapsed so the dashboard opens calm (alerts + stats
@@ -355,15 +353,6 @@ export default function DashboardPage() {
                     <p className="text-navy-400 text-sm mt-1">{t('dashboard.welcome')}</p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                    {/* Report button — available to every authenticated company member */}
-                    <button
-                        onClick={() => setShowReport(true)}
-                        className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs md:text-sm text-navy-300 hover:text-white hover:border-navy-600 transition-all"
-                    >
-                        <FileDown className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">{t('dashboard.report')}</span>
-                    </button>
-
                     {/* Calendar / Listă toggle */}
                     <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">
                         <button
@@ -567,11 +556,6 @@ export default function DashboardPage() {
                         </div>
                     )}
                 </>
-            )}
-            {showReport && (
-                <Suspense fallback={<LazyLoadFallback />}>
-                    <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />
-                </Suspense>
             )}
             {showCustomizer && (
                 <Suspense fallback={<LazyLoadFallback />}>

@@ -22,7 +22,7 @@ const EmailLogsPage = lazy(() => import('./components/emails/EmailLogsPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const ActivityFeedPage = lazy(() => import('./components/activity/ActivityFeedPage'));
 const DayViewPage = lazy(() => import('./components/dayview/DayViewPage'));
-const WeekViewPage = lazy(() => import('./components/dayview/WeekViewPage'));
+const PlannerPage = lazy(() => import('./components/planner/PlannerPage'));
 const CompletedTasksPage = lazy(() => import('./components/tasks/CompletedTasksPage'));
 const SearchPage = lazy(() => import('./components/search/SearchPage'));
 const OrphanTasksPage = lazy(() => import('./components/admin/OrphanTasksPage'));
@@ -102,7 +102,9 @@ function AppRoutes() {
           <Route path="/orfani" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><ErrorBoundary><OrphanTasksPage /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/emails" element={<ProtectedRoute allowedRoles={['admin', 'superadmin', 'manager']}><ErrorBoundary><EmailLogsPage /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/day-view" element={<ErrorBoundary><DayViewPage /></ErrorBoundary>} />
-          <Route path="/week-view" element={<ErrorBoundary><WeekViewPage /></ErrorBoundary>} />
+          <Route path="/planner" element={<ErrorBoundary><PlannerPage /></ErrorBoundary>} />
+          {/* Old deadline-based week view is gone — bookmarks now land on the planner. */}
+          <Route path="/week-view" element={<Navigate to="/planner" replace />} />
           <Route path="/terminate" element={<ErrorBoundary><CompletedTasksPage /></ErrorBoundary>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

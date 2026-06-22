@@ -12,7 +12,16 @@
 
 ## Active
 
-(nincs aktív feladat)
+### `[~]` Heti és havi tervező (kézi feladat-kuráció)
+- **Hozzáadva:** 2026-06-22 · **Bejelentő:** Robert · **PRP:** PRPs/004-weekly-monthly-planner.md
+- **Állapot:** PRP megírva (Draft), **Robert jóváhagyására vár** — kód még nincs.
+- **Akceptálási kritérium:** a felhasználó a feladatlistában bejelöléssel a heti/havi
+  tervébe tesz meglévő feladatokat (a határidő érintetlenül); a heti tételek automatikusan
+  a haviba számítanak; a be-nem-fejezettek átgörögnek; vezető látja a céges összesítőt;
+  tenant-izoláció sértetlen. Részletek a PRP-ben.
+- **Bővítés (2026-06-22):** a Tervező leváltja a régi **heti nézetet** (`/week-view` →
+  átirányít a Tervezőre) és a **havi riportot** (teljesen kivéve). A **napi nézet marad**.
+  A lezárás-e-mail (completion report) érintetlen — más rendszer.
 
 ---
 

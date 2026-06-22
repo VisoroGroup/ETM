@@ -455,6 +455,61 @@ export interface WebhookDelivery {
     subscription_description?: string;
 }
 
+// --- PLANNER TYPES (Planificare săptămânală / lunară, PRP 004) ---
+// The planner is a separate layer over tasks: a user marks which existing
+// tasks they intend to do this week/month. It never touches tasks.due_date.
+// Keep these in sync with server/src/types/index.ts (PlannedItem).
+
+export type PlannerScope = 'week' | 'month';
+
+/**
+ * One planned task as returned by the planner endpoints. It is a subset of
+ * the task display fields plus the planning metadata (scope + period_start).
+ * `period_start` is the Monday of the week, or the 1st of the month.
+ */
+export interface PlannedItem {
+    task_id: string;
+    title: string;
+    status: TaskStatus;
+    due_date: string;
+    department_label: Department;
+    assigned_to: string | null;
+    assignee_name?: string | null;
+    scope: PlannerScope;
+    period_start: string; // YYYY-MM-DD
+    /** TRUE if the rollover cron carried this item forward from a previous period. */
+    rolled_over: boolean;
+}
+
+export interface PlannerWeekResponse {
+    start: string; // YYYY-MM-DD (Monday)
+    end: string;   // YYYY-MM-DD (Sunday)
+    items: PlannedItem[];
+}
+
+export interface PlannerMonthResponse {
+    month: string; // YYYY-MM
+    items: PlannedItem[];
+}
+
+/** One user's plan inside the company overview (grouped per user). */
+export interface PlannerCompanyUser {
+    user_id: string;
+    display_name: string;
+    items: PlannedItem[];
+}
+
+export interface PlannerCompanyWeekResponse {
+    start: string;
+    end: string;
+    users: PlannerCompanyUser[];
+}
+
+export interface PlannerCompanyMonthResponse {
+    month: string;
+    users: PlannerCompanyUser[];
+}
+
 // Notifications — multi-tenant: each notification carries the company_id
 // it belongs to so the UI can color-code items by company (Q34).
 export interface Notification {

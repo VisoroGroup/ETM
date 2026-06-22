@@ -37,7 +37,7 @@ function buildMenuForCompany(
             { to: '/search', icon: Search, label: t('nav.search') },
             { to: '/activitate', icon: Activity, label: t('nav.activity') },
             { to: '/day-view', icon: CalendarClock, label: t('nav.day_view') },
-            { to: '/week-view', icon: CalendarRange, label: t('nav.week_view') },
+            { to: '/planner', icon: CalendarRange, label: t('nav.planner') },
             ...(role.isAdmin ? [{ to: '/admin', icon: Shield, label: t('nav.admin') }] : []),
             ...(role.isAdmin ? [{ to: '/admin/companies', icon: Building2, label: t('nav.companies') }] : []),
             ...(role.isAdmin ? [{ to: '/orfani', icon: AlertTriangle, label: t('nav.orphan_tasks') }] : []),
@@ -46,16 +46,16 @@ function buildMenuForCompany(
         ];
     }
     // 'simple' (Hungary) and 'project' (Neo Plan): per Q33+Q53 the user-visible
-    // pages are tasks/day-view/week-view/terminate plus activity/notifications/
-    // email-log. Day-view/week-view will be auto-rebased to user-grouping for
-    // non-'full' companies (no department structure exists). Project type also
-    // gets a Proiecte (PUG) entry — placeholder route for now until Phase 6.
+    // pages are tasks/day-view/planner/terminate plus activity/notifications/
+    // email-log. Day-view is auto-rebased to user-grouping for non-'full'
+    // companies (no department structure exists). Project type also gets a
+    // Proiecte (PUG) entry — placeholder route for now until Phase 6.
     return [
         ...(tpl === 'project' ? [{ to: '/proiecte', icon: LayoutDashboard, label: t('nav.projects') }] : []),
         { to: '/tasks', icon: ListTodo, label: t('nav.tasks') },
         { to: '/activitate', icon: Activity, label: t('nav.activity') },
         { to: '/day-view', icon: CalendarClock, label: t('nav.day_view') },
-        { to: '/week-view', icon: CalendarRange, label: t('nav.week_view') },
+        { to: '/planner', icon: CalendarRange, label: t('nav.planner') },
         ...(role.isManagerOrAbove ? [{ to: '/emails', icon: Mail, label: t('nav.email_log') }] : []),
         ...(tpl === 'project' && role.isAdmin ? [{ to: '/admin/pug', icon: Settings, label: t('nav.pug_config') }] : []),
         { to: '/terminate', icon: CheckCircle2, label: t('nav.completed') },

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, SubtaskComment, SubtaskAttachment, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy, Company } from '../types';
+import { Task, TaskDetail, TaskFilters, DashboardStats, DashboardCharts, User, Subtask, SubtaskComment, SubtaskAttachment, TaskComment, TaskAttachment, TaskAlert, OrgDepartment, OrgSection, OrgPost, Policy, Company, PlannerWeekResponse, PlannerMonthResponse, PlannerCompanyWeekResponse, PlannerCompanyMonthResponse } from '../types';
 import { safeLocalStorage } from '../utils/storage';
 
 const api = axios.create({
@@ -311,7 +311,6 @@ export const webhookApi = {
 // Day View (all authenticated company members)
 export const dayViewApi = {
     get: (date: string) => api.get(`/day-view`, { params: { date } }).then(r => r.data),
-    getWeek: (start: string) => api.get(`/day-view/week`, { params: { start } }).then(r => r.data),
     downloadPdf: async (userId: string, date: string) => {
         const res = await api.get(`/day-view/pdf/${userId}`, {
             params: { date },
@@ -324,6 +323,34 @@ export const dayViewApi = {
         link.click();
         URL.revokeObjectURL(url);
     },
+};
+
+// Planner (Planificare săptămânală / lunară, PRP 004). The plan is a separate
+// layer over tasks — adding a task here never changes its due_date. Tenant
+// scoping (X-Active-Company) is applied automatically by the request
+// interceptor above, so every call only ever touches the active company's plan.
+export const plannerApi = {
+    // `start` is the Monday of the target week (YYYY-MM-DD); `month` is YYYY-MM.
+    getWeek: (start: string) =>
+        api.get<PlannerWeekResponse>('/planner/week', { params: { start } }).then(r => r.data),
+    getMonth: (month: string) =>
+        api.get<PlannerMonthResponse>('/planner/month', { params: { month } }).then(r => r.data),
+    addToWeek: (start: string, task_ids: string[]) =>
+        api.post<{ added: number }>('/planner/week', { start, task_ids }).then(r => r.data),
+    addToMonth: (month: string, task_ids: string[]) =>
+        api.post<{ added: number }>('/planner/month', { month, task_ids }).then(r => r.data),
+    removeFromWeek: (taskId: string, start: string) =>
+        api.delete<{ removed: number }>(`/planner/week/${taskId}`, { params: { start } }).then(r => r.data),
+    removeFromMonth: (taskId: string, month: string) =>
+        api.delete<{ removed: number }>(`/planner/month/${taskId}`, { params: { month } }).then(r => r.data),
+    // Company overview — server gates these on a user-id whitelist (403 otherwise).
+    getCompanyWeek: (start: string) =>
+        api.get<PlannerCompanyWeekResponse>('/planner/company/week', { params: { start } }).then(r => r.data),
+    getCompanyMonth: (month: string) =>
+        api.get<PlannerCompanyMonthResponse>('/planner/company/month', { params: { month } }).then(r => r.data),
+    // Whether the current user may see the company overview switch at all.
+    canViewCompany: () =>
+        api.get<{ allowed: boolean }>('/planner/can-view-company').then(r => r.data),
 };
 
 // Org Structure (Departments → Sections → Posts)

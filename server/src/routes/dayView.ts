@@ -61,40 +61,6 @@ async function getTemplateType(companyId: number | undefined): Promise<TemplateT
     return rows[0]?.template_type ?? 'full';
 }
 
-// GET /api/day-view/week?start=YYYY-MM-DD — 7 days starting at `start`
-// Returns { days: [{ date, users: [...] }, ...] } where each day uses the same
-// shape as /day-view so the client can re-use renderers.
-router.get('/week', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
-    const startStr = (req.query.start as string) || new Date().toISOString().split('T')[0];
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) {
-        res.status(400).json({ error: tError(req, 'invalid_date_format_ymd') });
-        return;
-    }
-
-    // Build 7 dates starting at `start`. We stay in local time the whole way —
-    // splitting on toISOString() would convert to UTC first and, on servers east
-    // of UTC, shift each day by one. Since the input is already YYYY-MM-DD, we
-    // just increment the date component and format it back.
-    const dates: string[] = [];
-    const [startY, startM, startD] = startStr.split('-').map(Number);
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(startY, startM - 1, startD + i);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        dates.push(`${y}-${m}-${dd}`);
-    }
-
-    const templateType = await getTemplateType(req.activeCompanyId);
-
-    // Query each day in parallel
-    const days = await Promise.all(
-        dates.map(async (date) => ({ date, users: await getDayViewData(date, req.activeCompanyId, templateType) }))
-    );
-
-    res.json({ start: dates[0], end: dates[dates.length - 1], days, template_type: templateType });
-}));
-
 // GET /api/day-view?date=YYYY-MM-DD
 router.get('/', authMiddleware, requireRole('user'), asyncHandler(async (req: AuthRequest, res: Response) => {
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];

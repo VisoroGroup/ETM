@@ -26,7 +26,12 @@ csatolmány, "În Atenție" figyelmeztetés, függőség, ismétlődés). A
 `project`-template cégeknél fut a **PUG (Projekt Ügymenet)** alrendszer:
 többlépcsős projektek (Talajradar/David-GPR flow) szakasz-státuszokkal,
 egyéni mezőkkel, projekt-csatolmányokkal és publikus megosztó linkekkel.
-A felület többnyelvű (RO a teljes master, HU és EN), alapnyelv a román.
+A felhasználók kézi **heti/havi tervet** (Planificare) is összeállíthatnak a meglévő
+feladatokból (bejelöléssel, a határidőt nem érintve; a heti tételek automatikusan a
+haviba számítanak, a be-nem-fejezettek hetente átgörögnek). Egy szűk vezetői kör
+(user-whitelist) céges összesítőt is lát. Ezzel a korábbi határidő-alapú **heti nézet**
+és a **havi riport** megszűnt (a `/week-view` a tervezőre irányít); a **napi nézet**
+megmaradt. A felület többnyelvű (RO a teljes master, HU és EN), alapnyelv a román.
 
 **Nem része:**
 - **Payments / Financiar modul** — eltávolítva. A 2026-03 verzióban még
@@ -51,10 +56,10 @@ A felület többnyelvű (RO a teljes master, HU és EN), alapnyelv a román.
 |-----------|-----------|-------------|
 | Frontend SPA | UI, routing, állapot, lazy-loaded oldalak | React 19 + TS + Tailwind v4 (Vite), React Router 7, TanStack Query |
 | Backend API | REST API, auth, üzleti logika, tenant-scoping | Express 4 + TS, `pg` |
-| Adatbázis | Perzisztencia (multi-tenant); fájlok és avatárok `bytea`-ban | PostgreSQL 15 (Railway managed), 093 migráció |
+| Adatbázis | Perzisztencia (multi-tenant); fájlok és avatárok `bytea`-ban | PostgreSQL 15 (Railway managed), 094 migráció |
 | Auth | Bejelentkezés + cég-kontextus | Microsoft Entra (MSAL) + magic-link, JWT (HS256) |
 | Email | Értesítések + napi összefoglaló | Microsoft Graph API (Mail.Send) |
-| Cron | Ütemezett job-ok (napi email, PUG emlékeztetők) | node-cron + DB-alapú distributed lock (multi-replica Railway) |
+| Cron | Ütemezett job-ok (napi email, PUG emlékeztetők, heti/havi terv-átgörgetés) | node-cron + DB-alapú distributed lock (multi-replica Railway) |
 | MCP szerver | AI-asszisztens integráció | @modelcontextprotocol/sdk → `/api/v1` |
 | Külső REST API | Programozott hozzáférés | `/api/v1`, Bearer token (`apiTokenAuth`) |
 
@@ -129,4 +134,5 @@ A felület többnyelvű (RO a teljes master, HU és EN), alapnyelv a román.
   (operating rules).
 
 ---
-*Utoljára frissítve: 2026-05-29 — felépítve a meglévő kódbázisból (nem interjúval).*
+*Utoljára frissítve: 2026-06-22 — heti/havi tervező (PRP 004), a heti nézet + havi riport
+leváltása. Korábban: 2026-05-29 — felépítve a meglévő kódbázisból (nem interjúval).*

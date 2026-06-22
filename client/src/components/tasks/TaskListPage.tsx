@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { tasksApi, savedFiltersApi, userPreferencesApi, departmentsApi } from '../../services/api';
+import { tasksApi, savedFiltersApi, userPreferencesApi, departmentsApi, plannerApi } from '../../services/api';
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS, OrgDepartment, departmentLabel } from '../../types';
 import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
@@ -18,7 +18,7 @@ import {
     Search, Filter, Plus, X, Loader2,
     AlertTriangle, Clock, CheckCircle2, Ban, Calendar, RefreshCw, ListTodo,
     LayoutList, Trash2, CheckSquare, Square, ChevronDown, UserCircle, Tag,
-    Bookmark, BookmarkPlus, Link2, ChevronRight, ArrowUp, ArrowDown, FileText
+    Bookmark, BookmarkPlus, Link2, ChevronRight, ArrowUp, ArrowDown, FileText, CalendarRange
 } from 'lucide-react';
 import { authApi } from '../../services/api';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
@@ -53,6 +53,7 @@ export default function TaskListPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
     const [bulkDeptOpen, setBulkDeptOpen] = useState(false);
+    const [bulkPlanOpen, setBulkPlanOpen] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deptDropdownId, setDeptDropdownId] = useState<string | null>(null);
     const [savedViews, setSavedViews] = useState<any[]>([]);
@@ -401,6 +402,36 @@ export default function TaskListPage() {
         }
         setSelectedIds(new Set());
         loadTasks();
+    }
+    // Add the selected tasks to the current week's (or month's) plan. The plan
+    // is a separate layer — this never touches the tasks' due_date. The server
+    // validates eligibility (task in company AND assigned-to-me / has my subtask)
+    // and returns how many rows it actually inserted; ineligible ones are
+    // silently skipped, so `added` may be less than the selection.
+    async function bulkAddToPlan(scope: 'week' | 'month') {
+        setBulkPlanOpen(false);
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        try {
+            let added: number;
+            if (scope === 'week') {
+                // Monday of the current week — must match the planner/week-view
+                // convention so the task lands in the week the user expects.
+                const now = new Date();
+                const diff = (now.getDay() + 6) % 7; // days back to Monday
+                now.setDate(now.getDate() - diff);
+                const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                ({ added } = await plannerApi.addToWeek(start, ids));
+            } else {
+                const d = new Date();
+                const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                ({ added } = await plannerApi.addToMonth(month, ids));
+            }
+            showToast(t('planner.added_count', { count: String(added) }));
+            setSelectedIds(new Set());
+        } catch {
+            showToast(t('planner.add_error'), 'error');
+        }
     }
     async function bulkAssign(userId: string | null) {
         setBulkAssignOpen(false);
@@ -870,7 +901,7 @@ export default function TaskListPage() {
                     {/* Status change */}
                     <div className="relative">
                         <button
-                            onClick={() => { setBulkStatusOpen(o => !o); setBulkAssignOpen(false); }}
+                            onClick={() => { setBulkStatusOpen(o => !o); setBulkAssignOpen(false); setBulkDeptOpen(false); setBulkPlanOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
                             <CheckSquare className="w-3.5 h-3.5" /> {t('common.status')} <ChevronDown className="w-3 h-3" />
@@ -894,7 +925,7 @@ export default function TaskListPage() {
                     {/* Assign */}
                     <div className="relative">
                         <button
-                            onClick={() => { setBulkAssignOpen(o => !o); setBulkStatusOpen(false); }}
+                            onClick={() => { setBulkAssignOpen(o => !o); setBulkStatusOpen(false); setBulkDeptOpen(false); setBulkPlanOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
                             <UserCircle className="w-3.5 h-3.5" /> {t('tasks.assign')} <ChevronDown className="w-3 h-3" />
@@ -919,7 +950,7 @@ export default function TaskListPage() {
                     {/* Department */}
                     <div className="relative">
                         <button
-                            onClick={() => { setBulkDeptOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); }}
+                            onClick={() => { setBulkDeptOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); setBulkPlanOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 border border-navy-600 rounded-lg text-xs font-medium text-white transition-colors"
                         >
                             <Tag className="w-3.5 h-3.5" /> {t('tasks.dept_short')} <ChevronDown className="w-3 h-3" />
@@ -937,6 +968,32 @@ export default function TaskListPage() {
                                         {DEPARTMENTS[dept].label}
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Add to plan (week / month) */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setBulkPlanOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); setBulkDeptOpen(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/40 rounded-lg text-xs font-medium text-blue-400 transition-colors"
+                        >
+                            <CalendarRange className="w-3.5 h-3.5" /> {t('planner.add_to_plan')} <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {bulkPlanOpen && (
+                            <div className="absolute bottom-10 left-0 bg-navy-800 border border-navy-700 rounded-xl shadow-xl py-1 min-w-[220px] animate-slide-up">
+                                <button
+                                    onClick={() => bulkAddToPlan('week')}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-xs text-white hover:bg-navy-700 transition-colors"
+                                >
+                                    {t('planner.add_to_week')}
+                                </button>
+                                <button
+                                    onClick={() => bulkAddToPlan('month')}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-xs text-white hover:bg-navy-700 transition-colors"
+                                >
+                                    {t('planner.add_to_month')}
+                                </button>
                             </div>
                         )}
                     </div>

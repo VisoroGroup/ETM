@@ -247,6 +247,77 @@ export interface EmailLog {
     error_message: string | null;
 }
 
+// ==========================================
+// Planner (weekly / monthly task curation) — see PRPs/004 + migration 094.
+// A SEPARATE layer over tasks: a user manually picks existing tasks to work on
+// this week/month. It never touches tasks.due_date.
+// ==========================================
+
+export type PlannerScope = 'week' | 'month';
+
+// One row of the planned_tasks table.
+export interface PlannedTask {
+    id: string;
+    task_id: string;
+    user_id: string;
+    company_id: number;
+    scope: PlannerScope;
+    /** Monday of the week (scope='week') or 1st of the month (scope='month'), YYYY-MM-DD. */
+    period_start: string;
+    created_at: Date;
+}
+
+// A planned task as returned to the client: the task fields needed to render a
+// row, joined from `tasks`, plus the planner metadata. `assignee_name` is only
+// present when the task has a direct assignee.
+export interface PlannedItem {
+    task_id: string;
+    title: string;
+    status: TaskStatus;
+    due_date: string;
+    department_label: Department | null;
+    assigned_to: string | null;
+    assignee_name?: string | null;
+    scope: PlannerScope;
+    /** The period this item was planned into, YYYY-MM-DD. */
+    period_start: string;
+    /** TRUE if the rollover cron carried this item forward from a previous period. */
+    rolled_over: boolean;
+}
+
+// GET /api/planner/week response.
+export interface PlannerWeekResponse {
+    start: string;
+    end: string;
+    items: PlannedItem[];
+}
+
+// GET /api/planner/month response.
+export interface PlannerMonthResponse {
+    month: string;
+    items: PlannedItem[];
+}
+
+// One user's bucket in the company overview (whitelist viewers only).
+export interface PlannerCompanyUser {
+    user_id: string;
+    display_name: string;
+    items: PlannedItem[];
+}
+
+// GET /api/planner/company/week response.
+export interface PlannerCompanyWeekResponse {
+    start: string;
+    end: string;
+    users: PlannerCompanyUser[];
+}
+
+// GET /api/planner/company/month response.
+export interface PlannerCompanyMonthResponse {
+    month: string;
+    users: PlannerCompanyUser[];
+}
+
 // Department config
 export const DEPARTMENTS: Record<Department, { label: string; color: string }> = {
     departament_1: { label: 'Comunicare și HR', color: '#3B82F6' },
