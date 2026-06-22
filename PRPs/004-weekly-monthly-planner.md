@@ -1,7 +1,7 @@
 # PRP: 004 — Heti és havi tervező (Planificare săptămânală / lunară)
 
-**Státusz:** Draft — 2026-06-22. **Jóváhagyásra vár** (Robert). Két kérdés-kör után
-összeállt a scope (lásd a session-beszélgetést).
+**Státusz:** Done — 2026-06-22. Robert jóváhagyta (két kérdés-kör után), élesre pusholva
+(commit 23be23e). Workflow-val épült (9 agent). Lásd brain `2026-06-22-weekly-monthly-planner`.
 
 ## Goal
 

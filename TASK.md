@@ -12,16 +12,7 @@
 
 ## Active
 
-### `[~]` Heti és havi tervező (kézi feladat-kuráció)
-- **Hozzáadva:** 2026-06-22 · **Bejelentő:** Robert · **PRP:** PRPs/004-weekly-monthly-planner.md
-- **Állapot:** PRP megírva (Draft), **Robert jóváhagyására vár** — kód még nincs.
-- **Akceptálási kritérium:** a felhasználó a feladatlistában bejelöléssel a heti/havi
-  tervébe tesz meglévő feladatokat (a határidő érintetlenül); a heti tételek automatikusan
-  a haviba számítanak; a be-nem-fejezettek átgörögnek; vezető látja a céges összesítőt;
-  tenant-izoláció sértetlen. Részletek a PRP-ben.
-- **Bővítés (2026-06-22):** a Tervező leváltja a régi **heti nézetet** (`/week-view` →
-  átirányít a Tervezőre) és a **havi riportot** (teljesen kivéve). A **napi nézet marad**.
-  A lezárás-e-mail (completion report) érintetlen — más rendszer.
+(nincs aktív feladat)
 
 ---
 
@@ -54,6 +45,19 @@
 ---
 
 ## Done
+
+### `[x]` Heti és havi tervező + a heti nézet/havi riport leváltása
+- **Hozzáadva / kész:** 2026-06-22 · **Bejelentő:** Robert · **PRP:** PRPs/004-weekly-monthly-planner.md
+- **Commit:** 23be23e (élesre pusholva)
+- **Megjegyzés:** Új kézi tervező (planned_tasks tábla 094, planner route 9 végpont,
+  napi átgörgető cron, PlannerPage Heti/Havi + céges áttekintő). A terv külön réteg
+  (nem írja a due_date-et); heti→havi számolt unió; céges nézet user-whitelisttel
+  (Emo/Robert/Mia). Leváltva: heti nézet (`/week-view`→`/planner`) és havi riport
+  (ReportModal, reports.ts törölve). Napi nézet + lezárás-e-mail érintetlen.
+  Workflow-val épült (9 agent). Lásd brain `2026-06-22-weekly-monthly-planner`.
+- **Ellenőrzés:** server tsc + client tsc + vite build zöld (kétszer); 3 adversarial
+  review (tenant/eltávolítás/i18n) tiszta. **Élő teszt deploy után Robertnél** (a 094
+  migráció a Railway deploy-kor fut).
 
 ### `[x]` E-mail és látható márkanév átnevezése ETM → Sarcinator
 - **Hozzáadva / kész:** 2026-06-16 · **Bejelentő:** Robert
