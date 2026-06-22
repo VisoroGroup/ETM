@@ -675,14 +675,14 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
                             <button
                                 disabled={addingToPlan}
                                 onClick={() => addToPlan('week')}
-                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors disabled:opacity-40"
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25 flex items-center gap-1.5 font-medium transition-colors disabled:opacity-40"
                             >
                                 <CalendarRange className="w-3.5 h-3.5" /> {t('planner.add_to_week')}
                             </button>
                             <button
                                 disabled={addingToPlan}
                                 onClick={() => addToPlan('month')}
-                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors disabled:opacity-40"
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25 flex items-center gap-1.5 font-medium transition-colors disabled:opacity-40"
                             >
                                 <CalendarRange className="w-3.5 h-3.5" /> {t('planner.add_to_month')}
                             </button>

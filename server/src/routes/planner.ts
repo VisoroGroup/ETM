@@ -84,6 +84,21 @@ async function resolvePlannableTaskIds(
     companyId: number,
 ): Promise<string[]> {
     if (taskIds.length === 0) return [];
+    // Whitelist viewers (the 3 leaders) organize the whole team's work, so they
+    // may plan ANY task in the active company. Everyone else is limited to tasks
+    // assigned to them — directly, or via a subtask. Both paths stay tenant-scoped
+    // (company_id = the active company).
+    if (canViewCompanyPlan(userId)) {
+        const { rows } = await pool.query<{ id: string }>(
+            `SELECT t.id
+               FROM tasks t
+              WHERE t.id = ANY($1::uuid[])
+                AND t.company_id = $2
+                AND t.deleted_at IS NULL`,
+            [taskIds, companyId]
+        );
+        return rows.map((r) => r.id);
+    }
     const { rows } = await pool.query<{ id: string }>(
         `SELECT DISTINCT t.id
            FROM tasks t
