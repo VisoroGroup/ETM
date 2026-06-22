@@ -58,6 +58,10 @@
 - **Ellenőrzés:** server tsc + client tsc + vite build zöld (kétszer); 3 adversarial
   review (tenant/eltávolítás/i18n) tiszta. **Élő teszt deploy után Robertnél** (a 094
   migráció a Railway deploy-kor fut).
+- **Követő javítás (e57e68f):** a betervezés a feladat-panel (TaskDrawer) láblécébe
+  került ("Hozzáadás a heti/havi tervhez"), mert a lista-kijelölő négyzet egyik
+  nézetben sincs renderelve → a korábbi "Tervbe" gomb elérhetetlen volt. + üres-állapot
+  útmutató. Lásd brain `2026-06-22-weekly-monthly-planner` (Frissítés szekció).
 
 ### `[x]` E-mail és látható márkanév átnevezése ETM → Sarcinator
 - **Hozzáadva / kész:** 2026-06-16 · **Bejelentő:** Robert

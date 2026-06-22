@@ -1,7 +1,7 @@
 # 2026-06-22 — Heti/havi tervező + a heti nézet és havi riport leváltása
 
 **Tags:** planner, tasks, multitenancy, cron, i18n, dayview, reports, access-control, workflow
-**Commit:** 23be23e (feature) · PRP: PRPs/004-weekly-monthly-planner.md
+**Commit:** 23be23e (feature) + e57e68f (felfedezhetőségi javítás) · PRP: PRPs/004-weekly-monthly-planner.md
 **Related:** [[2026-06-05-open-day-week-monthly-views]] (a most leváltott nézetek), [[2026-06-04-monthly-report-load-failed]] (a most törölt havi riport), [[2026-06-08-ux-notifications-dashboard]] (renderTaskRow/InlineStatusPill minta)
 
 ## Mit kért
@@ -45,8 +45,31 @@ Eltávolítva:
 - **Élő teszt MÉG HÁTRAVAN (deploy után).** A 094 migráció a Railway deploy-kor fut le először. Robert élesben próbálja: lista → „Tervbe" → Tervező; a „Heti nézet" eltűnt, a Dashboardon nincs riport-gomb; a céges kapcsoló csak a 3 whitelist-usernél. Ha gond van, itt kezdd.
 - **Nem commitolt szennyezés** (pre-existing): `server/tsconfig.tsbuildinfo`, `ux-mockup.html`, `.claude/worktrees/` — szándékosan kihagyva a commitból.
 
+## Frissítés — felfedezhetőség (2026-06-22, e57e68f)
+
+A push után Robert élesben NEM találta, hogyan adjon feladatot a tervhez. Ok: a
+betervezés a TaskListPage bulk-kijelölésére épült (selectedIds + alul a bulk-bar
+"Tervbe" gombja), DE a per-sor kijelölő négyzet EGYIK lista-nézetben sincs renderelve
+(sem a személyes flat-list 742–799, sem az org-accordion [OrgDepartmentAccordion /
+OrgTaskRowsList], sem a fallback) — a sorra kattintás MINDIG megnyitja a feladatot
+(setSelectedTaskId). Így a bulk-bar (és benne a "Tervbe", de a status/assign/delete is)
+gyakorlatilag SOHA nem jelenik meg.
+
+Javítás (e57e68f): a betervezés átkerült a **TaskDrawer láblécébe** — két gomb
+("Hozzáadás a heti/havi tervhez", `addToPlan(scope)`), ami a MEGNYITOTT feladatot teszi
+a tervbe, minden nézetből, egy kattintással. A hét hétfője ugyanazzal a képlettel
+(`(getDay()+6)%7`), mint a TaskListPage/PlannerPage. A backend változatlan: csak a saját
+(assigned VAGY subtask) feladatot engedi (added=0 → `planner.add_not_allowed` üzenet).
+A Tervező üres oldala útmutatót kapott (`planner.empty_hint`, RO+HU).
+
+**Gotcha:** a TaskListPage `selectedIds` / bulk-action infrastruktúra (status, assign,
+dept, delete, plan) HOLT a UI-ban — nincs per-sor kijelölő checkbox EGYIK nézetben sem.
+Ha valaha tömeges műveletet akarunk, ELŐBB a per-sor kijelölőt kell bekötni mind a 3
+lista-nézetbe (personal flat-list, org-accordion, fallback). Addig az ilyen akciók a
+drawerből (egyesével) érhetők el.
+
 ## Hivatkozások
 
-- Commit: 23be23e. PRP: PRPs/004-weekly-monthly-planner.md (Approved 2026-06-22).
+- Commit: 23be23e (feature) + e57e68f (felfedezhetőségi javítás). PRP: PRPs/004-weekly-monthly-planner.md (Approved 2026-06-22).
 - A leváltott nézetek megnyitása: [[2026-06-05-open-day-week-monthly-views]]. A havi riport bug-története: [[2026-06-04-monthly-report-load-failed]].
 - Érintett: PLANNING.md §2 + §4.1 (frissítve), TASK.md (Done).
