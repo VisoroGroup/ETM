@@ -1,7 +1,7 @@
 # 2026-06-22 — Heti/havi tervező + a heti nézet és havi riport leváltása
 
 **Tags:** planner, tasks, multitenancy, cron, i18n, dayview, reports, access-control, workflow
-**Commit:** 23be23e (feature) + e57e68f (felfedezhetőségi javítás) · PRP: PRPs/004-weekly-monthly-planner.md
+**Commit:** 23be23e (feature) + e57e68f (felfedezhetőség) + 5d4ca7f (vezetői betervezés) · PRP: PRPs/004-weekly-monthly-planner.md
 **Related:** [[2026-06-05-open-day-week-monthly-views]] (a most leváltott nézetek), [[2026-06-04-monthly-report-load-failed]] (a most törölt havi riport), [[2026-06-08-ux-notifications-dashboard]] (renderTaskRow/InlineStatusPill minta)
 
 ## Mit kért
@@ -68,8 +68,16 @@ Ha valaha tömeges műveletet akarunk, ELŐBB a per-sor kijelölőt kell bekötn
 lista-nézetbe (personal flat-list, org-accordion, fallback). Addig az ilyen akciók a
 drawerből (egyesével) érhetők el.
 
+**Vezetői betervezés (5d4ca7f):** Robert élesben egy MÁS userhez (Mária) rendelt
+feladatot próbált betervezni → a szűk „csak assigned/subtask" szabály blokkolta (a gomb
+`add_not_allowed`-ot adott, ezért tűnt működésképtelennek). Mivel ő/Emo/Mia a csapatot
+szervezi, a `resolvePlannableTaskIds` most a whitelist-tagoknak (`canViewCompanyPlan`)
+MINDEN aktív-céges (nem törölt) feladatot enged; más user marad az assigned/subtask
+szűrésen. Mindkét ág `company_id`-szűrt (tenant-izoláció sértetlen). A drawer
+terv-gombjai kiemelt (kék kitöltött) stílust kaptak a jobb felfedezhetőségért.
+
 ## Hivatkozások
 
-- Commit: 23be23e (feature) + e57e68f (felfedezhetőségi javítás). PRP: PRPs/004-weekly-monthly-planner.md (Approved 2026-06-22).
+- Commit: 23be23e (feature) + e57e68f (felfedezhetőség) + 5d4ca7f (vezetői betervezés). PRP: PRPs/004-weekly-monthly-planner.md (Approved 2026-06-22).
 - A leváltott nézetek megnyitása: [[2026-06-05-open-day-week-monthly-views]]. A havi riport bug-története: [[2026-06-04-monthly-report-load-failed]].
 - Érintett: PLANNING.md §2 + §4.1 (frissítve), TASK.md (Done).
