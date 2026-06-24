@@ -46,6 +46,15 @@
 
 ## Done
 
+### `[x]` Dashboard: választható nézet-módok (Fülek / Kanban / Compact / Focus) a görgetés-probléma ellen
+- **Hozzáadva / kész:** 2026-06-24 · **Bejelentő:** Robert · **PRP:** PRPs/005-dashboard-view-modes.md (Approved 2026-06-24)
+- **Megjegyzés:** A jelenlegi Listă **alapértelmezett marad**, mellé 4 választható mód + Calendar, fejenként
+  (DB-ben, `user_preferences`) mentett választással. Hatókör: a saját feladatlista; a vezetői áttekintő
+  érintetlen. Tisztán kliens (nincs szerver/migráció). Új: `ViewModePicker` + `views/{Tabs,Kanban,Compact,Focus}View`
+  + `views/viewHelpers`; DashboardPage `viewMode` state + persistence; i18n RO+HU. Nincs drag-drop, nincs Terminat oszlop.
+- **Ellenőrzés:** kliens `tsc -b` + `vite build` zöld; ESLint az új fájlokon 0 hiba (csak react-refresh warning);
+  a DashboardPage 5 eslint-„error"-ja pre-existing (build a kapu). **Push + élő teszt Robertnél deploy után.**
+
 ### `[x]` Heti és havi tervező + a heti nézet/havi riport leváltása
 - **Hozzáadva / kész:** 2026-06-22 · **Bejelentő:** Robert · **PRP:** PRPs/004-weekly-monthly-planner.md
 - **Commit:** 23be23e (élesre pusholva)

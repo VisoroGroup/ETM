@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { dashboardApi, tasksApi, alertsApi } from '../../services/api';
+import { dashboardApi, tasksApi, alertsApi, userPreferencesApi } from '../../services/api';
 import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
@@ -8,11 +8,16 @@ import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
 import {
     AlertTriangle, Ban, CheckCircle2, Activity,
-    ChevronRight, ChevronDown, Loader2, CalendarDays, List, Bell, Settings, UserCircle, Briefcase, RefreshCw, Users
+    ChevronRight, ChevronDown, Loader2, CalendarDays, Bell, Settings, UserCircle, Briefcase, RefreshCw, Users
 } from 'lucide-react';
 import { timeAgo } from '../../utils/helpers';
 import InlineStatusPill from '../tasks/InlineStatusPill';
 import UserAvatar from '../ui/UserAvatar';
+import ViewModePicker, { DashboardViewMode, DASHBOARD_VIEW_MODES } from './ViewModePicker';
+import TabsView from './views/TabsView';
+import KanbanView from './views/KanbanView';
+import CompactView from './views/CompactView';
+import FocusView from './views/FocusView';
 import type { WidgetConfig } from '../../types';
 
 // Lazy-load the heavy children (audit-3 H30). These three pull in
@@ -36,7 +41,7 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [charts, setCharts] = useState<DashboardCharts | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showCalendar, setShowCalendar] = useState(false);
+    const [viewMode, setViewMode] = useState<DashboardViewMode>('list');
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
     const [widgetLayout, setWidgetLayout] = useState<WidgetConfig[]>([]);
@@ -73,12 +78,13 @@ export default function DashboardPage() {
                 const taskParams = isOverseer
                     ? { exclude_status: 'terminat', limit: 1000 }
                     : { my_tasks: 'true', exclude_status: 'terminat', limit: 500 };
-                const [s, c, tasks, alerts, prefs] = await Promise.all([
+                const [s, c, tasks, alerts, prefs, userPrefs] = await Promise.all([
                     dashboardApi.stats(),
                     dashboardApi.charts(),
                     tasksApi.list(taskParams),
                     dashboardApi.activeAlerts().catch(() => []),
                     dashboardApi.getPreferences().catch(() => []),
+                    userPreferencesApi.get().catch(() => ({})),
                 ]);
                 if (cancelled) return;
                 setStats(s);
@@ -86,6 +92,9 @@ export default function DashboardPage() {
                 setAllTasks(tasks.tasks || tasks);
                 setActiveAlerts(alerts);
                 setWidgetLayout(prefs);
+                // Restore the per-user dashboard view mode (PRP 005).
+                const savedMode = userPrefs?.dashboard_view_mode;
+                if (savedMode && DASHBOARD_VIEW_MODES.includes(savedMode)) setViewMode(savedMode);
             } catch (err) {
                 if (cancelled) return;
                 console.error('Dashboard load error:', err);
@@ -207,6 +216,17 @@ export default function DashboardPage() {
             else next.add(key);
             return next;
         });
+    };
+
+    // Persist the chosen view mode per-user (PRP 005). Fire-and-forget, like TaskListPage.
+    const changeViewMode = (m: DashboardViewMode) => {
+        setViewMode(m);
+        userPreferencesApi.save({ dashboard_view_mode: m }).catch(() => {});
+    };
+
+    // Keep the local task list in sync when one of the new views changes a status inline.
+    const handleStatusChanged = (id: string, newStatus: TaskStatus) => {
+        setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
     };
 
     // Hungary/Neo Plan don't have department/section/post; the row's meta line
@@ -353,27 +373,8 @@ export default function DashboardPage() {
                     <p className="text-navy-400 text-sm mt-1">{t('dashboard.welcome')}</p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-                    {/* Calendar / Listă toggle */}
-                    <div className="flex items-center bg-navy-800/50 border border-navy-700/50 rounded-lg p-0.5">
-                        <button
-                            onClick={() => setShowCalendar(false)}
-                            className={`flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                !showCalendar ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
-                            }`}
-                        >
-                            <List className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('dashboard.view_list')}</span>
-                        </button>
-                        <button
-                            onClick={() => setShowCalendar(true)}
-                            className={`flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                showCalendar ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-white'
-                            }`}
-                        >
-                            <CalendarDays className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('dashboard.view_calendar')}</span>
-                        </button>
-                    </div>
+                    {/* View-mode picker (PRP 005): Listă / File / Kanban / Compact / Focus / Calendar */}
+                    <ViewModePicker value={viewMode} onChange={changeViewMode} />
 
                     {/* Settings gear */}
                     <button
@@ -463,7 +464,7 @@ export default function DashboardPage() {
             )}
 
             {/* Calendar mode */}
-            {showCalendar && isVisible('calendar') ? (
+            {viewMode === 'calendar' && isVisible('calendar') ? (
                 <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-5">
                     <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-blue-400" />
@@ -475,12 +476,26 @@ export default function DashboardPage() {
                 </div>
             ) : (
                 <>
-                    {/* MY ASSIGNED TASKS — grouped by status */}
-                    {renderTaskSection(
+                    {/* PRIMARY TASK LIST — "Sarcinile mele" rendered per the selected
+                        view mode (PRP 005). 'list' keeps the original status-grouped
+                        section; the others are the new selectable views. */}
+                    {viewMode === 'list' && renderTaskSection(
                         t('dashboard.my_tasks'),
                         <UserCircle className="w-4 h-4 text-cyan-400" />,
                         myAssignedTasks,
                         'assigned'
+                    )}
+                    {viewMode === 'tabs' && (
+                        <TabsView tasks={myAssignedTasks} onOpenTask={(id) => setSelectedTaskId(id)} onStatusChanged={handleStatusChanged} isFullTemplate={isFullTemplate} />
+                    )}
+                    {viewMode === 'kanban' && (
+                        <KanbanView tasks={myAssignedTasks} onOpenTask={(id) => setSelectedTaskId(id)} onStatusChanged={handleStatusChanged} isFullTemplate={isFullTemplate} />
+                    )}
+                    {viewMode === 'compact' && (
+                        <CompactView tasks={myAssignedTasks} onOpenTask={(id) => setSelectedTaskId(id)} onStatusChanged={handleStatusChanged} isFullTemplate={isFullTemplate} />
+                    )}
+                    {viewMode === 'focus' && (
+                        <FocusView tasks={myAssignedTasks} onOpenTask={(id) => setSelectedTaskId(id)} onStatusChanged={handleStatusChanged} isFullTemplate={isFullTemplate} />
                     )}
 
                     {/* TASKS I CREATED (assigned to others) — grouped by status */}

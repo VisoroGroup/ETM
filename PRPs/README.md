@@ -38,6 +38,7 @@ Kétség esetén: írunk. 10 perc most, órák megspórolása később.
 ## Index
 | # | Cím | Státusz | Indítva | Kész |
 |---|-----|---------|---------|------|
+| 005 | [Dashboard nézet-módok (választható, mentett)](005-dashboard-view-modes.md) | Done | 2026-06-24 | 2026-06-24 |
 | 004 | [Heti és havi tervező](004-weekly-monthly-planner.md) | Done | 2026-06-22 | 2026-06-22 |
 | 003 | [Email-link navigáció + lista-megbízhatóság](003-email-link-navigation-and-list-reliability.md) | Done | 2026-06-12 | 2026-06-12 |
 | 002 | [UX: nyugodt Dashboard + notifications](002-ux-calm-dashboard-and-notifications.md) | Done | 2026-06-08 | 2026-06-08 |
