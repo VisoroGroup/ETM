@@ -87,6 +87,23 @@ kizárásé:
   `dueStat = (status !== 'terminat' && status !== 'blocat') ? ... : 'normal'`.
   Döntés: a szerkesztő kontrollt nem rejtjük el, csak a "depășit" megjelenést.
 
+## Frissítés (ugyanaznap, commit d4a85e9) — mind a 4 stat-kártya felugrót ad
+Robert: a Depășite-nál csinált felugrót kérte a sor többi kártyájára is.
+`OverdueTasksModal` → `StatTasksModal` (kind: active/overdue/blocked/
+completed_month), a régi fájl törölve (git rename-ként látta).
+- active → `status=de_rezolvat,in_realizare` (a lista-API vesszős multi-status
+  szűrője); blocked → `status=blocat`; overdue → `period=overdue`.
+- completed_month → nincs dedikált lista-szűrő: `status=terminat` fetch +
+  kliens-oldali `updated_at >= hónap eleje` szűrés (a `/stats` definícióját
+  tükrözi; a lista `t.*`-ot ad vissza, updated_at benne van). Legfrissebb elöl.
+- Modal-cím a kártya-címkékből (`stat_active` stb.) — i18n `overdue_modal_*`
+  kulcsok lecserélve generikus `stat_modal_hint`/`stat_modal_empty`-re (RO+HU).
+- A kártyák nem navigálnak `/tasks`-ra → a TaskListPage `state.filter===
+  'overdue'/'blocat'` ágai már sehonnan nem hívódnak (meglévő kód, NEM töröltük).
+- `useNavigate` kikerült a DashboardPage-ből (árva lett); a `card.onClick ?`
+  feltételek leegyszerűsítve (mindegyik kártyának van onClick-je — TS2774 lett
+  volna belőle).
+
 ## Hivatkozások
 - PRPs/006-recurring-effective-due-date.md (a részletes terv + validáció)
 - 083_company_holidays.sql (ünnepnap-tábla + seed)
