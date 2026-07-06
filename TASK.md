@@ -12,6 +12,15 @@
 
 ## Active
 
+### `[~]` Blocat taskok ne jelenjenek meg lejártként (dátum elrejtve)
+- **Hozzáadva:** 2026-07-06
+- **Megjegyzés:** Blokkolt (blocat) task határideje "áll" → nem "depășit".
+  Backend: kizárva a "Depășite" számból (`/stats`, `/my-stats`) és a
+  `period=overdue` szűrőből (külön "Blocate" kártya van). Frontend: a
+  listákban/dashboardon a blocat taskoknál eltűnik a dátum és a sürgősségi
+  szín; a drawer dátum-pilulája megmarad (szerkesztő), de semlegesen. Élő
+  teszt deploy után.
+
 ### `[~]` Dashboard "Depășite" kártya: azonnali felugró, felelős szerint csoportosítva
 - **Hozzáadva:** 2026-07-06
 - **Megjegyzés:** A "Depășite" statisztika-kártya kattintása eddig a `/tasks`

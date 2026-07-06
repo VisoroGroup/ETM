@@ -314,7 +314,9 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
     // instead of nagging "depășit" (the stored due_date is unchanged; the change
     // due-date popover below still edits the real date).
     const effDue = getEffectiveDueDate(task);
-    const dueStat = task.status !== 'terminat' ? getDueDateStatus(effDue) : 'normal';
+    // Blocked tasks have a paused deadline — keep the (editable) date pill but
+    // render it neutral, never as "depășit". terminat is neutral too.
+    const dueStat = (task.status !== 'terminat' && task.status !== 'blocat') ? getDueDateStatus(effDue) : 'normal';
     const completedSubtasks = task.subtasks.filter(s => s.is_completed).length;
     const totalSubtasks = task.subtasks.length;
 

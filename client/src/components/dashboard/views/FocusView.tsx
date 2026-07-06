@@ -36,7 +36,7 @@ export default function FocusView({ tasks, onOpenTask, onStatusChanged, isFullTe
 
     const FocusRow = ({ task, rank }: { task: Task; rank: number }) => {
         const color = STATUSES[task.status]?.color || '#475569';
-        const meta = [...locBits(task, isFullTemplate), formatDate(getEffectiveDueDate(task)!)].join(' · ');
+        const meta = [...locBits(task, isFullTemplate), task.status !== 'blocat' ? formatDate(getEffectiveDueDate(task)!) : null].filter(Boolean).join(' · ');
         return (
             <div onClick={() => onOpenTask(task.id)} className="flex items-center gap-3 px-4 py-3 border-b border-navy-700/40 last:border-b-0 cursor-pointer hover:bg-navy-800/40 transition-colors">
                 <span className="w-5 text-center text-xs font-bold text-navy-400 tabular-nums flex-shrink-0">{rank}</span>
@@ -62,7 +62,7 @@ export default function FocusView({ tasks, onOpenTask, onStatusChanged, isFullTe
                     <div className="font-medium text-white text-sm truncate">{task.title}</div>
                     {bits.length > 0 && <div className="text-[10.5px] text-navy-500 truncate mt-0.5">{bits.join(' · ')}</div>}
                 </div>
-                <div className="flex-shrink-0 w-[92px] text-xs text-right text-navy-400 whitespace-nowrap">{formatDate(getEffectiveDueDate(task)!)}</div>
+                <div className="flex-shrink-0 w-[92px] text-xs text-right text-navy-400 whitespace-nowrap">{task.status !== 'blocat' && formatDate(getEffectiveDueDate(task)!)}</div>
                 <div className="flex-shrink-0">
                     <InlineStatusPill taskId={task.id} currentStatus={task.status} onChanged={(s) => onStatusChanged(task.id, s)} />
                 </div>

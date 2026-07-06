@@ -240,8 +240,9 @@ export default function DashboardPage() {
         const effDue = getEffectiveDueDate(task);
         const daysOverdue = getDaysOverdue(effDue);
         const daysUntil = getDaysUntil(effDue);
-        const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
-        const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
+        // Blocked tasks have a paused deadline: never overdue/soon, date hidden below.
+        const isOverdue = daysOverdue > 0 && task.status !== 'terminat' && task.status !== 'blocat';
+        const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat' && task.status !== 'blocat';
         const statusColor = STATUSES[task.status]?.color || '#475569';
         // Location meta (dept · section · post), muted. The responsible person is
         // shown SEPARATELY as a distinct chip (only when relevant — "Create de mine"),
@@ -296,7 +297,7 @@ export default function DashboardPage() {
                 <div className={`flex-shrink-0 w-[104px] text-xs whitespace-nowrap ${
                     isOverdue ? 'text-red-400 font-semibold' : isDueSoon ? 'text-amber-400' : 'text-navy-400'
                 }`}>
-                    {formatDate(effDue!)}
+                    {task.status !== 'blocat' && formatDate(effDue!)}
                     {isOverdue && <span className="ml-1 text-[10px]">-{daysOverdue}{t('dashboard.days_short')}</span>}
                 </div>
                 {/* Status control — click to change the stage inline. stopPropagation

@@ -744,8 +744,9 @@ export default function TaskListPage() {
                                 const dueDateStatus = getDueDateStatus(effDue);
                                 const daysOverdue = getDaysOverdue(effDue);
                                 const daysUntil = getDaysUntil(effDue);
-                                const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
-                                const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
+                                // Blocked tasks have a paused deadline: never overdue/soon, date hidden below.
+                                const isOverdue = daysOverdue > 0 && task.status !== 'terminat' && task.status !== 'blocat';
+                                const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat' && task.status !== 'blocat';
                                 return (
                                     <tr
                                         key={task.id}
@@ -786,7 +787,7 @@ export default function TaskListPage() {
                                             <span className={`text-xs font-medium ${
                                                 isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                                             }`}>
-                                                {formatDate(effDue!)}
+                                                {task.status !== 'blocat' && formatDate(effDue!)}
                                                 {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}{t('dashboard.days_short')})</span>}
                                             </span>
                                         </td>

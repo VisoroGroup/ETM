@@ -137,13 +137,14 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
                 }
                 case 'overdue':
                     // Active recurring tasks roll to their next occurrence instead
-                    // of going overdue, so they're excluded from the overdue filter.
-                    // Self-contained NOT EXISTS (not the main query's `rt` join) so
-                    // it also works in the join-less COUNT(*) query below. $1 is the
-                    // active company id. Keeps this list — and the Dashboard
-                    // "Depășite" drill-down that uses it — in sync with the overdue
-                    // count and the client-side badges.
-                    conditions.push(`t.due_date < $${paramIndex} AND t.status != 'terminat' AND NOT EXISTS (SELECT 1 FROM recurring_tasks rt_ov WHERE rt_ov.template_task_id = t.id AND rt_ov.is_active = true AND rt_ov.company_id = $1)`);
+                    // of going overdue, and blocked tasks have a paused deadline —
+                    // both excluded from the overdue filter. Self-contained
+                    // NOT EXISTS (not the main query's `rt` join) so it also works
+                    // in the join-less COUNT(*) query below. $1 is the active
+                    // company id. Keeps this list — and the Dashboard "Depășite"
+                    // drill-down that uses it — in sync with the overdue count and
+                    // the client-side badges.
+                    conditions.push(`t.due_date < $${paramIndex} AND t.status NOT IN ('terminat', 'blocat') AND NOT EXISTS (SELECT 1 FROM recurring_tasks rt_ov WHERE rt_ov.template_task_id = t.id AND rt_ov.is_active = true AND rt_ov.company_id = $1)`);
                     values.push(today);
                     paramIndex++;
                     break;

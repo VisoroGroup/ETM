@@ -40,7 +40,7 @@ export default function KanbanView({ tasks, onOpenTask, onStatusChanged, isFullT
                 {bits.length > 0 && <div className="text-[10px] text-navy-500 truncate mt-1.5">{bits.join(' · ')}</div>}
                 <div className="flex items-center justify-between gap-2 mt-2">
                     <span className={`text-[10.5px] font-semibold whitespace-nowrap ${isOverdue ? 'text-red-400' : isSoon ? 'text-amber-400' : 'text-navy-400'}`}>
-                        {formatDate(getEffectiveDueDate(task)!)}
+                        {task.status !== 'blocat' && formatDate(getEffectiveDueDate(task)!)}
                     </span>
                     <InlineStatusPill taskId={task.id} currentStatus={task.status} onChanged={(s) => onStatusChanged(task.id, s)} compact />
                 </div>

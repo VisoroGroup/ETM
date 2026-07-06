@@ -50,9 +50,11 @@ router.get('/stats', authMiddleware, asyncHandler(async (req: AuthRequest, res: 
         // Active recurring tasks are never "overdue": once their due date passes
         // they simply roll to the next occurrence (see getEffectiveDueDate on the
         // client). Exclude them so the count matches what the UI shows.
+        // Blocked tasks are excluded too — their deadline is paused, they belong
+        // to the separate "Blocate" card, and showing them as overdue is confusing.
         const notRecurring = `AND NOT EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = tasks.id AND rt.is_active = true AND rt.company_id = $1)`;
         const { rows: overdue } = await pool.query(
-            `SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND due_date < $${p} AND status NOT IN ('terminat') AND deleted_at IS NULL ${notRecurring} ${scope.clause}`,
+            `SELECT COUNT(*) FROM tasks WHERE company_id = $1 AND due_date < $${p} AND status NOT IN ('terminat', 'blocat') AND deleted_at IS NULL ${notRecurring} ${scope.clause}`,
             [companyId, ...scope.values, today]
         );
 
@@ -221,11 +223,11 @@ router.get('/my-stats', authMiddleware, asyncHandler(async (req: AuthRequest, re
         );
 
         // My overdue tasks. Active recurring tasks roll to their next occurrence
-        // instead of going overdue, so they're excluded here too (keeps every
-        // "overdue" number in the app consistent).
+        // instead of going overdue, and blocked tasks have a paused deadline —
+        // both excluded to keep every "overdue" number in the app consistent.
         const { rows: myOverdue } = await pool.query(
             `SELECT COUNT(*) FROM tasks
-             WHERE company_id = $1 AND assigned_to = $2 AND due_date < $3 AND status NOT IN ('terminat') AND deleted_at IS NULL
+             WHERE company_id = $1 AND assigned_to = $2 AND due_date < $3 AND status NOT IN ('terminat', 'blocat') AND deleted_at IS NULL
                AND NOT EXISTS (SELECT 1 FROM recurring_tasks rt WHERE rt.template_task_id = tasks.id AND rt.is_active = true AND rt.company_id = $1)`,
             [companyId, userId, today]
         );

@@ -55,7 +55,8 @@ export default function OrgTaskRowsList({ tasks, onTaskClick, onTaskStatusChange
             }`} style={{ overflow: 'visible' }}>
                 {tasks.map((task) => {
                     const effDue = getEffectiveDueDate(task);
-                    const dueDateStatus = getDueDateStatus(effDue);
+                    // Blocked tasks have a paused deadline: neutral color, date hidden below.
+                    const dueDateStatus = task.status === 'blocat' ? 'normal' : getDueDateStatus(effDue);
                     const statusConfig = STATUSES[task.status];
                     const showDropdown = statusDropdownId === task.id;
 
@@ -131,7 +132,7 @@ export default function OrgTaskRowsList({ tasks, onTaskClick, onTaskStatusChange
                             </button>
 
                             <span className={`text-[10px] flex-shrink-0 ${getDateColorClass(dueDateStatus)}`}>
-                                {formatDate(effDue!)}
+                                {task.status !== 'blocat' && formatDate(effDue!)}
                             </span>
                         </div>
                     );

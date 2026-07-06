@@ -24,7 +24,8 @@ export const OPEN_STATUS_ORDER: TaskStatus[] = ['de_rezolvat', 'in_realizare', '
 
 /** Collapse the fine-grained date status into the urgency buckets the views use. */
 export function getUrgency(task: Task): ViewUrgency {
-    if (task.status === 'terminat' || !task.due_date) return 'normal';
+    // Blocked tasks have a paused deadline — never flag them overdue/soon.
+    if (task.status === 'terminat' || task.status === 'blocat' || !task.due_date) return 'normal';
     const s = getDueDateStatus(getEffectiveDueDate(task));
     if (s === 'overdue') return 'overdue';
     if (s === 'today') return 'today';
@@ -78,7 +79,7 @@ export function TaskLine({ task, isFullTemplate, onOpenTask, onStatusChanged, de
             <div className={`flex-shrink-0 w-[92px] text-xs text-right whitespace-nowrap ${
                 isOverdue ? 'text-red-400 font-semibold' : isSoon ? 'text-amber-400' : 'text-navy-400'
             }`}>
-                {formatDate(getEffectiveDueDate(task)!)}
+                {task.status !== 'blocat' && formatDate(getEffectiveDueDate(task)!)}
             </div>
             <div className="flex-shrink-0">
                 <InlineStatusPill taskId={task.id} currentStatus={task.status} onChanged={(s) => onStatusChanged(task.id, s)} />
