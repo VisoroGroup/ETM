@@ -74,6 +74,19 @@ Robert három, egymással összefüggő dolgot kért ugyanabban a session-ben:
   VALÓS dátum szerint marad — egy rolled rekurens task a tetején lehet, jövőbeli
   dátummal. Tudatosan hatókörön kívül.
 
+## Frissítés (ugyanaznap, commit 05945a3) — blocat ne legyen "lejárt"
+Robert: egy blocat (blokkolt) task ne jelenjen meg "depășit"-ként, a dátum
+tűnjön el — mert a határidő "áll", és zavaró. Ugyanaz a minta, mint a rekurens-
+kizárásé:
+- **Backend:** blocat kizárva a "Depășite" számból (`/stats`, `/my-stats`:
+  `status NOT IN ('terminat','blocat')`) és a `period=overdue` szűrőből (→ a
+  felugró listából is). Indok: külön "Blocate" kártya van, dupla számolás lenne.
+- **Frontend:** a listákban/dashboardon a blocat taskoknál eltűnik a dátum és a
+  sürgősségi szín (getUrgency + a 8 badge-hely `task.status !== 'blocat'` gate).
+- **Drawer:** a dátum-pilula MEGMARAD (az a szerkesztő gomb), de semleges —
+  `dueStat = (status !== 'terminat' && status !== 'blocat') ? ... : 'normal'`.
+  Döntés: a szerkesztő kontrollt nem rejtjük el, csak a "depășit" megjelenést.
+
 ## Hivatkozások
 - PRPs/006-recurring-effective-due-date.md (a részletes terv + validáció)
 - 083_company_holidays.sql (ünnepnap-tábla + seed)
