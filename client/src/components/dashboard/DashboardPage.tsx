@@ -2,7 +2,6 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { dashboardApi, tasksApi, alertsApi, userPreferencesApi } from '../../services/api';
 import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
 import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil, getEffectiveDueDate } from '../../utils/helpers';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useTranslation } from '../../i18n/I18nContext';
@@ -19,6 +18,7 @@ import KanbanView from './views/KanbanView';
 import CompactView from './views/CompactView';
 import FocusView from './views/FocusView';
 import type { WidgetConfig } from '../../types';
+import type { StatModalKind } from './StatTasksModal';
 
 // Lazy-load the heavy children (audit-3 H30). These three pull in
 // recharts, react-big-calendar, @hello-pangea/dnd, and react-easy-crop —
@@ -28,7 +28,7 @@ import type { WidgetConfig } from '../../types';
 const CalendarView = lazy(() => import('./CalendarView'));
 const DashboardCustomizer = lazy(() => import('./DashboardCustomizer'));
 const TaskDrawer = lazy(() => import('../tasks/TaskDrawer'));
-const OverdueTasksModal = lazy(() => import('./OverdueTasksModal'));
+const StatTasksModal = lazy(() => import('./StatTasksModal'));
 
 function LazyLoadFallback() {
     return (
@@ -51,8 +51,7 @@ export default function DashboardPage() {
     // + "my tasks"); the user expands "created by me" / "all per user" on demand.
     const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set(['sect_created', 'sect_all_by_user']));
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-    const [showOverdue, setShowOverdue] = useState(false);
-    const navigate = useNavigate();
+    const [statModal, setStatModal] = useState<StatModalKind | null>(null);
     const { user } = useAuth();
     const { activeCompany } = useCompany();
     const { t } = useTranslation();
@@ -127,26 +126,28 @@ export default function DashboardPage() {
         ? { bg: 'from-navy-600 to-navy-700', text: 'text-navy-400' }
         : { bg: 'from-orange-500 to-orange-600', text: 'text-orange-400' };
 
+    // Every stat card opens the same drill-down modal (grouped by assignee)
+    // instead of navigating to the task manager — see StatTasksModal.
     const statCards = [
         {
             label: t('dashboard.stat_active'), value: stats?.active || 0,
             icon: Activity, color: 'from-blue-500 to-blue-600', textColor: 'text-blue-400',
-            onClick: () => navigate('/tasks')
+            onClick: () => setStatModal('active')
         },
         {
             label: t('dashboard.stat_overdue'), value: stats?.overdue || 0,
             icon: AlertTriangle, color: overdueColor.bg, textColor: overdueColor.text,
-            onClick: () => setShowOverdue(true)
+            onClick: () => setStatModal('overdue')
         },
         {
             label: t('dashboard.stat_blocked'), value: stats?.blocked || 0,
             icon: Ban, color: blockedColor.bg, textColor: blockedColor.text,
-            onClick: () => navigate('/tasks', { state: { filter: 'blocat' } })
+            onClick: () => setStatModal('blocked')
         },
         {
             label: t('dashboard.stat_completed_this_month'), value: stats?.completed_this_month || 0,
             icon: CheckCircle2, color: 'from-green-500 to-green-600', textColor: 'text-green-400',
-            onClick: undefined
+            onClick: () => setStatModal('completed_month')
         },
     ];
 
@@ -450,10 +451,8 @@ export default function DashboardPage() {
                     <div
                         key={i}
                         onClick={card.onClick}
-                        className={`bg-navy-900/50 border border-navy-700/50 rounded-lg px-3 py-2 md:px-4 md:py-2.5 transition-all flex items-center gap-2 md:gap-3 ${
-                            card.onClick ? 'cursor-pointer hover:border-navy-500/70 hover:bg-navy-800/50' : ''
-                        }`}
-                        title={card.onClick ? t('dashboard.click_for_filtered') : undefined}
+                        className="bg-navy-900/50 border border-navy-700/50 rounded-lg px-3 py-2 md:px-4 md:py-2.5 transition-all flex items-center gap-2 md:gap-3 cursor-pointer hover:border-navy-500/70 hover:bg-navy-800/50"
+                        title={t('dashboard.click_for_filtered')}
                     >
                         <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${card.color} flex items-center justify-center flex-shrink-0`}>
                             <card.icon className="w-3.5 h-3.5 text-white" />
@@ -581,11 +580,12 @@ export default function DashboardPage() {
                     <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />
                 </Suspense>
             )}
-            {showOverdue && (
+            {statModal && (
                 <Suspense fallback={<LazyLoadFallback />}>
-                    <OverdueTasksModal
-                        onClose={() => setShowOverdue(false)}
-                        onSelectTask={(id) => { setShowOverdue(false); setSelectedTaskId(id); }}
+                    <StatTasksModal
+                        kind={statModal}
+                        onClose={() => setStatModal(null)}
+                        onSelectTask={(id) => { setStatModal(null); setSelectedTaskId(id); }}
                     />
                 </Suspense>
             )}

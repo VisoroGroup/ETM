@@ -21,14 +21,16 @@
   szín; a drawer dátum-pilulája megmarad (szerkesztő), de semlegesen. Élő
   teszt deploy után.
 
-### `[~]` Dashboard "Depășite" kártya: azonnali felugró, felelős szerint csoportosítva
-- **Hozzáadva:** 2026-07-06
-- **Megjegyzés:** A "Depășite" statisztika-kártya kattintása eddig a `/tasks`
-  oldalra vitt (full sablonnál szervezeti fa nézet → kézi keresés). Mostantól egy
-  felugró ablak (`OverdueTasksModal`) nyílik a Dashboardon, benne az összes lejárt
-  feladat felelős (assignee) szerint csoportosítva; taskra kattintva a drawer nyílik.
-  Csak a "Depășite" kártyát érinti. Adat: `tasksApi.list({ period: 'overdue' })`
-  (backend már támogatja, hozzáférés-scope-olt). Élő teszt deploy után.
+### `[~]` Dashboard stat-kártyák: azonnali felugró, felelős szerint csoportosítva
+- **Hozzáadva:** 2026-07-06 · **Kibővítve:** 2026-07-06 (mind a 4 kártya)
+- **Megjegyzés:** A statisztika-kártyák kattintása eddig a `/tasks` oldalra vitt
+  (full sablonnál szervezeti fa nézet → kézi keresés). Mostantól egy felugró
+  ablak (`StatTasksModal`, az `OverdueTasksModal` általánosítása) nyílik a
+  Dashboardon, a kártya feladataival felelős (assignee) szerint csoportosítva;
+  taskra kattintva a drawer nyílik. Mind a 4 kártya: Active (status
+  de_rezolvat+in_realizare), Depășite (period=overdue), Blocate (status=blocat),
+  Finalizate luna aceasta (terminat + updated_at >= hónap eleje, kliens-szűrés).
+  Élő teszt deploy után.
 
 ### `[~]` Rekurens taskok: badge a következő esedékes dátumot mutatja (nem "depășit")
 - **Hozzáadva:** 2026-07-06 · **PRP:** PRPs/006-recurring-effective-due-date.md
