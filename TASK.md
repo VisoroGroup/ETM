@@ -12,6 +12,16 @@
 
 ## Active
 
+### `[~]` Szervezeti struktúra frissítés a 2026-06-30-as org boardhoz
+- **Hozzáadva:** 2026-07-06 · **PRP:** PRPs/007-org-structure-2026-07.md
+- **Megjegyzés:** 095-ös adat-migráció a departments/sections/posts frissítésére
+  (Visoro Global). Link-őrző átnevezések/áthelyezések; a D4 Realizare/Predare 9
+  régi posztja véglegesen törölve (Robert döntése); többszemélyes posztoknál a
+  koordinátor a felelős. 2026-07-06: élő DB-ellenőrzés lefutott (minden guard-név
+  egyezik; 13 task esik "Fără atribuire"-be; Ifrim/Szőcs/Tăutan profil még nincs
+  → posztjuk felelős nélkül jön létre, admin felületről pótolandó), Robert
+  jóváhagyta, pusholva. Élő teszt deploy után.
+
 ### `[~]` Blocat taskok ne jelenjenek meg lejártként (dátum elrejtve)
 - **Hozzáadva:** 2026-07-06
 - **Megjegyzés:** Blokkolt (blocat) task határideje "áll" → nem "depășit".
