@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { dashboardApi, tasksApi, alertsApi, userPreferencesApi } from '../../services/api';
 import { DashboardStats, DashboardCharts, Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../types';
-import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
+import { getDueDateStatus, formatDate, getDaysOverdue, getDaysUntil, getEffectiveDueDate } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
@@ -28,6 +28,7 @@ import type { WidgetConfig } from '../../types';
 const CalendarView = lazy(() => import('./CalendarView'));
 const DashboardCustomizer = lazy(() => import('./DashboardCustomizer'));
 const TaskDrawer = lazy(() => import('../tasks/TaskDrawer'));
+const OverdueTasksModal = lazy(() => import('./OverdueTasksModal'));
 
 function LazyLoadFallback() {
     return (
@@ -50,6 +51,7 @@ export default function DashboardPage() {
     // + "my tasks"); the user expands "created by me" / "all per user" on demand.
     const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set(['sect_created', 'sect_all_by_user']));
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [showOverdue, setShowOverdue] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
     const { activeCompany } = useCompany();
@@ -134,7 +136,7 @@ export default function DashboardPage() {
         {
             label: t('dashboard.stat_overdue'), value: stats?.overdue || 0,
             icon: AlertTriangle, color: overdueColor.bg, textColor: overdueColor.text,
-            onClick: () => navigate('/tasks', { state: { filter: 'overdue' } })
+            onClick: () => setShowOverdue(true)
         },
         {
             label: t('dashboard.stat_blocked'), value: stats?.blocked || 0,
@@ -235,8 +237,9 @@ export default function DashboardPage() {
 
     // Render a task row for the flat list
     const renderTaskRow = (task: Task, showAssignee = false) => {
-        const daysOverdue = getDaysOverdue(task.due_date);
-        const daysUntil = getDaysUntil(task.due_date);
+        const effDue = getEffectiveDueDate(task);
+        const daysOverdue = getDaysOverdue(effDue);
+        const daysUntil = getDaysUntil(effDue);
         const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
         const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
         const statusColor = STATUSES[task.status]?.color || '#475569';
@@ -293,7 +296,7 @@ export default function DashboardPage() {
                 <div className={`flex-shrink-0 w-[104px] text-xs whitespace-nowrap ${
                     isOverdue ? 'text-red-400 font-semibold' : isDueSoon ? 'text-amber-400' : 'text-navy-400'
                 }`}>
-                    {formatDate(task.due_date)}
+                    {formatDate(effDue!)}
                     {isOverdue && <span className="ml-1 text-[10px]">-{daysOverdue}{t('dashboard.days_short')}</span>}
                 </div>
                 {/* Status control — click to change the stage inline. stopPropagation
@@ -575,6 +578,14 @@ export default function DashboardPage() {
             {showCustomizer && (
                 <Suspense fallback={<LazyLoadFallback />}>
                     <DashboardCustomizer isOpen={showCustomizer} onClose={() => setShowCustomizer(false)} layout={widgetLayout} onSave={setWidgetLayout} />
+                </Suspense>
+            )}
+            {showOverdue && (
+                <Suspense fallback={<LazyLoadFallback />}>
+                    <OverdueTasksModal
+                        onClose={() => setShowOverdue(false)}
+                        onSelectTask={(id) => { setShowOverdue(false); setSelectedTaskId(id); }}
+                    />
                 </Suspense>
             )}
             {selectedTaskId && (

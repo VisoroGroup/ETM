@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Task, TaskStatus, STATUSES } from '../../types';
-import { getDueDateStatus, formatDate } from '../../utils/helpers';
+import { getDueDateStatus, formatDate, getEffectiveDueDate } from '../../utils/helpers';
 import { tasksApi } from '../../services/api';
 import { useTranslation } from '../../i18n/I18nContext';
 
@@ -54,7 +54,8 @@ export default function OrgTaskRowsList({ tasks, onTaskClick, onTaskStatusChange
                 darkMode ? 'border-navy-700/30 bg-navy-800/20' : 'border-gray-100 bg-gray-50/50'
             }`} style={{ overflow: 'visible' }}>
                 {tasks.map((task) => {
-                    const dueDateStatus = getDueDateStatus(task.due_date);
+                    const effDue = getEffectiveDueDate(task);
+                    const dueDateStatus = getDueDateStatus(effDue);
                     const statusConfig = STATUSES[task.status];
                     const showDropdown = statusDropdownId === task.id;
 
@@ -130,7 +131,7 @@ export default function OrgTaskRowsList({ tasks, onTaskClick, onTaskStatusChange
                             </button>
 
                             <span className={`text-[10px] flex-shrink-0 ${getDateColorClass(dueDateStatus)}`}>
-                                {formatDate(task.due_date)}
+                                {formatDate(effDue!)}
                             </span>
                         </div>
                     );

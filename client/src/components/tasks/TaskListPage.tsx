@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom';
 import { tasksApi, savedFiltersApi, userPreferencesApi, departmentsApi, plannerApi } from '../../services/api';
 import { Task, TaskFilters, TaskStatus, Department, STATUSES, DEPARTMENTS, OrgDepartment, departmentLabel } from '../../types';
-import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil } from '../../utils/helpers';
+import { getDueDateStatus, formatDate, timeAgo, getDaysOverdue, getDaysUntil, getEffectiveDueDate } from '../../utils/helpers';
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
@@ -740,9 +740,10 @@ export default function TaskListPage() {
                         </thead>
                         <tbody>
                             {tasks.map(task => {
-                                const dueDateStatus = getDueDateStatus(task.due_date);
-                                const daysOverdue = getDaysOverdue(task.due_date);
-                                const daysUntil = getDaysUntil(task.due_date);
+                                const effDue = getEffectiveDueDate(task);
+                                const dueDateStatus = getDueDateStatus(effDue);
+                                const daysOverdue = getDaysOverdue(effDue);
+                                const daysUntil = getDaysUntil(effDue);
                                 const isOverdue = daysOverdue > 0 && task.status !== 'terminat';
                                 const isDueSoon = !isOverdue && daysUntil !== null && daysUntil <= 3 && task.status !== 'terminat';
                                 return (
@@ -785,7 +786,7 @@ export default function TaskListPage() {
                                             <span className={`text-xs font-medium ${
                                                 isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
                                             }`}>
-                                                {formatDate(task.due_date)}
+                                                {formatDate(effDue!)}
                                                 {isOverdue && <span className="ml-1 text-[10px]">(-{daysOverdue}{t('dashboard.days_short')})</span>}
                                             </span>
                                         </td>

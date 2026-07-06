@@ -394,6 +394,7 @@ export const policiesApi = {
 export const settingsApi = {
     getCompanyGoal: () => api.get<{ goal: string }>('/settings/company-goal').then(r => r.data),
     updateCompanyGoal: (goal: string) => api.put<{ goal: string }>('/settings/company-goal', { goal }).then(r => r.data),
+    getHolidays: () => api.get<{ holidays: string[] }>('/settings/holidays').then(r => r.data),
 };
 
 // Global search

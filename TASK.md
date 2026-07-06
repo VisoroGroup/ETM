@@ -12,7 +12,22 @@
 
 ## Active
 
-(nincs aktív feladat)
+### `[~]` Dashboard "Depășite" kártya: azonnali felugró, felelős szerint csoportosítva
+- **Hozzáadva:** 2026-07-06
+- **Megjegyzés:** A "Depășite" statisztika-kártya kattintása eddig a `/tasks`
+  oldalra vitt (full sablonnál szervezeti fa nézet → kézi keresés). Mostantól egy
+  felugró ablak (`OverdueTasksModal`) nyílik a Dashboardon, benne az összes lejárt
+  feladat felelős (assignee) szerint csoportosítva; taskra kattintva a drawer nyílik.
+  Csak a "Depășite" kártyát érinti. Adat: `tasksApi.list({ period: 'overdue' })`
+  (backend már támogatja, hozzáférés-scope-olt). Élő teszt deploy után.
+
+### `[~]` Rekurens taskok: badge a következő esedékes dátumot mutatja (nem "depășit")
+- **Hozzáadva:** 2026-07-06 · **PRP:** PRPs/006-recurring-effective-due-date.md
+- **Megjegyzés:** Aktív ismétlődő feladat lejárt esedékessége a következő rekurens
+  dátumként jelenik meg, munkanap-pontosan (a cég `company_holidays` naptárával).
+  Csak megjelenítés — a tárolt `due_date`, a lezárás-alapú továbbgörgetés és a DB
+  változatlan. Új: `GET /api/settings/holidays`, `getEffectiveDueDate` helper,
+  `recurring_workdays_only` mező exponálva. Élő teszt deploy után.
 
 ---
 

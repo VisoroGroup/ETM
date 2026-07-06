@@ -46,4 +46,24 @@ router.put('/company-goal', requireRole('superadmin'), asyncHandler(async (req: 
     res.json({ goal: rows[0].value });
 }));
 
+// GET /api/settings/holidays — the active company's non-working days as
+// 'YYYY-MM-DD' strings. Weekends are implicit; these are the seeded national
+// holidays (migration 083) plus any admin-added ones. The frontend uses them
+// so a recurring task's displayed "next due" date snaps to the same workday
+// the server's rollForwardToWorkday would pick — badge and reality agree.
+router.get('/holidays', asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (req.activeCompanyId === undefined) {
+        res.status(400).json({ error: tError(req, 'company_missing') });
+        return;
+    }
+    const { rows } = await pool.query<{ holiday_date: string }>(
+        `SELECT to_char(holiday_date, 'YYYY-MM-DD') AS holiday_date
+           FROM company_holidays
+          WHERE company_id = $1
+          ORDER BY holiday_date`,
+        [req.activeCompanyId]
+    );
+    res.json({ holidays: rows.map(r => r.holiday_date) });
+}));
+
 export default router;

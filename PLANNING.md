@@ -22,7 +22,12 @@ platform: több Visoro-cég (tenant) használja, mindegyik a saját
 `template_type`-jával (`full` / `project` / `simple`), ami eldönti, milyen
 nézetek és alrendszerek érhetők el. A felhasználók Microsoft Entra-val vagy
 magic-linkkel jelentkeznek be, és feladatokat kezelnek (subtask, komment,
-csatolmány, "În Atenție" figyelmeztetés, függőség, ismétlődés). A
+csatolmány, "În Atenție" figyelmeztetés, függőség, ismétlődés). Egy aktív
+ismétlődő feladat lejárt esedékessége a felületen **nem** "depășit"-ként, hanem a
+következő esedékes dátumként jelenik meg (a badge a frontend `getEffectiveDueDate`
+segédfüggvényével számol; a tárolt `due_date` és a lezárás-alapú továbbgörgetés
+változatlan). A munkanap-igazításhoz a kliens a `GET /api/settings/holidays`
+végponton kéri le a cég `company_holidays` naptárát. A
 `project`-template cégeknél fut a **PUG (Projekt Ügymenet)** alrendszer:
 többlépcsős projektek (Talajradar/David-GPR flow) szakasz-státuszokkal,
 egyéni mezőkkel, projekt-csatolmányokkal és publikus megosztó linkekkel.

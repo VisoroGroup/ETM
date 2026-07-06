@@ -4,7 +4,7 @@ import { tasksApi } from '../../services/api';
 import type { Task } from '../../types';
 import { STATUSES } from '../../types';
 import { useTranslation } from '../../i18n/I18nContext';
-import { formatDate, getDueDateStatus } from '../../utils/helpers';
+import { formatDate, getDueDateStatus, getEffectiveDueDate } from '../../utils/helpers';
 import { ListTodo, ArrowRight } from 'lucide-react';
 
 interface Props {
@@ -57,7 +57,8 @@ export default function ProjectTasksSection({ projectId }: Props) {
             ) : (
                 <div className="space-y-1">
                     {tasks.slice(0, 10).map(task => {
-                        const dueStatus = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+                        const effDue = getEffectiveDueDate(task);
+                        const dueStatus = task.status !== 'terminat' ? getDueDateStatus(effDue) : 'normal';
                         return (
                             <button
                                 key={task.id}
@@ -75,7 +76,7 @@ export default function ProjectTasksSection({ projectId }: Props) {
                                     (dueStatus === 'today' || dueStatus === 'tomorrow' || dueStatus === 'soon') ? 'text-amber-400' :
                                     'text-navy-500'
                                 }`}>
-                                    {formatDate(task.due_date)}
+                                    {formatDate(effDue!)}
                                 </span>
                                 {task.assignee_name && (
                                     <span className="text-[11px] text-navy-500 max-w-[120px] truncate hidden md:inline">

@@ -9,7 +9,7 @@ import { STATUSES, DEPARTMENTS, FREQUENCIES, statusLabel, departmentLabel } from
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
-import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue } from '../../utils/helpers';
+import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue, getEffectiveDueDate } from '../../utils/helpers';
 import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
     ChevronDown, Ban, Trash2, Copy, CalendarRange,
@@ -310,7 +310,11 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
         );
     }
 
-    const dueStat = task.status !== 'terminat' ? getDueDateStatus(task.due_date) : 'normal';
+    // Recurring tasks past their due date show the next upcoming occurrence
+    // instead of nagging "depășit" (the stored due_date is unchanged; the change
+    // due-date popover below still edits the real date).
+    const effDue = getEffectiveDueDate(task);
+    const dueStat = task.status !== 'terminat' ? getDueDateStatus(effDue) : 'normal';
     const completedSubtasks = task.subtasks.filter(s => s.is_completed).length;
     const totalSubtasks = task.subtasks.length;
 
@@ -460,8 +464,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
                                     }`}
                             >
                                 <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(task.due_date)}
-                                {dueStat === 'overdue' && <span className="text-[10px]">{t('task_drawer.overdue_days', { days: getDaysOverdue(task.due_date) })}</span>}
+                                {formatDate(effDue!)}
+                                {dueStat === 'overdue' && <span className="text-[10px]">{t('task_drawer.overdue_days', { days: getDaysOverdue(effDue) })}</span>}
                             </button>
 
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Task, TaskStatus, STATUSES, DEPARTMENTS } from '../../../types';
-import { formatDate, getDueDateStatus } from '../../../utils/helpers';
+import { formatDate, getDueDateStatus, getEffectiveDueDate } from '../../../utils/helpers';
 import InlineStatusPill from '../../tasks/InlineStatusPill';
 
 export type ViewUrgency = 'overdue' | 'today' | 'soon' | 'normal';
@@ -25,7 +25,7 @@ export const OPEN_STATUS_ORDER: TaskStatus[] = ['de_rezolvat', 'in_realizare', '
 /** Collapse the fine-grained date status into the urgency buckets the views use. */
 export function getUrgency(task: Task): ViewUrgency {
     if (task.status === 'terminat' || !task.due_date) return 'normal';
-    const s = getDueDateStatus(task.due_date);
+    const s = getDueDateStatus(getEffectiveDueDate(task));
     if (s === 'overdue') return 'overdue';
     if (s === 'today') return 'today';
     if (s === 'tomorrow' || s === 'soon') return 'soon';
@@ -78,7 +78,7 @@ export function TaskLine({ task, isFullTemplate, onOpenTask, onStatusChanged, de
             <div className={`flex-shrink-0 w-[92px] text-xs text-right whitespace-nowrap ${
                 isOverdue ? 'text-red-400 font-semibold' : isSoon ? 'text-amber-400' : 'text-navy-400'
             }`}>
-                {formatDate(task.due_date)}
+                {formatDate(getEffectiveDueDate(task)!)}
             </div>
             <div className="flex-shrink-0">
                 <InlineStatusPill taskId={task.id} currentStatus={task.status} onChanged={(s) => onStatusChanged(task.id, s)} />

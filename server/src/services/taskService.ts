@@ -27,6 +27,7 @@ export async function getTaskById(id: string) {
         END AS assigned_scope,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         rt.frequency AS recurring_frequency,
+        rt.workdays_only AS recurring_workdays_only,
         (SELECT tsc.reason FROM task_status_changes tsc
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason

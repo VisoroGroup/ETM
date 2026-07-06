@@ -71,6 +71,7 @@ export interface Task {
     last_activity?: string | null;
     is_recurring?: boolean;
     recurring_frequency?: RecurringFrequency;
+    recurring_workdays_only?: boolean;
     blocked_reason?: string | null;
     department?: Department | null;
     dependency_count?: number;

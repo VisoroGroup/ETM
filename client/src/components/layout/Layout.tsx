@@ -12,6 +12,8 @@ import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
 import { safeLocalStorage } from '../../utils/storage';
+import { setHolidays } from '../../utils/helpers';
+import { settingsApi } from '../../services/api';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import CompanyGoalBanner from './CompanyGoalBanner';
 import { Company, CompanyTemplateType } from '../../types';
@@ -107,6 +109,19 @@ export default function Layout() {
     useEffect(() => {
         safeLocalStorage.set('sidebar-collapsed', String(collapsed));
     }, [collapsed]);
+
+    // Load the active company's holiday calendar so recurring-task badges can
+    // roll their displayed due date to the same workday the server would pick.
+    // Refires on company switch; a failure is non-fatal (badges just fall back
+    // to weekend-only rolling).
+    useEffect(() => {
+        if (!activeCompany?.id) return;
+        let cancelled = false;
+        settingsApi.getHolidays()
+            .then(data => { if (!cancelled) setHolidays(data.holidays || []); })
+            .catch(() => { });
+        return () => { cancelled = true; };
+    }, [activeCompany?.id]);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
     const isSuperAdmin = user?.role === 'superadmin';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Task, STATUSES } from '../../../types';
-import { formatDate } from '../../../utils/helpers';
+import { formatDate, getEffectiveDueDate } from '../../../utils/helpers';
 import { useTranslation } from '../../../i18n/I18nContext';
 import InlineStatusPill from '../../tasks/InlineStatusPill';
 import { DashboardViewProps, OPEN_STATUS_ORDER, getUrgency, locBits } from './viewHelpers';
@@ -40,7 +40,7 @@ export default function KanbanView({ tasks, onOpenTask, onStatusChanged, isFullT
                 {bits.length > 0 && <div className="text-[10px] text-navy-500 truncate mt-1.5">{bits.join(' · ')}</div>}
                 <div className="flex items-center justify-between gap-2 mt-2">
                     <span className={`text-[10.5px] font-semibold whitespace-nowrap ${isOverdue ? 'text-red-400' : isSoon ? 'text-amber-400' : 'text-navy-400'}`}>
-                        {formatDate(task.due_date)}
+                        {formatDate(getEffectiveDueDate(task)!)}
                     </span>
                     <InlineStatusPill taskId={task.id} currentStatus={task.status} onChanged={(s) => onStatusChanged(task.id, s)} compact />
                 </div>

@@ -136,7 +136,14 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
                     break;
                 }
                 case 'overdue':
-                    conditions.push(`t.due_date < $${paramIndex} AND t.status != 'terminat'`);
+                    // Active recurring tasks roll to their next occurrence instead
+                    // of going overdue, so they're excluded from the overdue filter.
+                    // Self-contained NOT EXISTS (not the main query's `rt` join) so
+                    // it also works in the join-less COUNT(*) query below. $1 is the
+                    // active company id. Keeps this list — and the Dashboard
+                    // "Depășite" drill-down that uses it — in sync with the overdue
+                    // count and the client-side badges.
+                    conditions.push(`t.due_date < $${paramIndex} AND t.status != 'terminat' AND NOT EXISTS (SELECT 1 FROM recurring_tasks rt_ov WHERE rt_ov.template_task_id = t.id AND rt_ov.is_active = true AND rt_ov.company_id = $1)`);
                     values.push(today);
                     paramIndex++;
                     break;
@@ -224,6 +231,7 @@ router.get('/', authMiddleware, asyncHandler(async (req: AuthRequest, res: Respo
         al.last_activity,
         CASE WHEN rt.id IS NOT NULL AND rt.is_active = true THEN true ELSE false END AS is_recurring,
         rt.frequency AS recurring_frequency,
+        rt.workdays_only AS recurring_workdays_only,
         (SELECT tsc.reason FROM task_status_changes tsc
          WHERE tsc.task_id = t.id AND tsc.new_status = 'blocat'
          ORDER BY tsc.created_at DESC LIMIT 1) AS blocked_reason,
