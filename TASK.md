@@ -12,6 +12,14 @@
 
 ## Active
 
+### `[ ]` "Újdonságok" felugró + kürt ikon minden frissítésnél
+- **Hozzáadva:** 2026-07-07 · **PRP:** PRPs/008-whats-new-popup.md
+- **Megjegyzés:** Deploy után egyszeri automatikus felugró az újdonságokkal
+  (kép + leírás, RO/HU), OK után eltűnik; fejlécben Megaphone ikon piros
+  jelzéssel, kattintásra újra megnyitható. Tartalom a kódban
+  (client/src/whatsnew/releases.ts), látta-jelzés user_preferences
+  merge-patch-csel. Robert jóváhagyására vár.
+
 ### `[~]` Szervezeti struktúra frissítés a 2026-06-30-as org boardhoz
 - **Hozzáadva:** 2026-07-06 · **PRP:** PRPs/007-org-structure-2026-07.md
 - **Megjegyzés:** 095-ös adat-migráció a departments/sections/posts frissítésére

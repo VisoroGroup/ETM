@@ -1119,5 +1119,11 @@
     "stages": "Etape",
     "no_stages": "Nicio etapă definită.",
     "auto_update_note": "Această pagină se actualizează automat când {{company}} modifică proiectul."
+  },
+  "whatsnew": {
+    "title": "Actualizare software",
+    "subtitle": "Noutăți în Sarcinator",
+    "ok": "Am înțeles",
+    "aria_open": "Noutăți"
   }
 }

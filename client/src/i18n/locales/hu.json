@@ -1119,5 +1119,11 @@
     "stages": "Szakaszok",
     "no_stages": "Nincs szakasz megadva.",
     "auto_update_note": "Ez az oldal automatikusan frissül, amikor a(z) {{company}} módosítja a projektet."
+  },
+  "whatsnew": {
+    "title": "Szoftverfrissítés",
+    "subtitle": "Újdonságok a Sarcinatorban",
+    "ok": "Értem",
+    "aria_open": "Újdonságok"
   }
 }

@@ -255,6 +255,13 @@ These files/folders are the project's spine. Maintain them.
   Append, do not rewrite history.
 - **`examples/`** — canonical patterns. Add to it when a new pattern emerges.
 - **`brain/`** — synthesis of every meaningful session. See section 7.1.
+- **`client/src/whatsnew/releases.ts`** — the in-app "Noutăți" changelog
+  (PRP 008). **Every push that changes user-facing behavior must add a new
+  release entry in the same push** (RO + HU text; optional screenshot in
+  `client/public/release-notes/`): newest entry first, `id` = previous top
+  `id` + 1. Users then get the one-time popup automatically after the
+  deploy. Skip only for changes users cannot notice (refactor, backend-only
+  fix, docs).
 
 ### 7.1 The `brain/` folder — session memory
 
@@ -403,6 +410,10 @@ override from Robert:
    makes a non-trivial decision, write a new `brain/YYYY-MM-DD-slug.md`
    entry and update `brain/INDEX.md` in the SAME workflow (a separate
    commit is fine — just don't skip it). See section 7.1.
+10. **Skip the "Noutăți" release entry.** Every push that changes
+    user-facing behavior must add a release entry to
+    `client/src/whatsnew/releases.ts` (RO + HU) in the same push, so the
+    in-app What's New popup announces it automatically. See section 7.
 
 ---
 

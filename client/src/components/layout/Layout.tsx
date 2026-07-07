@@ -6,14 +6,16 @@ import { useTranslation, TFunction } from '../../i18n/I18nContext';
 import {
     LayoutDashboard, ListTodo, LogOut, Moon, Sun,
     ChevronLeft, ChevronRight, ChevronDown, Shield, Mail, Activity, CalendarClock, CheckCircle2,
-    MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2, Settings
+    MoreHorizontal, X, Search, CalendarRange, AlertTriangle, Building2, Settings, Megaphone
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
 import UserAvatar from '../ui/UserAvatar';
+import WhatsNewModal from '../../whatsnew/WhatsNewModal';
+import { RELEASES, LATEST_RELEASE_ID } from '../../whatsnew/releases';
 import { safeLocalStorage } from '../../utils/storage';
 import { setHolidays } from '../../utils/helpers';
-import { settingsApi } from '../../services/api';
+import { settingsApi, userPreferencesApi } from '../../services/api';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import CompanyGoalBanner from './CompanyGoalBanner';
 import { Company, CompanyTemplateType } from '../../types';
@@ -110,6 +112,42 @@ export default function Layout() {
         safeLocalStorage.set('sidebar-collapsed', String(collapsed));
     }, [collapsed]);
 
+    // "Noutăți" (What's New): the last seen release id lives in
+    // user_preferences (whats_new_seen, merge-patch). null = not loaded yet —
+    // no badge and no auto-popup until we know what the user has seen.
+    const [whatsNewSeen, setWhatsNewSeen] = useState<number | null>(null);
+    const [showWhatsNew, setShowWhatsNew] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        userPreferencesApi.get()
+            .then(prefs => {
+                if (cancelled) return;
+                // New users (no marker yet) shouldn't be greeted with the whole
+                // history — only the latest release counts as unseen for them.
+                const seen = typeof prefs?.whats_new_seen === 'number'
+                    ? prefs.whats_new_seen
+                    : Math.max(0, LATEST_RELEASE_ID - 1);
+                setWhatsNewSeen(seen);
+                if (LATEST_RELEASE_ID > seen) setShowWhatsNew(true);
+            })
+            .catch(() => { });
+        return () => { cancelled = true; };
+    }, []);
+    const hasUnseenWhatsNew = whatsNewSeen !== null && LATEST_RELEASE_ID > whatsNewSeen;
+    // Unseen releases if any (auto-popup case), otherwise the newest ones
+    // (megaphone re-open case) — capped at 3 either way.
+    const whatsNewReleases = (hasUnseenWhatsNew && whatsNewSeen !== null
+        ? RELEASES.filter(r => r.id > whatsNewSeen)
+        : RELEASES
+    ).slice(0, 3);
+    const closeWhatsNew = () => {
+        setShowWhatsNew(false);
+        if (whatsNewSeen !== null && LATEST_RELEASE_ID > whatsNewSeen) {
+            setWhatsNewSeen(LATEST_RELEASE_ID);
+            userPreferencesApi.save({ whats_new_seen: LATEST_RELEASE_ID }).catch(() => { });
+        }
+    };
+
     // Load the active company's holiday calendar so recurring-task badges can
     // roll their displayed due date to the same workday the server would pick.
     // Refires on company switch; a failure is non-fatal (badges just fall back
@@ -178,6 +216,22 @@ export default function Layout() {
         );
     };
 
+    // Megaphone launcher for the "Noutăți" popup — mirrors the bell's styling;
+    // the red dot (no count) marks an unseen release.
+    const whatsNewButton = (
+        <button
+            onClick={() => setShowWhatsNew(true)}
+            className={`relative flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-lg transition-all ${darkMode ? 'text-navy-300 hover:bg-navy-700/60' : 'text-gray-500 hover:bg-gray-100'}`}
+            aria-label={t('whatsnew.aria_open')}
+            title={t('whatsnew.title')}
+        >
+            <Megaphone className="w-4 h-4" />
+            {hasUnseenWhatsNew && (
+                <span className={`absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse ring-2 ${darkMode ? 'ring-navy-900' : 'ring-white'}`} />
+            )}
+        </button>
+    );
+
     return (
         <div className={`h-screen flex overflow-hidden ${darkMode ? 'bg-navy-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
             {/* Skip-to-main-content link (audit-3 low). Visible only on keyboard focus. */}
@@ -199,10 +253,18 @@ export default function Layout() {
                             </p>
                         </div>
                     )}
-                    <div className={collapsed ? 'mt-2' : 'ml-auto'}>
+                    <div className={collapsed ? 'mt-2' : 'ml-auto flex items-center gap-0.5'}>
+                        {!collapsed && whatsNewButton}
                         <NotificationBell collapsed={collapsed} darkMode={darkMode} />
                     </div>
                 </div>
+                {/* Collapsed sidebar has no room for two icons in the logo row —
+                    the megaphone gets its own centered row below it. */}
+                {collapsed && (
+                    <div className={`flex justify-center py-1.5 border-b ${darkMode ? 'border-navy-800' : 'border-gray-200'}`}>
+                        {whatsNewButton}
+                    </div>
+                )}
 
                 {/* Navigation — one block per company the user can access */}
                 <nav className="flex-1 py-2 overflow-y-auto">
@@ -319,7 +381,10 @@ export default function Layout() {
                             {activeCompany?.name ?? 'Sarcinator'}
                         </p>
                     </div>
-                    <NotificationBell collapsed={true} darkMode={darkMode} />
+                    <div className="flex items-center gap-1">
+                        {whatsNewButton}
+                        <NotificationBell collapsed={true} darkMode={darkMode} />
+                    </div>
                 </header>
                 <CompanyGoalBanner darkMode={darkMode} />
                 <Outlet />
@@ -446,6 +511,10 @@ export default function Layout() {
             )}
 
             {showProfile && <ProfileModal onClose={() => setShowProfile(false)} darkMode={darkMode} />}
+
+            {showWhatsNew && whatsNewReleases.length > 0 && (
+                <WhatsNewModal releases={whatsNewReleases} onClose={closeWhatsNew} darkMode={darkMode} />
+            )}
 
             {showLogoutConfirm && (
                 <div
