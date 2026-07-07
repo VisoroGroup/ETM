@@ -36,10 +36,14 @@ hiányzó profilnál felelős nélkül.
   majd `railway variables --service Postgres`.
 - User-illesztések élesben: Róbert, Emőke, Mária, Alisa, Tímea, Lorin
   ("Lorin Bǎtinaş" — vegyes diakritika, a LIKE '%lorin%' fogta meg), András
-  Kovásznai, Páll David — mind pontosan 1 találat. **Hiányzott: Vlad Ifrim,
-  István Szőcs, Sergiu Tăutan** → a GPR, WebGIS és Control calitate - RENNS
-  posztok felelős nélkül jöttek létre; admin felületről pótolandó, ha a
-  profilok elkészülnek.
+  Kovásznai, Páll David — mind pontosan 1 találat. Vlad Ifrim, István Szőcs
+  és Sergiu Tăutan profilja hiányzott → a GPR, WebGIS és Control calitate -
+  RENNS posztok felelős nélkül jöttek létre. **Robert döntése (2026-07-07):
+  ezekkel a kollégákkal NEM kell foglalkozni — a posztjaik szándékosan
+  maradnak felelős nélkül, ne hozd fel újra.**
+- Az árva taskokat Robert 2026-07-07-én szétosztotta az orfani oldalon.
+  (Az oldal 3-at mutatott, nem 13-at — a migráció-előtti számolásom a
+  lezárt/terminat taskokat is beleszámolta; az aktív árva 3 volt.)
 - A board a posztnevekben gondolatjelet (—) használ, a DB/migráció kötőjelet
   (-) — a felületen kötőjeles nevek jelennek meg, ez szándékos.
 
