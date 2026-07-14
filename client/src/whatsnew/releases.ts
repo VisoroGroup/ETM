@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 3,
+        date: '2026-07-14',
+        items: [
+            {
+                title: {
+                    ro: 'Lista @mențiuni arată toți colegii',
+                    hu: 'Az @említés lista minden kollégát mutat',
+                },
+                description: {
+                    ro: 'Când scrii @ într-un comentariu, lista derulantă conține acum toți colegii din firmă, nu doar primii 5 în ordine alfabetică.',
+                    hu: 'Amikor kommentben @-ot írsz, a legördülő lista mostantól az összes céges kollégát tartalmazza, nem csak az ábécé első 5 nevét.',
+                },
+            },
+        ],
+    },
+    {
         id: 2,
         date: '2026-07-14',
         items: [

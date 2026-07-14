@@ -90,6 +90,14 @@
 
 ## Done
 
+### `[x]` @említés legördülő csak 5 nevet mutat a kommentben
+- **Hozzáadva / kész:** 2026-07-14 · **Bejelentő:** Robert (screenshot)
+- **Megjegyzés:** A CommentsTab mention-legördülője `.slice(0, 5)`-tel levágta a
+  találatokat, így üres @-nál csak az ábécé első 5 munkatársa látszott. A levágás
+  kikerült; a doboz eddig is görgethető volt (max-h-48), most a teljes céges
+  névsort mutatja. Release-bejegyzés: id 3.
+- **Ellenőrzés:** ESLint 0 hiba; `tsc -b && vite build` zöld. Élő teszt deploy után.
+
 ### `[x]` Státusz-legördülő levágódik a szekció-doboz alján (Blocat pilula)
 - **Hozzáadva / kész:** 2026-07-14 · **Bejelentő:** Robert (screenshot)
 - **Megjegyzés:** Az `InlineStatusPill` menüje `position: absolute`-tal a sorban nyílt,

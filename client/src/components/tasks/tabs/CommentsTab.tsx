@@ -364,7 +364,7 @@ export default function CommentsTab({ task, taskId, onReload, highlightCommentId
                 />
                 {showMentionDropdown && filteredMentionUsers.length > 0 && (
                     <div className="absolute top-full left-0 w-64 mt-1 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto animate-fade-in">
-                        {filteredMentionUsers.slice(0, 5).map(u => (
+                        {filteredMentionUsers.map(u => (
                             <button
                                 key={u.id}
                                 onClick={() => selectMention(u)}
