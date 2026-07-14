@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { STATUSES, TaskStatus } from '../../types';
 import { tasksApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
@@ -24,23 +25,60 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
     const [pendingBlocat, setPendingBlocat] = useState(false);
     const [reason, setReason] = useState('');
     const [status, setStatus] = useState<TaskStatus>(currentStatus);
+    // The dropdown is rendered in a portal (document.body) with fixed positioning,
+    // because the task-row containers clip absolute children via overflow-hidden
+    // (e.g. the dashboard section cards) — the menu would be cut off on last rows.
+    const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
     const { showToast } = useToast();
     const { t } = useTranslation();
 
     useEffect(() => setStatus(currentStatus), [currentStatus]);
 
+    function closeMenu() {
+        setOpen(false);
+        setPendingBlocat(false);
+        setReason('');
+    }
+
+    function toggleOpen() {
+        if (open) {
+            closeMenu();
+            return;
+        }
+        const rect = wrapRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const right = window.innerWidth - rect.right;
+        // Not enough room below the pill → open the menu upward instead.
+        const spaceBelow = window.innerHeight - rect.bottom;
+        setMenuPos(spaceBelow < 240
+            ? { bottom: window.innerHeight - rect.top + 4, right }
+            : { top: rect.bottom + 4, right });
+        setOpen(true);
+    }
+
     useEffect(() => {
         if (!open) return;
         function onDocClick(e: MouseEvent) {
-            if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-                setOpen(false);
-                setPendingBlocat(false);
-                setReason('');
-            }
+            const target = e.target as Node;
+            if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+            closeMenu();
+        }
+        // The fixed-position menu would detach from its pill when the page
+        // scrolls or resizes — close it instead of tracking the anchor.
+        function onScroll(e: Event) {
+            if (menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
+            closeMenu();
         }
         document.addEventListener('mousedown', onDocClick);
-        return () => document.removeEventListener('mousedown', onDocClick);
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', closeMenu);
+        return () => {
+            document.removeEventListener('mousedown', onDocClick);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', closeMenu);
+        };
     }, [open]);
 
     const statusKeys: TaskStatus[] = ['de_rezolvat', 'in_realizare', 'blocat', 'terminat'];
@@ -75,7 +113,7 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
         >
             <button
                 type="button"
-                onClick={() => setOpen(o => !o)}
+                onClick={toggleOpen}
                 disabled={saving}
                 aria-label={t('tasks.change_status_aria', { current: t(`task_status.${status}`) })}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all hover:brightness-125 cursor-pointer"
@@ -88,8 +126,12 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                 {!compact && <ChevronDown className="w-2.5 h-2.5 opacity-70" />}
             </button>
 
-            {open && !pendingBlocat && (
-                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] py-1 bg-navy-900 border border-navy-700 rounded-lg shadow-2xl">
+            {open && !pendingBlocat && menuPos && createPortal(
+                <div
+                    ref={menuRef}
+                    style={{ position: 'fixed', ...menuPos }}
+                    className="z-50 min-w-[160px] py-1 bg-navy-900 border border-navy-700 rounded-lg shadow-2xl"
+                >
                     {statusKeys.map(s => (
                         <button
                             key={s}
@@ -108,11 +150,16 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                             {s === status && <span className="ml-auto text-[9px] text-navy-400">{t('tasks.current')}</span>}
                         </button>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
 
-            {open && pendingBlocat && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-64 p-3 bg-navy-900 border border-navy-700 rounded-lg shadow-2xl">
+            {open && pendingBlocat && menuPos && createPortal(
+                <div
+                    ref={menuRef}
+                    style={{ position: 'fixed', ...menuPos }}
+                    className="z-50 w-64 p-3 bg-navy-900 border border-navy-700 rounded-lg shadow-2xl"
+                >
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] font-semibold text-orange-400">{t('tasks.block_reason')} *</span>
                         <button
@@ -149,7 +196,8 @@ export default function InlineStatusPill({ taskId, currentStatus, onChanged, com
                             {saving ? t('task_form.saving') : t('tasks.block')}
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

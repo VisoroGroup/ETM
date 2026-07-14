@@ -90,6 +90,15 @@
 
 ## Done
 
+### `[x]` Státusz-legördülő levágódik a szekció-doboz alján (Blocat pilula)
+- **Hozzáadva / kész:** 2026-07-14 · **Bejelentő:** Robert (screenshot)
+- **Megjegyzés:** Az `InlineStatusPill` menüje `position: absolute`-tal a sorban nyílt,
+  de a Dashboard/Sarcini szekció-kártyák `overflow-hidden`-je levágta, ha a task a
+  szekció utolsó sora volt (pl. az egyetlen Blocat task). Fix: a menü portálba
+  (document.body) került fix pozícióval, kevés hely esetén felfelé nyílik; görgetésre
+  bezárul. Minden pill-használót érint (Dashboard, Sarcini, Planner, Kanban, Focus).
+- **Ellenőrzés:** ESLint 0 hiba a fájlon; `tsc -b && vite build` zöld. Élő teszt deploy után.
+
 ### `[x]` Dashboard: választható nézet-módok (Fülek / Kanban / Compact / Focus) a görgetés-probléma ellen
 - **Hozzáadva / kész:** 2026-06-24 · **Bejelentő:** Robert · **PRP:** PRPs/005-dashboard-view-modes.md (Approved 2026-06-24)
 - **Megjegyzés:** A jelenlegi Listă **alapértelmezett marad**, mellé 4 választható mód + Calendar, fejenként

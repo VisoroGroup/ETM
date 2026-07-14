@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 2,
+        date: '2026-07-14',
+        items: [
+            {
+                title: {
+                    ro: 'Meniul de schimbare a stării nu se mai taie',
+                    hu: 'A státusz-váltó menü többé nem vágódik le',
+                },
+                description: {
+                    ro: 'Când schimbi starea unei sarcini din listă (De rezolvat, În realizare, Blocat, Terminat), meniul apare acum întreg — chiar și la ultimul rând dintr-o secțiune, unde înainte era tăiat.',
+                    hu: 'Amikor a listából váltasz feladat-státuszt (De rezolvat, În realizare, Blocat, Terminat), a menü mostantól teljes egészében látszik — a szekció utolsó soránál is, ahol eddig levágódott.',
+                },
+            },
+        ],
+    },
+    {
         id: 1,
         date: '2026-07-07',
         items: [
