@@ -4,6 +4,7 @@ import { subtasksApi, notificationsApi } from '../../../services/api';
 import type { TaskDetail, Subtask } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
+import { assigneeOptions } from '../../../utils/helpers';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Plus, Check, Trash2, GripVertical, CheckCircle2, ChevronRight } from 'lucide-react';
@@ -202,8 +203,8 @@ export default function SubtasksTab({ task, taskId, onReload, onUpdate }: Props)
                                                 className="px-2 py-1 bg-navy-800/50 border border-navy-700/50 rounded text-[11px] text-navy-300 focus:outline-none max-w-[120px]"
                                             >
                                                 <option value="">{t('tasks.unassigned')}</option>
-                                                {users.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.display_name}</option>
+                                                {assigneeOptions(users, subtask.assigned_to, subtask.assigned_to_name).map(o => (
+                                                    <option key={o.id} value={o.id}>{o.label}</option>
                                                 ))}
                                             </select>
 

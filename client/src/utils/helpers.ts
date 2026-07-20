@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format, isToday, isPast, isTomorrow, differenceInDays } from 'date-fns';
 import { ro, hu, enUS, type Locale } from 'date-fns/locale';
-import type { RecurringFrequency } from '../types';
+import type { RecurringFrequency, User } from '../types';
 
 // Active date-fns locale. Defaults to RO (the legacy default), and is
 // switched at runtime by I18nProvider when the active company's language
@@ -11,6 +11,31 @@ let activeLocale: Locale = ro;
 
 export function setDateLocale(lang: 'ro' | 'hu' | 'en'): void {
     activeLocale = LOCALES[lang] ?? ro;
+}
+
+/**
+ * Options for an assignee <select>, guaranteeing the currently-assigned person
+ * stays visible even when they are no longer a member of the active company.
+ *
+ * The assignable-users list comes from GET /auth/users, which is scoped to the
+ * active company's members (plus every admin/superadmin). A task or subtask
+ * whose stored assignee has since lost that membership — e.g. removed from the
+ * company, or downgraded from admin to a regular user — matches no <option>, so
+ * a native <select value={id}> renders BLANK ("no assignee") even though the row
+ * is in fact still assigned. This prepends a synthetic option built from the
+ * denormalized name the row already carries, so the responsible is never hidden.
+ * It only affects display: normal assignment still picks from real members.
+ */
+export function assigneeOptions(
+    users: User[],
+    currentId: string | null | undefined,
+    currentName: string | null | undefined,
+): { id: string; label: string }[] {
+    const options = users.map(u => ({ id: u.id, label: u.display_name || u.email }));
+    if (currentId && !users.some(u => u.id === currentId)) {
+        options.unshift({ id: currentId, label: currentName || currentId });
+    }
+    return options;
 }
 
 export function timeAgo(date: string | Date): string {

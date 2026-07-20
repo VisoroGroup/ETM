@@ -9,7 +9,7 @@ import { STATUSES, DEPARTMENTS, FREQUENCIES, statusLabel, departmentLabel } from
 import { useAuth } from '../../hooks/useAuth';
 import { useCompany } from '../../hooks/useCompany';
 import { useToast } from '../../hooks/useToast';
-import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue, getEffectiveDueDate } from '../../utils/helpers';
+import { getDueDateStatus, formatDate, formatDateFull, timeAgo, getDaysOverdue, getEffectiveDueDate, assigneeOptions } from '../../utils/helpers';
 import {
     X, Calendar, Tag, MessageSquare, Paperclip, Activity,
     ChevronDown, Ban, Trash2, Copy, CalendarRange,
@@ -584,8 +584,8 @@ export default function TaskDrawer({ taskId, onClose, onUpdate, initialCommentId
                                 className="flex-1 max-w-[200px] px-2.5 py-1.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50"
                             >
                                 <option value="">— {t('tasks.unassigned')} —</option>
-                                {users.map(u => (
-                                    <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
+                                {assigneeOptions(users, task.assigned_to, task.assignee_name).map(o => (
+                                    <option key={o.id} value={o.id}>{o.label}</option>
                                 ))}
                             </select>
                             {task.assigned_to && task.assignee_name && (

@@ -12,6 +12,26 @@
 
 ## Active
 
+### `[~]` Felelős legördülő üresen mutat, ha a felelős már nem céges tag
+- **Hozzáadva:** 2026-07-20 · **Bejelentő:** Robert (screenshot, Visoro Hungary)
+- **Tünet:** a feladat rá van szignálva valakire (chip mutatja a nevét), de a
+  „Felelős" legördülő „Nincs felelős"-t mutat. Ok: a legördülő opciói a
+  `GET /auth/users`-ből jönnek (aktív cég tagjai + minden admin/superadmin), a
+  tárolt felelős viszont már nem tagja Visoro Hungarynak → nincs hozzá `<option>`,
+  a natív select üresen esik vissza. A név chipként mégis látszik, mert az a
+  taskra beégetett `assignee_name`-ből jön (LEFT JOIN a users táblára).
+- **Döntés (Robert):** tartós kód-javítás — a jelenlegi felelős MINDIG legyen az
+  opciók közt (a task/subtask denormalizált nevéből), akkor is, ha kikerült a
+  cégből. Nem old meg tagság-adatot (Viktor újra-választhatóságához külön az
+  Admin felületen kell visszakapcsolni a céghez).
+- **Változás:** új `assigneeOptions(users, currentId, currentName)` helper
+  (`client/src/utils/helpers.ts`), alkalmazva a TaskDrawer felelős-választójára
+  és a SubtasksTab részfeladat-választójára. TaskFormModal érintetlen (csak
+  létrehozásra való, ott a felelős mindig üresről indul). Release-bejegyzés: id 4.
+- **Diagnózis:** lásd a session Workflow-t (root cause: Viktor korábban admin
+  lehetett / vagy a tagsága törlődött; a belépés nem hoz létre `user_companies`
+  sort — nincs önjavítás). Rendszerszintű, több magyar kollégát is érinthet.
+
 ### `[ ]` "Újdonságok" felugró + kürt ikon minden frissítésnél
 - **Hozzáadva:** 2026-07-07 · **PRP:** PRPs/008-whats-new-popup.md
 - **Megjegyzés:** Deploy után egyszeri automatikus felugró az újdonságokkal

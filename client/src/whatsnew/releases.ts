@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 4,
+        date: '2026-07-20',
+        items: [
+            {
+                title: {
+                    ro: 'Responsabilul rămâne vizibil chiar dacă a ieșit din firmă',
+                    hu: 'A felelős akkor is látszik, ha már kikerült a cégből',
+                },
+                description: {
+                    ro: 'Dacă o sarcină (sau subsarcină) e atribuită cuiva care nu mai e membru al firmei active, selectorul „Responsabil” arăta gol. Acum numele persoanei atribuite apare mereu în listă, așa că se vede clar cine e responsabil.',
+                    hu: 'Ha egy feladat (vagy részfeladat) olyasvalakire volt szignálva, aki már nem tagja az aktív cégnek, a „Felelős” választó üresen jelent meg. Mostantól a felelős neve mindig szerepel a listában, így egyértelmű, ki a felelős.',
+                },
+            },
+        ],
+    },
+    {
         id: 3,
         date: '2026-07-14',
         items: [
