@@ -136,6 +136,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {}
     }
 
+    // Refetch the company-scoped users list, retrying a couple of times on a
+    // transient failure (e.g. a request aborted by a rapid company switch, or a
+    // brief network blip). This is what keeps the assignee / subtask-owner
+    // dropdowns from staying frozen on a *previous* company's members — the exact
+    // failure that made a Hungary-only user (a plain 'user', not an admin who
+    // shows everywhere) invisible in the picker while their name still rendered
+    // on the task. A canceled request means a newer switch superseded us, so we
+    // stop; otherwise we log rather than swallow silently.
+    async function reloadUsers(attempt = 0): Promise<void> {
+        try {
+            const list = await authApi.users();
+            setUsers(list);
+        } catch (err) {
+            if (axios.isCancel(err)) return; // superseded by a newer company switch
+            if (attempt < 2) {
+                setTimeout(() => { void reloadUsers(attempt + 1); }, 400 * (attempt + 1));
+            } else {
+                console.warn('[useAuth] users list refetch failed; assignee dropdowns may be stale', err);
+            }
+        }
+    }
+
     // Periodically re-pull the user profile so a role downgrade or company
     // access change made by another admin propagates without forcing the
     // user to log out and back in. Refresh on:
@@ -144,7 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //   - 5-minute heartbeat (catches background tabs)
     useEffect(() => {
         if (!user) return;
-        const onFocus = () => refreshUser();
+        // Re-sync both the profile AND the company-scoped users list when the tab
+        // regains focus — a cheap, reliable way to heal a stale dropdown list.
+        const onFocus = () => { refreshUser(); void reloadUsers(); };
         window.addEventListener('focus', onFocus);
         const t = setInterval(refreshUser, 5 * 60 * 1000);
         return () => {
@@ -162,9 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // even though the badge displays their name.
     useEffect(() => {
         if (!user) return;
-        const onCompanyChange = () => {
-            authApi.users().then(setUsers).catch(() => {});
-        };
+        const onCompanyChange = () => { void reloadUsers(); };
         window.addEventListener('etm:active-company-changed', onCompanyChange);
         return () => window.removeEventListener('etm:active-company-changed', onCompanyChange);
     }, [user?.id]);

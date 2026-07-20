@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 6,
+        date: '2026-07-20',
+        items: [
+            {
+                title: {
+                    ro: 'Lista de responsabili se reîmprospătează sigur după schimbarea firmei',
+                    hu: 'A felelős-lista megbízhatóan frissül cégváltás után',
+                },
+                description: {
+                    ro: 'După ce schimbi firma activă, lista din care alegi responsabilul se reîncarcă sigur (cu reîncercare și la revenirea în tab), ca să apară toți colegii firmei curente — nu cei rămași de la firma anterioară.',
+                    hu: 'Miután céget váltasz, a felelős-választó lista megbízhatóan újratöltődik (újrapróbálkozással és a fülre visszatéréskor is), így a jelenlegi cég összes kollégája megjelenik — nem az előző cégnél ragadt névsor.',
+                },
+            },
+        ],
+    },
+    {
         id: 5,
         date: '2026-07-20',
         items: [
