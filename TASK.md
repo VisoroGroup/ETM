@@ -12,6 +12,18 @@
 
 ## Active
 
+### `[x]` Régi „részleg" címke elrejtése non-full cégeknél (teljes söprés)
+- **Hozzáadva / kész:** 2026-07-20 · **Bejelentő:** Robert (screenshot: Hungary
+  befejezési jelentésen „Comunicare și HR")
+- **Commit:** a3c1775 (completion report) + fafbad1 (teljes söprés)
+- **Ok:** minden task hordoz egy legacy `department_label='departament_1'`-et; több
+  felület feltétel nélkül kiírta a non-full (Hungary/Neo Plan) cégeknek. Élő DB:
+  NINCS cross-company bleed (org-scope FK-k null), csak a címke szivárgott.
+- **Gate-elve `template_type='full'`-ra:** completion report, személyes lista
+  táblázat (Részleg/Subdep./Poszt oszlopok), tömeges „Részleg" gomb, CSV export,
+  tevékenységnapló (feed + tab), sablonok oldal. Release id 7 + 8. 3-agent audit
+  Workflow-val (minden felület átnézve). Élő teszt deploy után.
+
 ### `[~]` Tagság-integritás őrök (megelőzés) — PRP 009
 - **Hozzáadva:** 2026-07-20 · **PRP:** PRPs/009-membership-integrity-guards.md
 - **Jóváhagyva:** Robert (2026-07-20, "mindkettő")

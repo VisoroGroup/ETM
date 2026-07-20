@@ -38,6 +38,30 @@ hogy keverednek-e a cégek a háttérben.
   (0836508), a useAuth (6cfd786), a PRP 009 őrök (de162ab) egyike sem nyúlt a
   `department_label`-hez vagy a completion reporthoz.
 
+## Follow-up — teljes söprés (fafbad1)
+Robert kérte, hogy nézzem át MINDENHOL. Audit (3-agent Workflow) + kézi grep az
+összes `department_label`/`DEPARTMENTS`/`departmentLabel` felületre. Gate-elve
+`template_type === 'full'`-ra (eddig SZIVÁRGOTT non-full cégnek):
+- **Személyes feladatlista lapos táblázat** (Atribuite mie / Create de mine):
+  a Részleg/Subdepartament/Poszt oszlopok (fejléc + desktop cellák + mobil inline
+  meta) — TaskListPage `isPersonalView` ág.
+- **Tömeges „Részleg" gomb** a bulk action bar-ban — TaskListPage.
+- **CSV export** „Departament" oszlop — exportUtils (`includeDepartment` param,
+  a hívó TaskListPage adja át `template_type==='full'`).
+- **Tevékenységnapló** (ActivityFeedPage): részleg-szűrő + soronkénti chip.
+- **Feladat tevékenység-tab** (ActivityTab): `label_changed` / `department_changed`
+  bejegyzések (useCompany bekötve, üres desc → a sor kimarad).
+- **Sablonok oldal** (TemplatesPage): kártya-chip + create-form részleg-mező
+  (direct-URL only, nincs nav-link, de gate-elve).
+
+MÁR HELYESEN gate-elt (nem nyúltam): completion report (a3c1775), day-view
+email+oldal (`isFull`), dashboard task-sorok (`viewHelpers.locBits`, DashboardPage
+`isFullTemplate ? ... : []`), CompletedTasksPage (`isFull`), TaskDrawer org-editor
+(`isFullTemplate`), TaskFormModal org-cascade (`!useFlatForm`), PolicyDrawer
+(ORG-departmentId UUID, nem legacy; + full-only megnyitó), AdminPage
+(user-department attribútum, admin/full-only route+menü). CalendarView csak SZÍNRE
+használja a DEPARTMENTS-t (nincs név), ezt hagytam.
+
 ## Gotcha jövő-Claude-nak
 - **A flat create form (TaskFormModal) továbbra is `departament_1`-et stampol** a
   non-full taskokra (a `department` state default). Most ártalmatlan (display
