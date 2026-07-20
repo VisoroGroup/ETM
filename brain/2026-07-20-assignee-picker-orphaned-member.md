@@ -4,6 +4,30 @@
 **Commit:** 0836508
 **Related:** [[2026-07-06-org-structure-package-pending]] (név-illesztéses user-hozzárendelés, hiányzó profilok), [[2026-06-08-task-list-visibility-fixes]] („Fără atribuire" besorolatlan taskok)
 
+## ⚠️ KORREKCIÓ (2026-07-20, élő DB-ellenőrzés után)
+A lenti „árva tagság" gyökér-ok **TÉVES volt**. Élő Railway-ellenőrzés (Postgres,
+csak-olvasó) bizonyítja:
+- **Nemess Viktor TAGJA Visoro Hungarynak** (`user_companies` sor megvan),
+  `active=true`, `role=user`. Nincs hiányzó tagsága.
+- A „Balogh P…" task (id 721a8503…, company_id=2) **rá van szignálva** Viktorra.
+- A **szerver `/auth/users` lekérdezése Visoro Hungaryra VISSZAADJA Viktort** (4
+  user: Emőke/Mária admin, Róbert superadmin, Viktor user). A szerver sosem volt a hiba.
+- **Egyetlen árva ember sincs** egyik cégben sem (orphan-check üres).
+
+**Az IGAZI gyökér-ok:** a **kliens `users` listája elavult** volt — egy MÁSIK cég
+(vsz. Visoro Global) listája, ahol Viktor nem tag. Ezért látszottak az adminok
+(ők minden cégben ott vannak a `role`-ág miatt), de Viktor (Hungary-only sima user)
+nem. Ez PONTOSAN a `useAuth.tsx:156-162` kommentben leírt ismert tünet: a
+company-váltáskori `authApi.users()` re-fetch **silent `.catch(()=>{})`**-tal bukik
+(useAuth:166), a company-váltás pedig **aborttal öli a futó kéréseket** (api.ts:30)
+→ ha a re-fetch elveszti a versenyt, a lista csendben elavult marad.
+
+**A javításom (0836508, `assigneeOptions`) így is HELYES és a legrobusztusabb**: a
+jelenlegi felelőst a task denormalizált nevéből mindig megmutatja, akár elavult a
+lista, akár tényleg árva. A tünet megoldva. A lenti „árva" narratíva viszont
+hipotézis volt, amit az élő adat megcáfolt — a PRP 009 őrök és a PRP 010 valós
+árvákat céloznak, amikből JELENLEG NULLA van (lásd [[2026-07-20-membership-integrity-guards]] korrekció).
+
 ## Mit kért
 Robert screenshotot küldött Visoro Hungaryból: egy feladat „Felelős" legördülője
 „Nincs felelős"-t mutat, miközben a név-chip **Nemess Viktort** mutatja (ő a

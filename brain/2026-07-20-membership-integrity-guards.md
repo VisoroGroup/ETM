@@ -4,6 +4,19 @@
 **Commit:** de162ab
 **Related:** PRPs/009-membership-integrity-guards.md, PRPs/010-orphaned-tasks-remediation.md, [[2026-07-20-assignee-picker-orphaned-member]] (a display-fix, ami a tünetet kezelte)
 
+## ⚠️ KORREKCIÓ (2026-07-20, élő DB után)
+Az őröket kiváltó konkrét eset (Nemess Viktor) **NEM volt árva**: élő ellenőrzés
+szerint ő tag Visoro Hungaryban, a szerver visszaadja, az igazi ok a kliens
+**elavult `users` listája** volt (lásd [[2026-07-20-assignee-picker-orphaned-member]]
+korrekció). **Az egész rendszerben JELENLEG NULLA árva** feladat/felelős van
+(orphan-check üres mind a 6 cégben).
+- A PRP 009 őrök (A: figyelmeztetés, B: másolás-őr) **korrekt, review-zött,
+  ártalmatlan hardening** — valós, ha jelenleg nem előforduló, kód-rést zárnak
+  (a másoló utak tényleg nem néztek tagságot). NEM ezek javították Robert
+  problémáját, és nem sürgősek. Robert dönthet a megtartásukról/visszavonásukról.
+- **PRP 010-nek jelenleg NINCS mit rendeznie** (nulla árva). Maradjon dokumentált
+  eljárásként a jövőre.
+
 ## Mit kért
 A [[2026-07-20-assignee-picker-orphaned-member]] diagnózis után Robert a
 megelőzést kérte (PRP 009), **mindkét irányt** ("mindkettő"): (A) figyelmeztetés,
