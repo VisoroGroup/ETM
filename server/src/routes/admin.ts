@@ -166,6 +166,38 @@ router.put('/users/:id/companies', requireRole('superadmin'), asyncHandler(async
     }
 }));
 
+// GET /api/admin/users/:id/task-counts?company_ids=1,2 — number of OPEN tasks
+// ASSIGNED to this user (not yet 'terminat') in each of the given companies. The
+// company-access editor calls this before removing companies, so the admin can be
+// warned they'd orphan the user's responsible-tasks (removal makes the assignee
+// un-reselectable). We count assigned_to only — created_by is historical and is
+// never orphaned by removal, so counting it would inflate the warning. Superadmin
+// only — same authority as the company replace-list endpoint above.
+router.get('/users/:id/task-counts', requireRole('superadmin'), asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = req.params.id;
+    const companyIds = Array.from(new Set(
+        String(req.query.company_ids ?? '')
+            .split(',')
+            .map((v) => Number(v.trim()))
+            .filter((n) => Number.isFinite(n) && n > 0)
+    ));
+    if (companyIds.length === 0) {
+        res.json([]);
+        return;
+    }
+    const { rows } = await pool.query<{ company_id: number; count: number }>(
+        `SELECT company_id, COUNT(*)::int AS count
+           FROM tasks
+          WHERE deleted_at IS NULL
+            AND status <> 'terminat'
+            AND company_id = ANY($2::int[])
+            AND assigned_to = $1
+          GROUP BY company_id`,
+        [userId, companyIds]
+    );
+    res.json(rows);
+}));
+
 // Role hierarchy ranks — higher number means more privileged.
 const ROLE_RANK: Record<string, number> = {
     user: 1,

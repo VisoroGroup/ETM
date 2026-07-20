@@ -2,6 +2,7 @@ import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskStatus } from '../types';
 import { dispatchWebhook } from './webhookService';
+import { userIsInCompany } from '../utils/tenantGuard';
 import {
     getSpecificStakeholders,
     buildNotificationHtml,
@@ -603,6 +604,13 @@ export async function duplicateTask(id: string, userId: string, companyId: numbe
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);
 
+    // Don't propagate an assignee who is no longer a member of this company onto
+    // the copy — duplicate it unassigned so it gets re-assigned. Admin/superadmin
+    // count as in-company.
+    const dupAssignee = original.assigned_to
+        && (await userIsInCompany(original.assigned_to, companyId))
+        ? original.assigned_to : null;
+
     // Duplicate INSERT lands in the active tenant directly — no follow-up UPDATE.
     await pool.query(
         `INSERT INTO tasks (id, title, description, status, due_date, created_by, department_label,
@@ -611,7 +619,7 @@ export async function duplicateTask(id: string, userId: string, companyId: numbe
          VALUES ($1, $2, $3, 'de_rezolvat', $4, $5, $6, $7, $8, $9, $10, $11)`,
         [newId, `${original.title} (copie)`, original.description, dueDate.toISOString().split('T')[0],
          userId, original.department_label,
-         original.assigned_to, original.assigned_post_id,
+         dupAssignee, original.assigned_post_id,
          original.assigned_section_id, original.assigned_department_id,
          companyId]
     );

@@ -190,6 +190,14 @@ router.post('/:id/use', authMiddleware, async (req: AuthRequest, res: Response) 
             }
         }
 
+        // Don't assign the new task to someone who is no longer a member of this
+        // company (e.g. the template's stored assignee has since left). Fall back
+        // to unassigned so it is re-assigned rather than becoming an invisible,
+        // orphaned responsible. Admin/superadmin count as in-company.
+        if (resolvedAssignee && !(await userIsInCompany(resolvedAssignee, companyId))) {
+            resolvedAssignee = null;
+        }
+
         // Create task — including the org-scope columns so the new task
         // shows the same chips Visoro Global users expect.
         const taskResult = await client.query(`

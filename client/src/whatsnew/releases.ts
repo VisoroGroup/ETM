@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 5,
+        date: '2026-07-20',
+        items: [
+            {
+                title: {
+                    ro: 'Responsabilii nu se mai pierd când cineva iese din firmă',
+                    hu: 'A felelősök nem vesznek el, ha valaki kikerül a cégből',
+                },
+                description: {
+                    ro: 'Sarcinile recurente, cele din șabloane și duplicatele nu mai păstrează ca responsabil pe cineva care nu mai e membru al firmei — se creează fără responsabil, ca să fie reatribuite. În plus, când modifici accesul unui utilizator, aplicația te avertizează dacă i-ai lua o firmă în care încă are sarcini deschise.',
+                    hu: 'Az ismétlődő, a sablonból és a duplikálással készülő feladatok többé nem tartják meg felelősként azt, aki már nem tagja a cégnek — felelős nélkül jönnek létre, hogy újra ki lehessen osztani. Emellett a felhasználó hozzáférésének módosításakor a rendszer figyelmeztet, ha olyan céget vennél el tőle, ahol még van nyitott feladata.',
+                },
+            },
+        ],
+    },
+    {
         id: 4,
         date: '2026-07-20',
         items: [

@@ -12,8 +12,31 @@
 
 ## Active
 
-### `[~]` Felelős legördülő üresen mutat, ha a felelős már nem céges tag
+### `[~]` Tagság-integritás őrök (megelőzés) — PRP 009
+- **Hozzáadva:** 2026-07-20 · **PRP:** PRPs/009-membership-integrity-guards.md
+- **Jóváhagyva:** Robert (2026-07-20, "mindkettő")
+- **(A)** Figyelmeztetés a cég-hozzáférés szűkítésekor: ha egy usertől olyan céget
+  vennél el, ahol nyitott feladat van RÁ SZIGNÁLVA, megerősítő panel a hatással.
+  Új `GET /admin/users/:id/task-counts` (superadmin), `adminUserCompaniesApi.taskCounts`,
+  confirm-lépés a `UserCompanyAccessModal`-ban (CompaniesAdminPage). i18n RO+HU.
+- **(B)** Tagság-újraellenőrzés a feladat-másoló utakon: ismétlődő materializáció
+  (tasks.ts), sablon `/use` (templates.ts), duplikálás (taskService.ts) — ha a
+  másolt `assigned_to` már nem tag (`userIsInCompany`), a másolat felelős nélkül
+  jön létre (a `created_by` marad). Release id 5.
+- **Ellenőrzés:** server tsc + client `tsc -b && vite build` zöld; 2 adversarial
+  review (correctness + tenant/regressió) — 1 low-sev finding javítva (a
+  figyelmeztetés csak `assigned_to`-t számol, `created_by`-t nem). Élő teszt deploy után.
+
+### `[ ]` Meglévő „árva" feladatok rendezése (adat-remediáció) — PRP 010
+- **Hozzáadva:** 2026-07-20 · **PRP:** PRPs/010-orphaned-tasks-remediation.md
+- **Megjegyzés:** Read-first, visszafordítható, Robert tételes döntésével
+  (re-link / unassign / hagyd). Éles írás CSAK Robert OK-jával. A diagnosztika
+  (`scratchpad/orphan-members-check.js`) belinkelt Railwayt igényel. **Vár a
+  Railway-linkre + Robert döntéseire.**
+
+### `[x]` Felelős legördülő üresen mutat, ha a felelős már nem céges tag
 - **Hozzáadva:** 2026-07-20 · **Bejelentő:** Robert (screenshot, Visoro Hungary)
+- **Commit:** 0836508 · **Kész:** 2026-07-20
 - **Tünet:** a feladat rá van szignálva valakire (chip mutatja a nevét), de a
   „Felelős" legördülő „Nincs felelős"-t mutat. Ok: a legördülő opciói a
   `GET /auth/users`-ből jönnek (aktív cég tagjai + minden admin/superadmin), a

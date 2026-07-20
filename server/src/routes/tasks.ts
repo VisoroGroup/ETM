@@ -588,6 +588,16 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                     await rollForwardToWorkday(nextDueDate, cid);
                 }
 
+                // If the recurring task's assignee is no longer a member of the
+                // company (they left, or were downgraded from admin), don't carry
+                // the orphaned responsible onto the freshly generated occurrence —
+                // create it unassigned so it gets re-assigned. userIsInCompany
+                // keeps admin/superadmin, so real leads are preserved.
+                const recurCompanyId = task.company_id ?? req.activeCompanyId!;
+                const recurAssignee = task.assigned_to
+                    && (await userIsInCompany(task.assigned_to, recurCompanyId))
+                    ? task.assigned_to : null;
+
                 // Use a transaction to ensure all recurring task operations succeed or fail together
                 const client = await pool.connect();
                 try {
@@ -601,7 +611,7 @@ router.put('/:id/status', authMiddleware, validateChangeStatus, asyncHandler(asy
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
                         [newTaskId, task.title, task.description, toLocalDateStr(newDueDate),
                             task.created_by, task.department_label,
-                            task.assigned_to, task.assigned_post_id,
+                            recurAssignee, task.assigned_post_id,
                             task.assigned_section_id, task.assigned_department_id,
                             task.company_id ?? req.activeCompanyId]
                     );

@@ -463,6 +463,12 @@ export const adminCompaniesApi = {
 export const adminUserCompaniesApi = {
     setUserCompanies: (userId: string, companyIds: number[]) =>
         api.put(`/admin/users/${userId}/companies`, { company_ids: companyIds }).then(r => r.data),
+    /** Open-task counts for this user in the given companies (for the removal warning). */
+    taskCounts: (userId: string, companyIds: number[]) =>
+        api.get<{ company_id: number; count: number }[]>(
+            `/admin/users/${userId}/task-counts`,
+            { params: { company_ids: companyIds.join(',') } }
+        ).then(r => r.data),
 };
 
 // PUG (Visoro Neo Plan) — admin catalogs + project CRUD

@@ -453,6 +453,9 @@ function UserCompanyAccessModal({
     const [selected, setSelected] = useState<Set<number>>(new Set(user.company_ids ?? []));
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
+    // When removing a company where the user still owns open tasks, we surface a
+    // confirmation listing the affected companies before actually saving.
+    const [impact, setImpact] = useState<{ company_id: number; count: number }[] | null>(null);
 
     const toggle = (id: number) => {
         setSelected((prev) => {
@@ -461,9 +464,10 @@ function UserCompanyAccessModal({
             else next.add(id);
             return next;
         });
+        setImpact(null); // editing the selection invalidates a pending warning
     };
 
-    const save = async () => {
+    const performSave = async () => {
         setSaving(true);
         setErr('');
         try {
@@ -474,6 +478,29 @@ function UserCompanyAccessModal({
         } finally {
             setSaving(false);
         }
+    };
+
+    const save = async () => {
+        setErr('');
+        // Warn before stripping companies where the user still owns open tasks —
+        // removing them would orphan those tasks (see PRP 009).
+        const removed = (user.company_ids ?? []).filter((id) => !selected.has(id));
+        if (removed.length > 0) {
+            setSaving(true);
+            try {
+                const counts = await adminUserCompaniesApi.taskCounts(user.id, removed);
+                const impacted = counts.filter((c) => c.count > 0);
+                if (impacted.length > 0) {
+                    setImpact(impacted);
+                    setSaving(false);
+                    return; // wait for explicit confirmation
+                }
+            } catch {
+                // If the impact check fails, don't block saving — fall through.
+            }
+            setSaving(false);
+        }
+        await performSave();
     };
 
     return (
@@ -510,14 +537,36 @@ function UserCompanyAccessModal({
                     })}
                 </div>
 
+                {impact && (
+                    <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs">
+                        <p className="text-amber-300 font-medium mb-1.5">{t('admin_companies.removal_warning_title')}</p>
+                        <p className="text-navy-300 mb-2">{t('admin_companies.removal_warning_intro', { name: user.display_name })}</p>
+                        <ul className="space-y-1">
+                            {impact.map((i) => {
+                                const co = companies.find((c) => c.id === i.company_id);
+                                return (
+                                    <li key={i.company_id} className="text-navy-200">
+                                        • {co?.name ?? i.company_id} — {t('admin_companies.removal_warning_count', { count: i.count })}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
+
                 <div className="flex gap-2 mt-5">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm">{t('common.cancel')}</button>
                     <button
-                        onClick={save}
-                        disabled={saving}
-                        className="flex-1 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium disabled:opacity-50"
+                        onClick={impact ? () => setImpact(null) : onClose}
+                        className="flex-1 py-2 rounded-lg bg-navy-700 hover:bg-navy-600 text-sm"
                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('common.save')}
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={impact ? performSave : save}
+                        disabled={saving}
+                        className={`flex-1 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50 ${impact ? 'bg-amber-500 hover:bg-amber-400' : 'bg-blue-500 hover:bg-blue-400'}`}
+                    >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (impact ? t('admin_companies.removal_confirm') : t('common.save'))}
                     </button>
                 </div>
             </div>
