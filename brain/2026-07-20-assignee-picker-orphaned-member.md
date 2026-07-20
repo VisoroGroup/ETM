@@ -28,6 +28,15 @@ lista, akár tényleg árva. A tünet megoldva. A lenti „árva" narratíva vis
 hipotézis volt, amit az élő adat megcáfolt — a PRP 009 őrök és a PRP 010 valós
 árvákat céloznak, amikből JELENLEG NULLA van (lásd [[2026-07-20-membership-integrity-guards]] korrekció).
 
+**Forrás-fix a valódi okra (6cfd786):** a `useAuth` company-váltáskori
+users-újratöltése eddig `.catch(()=>{})`-tal csendben bukott, és a company-váltás
+abortja (api.ts:30) miatt egy elvesztett verseny után a lista örökre elavult
+maradt. Új `reloadUsers()`: 2×-i retry tranziens hibára, canceled kérést ignorál
+(újabb váltás felülírta), és `console.warn` a csendes nyelés helyett. Fut a
+company-váltás eseményen ÉS tab-fókuszra (öngyógyul). Release id 6. Így MÁS
+Hungary-userek (nem csak a jelenlegi felelős) is megbízhatóan megjelennek
+átszignáláshoz. Robert döntése: „javítsd a forrást is".
+
 ## Mit kért
 Robert screenshotot küldött Visoro Hungaryból: egy feladat „Felelős" legördülője
 „Nincs felelős"-t mutat, miközben a név-chip **Nemess Viktort** mutatja (ő a

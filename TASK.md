@@ -34,9 +34,14 @@
   (`scratchpad/orphan-members-check.js`) belinkelt Railwayt igényel. **Vár a
   Railway-linkre + Robert döntéseire.**
 
-### `[x]` Felelős legördülő üresen mutat, ha a felelős már nem céges tag
-- **Hozzáadva:** 2026-07-20 · **Bejelentő:** Robert (screenshot, Visoro Hungary)
-- **Commit:** 0836508 · **Kész:** 2026-07-20
+### `[x]` Felelős legördülő üresen mutat (Visoro Hungary) — display + forrás-fix
+- **Hozzáadva / kész:** 2026-07-20 · **Bejelentő:** Robert (screenshot)
+- **Commit:** 0836508 (display: `assigneeOptions`) + 6cfd786 (forrás: `useAuth`
+  `reloadUsers` retry + fókusz-refetch)
+- **VALÓS OK (élő DB-vel igazolva):** NEM árva tagság (Viktor tag, aktív, a szerver
+  visszaadja) — hanem **elavult kliens `users` lista** (company-váltás re-fetch
+  silent-catch + abort-verseny). A display-fix a jelenlegi felelőst mindig mutatja;
+  a forrás-fix az egész listát megbízhatóan frissíti. Release id 4 + 6.
 - **Tünet:** a feladat rá van szignálva valakire (chip mutatja a nevét), de a
   „Felelős" legördülő „Nincs felelős"-t mutat. Ok: a legördülő opciói a
   `GET /auth/users`-ből jönnek (aktív cég tagjai + minden admin/superadmin), a
