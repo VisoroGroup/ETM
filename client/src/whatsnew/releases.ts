@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 7,
+        date: '2026-07-20',
+        items: [
+            {
+                title: {
+                    ro: 'Raportul de finalizare nu mai arată un departament irelevant',
+                    hu: 'A befejezési jelentés nem mutat oda nem illő részleget',
+                },
+                description: {
+                    ro: 'La firmele fără structură organizatorică (ex. Visoro Hungary, Neo Plan), raportul de finalizare a sarcinii nu mai afișează un „Departament" moștenit (ex. „Comunicare și HR") care nu se aplică acolo.',
+                    hu: 'A szervezeti struktúra nélküli cégeknél (pl. Visoro Hungary, Neo Plan) a feladat befejezési jelentése többé nem mutat egy oda nem illő, örökölt „Részleg" mezőt (pl. „Comunicare și HR").',
+                },
+            },
+        ],
+    },
+    {
         id: 6,
         date: '2026-07-20',
         items: [

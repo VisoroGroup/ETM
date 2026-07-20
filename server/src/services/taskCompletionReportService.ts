@@ -340,10 +340,12 @@ export async function buildCompletionReportHtml(
     const { rows: [task] } = await pool.query(
         `SELECT t.*,
                 c.display_name AS creator_name, c.email AS creator_email,
-                a.display_name AS assignee_name, a.email AS assignee_email
+                a.display_name AS assignee_name, a.email AS assignee_email,
+                comp.template_type AS company_template_type
          FROM tasks t
          LEFT JOIN users c ON t.created_by = c.id
          LEFT JOIN users a ON t.assigned_to = a.id
+         LEFT JOIN companies comp ON comp.id = t.company_id
          WHERE t.id = $1`,
         [taskId]
     );
@@ -461,7 +463,15 @@ export async function buildCompletionReportHtml(
     if (task.description) {
         sections += infoRow(t('description'), escapeHtml(task.description));
     }
-    sections += infoRow(t('department'), `<span style="color: ${deptInfo?.color || '#333'}; font-weight: bold;">${escapeHtml(deptLabel)}</span>`);
+    // Only 'full'-template companies (Visoro Global) use the org department
+    // structure. simple/project tenants (Hungary, Neo Plan, ...) have no
+    // departments, but every task still carries a legacy default
+    // department_label ('departament_1' → "HR - Comunicare"). Showing it there
+    // reads as a cross-company mix-up ("Comunicare și HR" on a Hungary task),
+    // so we only render the department row for full-template companies.
+    if (task.company_template_type === 'full') {
+        sections += infoRow(t('department'), `<span style="color: ${deptInfo?.color || '#333'}; font-weight: bold;">${escapeHtml(deptLabel)}</span>`);
+    }
     sections += infoRow(t('creator'), escapeHtml(task.creator_name || dash));
     sections += infoRow(t('assignee'), escapeHtml(task.assignee_name || t('unassigned')));
     sections += infoRow(t('due_date'), formatDateOnly(task.due_date, language));
