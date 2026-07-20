@@ -64,11 +64,15 @@ használja a DEPARTMENTS-t (nincs név), ezt hagytam.
 
 ## Gotcha jövő-Claude-nak
 - **A flat create form (TaskFormModal) továbbra is `departament_1`-et stampol** a
-  non-full taskokra (a `department` state default). Most ártalmatlan (display
-  gate-elve), de ha valaha máshol is feltétel nélkül kiírják a `department_label`-t
-  (napi összefoglaló email? más riport? Excel-export?), ott ugyanez a szivárgás
-  visszajöhet. Opcionális tiszta megoldás: a flat form küldjön `department_label:
-  null`-t, ill. minden department-megjelenítés gate-eljen template_type='full'-ra.
+  non-full taskokra (a `department` state default). Ez SZÁNDÉKOS, marad így.
+- **Robert döntése (2026-07-20): NE tedd nullázhatóvá a `tasks.department_label`-t,
+  ne migrálj.** A söprés után a címke már SEHOL nem látszik non-full cégnél; a
+  forrásnál kivenni (hogy be se kerüljön) egy séma-migrációt igényelne a core
+  `tasks` táblán (`department_label department_type NOT NULL`) + típus-ripple
+  (`Department` → `Department | null`) — láthatatlan adatért nem arányos. Ha egy
+  jövő session „árva departament_1"-et lát Hungary taskon: ez szándékos, hagyd.
+  Ha valaha új helyen KIÍRNÁK a `department_label`-t, ott gate-elj
+  `template_type==='full'`-ra (ne a stampolást szüntesd meg).
 - **A `DEPARTMENTS` label-map (client/src/types) az egycéges Visoro Global
   részlegeit tükrözi** — ez cégfüggetlen konstans, csak `full` template alatt
   értelmes. Ne feltételezd, hogy bármely cég taskjának van valódi „részlege".
