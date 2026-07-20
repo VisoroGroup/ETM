@@ -31,6 +31,22 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 8,
+        date: '2026-07-20',
+        items: [
+            {
+                title: {
+                    ro: 'Departamentul moștenit nu mai apare nicăieri la firmele fără structură',
+                    hu: 'Az örökölt részleg sehol nem jelenik meg a struktúra nélküli cégeknél',
+                },
+                description: {
+                    ro: 'Am făcut curățenie completă: la firmele fără structură organizatorică, eticheta veche de departament nu mai apare nicăieri — nici în lista personală de sarcini, nici în exportul CSV, în bara de acțiuni în masă, în jurnalul de activitate (feed și sarcină) sau la șabloane.',
+                    hu: 'Teljes tisztítást csináltunk: a szervezeti struktúra nélküli cégeknél a régi részleg-címke többé sehol nem jelenik meg — sem a személyes feladatlistában, sem a CSV-exportban, a tömeges műveletek sávjában, a tevékenységnaplóban (feed és feladat) vagy a sablonoknál.',
+                },
+            },
+        ],
+    },
+    {
         id: 7,
         date: '2026-07-20',
         items: [

@@ -170,6 +170,7 @@ export default function ActivityFeedPage() {
                             {users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
                         </select>
                     </div>
+                    {activeCompany?.template_type === 'full' && (
                     <div>
                         <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">{t('tasks.department')}</label>
                         <select
@@ -181,6 +182,7 @@ export default function ActivityFeedPage() {
                             {DEPT_KEYS.map(d => <option key={d} value={d}>{DEPARTMENTS[d].label}</option>)}
                         </select>
                     </div>
+                    )}
                     <div>
                         <label className="text-[10px] md:text-xs text-navy-400 mb-1 block">{t('activity_feed.action_type')}</label>
                         <select
@@ -241,7 +243,7 @@ export default function ActivityFeedPage() {
                                         {ACTION_ICONS[item.action_type] || <Activity className="w-3 h-3 text-navy-500" />}
                                         <span className="truncate max-w-[250px]">{item.task_title || '—'}</span>
                                     </span>
-                                    {item.department_label && (
+                                    {activeCompany?.template_type === 'full' && item.department_label && (
                                         <span
                                             className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                                             style={{

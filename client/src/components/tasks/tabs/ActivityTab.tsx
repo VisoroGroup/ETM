@@ -4,12 +4,13 @@ import { timeAgo, formatDate } from '../../../utils/helpers';
 import { Activity } from 'lucide-react';
 import UserAvatar from '../../ui/UserAvatar';
 import { useTranslation, type TFunction } from '../../../i18n/I18nContext';
+import { useCompany } from '../../../hooks/useCompany';
 
 interface Props {
     task: TaskDetail;
 }
 
-function getActionDescription(entry: any, t: TFunction): string {
+function getActionDescription(entry: any, t: TFunction, isFull: boolean): string {
     const d = entry.details || {};
     switch (entry.action_type) {
         case 'created':
@@ -48,6 +49,8 @@ function getActionDescription(entry: any, t: TFunction): string {
         case 'attachment_added':
             return t('activity_feed.action_attachment_added_full', { name: d.file_name });
         case 'label_changed':
+            // Department label — only meaningful on the 'full' template; hide for others.
+            if (!isFull) return '';
             return t('activity_feed.action_label_changed_full', {
                 old: DEPARTMENTS[d.old_label as Department]?.label || d.old_label,
                 new: DEPARTMENTS[d.new_label as Department]?.label || d.new_label,
@@ -69,6 +72,8 @@ function getActionDescription(entry: any, t: TFunction): string {
             if (d.new_name) return t('activity_feed.action_assigned_full', { name: d.new_name });
             return t('activity_feed.action_unassigned_full', { old: d.old_name || '—' });
         case 'department_changed':
+            // Department — only meaningful on the 'full' template; hide for others.
+            if (!isFull) return '';
             return t('activity_feed.action_department_changed_full', {
                 old: DEPARTMENTS[d.old_value as Department]?.label || d.old_value,
                 new: DEPARTMENTS[d.new_value as Department]?.label || d.new_value,
@@ -94,11 +99,18 @@ function getActionDescription(entry: any, t: TFunction): string {
 
 export default function ActivityTab({ task }: Props) {
     const { t } = useTranslation();
+    const { activeCompany } = useCompany();
+    const isFull = activeCompany?.template_type === 'full';
     return (
         <div>
             {task.activity.length > 0 ? (
                 <div className="space-y-3">
-                    {task.activity.map(entry => (
+                    {task.activity.map(entry => {
+                        const desc = getActionDescription(entry, t, isFull);
+                        // Org-department activity (label / department changes) is hidden
+                        // for non-full tenants, which have no departments — skip it.
+                        if (!desc) return null;
+                        return (
                         <div key={entry.id} className="flex gap-2.5">
                             <div className="flex-shrink-0 mt-0.5">
                                 <UserAvatar
@@ -109,12 +121,13 @@ export default function ActivityTab({ task }: Props) {
                             <div className="flex-1">
                                 <p className="text-xs">
                                     <span className="font-medium">{entry.user_name}</span>
-                                    <span className="text-navy-400"> {getActionDescription(entry, t)}</span>
+                                    <span className="text-navy-400"> {desc}</span>
                                 </p>
                                 <p className="text-[10px] text-navy-500 mt-0.5">{timeAgo(entry.created_at)}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-8">

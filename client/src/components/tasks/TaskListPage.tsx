@@ -492,7 +492,7 @@ export default function TaskListPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
-                        onClick={() => exportToCSV(tasks, 'tasks', t)}
+                        onClick={() => exportToCSV(tasks, 'tasks', t, activeCompany?.template_type === 'full')}
                         className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-navy-800/50 border border-navy-700/50 rounded-lg text-sm text-navy-300 hover:bg-navy-700/50 transition-colors"
                         title={t('tasks.export_csv_tooltip')}
                     >
@@ -731,9 +731,12 @@ export default function TaskListPage() {
                         <thead>
                             <tr className="bg-navy-800/80">
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[35%]">{t('dashboard.col_task')}</th>
+                                {/* Org columns — only for 'full' template; other tenants have no org structure */}
+                                {activeCompany?.template_type === 'full' && (<>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden md:table-cell w-[14%]">{t('tasks.department')}</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[13%]">{t('dashboard.col_subdepartment')}</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs hidden lg:table-cell w-[16%]">{t('dashboard.col_post')}</th>
+                                </>)}
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[12%]">{t('tasks.due_date')}</th>
                                 <th className="text-left px-4 py-3 font-semibold text-navy-300 text-xs w-[10%]">{t('common.status')}</th>
                             </tr>
@@ -769,11 +772,14 @@ export default function TaskListPage() {
                                                 )}
                                                 <span className="font-medium text-white truncate">{task.title}</span>
                                             </div>
+                                            {activeCompany?.template_type === 'full' && (
                                             <div className="md:hidden mt-1 text-[10px] text-navy-400">
                                                 {task.assigned_department_name || (task.department_label ? departmentLabel(task.department_label, t) : '—')}
                                                 {task.assigned_section_name && ` · ${task.assigned_section_name}`}
                                             </div>
+                                            )}
                                         </td>
+                                        {activeCompany?.template_type === 'full' && (<>
                                         <td className="px-4 py-3 text-navy-300 text-xs hidden md:table-cell w-[14%] truncate">
                                             {task.assigned_department_name || DEPARTMENTS[task.department_label]?.label || '—'}
                                         </td>
@@ -783,6 +789,7 @@ export default function TaskListPage() {
                                         <td className="px-4 py-3 text-navy-400 text-xs hidden lg:table-cell w-[16%] truncate">
                                             {task.assigned_post_name || '—'}
                                         </td>
+                                        </>)}
                                         <td className="px-4 py-3 whitespace-nowrap w-[12%]">
                                             <span className={`text-xs font-medium ${
                                                 isOverdue ? 'text-red-400' : isDueSoon ? 'text-amber-400' : 'text-navy-300'
@@ -949,7 +956,8 @@ export default function TaskListPage() {
                         )}
                     </div>
 
-                    {/* Department */}
+                    {/* Department — only for 'full' template; other tenants have no org departments */}
+                    {activeCompany?.template_type === 'full' && (
                     <div className="relative">
                         <button
                             onClick={() => { setBulkDeptOpen(o => !o); setBulkStatusOpen(false); setBulkAssignOpen(false); setBulkPlanOpen(false); }}
@@ -973,6 +981,7 @@ export default function TaskListPage() {
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Add to plan (week / month) */}
                     <div className="relative">

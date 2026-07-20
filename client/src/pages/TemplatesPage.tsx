@@ -3,6 +3,7 @@ import { templatesApi, authApi } from '../services/api';
 import { DEPARTMENTS, Department } from '../types';
 import { Plus, Trash2, LayoutTemplate, X, Loader2, BookCopy } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import { useCompany } from '../hooks/useCompany';
 import { useTranslation } from '../i18n/I18nContext';
 
 interface Template {
@@ -24,6 +25,10 @@ export default function TemplatesPage() {
     const [users, setUsers] = useState<any[]>([]);
     const { showToast } = useToast();
     const { t } = useTranslation();
+    // Only 'full'-template companies have an org department structure; others
+    // carry only a legacy default department_label, so hide the department UI.
+    const { activeCompany } = useCompany();
+    const isFull = activeCompany?.template_type === 'full';
 
     // Form state
     const [title, setTitle] = useState('');
@@ -117,12 +122,14 @@ export default function TemplatesPage() {
                         <div key={tpl.id} className="bg-navy-900/50 border border-navy-700/50 rounded-xl p-4 hover:border-navy-600/70 transition-all group">
                             <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                    <span
-                                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
-                                        style={{ background: DEPARTMENTS[tpl.department_label as Department]?.color || '#3b82f6' }}
-                                    >
-                                        {DEPARTMENTS[tpl.department_label as Department]?.label || tpl.department_label}
-                                    </span>
+                                    {isFull && (
+                                        <span
+                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                                            style={{ background: DEPARTMENTS[tpl.department_label as Department]?.color || '#3b82f6' }}
+                                        >
+                                            {DEPARTMENTS[tpl.department_label as Department]?.label || tpl.department_label}
+                                        </span>
+                                    )}
                                 </div>
                                 <button
                                     onClick={() => handleDelete(tpl.id)}
@@ -202,6 +209,7 @@ export default function TemplatesPage() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
+                                {isFull && (
                                 <div>
                                     <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_department')}</label>
                                     <select
@@ -214,6 +222,7 @@ export default function TemplatesPage() {
                                         ))}
                                     </select>
                                 </div>
+                                )}
                                 <div>
                                     <label className="text-xs font-medium text-navy-300 block mb-1.5">{t('templates.field_default_assignee')}</label>
                                     <select

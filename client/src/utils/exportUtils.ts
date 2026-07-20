@@ -7,6 +7,10 @@ export function exportToCSV(
     tasks: Task[],
     filename: string = 'tasks',
     t?: Translator,
+    // 'full'-template companies use the org department structure; other tenants
+    // (Hungary, Neo Plan, ...) carry only a legacy default department_label, so
+    // the Department column is omitted for them to avoid a misleading export.
+    includeDepartment: boolean = true,
 ) {
     // Fall back to the previous Romanian wording if no translator is provided
     // (defensive: every caller should now pass `t`).
@@ -26,7 +30,7 @@ export function exportToCSV(
         tr('export.col_title'),
         tr('export.col_status'),
         tr('export.col_due_date'),
-        tr('export.col_department'),
+        ...(includeDepartment ? [tr('export.col_department')] : []),
         tr('export.col_creator'),
         tr('export.col_subtasks'),
     ];
@@ -35,9 +39,11 @@ export function exportToCSV(
         `"${(task.title || '').replace(/"/g, '""')}"`,
         STATUSES[task.status]?.label || task.status,
         task.due_date ? formatDate(task.due_date) : '-',
-        task.department_label && DEPARTMENTS[task.department_label]
-            ? DEPARTMENTS[task.department_label].label
-            : '-',
+        ...(includeDepartment ? [
+            task.department_label && DEPARTMENTS[task.department_label]
+                ? DEPARTMENTS[task.department_label].label
+                : '-'
+        ] : []),
         `"${(task.creator_name || '-').replace(/"/g, '""')}"`,
         `${task.subtask_completed || 0}/${task.subtask_total || 0}`,
     ]);
