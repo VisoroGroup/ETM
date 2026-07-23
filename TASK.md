@@ -12,6 +12,20 @@
 
 ## Active
 
+### `[~]` Dashboard dátum-rendezés + határidő-email 5/2/1 (a felelősnek is) — PRP 011
+- **Hozzáadva:** 2026-07-21 · **PRP:** PRPs/011-deadline-reminder-and-dashboard-date-sort.md
+- **Jóváhagyva:** Robert (2026-07-21, „csinald")
+- **(1) Dashboard:** a Listă nézet mindhárom szekciója (Sarcinile mele / Create de mine /
+  vezetői per-user) stádium-csoportosítás helyett egyetlen, **effektív határidő szerint**
+  rendezett lista (legközelebbi fent); blocat + dátum nélküli alul. A státusz soronként
+  továbbra is látszik (bal csík + InlineStatusPill). `groupByStatus`/`statusOrder` törölve.
+- **(2) Email:** a meglévő napi digest (emailScheduler) „hamarosan lejár" fázisa 4→**5**
+  munkanap (így 5/2/1); a **felelős** (`assigned_to`) mostantól címzett. Címzett-halmaz
+  **additív**: felelős + létrehozó + subtask-felelősök (Robert: „maradjanak bent"; a
+  felelős csak HOZZÁADva). `shouldSendReminder` fázis `4_days_before`→`5_days_before`; új unit teszt. Release id 9.
+- **Ellenőrzés:** szerver `tsc` + `npm test` (dateUtils suite); kliens `tsc -b && vite build`.
+  Nincs migráció/új dependency/új cron. Élő teszt deploy után (a napi email a következő 07:00-s futásnál).
+
 ### `[x]` Régi „részleg" címke elrejtése non-full cégeknél (teljes söprés)
 - **Hozzáadva / kész:** 2026-07-20 · **Bejelentő:** Robert (screenshot: Hungary
   befejezési jelentésen „Comunicare și HR")

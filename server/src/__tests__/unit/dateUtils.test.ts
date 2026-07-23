@@ -115,6 +115,25 @@ describe('dateUtils', () => {
             expect(result.send).toBe(true);
             expect(result.phase).toBe('due_today');
         });
+
+        it('sends reminder 5 working days before the deadline', () => {
+            // 2026-03-20 is Friday; 5 working days before is the previous Friday
+            // (2026-03-13), which is 7 calendar days out.
+            const fiveBefore = new Date('2026-03-13');
+            const dueDate = new Date('2026-03-20');
+            const result = shouldSendReminder(fiveBefore, dueDate);
+            expect(result.send).toBe(true);
+            expect(result.phase).toBe('5_days_before');
+        });
+
+        it('does NOT send 4 working days before (only 5, 2, 1 fire)', () => {
+            // 4 working days before Friday 2026-03-20 is Monday 2026-03-16 — this
+            // used to fire ('4_days_before') but no longer does after PRP 011.
+            const fourBefore = new Date('2026-03-16');
+            const dueDate = new Date('2026-03-20');
+            const result = shouldSendReminder(fourBefore, dueDate);
+            expect(result.send).toBe(false);
+        });
     });
 
     describe('formatDateRo', () => {

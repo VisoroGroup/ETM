@@ -83,7 +83,7 @@ export function daysDiff(a: Date, b: Date): number {
  * Check if today matches any reminder phase for a given deadline
  *
  * Phase 1 (>7 days): Monday weekly reminder
- * Phase 2 (≤7 days): 4, 2, 1 working days before deadline
+ * Phase 2 (≤7 days): 5, 2, 1 working days before deadline
  * Phase 3 (overdue): daily working day reminder
  */
 export function shouldSendReminder(today: Date, dueDate: Date): { send: boolean; phase: string } {
@@ -99,16 +99,18 @@ export function shouldSendReminder(today: Date, dueDate: Date): { send: boolean;
 
     // Phase 2: Last 7 days
     if (diff <= 7) {
-        // Check if today is 4, 2, or 1 working days before deadline
-        const fourBefore = subtractWorkingDays(dueDate, 4);
+        // Check if today is 5, 2, or 1 working days before deadline.
+        // 5 working days before a weekday deadline is 7 calendar days out, so
+        // diff === 7 still enters this branch (weekly only fires when diff > 7).
+        const fiveBefore = subtractWorkingDays(dueDate, 5);
         const twoBefore = subtractWorkingDays(dueDate, 2);
         const oneBefore = subtractWorkingDays(dueDate, 1);
 
         const todayStr = toLocalDateStr(today);
         const dueDateStr = toLocalDateStr(dueDate);
 
-        if (todayStr === toLocalDateStr(fourBefore)) {
-            return { send: true, phase: '4_days_before' };
+        if (todayStr === toLocalDateStr(fiveBefore)) {
+            return { send: true, phase: '5_days_before' };
         }
         if (todayStr === toLocalDateStr(twoBefore)) {
             return { send: true, phase: '2_days_before' };

@@ -192,25 +192,20 @@ export default function DashboardPage() {
         });
     })();
 
-    // Group tasks by status
-    const statusOrder: TaskStatus[] = ['de_rezolvat', 'in_realizare', 'blocat', 'terminat'];
-    const groupByStatus = (tasks: Task[]) => {
-        const groups: { status: TaskStatus; label: string; color: string; tasks: Task[] }[] = [];
-        for (const s of statusOrder) {
-            const matching = tasks.filter(t => t.status === s);
-            if (matching.length > 0) {
-                // Sort by due date (soonest first)
-                matching.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-                groups.push({
-                    status: s,
-                    label: STATUSES[s]?.label || s,
-                    color: STATUSES[s]?.color || '#999',
-                    tasks: matching
-                });
-            }
-        }
-        return groups;
+    // Flat date-ordered list (soonest deadline first) — the dashboard sections
+    // no longer group by status (Robert's request); each row still shows its
+    // status via the left color stripe + InlineStatusPill. Sort by the EFFECTIVE
+    // due date so the order matches the date each row actually displays (a rolled
+    // recurring task shows its next occurrence). Blocked tasks have a paused
+    // deadline (date hidden in the row) and undated tasks have nothing to sort
+    // by — both sink to the bottom.
+    const dueSortValue = (task: Task): number => {
+        if (task.status === 'blocat') return Infinity;
+        const eff = getEffectiveDueDate(task);
+        if (!eff) return Infinity;
+        return new Date(eff).getTime();
     };
+    const sortByDueDate = (tasks: Task[]) => [...tasks].sort((a, b) => dueSortValue(a) - dueSortValue(b));
 
     const toggleStatusCollapse = (key: string) => {
         setCollapsedStatuses(prev => {
@@ -318,9 +313,9 @@ export default function DashboardPage() {
 
     // Render a grouped task section
     const renderTaskSection = (title: string, icon: React.ReactNode, tasks: Task[], sectionKey: string, showAssignee = false) => {
-        const groups = groupByStatus(tasks);
         const sectKey = `sect_${sectionKey}`;
         const sectionCollapsed = collapsedStatuses.has(sectKey);
+        const ordered = sortByDueDate(tasks);
 
         return (
             <div className="bg-navy-900/50 border border-navy-700/50 rounded-xl overflow-hidden">
@@ -334,35 +329,14 @@ export default function DashboardPage() {
                     <span className="text-xs text-navy-400 font-normal bg-navy-800/60 rounded-full px-2 py-0.5">{tasks.length}</span>
                 </button>
 
-                {!sectionCollapsed && (tasks.length === 0 ? (
+                {!sectionCollapsed && (ordered.length === 0 ? (
                     <div className="text-center py-8">
                         <CheckCircle2 className="w-8 h-8 text-green-400/30 mx-auto mb-2" />
                         <p className="text-navy-500 text-sm">{t('tasks.no_tasks')}</p>
                     </div>
                 ) : (
                     <div>
-                        {groups.map(group => {
-                            const collapseKey = `${sectionKey}_${group.status}`;
-                            const isCollapsed = collapsedStatuses.has(collapseKey);
-                            return (
-                                <div key={group.status}>
-                                    <button
-                                        onClick={() => toggleStatusCollapse(collapseKey)}
-                                        className="w-full flex items-center gap-2 px-5 py-2.5 bg-navy-800/30 hover:bg-navy-800/50 transition-colors border-t border-navy-700/30"
-                                    >
-                                        <ChevronRight className={`w-3.5 h-3.5 text-navy-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: group.color }} />
-                                        <span className="text-xs font-semibold" style={{ color: group.color }}>{group.label}</span>
-                                        <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
-                                    </button>
-                                    {!isCollapsed && (
-                                        <div>
-                                            {group.tasks.map(task => renderTaskRow(task, showAssignee))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                        {ordered.map(task => renderTaskRow(task, showAssignee))}
                     </div>
                 ))}
             </div>
@@ -542,28 +516,7 @@ export default function DashboardPage() {
                                             </button>
                                             {!isCollapsed && (
                                                 <div className="px-3 pb-3 pt-1">
-                                                    {groupByStatus(bucket.tasks).map(group => {
-                                                        const innerKey = `${key}_${group.status}`;
-                                                        const innerCollapsed = collapsedStatuses.has(innerKey);
-                                                        return (
-                                                            <div key={group.status} className="rounded-lg overflow-hidden border border-navy-700/30 mt-2">
-                                                                <button
-                                                                    onClick={() => toggleStatusCollapse(innerKey)}
-                                                                    className="w-full flex items-center gap-2 px-3 py-2 bg-navy-800/30 hover:bg-navy-800/50 transition-colors"
-                                                                >
-                                                                    <ChevronRight className={`w-3 h-3 text-navy-400 transition-transform ${innerCollapsed ? '' : 'rotate-90'}`} />
-                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
-                                                                    <span className="text-xs font-semibold" style={{ color: group.color }}>{group.label}</span>
-                                                                    <span className="text-[10px] text-navy-500">({group.tasks.length})</span>
-                                                                </button>
-                                                                {!innerCollapsed && (
-                                                                    <div>
-                                                                        {group.tasks.map(task => renderTaskRow(task, false))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                    {sortByDueDate(bucket.tasks).map(task => renderTaskRow(task, false))}
                                                 </div>
                                             )}
                                         </div>

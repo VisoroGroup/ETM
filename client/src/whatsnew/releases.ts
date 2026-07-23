@@ -31,6 +31,32 @@ export interface Release {
 /** Newest first. The popup shows at most the 3 newest releases. */
 export const RELEASES: Release[] = [
     {
+        id: 9,
+        date: '2026-07-21',
+        items: [
+            {
+                title: {
+                    ro: 'Panoul principal: sarcinile sunt ordonate după termen, nu după stadiu',
+                    hu: 'Vezérlőpult: a feladatok határidő szerint, nem stádium szerint',
+                },
+                description: {
+                    ro: 'În vizualizarea Listă, sarcinile nu mai sunt grupate pe stadii (De rezolvat / În realizare / Blocat), ci apar într-o listă unică ordonată după termen — cel mai apropiat termen sus, apoi în jos. Se aplică la toate secțiunile (Sarcinile mele, Create de mine și, pentru administratori, pe utilizator). Stadiul rămâne vizibil pe fiecare rând. Sarcinile blocate și cele fără termen trec la final.',
+                    hu: 'A Listă nézetben a feladatok többé nem stádium szerint csoportosulnak (Megoldandó / Folyamatban / Blokkolt), hanem egyetlen, határidő szerint rendezett listában jelennek meg — a legközelebbi határidő legfelül, onnan lefelé. Minden szekcióra érvényes (Saját feladatok, Általam létrehozott és — adminoknál — felhasználónként). A stádium továbbra is látszik minden soron. A blokkolt és a határidő nélküli feladatok a lista aljára kerülnek.',
+                },
+            },
+            {
+                title: {
+                    ro: 'Memento pe email cu 5 zile înainte de termen — și către responsabil',
+                    hu: 'E-mail emlékeztető 5 nappal a határidő előtt — a felelősnek is',
+                },
+                description: {
+                    ro: 'Emailul zilnic anunță acum sarcinile care se apropie de termen cu 5 zile lucrătoare înainte (apoi 2 și 1), în loc de 4. În plus, responsabilul sarcinii (persoana pe care este atribuită) primește de acum memento-ul — până acum putea fi omis.',
+                    hu: 'A napi e-mail mostantól 5 munkanappal a határidő előtt jelzi a közelgő feladatokat (majd 2 és 1 nappal), a korábbi 4 helyett. Ráadásul a feladat felelőse (akire a feladat rá van szignálva) mostantól megkapja az emlékeztetőt — eddig kimaradhatott.',
+                },
+            },
+        ],
+    },
+    {
         id: 8,
         date: '2026-07-20',
         items: [

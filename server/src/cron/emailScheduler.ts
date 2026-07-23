@@ -273,8 +273,13 @@ async function runDailyEmailJob() {
             const { send, phase } = shouldSendReminder(today, dueDate);
             if (!send && task.status !== 'blocat') continue;
 
-            // Stakeholders for this task: creator + subtask assignees
-            const relevantUserIds = new Set<string>([task.created_by]);
+            // Recipients for this task: the responsible person (assignee) + the
+            // creator + subtask assignees (PRP 011). The assignee was previously
+            // omitted entirely — now the person the task is on actually gets the
+            // deadline reminder, while the creator and subtask assignees are kept.
+            const relevantUserIds = new Set<string>();
+            if (task.assigned_to) relevantUserIds.add(task.assigned_to);
+            relevantUserIds.add(task.created_by);
             const assignees = subtaskAssigneesMap.get(task.id) || [];
             for (const uid of assignees) relevantUserIds.add(uid);
 
@@ -304,7 +309,7 @@ async function runDailyEmailJob() {
                     }).catch(err => console.error('[WEBHOOK] task.overdue dispatch error:', err.message));
                 } else if (phase === 'due_today') {
                     bucket.due_today.push(taskData);
-                } else if (phase === '4_days_before' || phase === '2_days_before' || phase === '1_day_before') {
+                } else if (phase === '5_days_before' || phase === '2_days_before' || phase === '1_day_before') {
                     bucket.due_soon.push(taskData);
                 } else if (phase === 'weekly') {
                     bucket.weekly.push(taskData);
